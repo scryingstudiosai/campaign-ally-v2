@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" width="400" height="100">
+  <defs>
+    <linearGradient id="tealGradientH" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d9488;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#99f6e4;stop-opacity:0.6" />
+    </linearGradient>
+  </defs>
+
+  <!-- Icon -->
+  <g fill="none" stroke="url(#tealGradientH)" stroke-width="2" transform="translate(5, 5) scale(0.9)">
+    <circle cx="50" cy="10" r="3" fill="url(#tealGradientH)"/>
+    <circle cx="30" cy="25" r="3" fill="url(#tealGradientH)"/>
+    <circle cx="70" cy="25" r="3" fill="url(#tealGradientH)"/>
+    <circle cx="20" cy="50" r="3" fill="url(#tealGradientH)"/>
+    <circle cx="50" cy="45" r="3" fill="url(#tealGradientH)"/>
+    <circle cx="80" cy="50" r="3" fill="url(#tealGradientH)"/>
+    <circle cx="25" cy="75" r="3" fill="url(#tealGradientH)"/>
+    <circle cx="50" cy="70" r="3" fill="url(#tealGradientH)"/>
+    <circle cx="75" cy="75" r="3" fill="url(#tealGradientH)"/>
+    <circle cx="50" cy="90" r="3" fill="url(#tealGradientH)"/>
+    <line x1="50" y1="10" x2="30" y2="25"/>
+    <line x1="50" y1="10" x2="70" y2="25"/>
+    <line x1="30" y1="25" x2="70" y2="25"/>
+    <line x1="30" y1="25" x2="20" y2="50"/>
+    <line x1="30" y1="25" x2="50" y2="45"/>
+    <line x1="70" y1="25" x2="50" y2="45"/>
+    <line x1="70" y1="25" x2="80" y2="50"/>
+    <line x1="20" y1="50" x2="50" y2="45"/>
+    <line x1="50" y1="45" x2="80" y2="50"/>
+    <line x1="20" y1="50" x2="25" y2="75"/>
+    <line x1="20" y1="50" x2="50" y2="70"/>
+    <line x1="50" y1="45" x2="50" y2="70"/>
+    <line x1="80" y1="50" x2="50" y2="70"/>
+    <line x1="80" y1="50" x2="75" y2="75"/>
+    <line x1="25" y1="75" x2="50" y2="70"/>
+    <line x1="50" y1="70" x2="75" y2="75"/>
+    <line x1="25" y1="75" x2="50" y2="90"/>
+    <line x1="50" y1="70" x2="50" y2="90"/>
+    <line x1="75" y1="75" x2="50" y2="90"/>
+  </g>
+
+  <!-- Text -->
+  <text x="110" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="300" fill="url(#textGradient)">Campaign</text>
+  <text x="110" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="300" fill="url(#textGradient)">Ally</text>
+</svg>
