@@ -32,14 +32,29 @@ const GAME_SYSTEMS = [
   { value: 'other', label: 'Other' },
 ]
 
-export function CampaignForm(): JSX.Element {
+interface Campaign {
+  id: string
+  name: string
+  description: string | null
+  genre: string | null
+  game_system: string | null
+}
+
+interface CampaignFormProps {
+  campaign?: Campaign
+  mode?: 'create' | 'edit'
+}
+
+export function CampaignForm({ campaign, mode = 'create' }: CampaignFormProps): JSX.Element {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [genre, setGenre] = useState('')
-  const [gameSystem, setGameSystem] = useState('dnd5e')
+  const [name, setName] = useState(campaign?.name || '')
+  const [description, setDescription] = useState(campaign?.description || '')
+  const [genre, setGenre] = useState(campaign?.genre || '')
+  const [gameSystem, setGameSystem] = useState(campaign?.game_system || 'dnd5e')
+
+  const isEdit = mode === 'edit'
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
@@ -55,46 +70,67 @@ export function CampaignForm(): JSX.Element {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
-        toast.error('You must be logged in to create a campaign')
+        toast.error(`You must be logged in to ${isEdit ? 'edit' : 'create'} a campaign`)
         setLoading(false)
         return
       }
 
-      // Create the campaign
-      const { data: campaign, error: campaignError } = await supabase
-        .from('campaigns')
-        .insert({
-          user_id: user.id,
-          name: name.trim(),
-          description: description.trim() || null,
-          genre: genre || null,
-          game_system: gameSystem,
-        })
-        .select()
-        .single()
+      if (isEdit && campaign) {
+        // Update existing campaign
+        const { error: updateError } = await supabase
+          .from('campaigns')
+          .update({
+            name: name.trim(),
+            description: description.trim() || null,
+            genre: genre || null,
+            game_system: gameSystem,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', campaign.id)
+          .eq('user_id', user.id)
 
-      if (campaignError) {
-        throw campaignError
+        if (updateError) {
+          throw updateError
+        }
+
+        toast.success('Campaign updated successfully!')
+        router.push(`/dashboard/campaigns/${campaign.id}`)
+      } else {
+        // Create new campaign
+        const { data: newCampaign, error: campaignError } = await supabase
+          .from('campaigns')
+          .insert({
+            user_id: user.id,
+            name: name.trim(),
+            description: description.trim() || null,
+            genre: genre || null,
+            game_system: gameSystem,
+          })
+          .select()
+          .single()
+
+        if (campaignError) {
+          throw campaignError
+        }
+
+        // Auto-create a codex entry for the campaign
+        const { error: codexError } = await supabase
+          .from('codex')
+          .insert({
+            campaign_id: newCampaign.id,
+            world_name: name.trim(),
+          })
+
+        if (codexError) {
+          console.error('Failed to create codex:', codexError)
+        }
+
+        toast.success('Campaign created successfully!')
+        router.push(`/dashboard/campaigns/${newCampaign.id}`)
       }
-
-      // Auto-create a codex entry for the campaign
-      const { error: codexError } = await supabase
-        .from('codex')
-        .insert({
-          campaign_id: campaign.id,
-          world_name: name.trim(),
-        })
-
-      if (codexError) {
-        console.error('Failed to create codex:', codexError)
-        // Don't fail the whole operation if codex creation fails
-      }
-
-      toast.success('Campaign created successfully!')
-      router.push(`/dashboard/campaigns/${campaign.id}`)
     } catch (error) {
-      console.error('Error creating campaign:', error)
-      toast.error('Failed to create campaign')
+      console.error(`Error ${isEdit ? 'updating' : 'creating'} campaign:`, error)
+      toast.error(`Failed to ${isEdit ? 'update' : 'create'} campaign`)
     } finally {
       setLoading(false)
     }
@@ -158,7 +194,10 @@ export function CampaignForm(): JSX.Element {
 
       <div className="flex gap-4">
         <Button type="submit" disabled={loading}>
-          {loading ? 'Creating...' : 'Create Campaign'}
+          {loading
+            ? (isEdit ? 'Saving...' : 'Creating...')
+            : (isEdit ? 'Save Changes' : 'Create Campaign')
+          }
         </Button>
         <Button
           type="button"
