@@ -15,7 +15,7 @@ interface Codex {
   languages: string[]
   geography_notes: string | null
   calendar_system: string | null
-  current_date: string | null
+  current_game_date: string | null
 }
 
 interface CodexDisplayProps {
@@ -199,14 +199,14 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
             </div>
           )}
 
-          {codex.current_date && (
+          {codex.current_game_date && (
             <div>
               <p className="text-sm text-muted-foreground">Current Game Date</p>
-              <p className="font-medium">{codex.current_date}</p>
+              <p className="font-medium">{codex.current_game_date}</p>
             </div>
           )}
 
-          {(!codex.languages?.length && !codex.calendar_system && !codex.current_date) && (
+          {(!codex.languages?.length && !codex.calendar_system && !codex.current_game_date) && (
             <p className="text-sm text-muted-foreground italic">No world details configured</p>
           )}
         </CardContent>

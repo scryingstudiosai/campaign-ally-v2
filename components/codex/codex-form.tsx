@@ -30,7 +30,7 @@ interface Codex {
   languages: string[]
   geography_notes: string | null
   calendar_system: string | null
-  current_date: string | null
+  current_game_date: string | null
 }
 
 interface CodexFormProps {
@@ -85,6 +85,48 @@ const NARRATIVE_VOICES = [
   { value: 'humorous', label: 'Humorous' },
 ]
 
+const CONTENT_WARNING_PRESETS = [
+  'Violence',
+  'Gore',
+  'Sexual Content',
+  'Substance Use',
+  'Mental Health',
+  'Child Endangerment',
+  'Body Horror',
+  'Torture',
+  'Slavery',
+  'Abuse',
+]
+
+const COMMON_LANGUAGES = [
+  'Common',
+  'Elvish',
+  'Dwarvish',
+  'Draconic',
+  'Infernal',
+  'Celestial',
+  'Primordial',
+  'Undercommon',
+  'Abyssal',
+  'Giant',
+  'Gnomish',
+  'Goblin',
+  'Halfling',
+  'Orc',
+  'Sylvan',
+  'Deep Speech',
+  'Thieves\' Cant',
+  'Druidic',
+]
+
+const CALENDAR_PRESETS = [
+  { value: 'gregorian', label: 'Gregorian (Real World)' },
+  { value: 'harptos', label: 'Harptos (Forgotten Realms)' },
+  { value: 'galifar', label: 'Galifar (Eberron)' },
+  { value: 'absalom', label: 'Absalom Reckoning (Golarion)' },
+  { value: 'custom', label: 'Custom' },
+]
+
 export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
@@ -92,8 +134,8 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
   // World Foundation
   const [worldName, setWorldName] = useState(codex.world_name || '')
   const [tone, setTone] = useState<string[]>(codex.tone || [])
-  const [magicLevel, setMagicLevel] = useState(codex.magic_level || 'medium')
-  const [techLevel, setTechLevel] = useState(codex.tech_level || 'medieval')
+  const [magicLevel, setMagicLevel] = useState(codex.magic_level || '')
+  const [techLevel, setTechLevel] = useState(codex.tech_level || '')
   const [themes, setThemes] = useState<string[]>(codex.themes || [])
 
   // Style Settings
@@ -105,8 +147,15 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
   const [languages, setLanguages] = useState<string[]>(codex.languages || [])
   const [newLanguage, setNewLanguage] = useState('')
   const [geographyNotes, setGeographyNotes] = useState(codex.geography_notes || '')
-  const [calendarSystem, setCalendarSystem] = useState(codex.calendar_system || '')
-  const [currentDate, setCurrentDate] = useState(codex.current_date || '')
+  const [calendarPreset, setCalendarPreset] = useState(() => {
+    const preset = CALENDAR_PRESETS.find(p => p.label === codex.calendar_system)
+    return preset ? preset.value : (codex.calendar_system ? 'custom' : '')
+  })
+  const [customCalendar, setCustomCalendar] = useState(() => {
+    const preset = CALENDAR_PRESETS.find(p => p.label === codex.calendar_system)
+    return preset ? '' : (codex.calendar_system || '')
+  })
+  const [currentGameDate, setCurrentGameDate] = useState(codex.current_game_date || '')
 
   const toggleArrayItem = (arr: string[], setArr: (val: string[]) => void, item: string) => {
     if (arr.includes(item)) {
@@ -133,6 +182,13 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
     setArr(arr.filter((i) => i !== item))
   }
 
+  const getCalendarSystemValue = (): string | null => {
+    if (!calendarPreset) return null
+    if (calendarPreset === 'custom') return customCalendar.trim() || null
+    const preset = CALENDAR_PRESETS.find(p => p.value === calendarPreset)
+    return preset ? preset.label : null
+  }
+
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     setLoading(true)
@@ -143,15 +199,15 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
         .update({
           world_name: worldName.trim() || null,
           tone,
-          magic_level: magicLevel,
-          tech_level: techLevel,
+          magic_level: magicLevel || null,
+          tech_level: techLevel || null,
           themes,
           narrative_voice: narrativeVoice || null,
           content_warnings: contentWarnings,
           languages,
           geography_notes: geographyNotes.trim() || null,
-          calendar_system: calendarSystem.trim() || null,
-          current_date: currentDate.trim() || null,
+          calendar_system: getCalendarSystemValue(),
+          current_game_date: currentGameDate.trim() || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', codex.id)
@@ -274,13 +330,27 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="content-warnings">Content Warnings (Lines &amp; Veils)</Label>
-          <div className="flex gap-2">
+          <Label>Content Warnings (Lines &amp; Veils)</Label>
+          <p className="text-sm text-muted-foreground">
+            Select common warnings or add custom ones. These help set boundaries for AI-generated content.
+          </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {CONTENT_WARNING_PRESETS.map((warning) => (
+              <Badge
+                key={warning}
+                variant={contentWarnings.includes(warning) ? 'destructive' : 'outline'}
+                className="cursor-pointer hover:bg-destructive/20"
+                onClick={() => toggleArrayItem(contentWarnings, setContentWarnings, warning)}
+              >
+                {warning}
+              </Badge>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-3">
             <Input
-              id="content-warnings"
               value={newWarning}
               onChange={(e) => setNewWarning(e.target.value)}
-              placeholder="Add a content warning"
+              placeholder="Add custom warning..."
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -296,9 +366,10 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
               Add
             </Button>
           </div>
-          {contentWarnings.length > 0 && (
+          {contentWarnings.filter(w => !CONTENT_WARNING_PRESETS.includes(w)).length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {contentWarnings.map((warning) => (
+              <span className="text-xs text-muted-foreground mr-2">Custom:</span>
+              {contentWarnings.filter(w => !CONTENT_WARNING_PRESETS.includes(w)).map((warning) => (
                 <Badge key={warning} variant="destructive" className="gap-1">
                   {warning}
                   <X
@@ -317,13 +388,27 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
         <h2 className="text-xl font-semibold border-b pb-2">World Details</h2>
 
         <div className="space-y-2">
-          <Label htmlFor="languages">Languages</Label>
-          <div className="flex gap-2">
+          <Label>Languages</Label>
+          <p className="text-sm text-muted-foreground">
+            Select common languages spoken in your world or add custom ones.
+          </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {COMMON_LANGUAGES.map((lang) => (
+              <Badge
+                key={lang}
+                variant={languages.includes(lang) ? 'secondary' : 'outline'}
+                className="cursor-pointer hover:bg-secondary/20"
+                onClick={() => toggleArrayItem(languages, setLanguages, lang)}
+              >
+                {lang}
+              </Badge>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-3">
             <Input
-              id="languages"
               value={newLanguage}
               onChange={(e) => setNewLanguage(e.target.value)}
-              placeholder="Add a language"
+              placeholder="Add custom language..."
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -339,9 +424,10 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
               Add
             </Button>
           </div>
-          {languages.length > 0 && (
+          {languages.filter(l => !COMMON_LANGUAGES.includes(l)).length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {languages.map((lang) => (
+              <span className="text-xs text-muted-foreground mr-2">Custom:</span>
+              {languages.filter(l => !COMMON_LANGUAGES.includes(l)).map((lang) => (
                 <Badge key={lang} variant="secondary" className="gap-1">
                   {lang}
                   <X
@@ -355,36 +441,54 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="geography-notes">Geography Notes</Label>
+          <Label htmlFor="geography-notes">Geography Notes (Optional)</Label>
           <Textarea
             id="geography-notes"
             value={geographyNotes}
             onChange={(e) => setGeographyNotes(e.target.value)}
-            placeholder="Describe the geography of your world..."
-            rows={4}
+            placeholder="Brief overview of your world's geography. You can add detailed locations later in Entities."
+            rows={3}
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="calendar-system">Calendar System</Label>
+        <div className="space-y-2">
+          <Label htmlFor="calendar-system">Calendar System</Label>
+          <p className="text-sm text-muted-foreground">
+            The calendar your world uses to track time and dates.
+          </p>
+          <Select value={calendarPreset} onValueChange={setCalendarPreset}>
+            <SelectTrigger id="calendar-system">
+              <SelectValue placeholder="Select a calendar system" />
+            </SelectTrigger>
+            <SelectContent>
+              {CALENDAR_PRESETS.map((cal) => (
+                <SelectItem key={cal.value} value={cal.value}>
+                  {cal.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {calendarPreset === 'custom' && (
             <Input
-              id="calendar-system"
-              value={calendarSystem}
-              onChange={(e) => setCalendarSystem(e.target.value)}
-              placeholder="e.g., Harptos Calendar"
+              value={customCalendar}
+              onChange={(e) => setCustomCalendar(e.target.value)}
+              placeholder="Enter your custom calendar name"
+              className="mt-2"
             />
-          </div>
+          )}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="current-date">Current Game Date</Label>
-            <Input
-              id="current-date"
-              value={currentDate}
-              onChange={(e) => setCurrentDate(e.target.value)}
-              placeholder="e.g., 15th of Mirtul, 1492 DR"
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="current-game-date">Current Game Date (Optional)</Label>
+          <p className="text-sm text-muted-foreground">
+            Where your campaign currently is in the timeline.
+          </p>
+          <Input
+            id="current-game-date"
+            value={currentGameDate}
+            onChange={(e) => setCurrentGameDate(e.target.value)}
+            placeholder="e.g., 15th of Mirtul, 1492 DR"
+          />
         </div>
       </div>
 
