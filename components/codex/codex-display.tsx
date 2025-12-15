@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Sparkles, Palette, Globe, BookOpen, HelpCircle } from 'lucide-react'
+import { Sparkles, Palette, Globe, BookOpen, HelpCircle, Check, Users } from 'lucide-react'
 
 interface Codex {
   id: string
@@ -19,6 +19,8 @@ interface Codex {
   calendar_system: string | null
   current_game_date: string | null
   open_questions: string[]
+  resolved_questions?: string[]
+  proper_nouns?: string[]
 }
 
 interface CodexDisplayProps {
@@ -263,6 +265,27 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
           </CardContent>
         </Card>
 
+        {/* Established Names */}
+        {codex.proper_nouns && codex.proper_nouns.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Users className="w-5 h-5 text-primary" />
+                Established Names
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {codex.proper_nouns.map((noun) => (
+                  <Badge key={noun} variant="secondary">
+                    {noun}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Open Questions */}
         <Card>
           <CardHeader>
@@ -286,6 +309,28 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
             )}
           </CardContent>
         </Card>
+
+        {/* Established Facts */}
+        {codex.resolved_questions && codex.resolved_questions.length > 0 && (
+          <Card className="border-green-500/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg text-green-500">
+                <Check className="w-5 h-5" />
+                Established Facts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {codex.resolved_questions.map((fact, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <span className="text-green-500">✓</span>
+                    <p className="text-sm">{fact}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )
