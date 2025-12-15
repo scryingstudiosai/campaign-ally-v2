@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeleteCampaignButton } from '@/components/campaigns/delete-campaign-button'
-import { ArrowLeft, BookOpen, Users, Calendar, Pencil } from 'lucide-react'
+import { ArrowLeft, BookOpen, Users, Calendar, Pencil, Sparkles, User, MapPin, Swords } from 'lucide-react'
 
 interface PageProps {
   params: { id: string }
@@ -147,6 +147,81 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* AI Forges Section */}
+        <div className="mt-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">AI Forges</h2>
+              <p className="text-sm text-muted-foreground">
+                Generate content powered by your campaign&apos;s Codex
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer group">
+              <Link href={`/dashboard/campaigns/${params.id}/forge/npc`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <User className="w-4 h-4 text-primary" />
+                    NPC Forge
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Generate memorable NPCs with personalities, secrets, and hooks
+                  </p>
+                </CardContent>
+              </Link>
+            </Card>
+
+            <Card className="opacity-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  Location Forge
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Coming soon...
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="opacity-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Swords className="w-4 h-4 text-primary" />
+                  Encounter Forge
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Coming soon...
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="opacity-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  Item Forge
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Coming soon...
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
