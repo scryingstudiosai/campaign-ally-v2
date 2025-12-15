@@ -91,7 +91,10 @@ export async function POST(request: NextRequest) {
 
     const currentUsed = needsReset ? 0 : used
 
-    if (currentUsed >= limit) {
+    // Dev mode: bypass generation limits if env var is set
+    const bypassLimit = process.env.BYPASS_GENERATION_LIMIT === 'true'
+
+    if (!bypassLimit && currentUsed >= limit) {
       return NextResponse.json(
         { error: 'Generation limit reached. Upgrade your plan for more generations.' },
         { status: 429 }

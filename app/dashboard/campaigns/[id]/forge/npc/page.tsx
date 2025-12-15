@@ -224,7 +224,11 @@ export default function NPCForgePage(): JSX.Element {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <NPCOutputDisplay npc={generatedNPC} />
+                    <NPCOutputDisplay
+                      npc={generatedNPC}
+                      isEditing={isEditing}
+                      onUpdate={setGeneratedNPC}
+                    />
                   </CardContent>
                 </Card>
 
