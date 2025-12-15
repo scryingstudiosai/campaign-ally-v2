@@ -8,6 +8,7 @@ interface NPCInputs {
   race?: string
   gender?: string
   personalityHints?: string
+  voiceReference?: string
   additionalRequirements?: string
 }
 
@@ -19,10 +20,11 @@ interface GeneratedNPC {
   appearance: string
   personality: string
   voiceAndMannerisms: string
+  voiceReference?: string
   motivation: string
   secret: string
   plotHook: string
-  loot: string
+  loot: string[]
   combatStats: {
     armorClass: number
     hitPoints: string
@@ -128,6 +130,11 @@ export async function POST(request: NextRequest) {
 
     const generatedNPC: GeneratedNPC = JSON.parse(responseContent)
 
+    // Add voice reference if provided by user
+    if (inputs.voiceReference) {
+      generatedNPC.voiceReference = inputs.voiceReference
+    }
+
     // Track generation in database
     const { error: genError } = await supabase.from('generations').insert({
       user_id: user.id,
@@ -178,7 +185,7 @@ The NPC should be:
 - Memorable and distinct with a clear hook
 - Have a quick-reference summary (the dmSlug)
 - Include practical combat stats for potential encounters
-- Provide items they carry for looting/pickpocketing
+- Provide items they carry for looting/pickpocketing (as separate items for quick reading)
 - Have secrets and plot hooks that drive gameplay
 
 IMPORTANT GUIDELINES:
@@ -186,7 +193,7 @@ IMPORTANT GUIDELINES:
 - Use **bold** markdown for key descriptors in appearance and personality (hair color, eye color, build, distinguishing features, key traits)
 - Keep descriptions vivid but concise (2-3 sentences each section)
 - Combat stats should be appropriate for their role (a merchant has low AC/HP, a veteran guard has higher)
-- Loot should include 3-5 items that tell a story about who they are
+- Loot should be an ARRAY of 3-5 separate items, each a short descriptive string
 - The secret should be something hidden; the plotHook shows how to USE this NPC in gameplay
 `
 
@@ -220,6 +227,9 @@ IMPORTANT GUIDELINES:
     if (Array.isArray(codex.languages) && codex.languages.length > 0) {
       prompt += `Common Languages: ${codex.languages.join(', ')}\n`
     }
+    if (Array.isArray(codex.proper_nouns) && codex.proper_nouns.length > 0) {
+      prompt += `Established Names (use these when relevant): ${codex.proper_nouns.join(', ')}\n`
+    }
     if (Array.isArray(codex.content_warnings) && codex.content_warnings.length > 0) {
       prompt += `\nCONTENT TO AVOID: ${codex.content_warnings.join(', ')}\n`
     }
@@ -241,7 +251,7 @@ Return a JSON object with these exact fields:
   "motivation": "What drives this character, their goals (1-2 sentences)",
   "secret": "A hidden truth about them that could impact the story (1-2 sentences)",
   "plotHook": "How this NPC can actively drive gameplay or connect to the party (1-2 sentences)",
-  "loot": "What they carry if searched/pickpocketed - 3-5 items that tell their story",
+  "loot": ["Item 1", "Item 2", "Item 3", "Item 4"],
   "combatStats": {
     "armorClass": 12,
     "hitPoints": "8-12",
@@ -249,7 +259,9 @@ Return a JSON object with these exact fields:
     "combatStyle": "Avoids combat, will flee or surrender"
   },
   "connectionHooks": ["Array of 2-3 ways to connect this NPC to the story or party"]
-}`
+}
+
+IMPORTANT: loot must be an array of strings, NOT a single string.`
 
   return prompt
 }
@@ -279,6 +291,11 @@ function buildUserPrompt(inputs: NPCInputs): string {
 
   if (inputs.personalityHints) {
     prompt += `\nPersonality hints: ${inputs.personalityHints}\n`
+  }
+
+  if (inputs.voiceReference) {
+    prompt += `\nVoice/Accent reference: ${inputs.voiceReference}\n`
+    prompt += `(Incorporate this voice style into the voiceAndMannerisms description)\n`
   }
 
   if (inputs.additionalRequirements) {

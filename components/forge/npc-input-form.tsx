@@ -20,6 +20,7 @@ export interface NPCInputs {
   race: string
   gender: string
   personalityHints: string
+  voiceReference: string
   additionalRequirements: string
 }
 
@@ -95,6 +96,7 @@ export function NPCInputForm({
   const [customRace, setCustomRace] = useState('')
   const [gender, setGender] = useState('let_ai_decide')
   const [personalityHints, setPersonalityHints] = useState('')
+  const [voiceReference, setVoiceReference] = useState('')
   const [additionalRequirements, setAdditionalRequirements] = useState('')
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
@@ -106,6 +108,7 @@ export function NPCInputForm({
       race: race === 'other' ? customRace.trim() : race,
       gender,
       personalityHints: personalityHints.trim(),
+      voiceReference: voiceReference.trim(),
       additionalRequirements: additionalRequirements.trim(),
     }
 
@@ -258,6 +261,20 @@ export function NPCInputForm({
           rows={2}
           disabled={isGenerating}
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="voice-reference">Voice Reference (optional)</Label>
+        <Input
+          id="voice-reference"
+          value={voiceReference}
+          onChange={(e) => setVoiceReference(e.target.value)}
+          placeholder='e.g., "Sounds like Christopher Walken" or "Gravelly pirate accent"'
+          disabled={isGenerating}
+        />
+        <p className="text-xs text-muted-foreground">
+          Describe a voice or accent to help you roleplay this character
+        </p>
       </div>
 
       <div className="space-y-2">

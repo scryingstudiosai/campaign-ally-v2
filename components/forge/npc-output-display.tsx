@@ -19,6 +19,8 @@ import {
   Swords,
   Backpack,
   Lightbulb,
+  EyeOff,
+  Mic,
 } from 'lucide-react'
 
 export interface GeneratedNPC {
@@ -29,10 +31,11 @@ export interface GeneratedNPC {
   appearance: string
   personality: string
   voiceAndMannerisms: string
+  voiceReference?: string
   motivation: string
   secret: string
   plotHook: string
-  loot: string
+  loot: string[]
   combatStats: {
     armorClass: number
     hitPoints: string
@@ -185,16 +188,31 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
           <div className="space-y-2">
             <Label htmlFor="edit-loot" className="flex items-center gap-2">
               <Backpack className="w-4 h-4 text-muted-foreground" />
-              Loot & Pockets
+              Loot & Pockets (one per line)
             </Label>
             <Textarea
               id="edit-loot"
-              value={npc.loot}
-              onChange={(e) => handleFieldChange('loot', e.target.value)}
-              rows={2}
+              value={Array.isArray(npc.loot) ? npc.loot.join('\n') : npc.loot}
+              onChange={(e) => handleFieldChange('loot', e.target.value.split('\n').filter(s => s.trim()))}
+              rows={3}
             />
           </div>
         </div>
+
+        {/* Voice Reference - Editable */}
+        {npc.voiceReference && (
+          <div className="space-y-2">
+            <Label htmlFor="edit-voice-ref" className="flex items-center gap-2">
+              <Mic className="w-4 h-4 text-muted-foreground" />
+              Voice Reference
+            </Label>
+            <Input
+              id="edit-voice-ref"
+              value={npc.voiceReference || ''}
+              onChange={(e) => handleFieldChange('voiceReference', e.target.value)}
+            />
+          </div>
+        )}
 
         {/* Combat Stats - Editable */}
         <div className="space-y-2">
@@ -368,7 +386,34 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
         </Card>
       </div>
 
-      {/* SECONDARY SECTION - Voice, Stats, Loot (supporting info) */}
+      {/* COMBAT STATS - Prominent colored pills for quick scanning */}
+      {npc.combatStats && (
+        <Card className="border-slate-500/30 bg-slate-500/5">
+          <CardContent className="py-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-slate-400" />
+                <span className="text-sm font-medium text-slate-400">Combat:</span>
+              </div>
+              <Badge className="bg-blue-600 hover:bg-blue-600 text-white text-base px-3 py-1 font-bold">
+                AC {npc.combatStats.armorClass}
+              </Badge>
+              <Badge className="bg-red-600 hover:bg-red-600 text-white text-base px-3 py-1 font-bold">
+                HP {npc.combatStats.hitPoints}
+              </Badge>
+              <div className="flex items-center gap-2 text-sm">
+                <Swords className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">{npc.combatStats.primaryWeapon}</span>
+              </div>
+              <span className="text-sm text-muted-foreground italic">
+                {npc.combatStats.combatStyle}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* SECONDARY SECTION - Voice, Loot (supporting info) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Card className="bg-muted/30">
           <CardHeader className="pb-2 pt-3">
@@ -379,6 +424,14 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
           </CardHeader>
           <CardContent className="pb-3">
             <p className="text-sm text-muted-foreground">{npc.voiceAndMannerisms}</p>
+            {npc.voiceReference && (
+              <div className="mt-2 pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Mic className="w-3 h-3" />
+                  <span className="italic">&quot;{npc.voiceReference}&quot;</span>
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -390,39 +443,21 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
-            <p className="text-sm text-muted-foreground">{npc.loot}</p>
+            {Array.isArray(npc.loot) ? (
+              <ul className="text-sm text-muted-foreground space-y-1">
+                {npc.loot.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">{npc.loot}</p>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Combat Stats - Compact horizontal */}
-      {npc.combatStats && (
-        <Card className="bg-muted/30">
-          <CardContent className="py-3">
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Combat:</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="font-semibold text-primary">AC</span>
-                <span className="text-muted-foreground">{npc.combatStats.armorClass}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="font-semibold text-primary">HP</span>
-                <span className="text-muted-foreground">{npc.combatStats.hitPoints}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Swords className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">{npc.combatStats.primaryWeapon}</span>
-              </div>
-              <span className="text-xs text-muted-foreground italic">
-                {npc.combatStats.combatStyle}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* PLOT-RELEVANT SECTION - Motivation, Secret, Plot Hook (game drivers) */}
       <div className="space-y-3 pt-2">
@@ -443,7 +478,10 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
             <CardTitle className="text-sm flex items-center gap-2">
               <Lock className="w-4 h-4 text-amber-500" />
               <span className="text-amber-500">Secret</span>
-              <Badge variant="outline" className="ml-2 text-xs">DM Only</Badge>
+              <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                <EyeOff className="w-3 h-3" />
+                DM Only
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
@@ -456,6 +494,10 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
             <CardTitle className="text-sm flex items-center gap-2">
               <Lightbulb className="w-4 h-4 text-cyan-500" />
               <span className="text-cyan-500">Plot Hook</span>
+              <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                <EyeOff className="w-3 h-3" />
+                DM Only
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
