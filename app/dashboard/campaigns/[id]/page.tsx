@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeleteCampaignButton } from '@/components/campaigns/delete-campaign-button'
-import { ArrowLeft, BookOpen, Users, Calendar, Pencil, Sparkles, User, MapPin, Swords } from 'lucide-react'
+import { ArrowLeft, BookOpen, Brain, Calendar, Pencil, Sparkles, User, MapPin, Swords } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 interface PageProps {
   params: { id: string }
@@ -45,6 +46,13 @@ export default async function CampaignDetailPage({ params }: PageProps) {
   if (error || !campaign) {
     notFound()
   }
+
+  // Get entity count
+  const { count: entityCount } = await supabase
+    .from('entities')
+    .select('*', { count: 'exact', head: true })
+    .eq('campaign_id', params.id)
+    .is('deleted_at', null)
 
   const gameSystemLabel = campaign.game_system
     ? GAME_SYSTEM_LABELS[campaign.game_system] || campaign.game_system
@@ -114,20 +122,27 @@ export default async function CampaignDetailPage({ params }: PageProps) {
             </CardContent>
           </Card>
 
-          <Card className="opacity-60">
+          <Card className="hover:border-primary/50 transition-colors">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" />
-                Entities
+                <Brain className="w-5 h-5 text-primary" />
+                Memory
+                {entityCount !== null && entityCount > 0 && (
+                  <Badge variant="secondary" className="ml-auto">
+                    {entityCount}
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription>
                 NPCs, locations, items, and factions
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground italic">
-                Coming soon...
-              </p>
+              <Button asChild className="w-full">
+                <Link href={`/dashboard/campaigns/${params.id}/memory`}>
+                  View Memory
+                </Link>
+              </Button>
             </CardContent>
           </Card>
 
