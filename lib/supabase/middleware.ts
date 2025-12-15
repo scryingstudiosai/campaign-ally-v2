@@ -40,6 +40,9 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  console.log('MIDDLEWARE: user =', user ? user.email : 'NO USER')
+  console.log('MIDDLEWARE: cookies =', request.cookies.getAll().map(c => c.name).join(', '))
+
   const pathname = request.nextUrl.pathname
 
   // Redirect authenticated users away from auth pages to dashboard
