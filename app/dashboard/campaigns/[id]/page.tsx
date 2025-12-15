@@ -106,17 +106,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {campaign.codex?.[0]?.id ? (
-                <Button asChild className="w-full">
-                  <Link href={`/dashboard/campaigns/${params.id}/codex`}>
-                    Edit Codex
-                  </Link>
-                </Button>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Codex not initialized
-                </p>
-              )}
+              <Button asChild className="w-full">
+                <Link href={`/dashboard/campaigns/${params.id}/codex`}>
+                  View Codex
+                </Link>
+              </Button>
             </CardContent>
           </Card>
 
