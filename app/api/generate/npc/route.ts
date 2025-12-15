@@ -13,6 +13,7 @@ interface NPCInputs {
 
 interface GeneratedNPC {
   name: string
+  dmSlug: string
   race: string
   gender: string
   appearance: string
@@ -20,12 +21,15 @@ interface GeneratedNPC {
   voiceAndMannerisms: string
   motivation: string
   secret: string
-  connectionHooks: string[]
-  suggestedStats?: {
-    challengeRating?: string
-    hitPoints?: string
-    armorClass?: string
+  plotHook: string
+  loot: string
+  combatStats: {
+    armorClass: number
+    hitPoints: string
+    primaryWeapon: string
+    combatStyle: string
   }
+  connectionHooks: string[]
 }
 
 export async function POST(request: NextRequest) {
@@ -114,7 +118,7 @@ export async function POST(request: NextRequest) {
       ],
       response_format: { type: 'json_object' },
       temperature: 0.8,
-      max_tokens: 2000,
+      max_tokens: 2500,
     })
 
     const responseContent = completion.choices[0]?.message?.content
@@ -168,17 +172,22 @@ export async function POST(request: NextRequest) {
 function buildSystemPrompt(codex: Record<string, unknown> | null): string {
   let prompt = `You are a creative assistant for Dungeon Masters, specializing in generating memorable NPCs for tabletop RPG campaigns.
 
-Your task is to generate a detailed NPC that fits the campaign's world and tone. The NPC should be:
-- Memorable and distinct
-- Have clear motivations and personality
-- Include at least one secret or hidden aspect
-- Provide hooks that can connect them to the story
+Your task is to generate a detailed NPC optimized for "at-the-table" use. DMs need to glance at info in 5 seconds and roleplay convincingly.
+
+The NPC should be:
+- Memorable and distinct with a clear hook
+- Have a quick-reference summary (the dmSlug)
+- Include practical combat stats for potential encounters
+- Provide items they carry for looting/pickpocketing
+- Have secrets and plot hooks that drive gameplay
 
 IMPORTANT GUIDELINES:
+- The dmSlug should be ONE punchy line that captures their essence (e.g., "Stoic Elf Guard who secretly hates conflict")
+- Use **bold** markdown for key descriptors in appearance and personality (hair color, eye color, build, distinguishing features, key traits)
 - Keep descriptions vivid but concise (2-3 sentences each section)
-- Make the NPC feel like a real person with depth
-- The secret should be something that could drive plot
-- Connection hooks should give the DM ways to involve this NPC in the story
+- Combat stats should be appropriate for their role (a merchant has low AC/HP, a veteran guard has higher)
+- Loot should include 3-5 items that tell a story about who they are
+- The secret should be something hidden; the plotHook shows how to USE this NPC in gameplay
 `
 
   if (codex) {
@@ -223,13 +232,22 @@ IMPORTANT GUIDELINES:
 Return a JSON object with these exact fields:
 {
   "name": "Full name of the NPC",
+  "dmSlug": "One-line summary for quick reference (e.g., 'Gruff Dwarf blacksmith with a gambling problem')",
   "race": "Race/species of the NPC",
   "gender": "Gender of the NPC",
-  "appearance": "Physical description (2-3 sentences)",
-  "personality": "Key personality traits and demeanor (2-3 sentences)",
+  "appearance": "Physical description with **bold** key features (2-3 sentences)",
+  "personality": "Key personality traits with **bold** emphasis on main traits (2-3 sentences)",
   "voiceAndMannerisms": "How they speak, distinctive habits or gestures (1-2 sentences)",
   "motivation": "What drives this character, their goals (1-2 sentences)",
   "secret": "A hidden truth about them that could impact the story (1-2 sentences)",
+  "plotHook": "How this NPC can actively drive gameplay or connect to the party (1-2 sentences)",
+  "loot": "What they carry if searched/pickpocketed - 3-5 items that tell their story",
+  "combatStats": {
+    "armorClass": 12,
+    "hitPoints": "8-12",
+    "primaryWeapon": "Dagger or walking stick",
+    "combatStyle": "Avoids combat, will flee or surrender"
+  },
   "connectionHooks": ["Array of 2-3 ways to connect this NPC to the story or party"]
 }`
 

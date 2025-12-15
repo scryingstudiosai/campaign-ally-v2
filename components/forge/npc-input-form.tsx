@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2, Sparkles, Dices } from 'lucide-react'
 
 export interface NPCInputs {
   name: string
@@ -48,11 +48,39 @@ const RACES = [
   { value: 'other', label: 'Other (specify below)' },
 ]
 
+// Races that can be randomly selected (excluding 'let_ai_decide' and 'other')
+const RANDOMIZABLE_RACES = RACES.filter(r => r.value !== 'let_ai_decide' && r.value !== 'other')
+
 const GENDERS = [
   { value: 'let_ai_decide', label: 'Let AI decide' },
   { value: 'Male', label: 'Male' },
   { value: 'Female', label: 'Female' },
   { value: 'Non-binary', label: 'Non-binary' },
+]
+
+const RANDOMIZABLE_GENDERS = GENDERS.filter(g => g.value !== 'let_ai_decide')
+
+const PERSONALITY_SEEDS = [
+  'anxious and secretive',
+  'boisterous and friendly',
+  'cold and calculating',
+  'warm but mysterious',
+  'gruff but secretly kind',
+  'cheerful but hiding pain',
+  'paranoid and suspicious',
+  'naive and trusting',
+  'arrogant and ambitious',
+  'humble and wise',
+  'quick-tempered but loyal',
+  'calm and philosophical',
+  'sarcastic and witty',
+  'stoic and honorable',
+  'mischievous and cunning',
+  'melancholic and poetic',
+  'enthusiastic and reckless',
+  'patient and observant',
+  'nervous and apologetic',
+  'confident and charming',
 ]
 
 export function NPCInputForm({
@@ -82,6 +110,21 @@ export function NPCInputForm({
     }
 
     await onGenerate(inputs)
+  }
+
+  const randomizeRace = (): void => {
+    const randomRace = RANDOMIZABLE_RACES[Math.floor(Math.random() * RANDOMIZABLE_RACES.length)]
+    setRace(randomRace.value)
+  }
+
+  const randomizeGender = (): void => {
+    const randomGender = RANDOMIZABLE_GENDERS[Math.floor(Math.random() * RANDOMIZABLE_GENDERS.length)]
+    setGender(randomGender.value)
+  }
+
+  const randomizePersonality = (): void => {
+    const randomSeed = PERSONALITY_SEEDS[Math.floor(Math.random() * PERSONALITY_SEEDS.length)]
+    setPersonalityHints(randomSeed)
   }
 
   const remainingGenerations = generationsLimit - generationsUsed
@@ -122,7 +165,21 @@ export function NPCInputForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="race">Race</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="race">Race</Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={randomizeRace}
+              disabled={isGenerating}
+              className="h-6 px-2 text-xs"
+              title="Random race"
+            >
+              <Dices className="w-3 h-3 mr-1" />
+              Surprise me
+            </Button>
+          </div>
           <Select value={race} onValueChange={setRace} disabled={isGenerating}>
             <SelectTrigger id="race">
               <SelectValue placeholder="Select race" />
@@ -147,7 +204,21 @@ export function NPCInputForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="gender">Gender</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="gender">Gender</Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={randomizeGender}
+              disabled={isGenerating}
+              className="h-6 px-2 text-xs"
+              title="Random gender"
+            >
+              <Dices className="w-3 h-3 mr-1" />
+              Surprise me
+            </Button>
+          </div>
           <Select value={gender} onValueChange={setGender} disabled={isGenerating}>
             <SelectTrigger id="gender">
               <SelectValue placeholder="Select gender" />
@@ -164,7 +235,21 @@ export function NPCInputForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="personality-hints">Personality Hints (optional)</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="personality-hints">Personality Hints (optional)</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={randomizePersonality}
+            disabled={isGenerating}
+            className="h-6 px-2 text-xs"
+            title="Random personality seed"
+          >
+            <Dices className="w-3 h-3 mr-1" />
+            Surprise me
+          </Button>
+        </div>
         <Textarea
           id="personality-hints"
           value={personalityHints}

@@ -27,15 +27,16 @@ export function SaveToMemoryButton({
     try {
       const supabase = createClient()
 
-      // Build the entity data
+      // Build the entity data with all new fields
       const entityData = {
         campaign_id: campaignId,
         entity_type: 'npc',
         name: npc.name,
-        summary: `${npc.race} ${npc.gender.toLowerCase()}. ${npc.motivation}`,
+        summary: npc.dmSlug,
         description: npc.appearance,
-        dm_notes: `**Secret:** ${npc.secret}\n\n**Connection Hooks:**\n${npc.connectionHooks.map((h, i) => `${i + 1}. ${h}`).join('\n')}`,
+        dm_notes: `**Secret:** ${npc.secret}\n\n**Plot Hook:** ${npc.plotHook}\n\n**Connection Hooks:**\n${npc.connectionHooks.map((h, i) => `${i + 1}. ${h}`).join('\n')}\n\n**Loot:** ${npc.loot}`,
         attributes: {
+          dmSlug: npc.dmSlug,
           race: npc.race,
           gender: npc.gender,
           appearance: npc.appearance,
@@ -43,8 +44,10 @@ export function SaveToMemoryButton({
           voiceAndMannerisms: npc.voiceAndMannerisms,
           motivation: npc.motivation,
           secret: npc.secret,
+          plotHook: npc.plotHook,
+          loot: npc.loot,
+          combatStats: npc.combatStats || null,
           connectionHooks: npc.connectionHooks,
-          suggestedStats: npc.suggestedStats || null,
         },
         source_forge: 'npc',
         forge_status: 'complete',
