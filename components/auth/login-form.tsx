@@ -30,8 +30,19 @@ export function LoginForm() {
       return
     }
 
-    toast.success('Signed in successfully!')
-    window.location.href = '/dashboard'
+    // Verify session is established before redirecting
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (session) {
+      toast.success('Signed in successfully!')
+      // Small delay to ensure cookies are set
+      setTimeout(() => {
+        window.location.href = '/dashboard'
+      }, 100)
+    } else {
+      toast.error('Session not established. Please try again.')
+      setLoading(false)
+    }
   }
 
   return (
