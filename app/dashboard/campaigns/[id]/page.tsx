@@ -3,7 +3,8 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, BookOpen, Users, Calendar, Pencil, Trash2 } from 'lucide-react'
+import { DeleteCampaignButton } from '@/components/campaigns/delete-campaign-button'
+import { ArrowLeft, BookOpen, Users, Calendar, Pencil } from 'lucide-react'
 
 interface PageProps {
   params: { id: string }
@@ -88,10 +89,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                   Edit
                 </Link>
               </Button>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </Button>
+              <DeleteCampaignButton campaignId={campaign.id} campaignName={campaign.name} />
             </div>
           </div>
         </div>
