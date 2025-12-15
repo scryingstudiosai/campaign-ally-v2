@@ -11,10 +11,10 @@ export default async function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="flex flex-col items-center gap-8">
         <Image
-          src="/images/logo-stacked.svg"
+          src="/images/logo-stacked.png"
           alt="Campaign Ally"
-          width={300}
-          height={300}
+          width={200}
+          height={200}
           priority
         />
         <p className="text-muted-foreground text-center max-w-md">

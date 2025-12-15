@@ -10,14 +10,22 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // Fetch user profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name')
-    .eq('id', user.id)
-    .single()
+  // Fetch user profile (may not exist if migrations haven't run)
+  let displayName = user.email?.split('@')[0] || 'Adventurer'
 
-  const displayName = profile?.display_name || user.email?.split('@')[0] || 'Adventurer'
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.display_name) {
+      displayName = profile.display_name
+    }
+  } catch {
+    // Profile table may not exist yet - use email fallback
+  }
 
   return (
     <main className="min-h-screen p-8">
