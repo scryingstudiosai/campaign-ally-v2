@@ -39,9 +39,9 @@ interface PageProps {
 const STATUS_CONFIG: Record<string, { icon: typeof Skull; color: string; bgColor: string; label: string }> = {
   active: { icon: Star, color: 'text-green-400', bgColor: 'bg-green-500/10', label: 'Active' },
   deceased: { icon: Skull, color: 'text-red-400', bgColor: 'bg-red-500/10', label: 'Deceased' },
-  destroyed: { icon: AlertTriangle, color: 'text-gray-400', bgColor: 'bg-gray-500/10', label: 'Destroyed' },
+  destroyed: { icon: AlertTriangle, color: 'text-slate-400', bgColor: 'bg-slate-500/10', label: 'Destroyed' },
   missing: { icon: AlertTriangle, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10', label: 'Missing' },
-  archived: { icon: Archive, color: 'text-gray-500', bgColor: 'bg-gray-500/10', label: 'Archived' },
+  archived: { icon: Archive, color: 'text-slate-500', bgColor: 'bg-slate-500/10', label: 'Archived' },
 }
 
 const IMPORTANCE_CONFIG: Record<string, { icon: typeof Star; color: string; label: string }> = {

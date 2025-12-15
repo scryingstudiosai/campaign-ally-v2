@@ -38,9 +38,9 @@ interface EntityCardProps {
 
 const STATUS_CONFIG: Record<string, { icon: typeof Skull; color: string; label: string }> = {
   deceased: { icon: Skull, color: 'text-red-400', label: 'Deceased' },
-  destroyed: { icon: AlertTriangle, color: 'text-gray-400', label: 'Destroyed' },
+  destroyed: { icon: AlertTriangle, color: 'text-slate-400', label: 'Destroyed' },
   missing: { icon: AlertTriangle, color: 'text-yellow-400', label: 'Missing' },
-  archived: { icon: Archive, color: 'text-gray-500', label: 'Archived' },
+  archived: { icon: Archive, color: 'text-slate-500', label: 'Archived' },
 }
 
 const IMPORTANCE_CONFIG: Record<string, { icon: typeof Star; color: string }> = {

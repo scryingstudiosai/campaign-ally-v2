@@ -64,9 +64,9 @@ const TYPE_CONFIG: Record<EntityType, {
   },
   other: {
     label: 'Other',
-    color: 'text-gray-400',
-    bgColor: 'bg-gray-500/10',
-    borderColor: 'border-gray-500/30',
+    color: 'text-slate-400',
+    bgColor: 'bg-slate-500/10',
+    borderColor: 'border-slate-500/30',
     icon: HelpCircle,
   },
 }
