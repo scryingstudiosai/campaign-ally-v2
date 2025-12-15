@@ -423,7 +423,7 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
-            <p className="text-sm text-muted-foreground">{npc.voiceAndMannerisms}</p>
+            <p className="text-sm text-muted-foreground">{renderWithBold(npc.voiceAndMannerisms)}</p>
             {npc.voiceReference && (
               <div className="mt-2 pt-2 border-t border-border">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -448,7 +448,7 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
                 {npc.loot.map((item, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-primary">•</span>
-                    <span>{item}</span>
+                    <span>{renderWithBold(item)}</span>
                   </li>
                 ))}
               </ul>
@@ -469,7 +469,7 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
-            <p className="text-sm text-muted-foreground">{npc.motivation}</p>
+            <p className="text-sm text-muted-foreground">{renderWithBold(npc.motivation)}</p>
           </CardContent>
         </Card>
 
@@ -485,7 +485,7 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
-            <p className="text-sm text-muted-foreground">{npc.secret}</p>
+            <p className="text-sm text-muted-foreground">{renderWithBold(npc.secret)}</p>
           </CardContent>
         </Card>
 
@@ -501,7 +501,7 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
-            <p className="text-sm text-muted-foreground">{npc.plotHook}</p>
+            <p className="text-sm text-muted-foreground">{renderWithBold(npc.plotHook)}</p>
           </CardContent>
         </Card>
       </div>
@@ -519,7 +519,7 @@ export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutput
             {npc.connectionHooks.map((hook, index) => (
               <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
                 <span className="text-primary font-bold">{index + 1}.</span>
-                <span>{hook}</span>
+                <span>{renderWithBold(hook)}</span>
               </li>
             ))}
           </ul>
