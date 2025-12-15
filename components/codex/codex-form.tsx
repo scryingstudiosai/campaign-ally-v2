@@ -21,6 +21,8 @@ interface Codex {
   id: string
   campaign_id: string
   world_name: string | null
+  premise: string | null
+  pillars: string[]
   tone: string[]
   magic_level: string | null
   tech_level: string | null
@@ -31,12 +33,25 @@ interface Codex {
   geography_notes: string | null
   calendar_system: string | null
   current_game_date: string | null
+  open_questions: string[]
 }
 
 interface CodexFormProps {
   codex: Codex
   campaignId: string
 }
+
+const PILLARS = [
+  { value: 'exploration', label: 'Exploration' },
+  { value: 'combat', label: 'Combat' },
+  { value: 'roleplay', label: 'Roleplay' },
+  { value: 'intrigue', label: 'Intrigue' },
+  { value: 'mystery', label: 'Mystery' },
+  { value: 'horror', label: 'Horror' },
+  { value: 'survival', label: 'Survival' },
+  { value: 'humor', label: 'Humor' },
+  { value: 'romance', label: 'Romance' },
+]
 
 const TONES = [
   { value: 'heroic', label: 'Heroic' },
@@ -86,16 +101,25 @@ const NARRATIVE_VOICES = [
 ]
 
 const CONTENT_WARNING_PRESETS = [
+  // Violence & Gore
   'Violence',
   'Gore',
-  'Sexual Content',
-  'Substance Use',
-  'Mental Health',
-  'Child Endangerment',
   'Body Horror',
+  'Death',
   'Torture',
-  'Slavery',
+  // Sexual & Romance
+  'Sexual Content',
+  'Romance',
+  'Substance Use',
+  // Mental & Emotional
+  'Mental Health',
+  'Trauma',
   'Abuse',
+  'Child Endangerment',
+  // Other
+  'Phobias',
+  'Imprisonment',
+  'Slavery',
 ]
 
 const COMMON_LANGUAGES = [
@@ -105,9 +129,9 @@ const COMMON_LANGUAGES = [
   'Draconic',
   'Infernal',
   'Celestial',
+  'Abyssal',
   'Primordial',
   'Undercommon',
-  'Abyssal',
   'Giant',
   'Gnomish',
   'Goblin',
@@ -116,14 +140,13 @@ const COMMON_LANGUAGES = [
   'Sylvan',
   'Deep Speech',
   'Thieves\' Cant',
-  'Druidic',
 ]
 
 const CALENDAR_PRESETS = [
   { value: 'gregorian', label: 'Gregorian (Real World)' },
   { value: 'harptos', label: 'Harptos (Forgotten Realms)' },
-  { value: 'galifar', label: 'Galifar (Eberron)' },
-  { value: 'absalom', label: 'Absalom Reckoning (Golarion)' },
+  { value: 'golarion', label: 'Golarion (Pathfinder)' },
+  { value: 'eberron', label: 'Eberron' },
   { value: 'custom', label: 'Custom' },
 ]
 
@@ -133,6 +156,8 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
 
   // World Foundation
   const [worldName, setWorldName] = useState(codex.world_name || '')
+  const [premise, setPremise] = useState(codex.premise || '')
+  const [pillars, setPillars] = useState<string[]>(codex.pillars || [])
   const [tone, setTone] = useState<string[]>(codex.tone || [])
   const [magicLevel, setMagicLevel] = useState(codex.magic_level || '')
   const [techLevel, setTechLevel] = useState(codex.tech_level || '')
@@ -156,6 +181,10 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
     return preset ? '' : (codex.calendar_system || '')
   })
   const [currentGameDate, setCurrentGameDate] = useState(codex.current_game_date || '')
+
+  // Open Questions
+  const [openQuestions, setOpenQuestions] = useState<string[]>(codex.open_questions || [])
+  const [newQuestion, setNewQuestion] = useState('')
 
   const toggleArrayItem = (arr: string[], setArr: (val: string[]) => void, item: string) => {
     if (arr.includes(item)) {
@@ -182,6 +211,16 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
     setArr(arr.filter((i) => i !== item))
   }
 
+  const selectAllLanguages = () => {
+    const allCommon = Array.from(new Set([...languages, ...COMMON_LANGUAGES]))
+    setLanguages(allCommon)
+  }
+
+  const clearAllLanguages = () => {
+    // Keep only custom languages
+    setLanguages(languages.filter(l => !COMMON_LANGUAGES.includes(l)))
+  }
+
   const getCalendarSystemValue = (): string | null => {
     if (!calendarPreset) return null
     if (calendarPreset === 'custom') return customCalendar.trim() || null
@@ -198,6 +237,8 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
         .from('codex')
         .update({
           world_name: worldName.trim() || null,
+          premise: premise.trim() || null,
+          pillars,
           tone,
           magic_level: magicLevel || null,
           tech_level: techLevel || null,
@@ -208,6 +249,7 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
           geography_notes: geographyNotes.trim() || null,
           calendar_system: getCalendarSystemValue(),
           current_game_date: currentGameDate.trim() || null,
+          open_questions: openQuestions,
           updated_at: new Date().toISOString(),
         })
         .eq('id', codex.id)
@@ -240,6 +282,39 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
             onChange={(e) => setWorldName(e.target.value)}
             placeholder="Enter the name of your world"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="premise">Campaign Premise</Label>
+          <p className="text-sm text-muted-foreground">
+            This helps AI understand the core of your campaign.
+          </p>
+          <Textarea
+            id="premise"
+            value={premise}
+            onChange={(e) => setPremise(e.target.value)}
+            placeholder="What is this campaign about? The central conflict or hook in 1-2 sentences."
+            rows={3}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Campaign Pillars</Label>
+          <p className="text-sm text-muted-foreground">
+            What does your campaign focus on? Select all that apply.
+          </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {PILLARS.map((p) => (
+              <Badge
+                key={p.value}
+                variant={pillars.includes(p.value) ? 'default' : 'outline'}
+                className="cursor-pointer hover:bg-primary/20"
+                onClick={() => toggleArrayItem(pillars, setPillars, p.value)}
+              >
+                {p.label}
+              </Badge>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -332,7 +407,7 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
         <div className="space-y-2">
           <Label>Content Warnings (Lines &amp; Veils)</Label>
           <p className="text-sm text-muted-foreground">
-            Select common warnings or add custom ones. These help set boundaries for AI-generated content.
+            Topics to handle carefully or avoid entirely in AI-generated content.
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
             {CONTENT_WARNING_PRESETS.map((warning) => (
@@ -388,7 +463,17 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
         <h2 className="text-xl font-semibold border-b pb-2">World Details</h2>
 
         <div className="space-y-2">
-          <Label>Languages</Label>
+          <div className="flex items-center justify-between">
+            <Label>Languages</Label>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={selectAllLanguages}>
+                Select All Common
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={clearAllLanguages}>
+                Clear All
+              </Button>
+            </div>
+          </div>
           <p className="text-sm text-muted-foreground">
             Select common languages spoken in your world or add custom ones.
           </p>
@@ -446,15 +531,15 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
             id="geography-notes"
             value={geographyNotes}
             onChange={(e) => setGeographyNotes(e.target.value)}
-            placeholder="Brief overview of your world's geography. You can add detailed locations later in Entities."
-            rows={3}
+            placeholder="Brief overview of your world's geography. Detailed locations can be added as Entities later."
+            rows={2}
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="calendar-system">Calendar System</Label>
           <p className="text-sm text-muted-foreground">
-            The calendar your world uses to track time and dates.
+            The calendar system your world uses for tracking dates.
           </p>
           <Select value={calendarPreset} onValueChange={setCalendarPreset}>
             <SelectTrigger id="calendar-system">
@@ -490,6 +575,49 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
             placeholder="e.g., 15th of Mirtul, 1492 DR"
           />
         </div>
+      </div>
+
+      {/* Open Questions */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold border-b pb-2">Open Questions</h2>
+        <p className="text-sm text-muted-foreground">
+          Things you haven&apos;t decided yet — AI will avoid committing to these.
+        </p>
+
+        <div className="flex gap-2">
+          <Input
+            value={newQuestion}
+            onChange={(e) => setNewQuestion(e.target.value)}
+            placeholder="e.g., Who is the real villain?, What destroyed the ancient kingdom?"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                addTag(newQuestion, setNewQuestion, openQuestions, setOpenQuestions)
+              }
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => addTag(newQuestion, setNewQuestion, openQuestions, setOpenQuestions)}
+          >
+            Add
+          </Button>
+        </div>
+
+        {openQuestions.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {openQuestions.map((question) => (
+              <Badge key={question} variant="outline" className="gap-1 py-1 px-2">
+                {question}
+                <X
+                  className="w-3 h-3 cursor-pointer ml-1"
+                  onClick={() => removeTag(openQuestions, setOpenQuestions, question)}
+                />
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Actions */}

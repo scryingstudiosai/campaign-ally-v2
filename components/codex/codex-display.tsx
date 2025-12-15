@@ -1,11 +1,13 @@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Sparkles, Palette, Globe, BookOpen } from 'lucide-react'
+import { Sparkles, Palette, Globe, BookOpen, HelpCircle } from 'lucide-react'
 
 interface Codex {
   id: string
   campaign_id: string
   world_name: string | null
+  premise: string | null
+  pillars: string[]
   tone: string[]
   magic_level: string | null
   tech_level: string | null
@@ -16,6 +18,7 @@ interface Codex {
   geography_notes: string | null
   calendar_system: string | null
   current_game_date: string | null
+  open_questions: string[]
 }
 
 interface CodexDisplayProps {
@@ -69,165 +72,221 @@ const THEME_LABELS: Record<string, string> = {
   good_vs_evil: 'Good vs Evil',
 }
 
+const PILLAR_LABELS: Record<string, string> = {
+  exploration: 'Exploration',
+  combat: 'Combat',
+  roleplay: 'Roleplay',
+  intrigue: 'Intrigue',
+  mystery: 'Mystery',
+  horror: 'Horror',
+  survival: 'Survival',
+  humor: 'Humor',
+  romance: 'Romance',
+}
+
 export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
   const magicLabel = codex.magic_level ? MAGIC_LEVEL_LABELS[codex.magic_level] || codex.magic_level : null
   const techLabel = codex.tech_level ? TECH_LEVEL_LABELS[codex.tech_level] || codex.tech_level : null
   const narrativeLabel = codex.narrative_voice ? NARRATIVE_VOICE_LABELS[codex.narrative_voice] || codex.narrative_voice : null
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* World Foundation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="w-5 h-5 text-primary" />
-            World Foundation
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {codex.world_name && (
-            <div>
-              <p className="text-sm text-muted-foreground">World Name</p>
-              <p className="font-medium">{codex.world_name}</p>
-            </div>
-          )}
+    <div className="space-y-6">
+      {/* Premise - Full Width */}
+      {codex.premise && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <BookOpen className="w-5 h-5 text-primary" />
+              Campaign Premise
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm whitespace-pre-wrap">{codex.premise}</p>
+          </CardContent>
+        </Card>
+      )}
 
-          {codex.tone && codex.tone.length > 0 && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Tone</p>
-              <div className="flex flex-wrap gap-1">
-                {codex.tone.map((t) => (
-                  <Badge key={t} variant="secondary">
-                    {TONE_LABELS[t] || t}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            {magicLabel && (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* World Foundation */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="w-5 h-5 text-primary" />
+              World Foundation
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {codex.world_name && (
               <div>
-                <p className="text-sm text-muted-foreground">Magic Level</p>
-                <p className="font-medium">{magicLabel}</p>
+                <p className="text-sm text-muted-foreground">World Name</p>
+                <p className="font-medium">{codex.world_name}</p>
               </div>
             )}
-            {techLabel && (
+
+            {codex.pillars && codex.pillars.length > 0 && (
               <div>
-                <p className="text-sm text-muted-foreground">Tech Level</p>
-                <p className="font-medium">{techLabel}</p>
+                <p className="text-sm text-muted-foreground mb-2">Campaign Pillars</p>
+                <div className="flex flex-wrap gap-1">
+                  {codex.pillars.map((p) => (
+                    <Badge key={p} variant="default">
+                      {PILLAR_LABELS[p] || p}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
 
-          {codex.themes && codex.themes.length > 0 && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Themes</p>
-              <div className="flex flex-wrap gap-1">
-                {codex.themes.map((theme) => (
-                  <Badge key={theme} variant="outline">
-                    {THEME_LABELS[theme] || theme}
-                  </Badge>
+            {codex.tone && codex.tone.length > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Tone</p>
+                <div className="flex flex-wrap gap-1">
+                  {codex.tone.map((t) => (
+                    <Badge key={t} variant="secondary">
+                      {TONE_LABELS[t] || t}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              {magicLabel && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Magic Level</p>
+                  <p className="font-medium">{magicLabel}</p>
+                </div>
+              )}
+              {techLabel && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Tech Level</p>
+                  <p className="font-medium">{techLabel}</p>
+                </div>
+              )}
+            </div>
+
+            {codex.themes && codex.themes.length > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Themes</p>
+                <div className="flex flex-wrap gap-1">
+                  {codex.themes.map((theme) => (
+                    <Badge key={theme} variant="outline">
+                      {THEME_LABELS[theme] || theme}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Style Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Palette className="w-5 h-5 text-primary" />
+              Style Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {narrativeLabel && (
+              <div>
+                <p className="text-sm text-muted-foreground">Narrative Voice</p>
+                <p className="font-medium">{narrativeLabel}</p>
+              </div>
+            )}
+
+            {codex.content_warnings && codex.content_warnings.length > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Content Warnings</p>
+                <div className="flex flex-wrap gap-1">
+                  {codex.content_warnings.map((warning) => (
+                    <Badge key={warning} variant="destructive">
+                      {warning}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(!narrativeLabel && (!codex.content_warnings || codex.content_warnings.length === 0)) && (
+              <p className="text-sm text-muted-foreground italic">No style settings configured</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* World Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Globe className="w-5 h-5 text-primary" />
+              World Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {codex.languages && codex.languages.length > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Languages</p>
+                <div className="flex flex-wrap gap-1">
+                  {codex.languages.map((lang) => (
+                    <Badge key={lang} variant="secondary">
+                      {lang}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {codex.calendar_system && (
+              <div>
+                <p className="text-sm text-muted-foreground">Calendar System</p>
+                <p className="font-medium">{codex.calendar_system}</p>
+              </div>
+            )}
+
+            {codex.current_game_date && (
+              <div>
+                <p className="text-sm text-muted-foreground">Current Game Date</p>
+                <p className="font-medium">{codex.current_game_date}</p>
+              </div>
+            )}
+
+            {codex.geography_notes && (
+              <div>
+                <p className="text-sm text-muted-foreground">Geography</p>
+                <p className="text-sm whitespace-pre-wrap">{codex.geography_notes}</p>
+              </div>
+            )}
+
+            {(!codex.languages?.length && !codex.calendar_system && !codex.current_game_date && !codex.geography_notes) && (
+              <p className="text-sm text-muted-foreground italic">No world details configured</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Open Questions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <HelpCircle className="w-5 h-5 text-primary" />
+              Open Questions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {codex.open_questions && codex.open_questions.length > 0 ? (
+              <div className="space-y-2">
+                {codex.open_questions.map((question, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <span className="text-muted-foreground">•</span>
+                    <p className="text-sm">{question}</p>
+                  </div>
                 ))}
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Style Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Palette className="w-5 h-5 text-primary" />
-            Style Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {narrativeLabel && (
-            <div>
-              <p className="text-sm text-muted-foreground">Narrative Voice</p>
-              <p className="font-medium">{narrativeLabel}</p>
-            </div>
-          )}
-
-          {codex.content_warnings && codex.content_warnings.length > 0 && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Content Warnings</p>
-              <div className="flex flex-wrap gap-1">
-                {codex.content_warnings.map((warning) => (
-                  <Badge key={warning} variant="destructive">
-                    {warning}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(!narrativeLabel && (!codex.content_warnings || codex.content_warnings.length === 0)) && (
-            <p className="text-sm text-muted-foreground italic">No style settings configured</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* World Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Globe className="w-5 h-5 text-primary" />
-            World Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {codex.languages && codex.languages.length > 0 && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Languages</p>
-              <div className="flex flex-wrap gap-1">
-                {codex.languages.map((lang) => (
-                  <Badge key={lang} variant="secondary">
-                    {lang}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {codex.calendar_system && (
-            <div>
-              <p className="text-sm text-muted-foreground">Calendar System</p>
-              <p className="font-medium">{codex.calendar_system}</p>
-            </div>
-          )}
-
-          {codex.current_game_date && (
-            <div>
-              <p className="text-sm text-muted-foreground">Current Game Date</p>
-              <p className="font-medium">{codex.current_game_date}</p>
-            </div>
-          )}
-
-          {(!codex.languages?.length && !codex.calendar_system && !codex.current_game_date) && (
-            <p className="text-sm text-muted-foreground italic">No world details configured</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Geography */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <BookOpen className="w-5 h-5 text-primary" />
-            Geography
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {codex.geography_notes ? (
-            <p className="text-sm whitespace-pre-wrap">{codex.geography_notes}</p>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">No geography notes</p>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No open questions</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
