@@ -130,7 +130,6 @@ export function AddRelationshipModal({
           target_id: targetEntityId,
           relationship_type: relationshipType,
           description: description.trim() || null,
-          bidirectional: bidirectional,
         })
 
       if (relationshipError) throw relationshipError
@@ -146,7 +145,6 @@ export function AddRelationshipModal({
             target_id: sourceEntityId,
             relationship_type: reverseType,
             description: description.trim() || null,
-            bidirectional: true,
           })
 
         if (reverseError) {
