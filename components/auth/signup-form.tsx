@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -14,35 +15,31 @@ export function SignupForm() {
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
   const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            display_name: displayName,
-          },
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          display_name: displayName,
         },
-      })
+      },
+    })
 
-      if (error) {
-        toast.error(error.message)
-        return
-      }
-
-      toast.success('Check your email to confirm your account!')
-      window.location.href = '/login'
-    } catch {
-      toast.error('An unexpected error occurred')
-    } finally {
+    if (error) {
+      toast.error(error.message)
       setLoading(false)
+      return
     }
+
+    toast.success('Check your email to confirm your account!')
+    router.push('/login')
   }
 
   return (

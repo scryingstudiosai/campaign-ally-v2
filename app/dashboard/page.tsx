@@ -5,9 +5,9 @@ import { LogoutButton } from '@/components/auth/logout-button'
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  const { data: { user }, error } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (error || !user) {
+  if (!user) {
     redirect('/login')
   }
 

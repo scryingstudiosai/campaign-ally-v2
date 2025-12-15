@@ -35,32 +35,27 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
+  // IMPORTANT: Do not run any logic between createServerClient and getUser()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages to dashboard
   if (user && authRoutes.includes(pathname)) {
-    const redirectResponse = NextResponse.redirect(new URL('/dashboard', request.url))
-    // Copy cookies to redirect response
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value)
-    })
-    return redirectResponse
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    url.searchParams.delete('next')
+    return NextResponse.redirect(url)
   }
 
   // Redirect unauthenticated users to login for protected routes
-  if (!user && !publicRoutes.includes(pathname)) {
-    const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('next', pathname)
-    const redirectResponse = NextResponse.redirect(redirectUrl)
-    // Copy cookies to redirect response
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value)
-    })
-    return redirectResponse
+  if (!user && !publicRoutes.includes(pathname) && !pathname.startsWith('/auth/')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('next', pathname)
+    return NextResponse.redirect(url)
   }
 
   return supabaseResponse
