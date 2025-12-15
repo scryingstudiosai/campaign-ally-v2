@@ -4,55 +4,33 @@ import { LogoutButton } from '@/components/auth/logout-button'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
+  const { data: { user }, error } = await supabase.auth.getUser()
+
+  if (error || !user) {
     redirect('/login')
   }
 
-  // Fetch user profile (may not exist if migrations haven't run)
-  let displayName = user.email?.split('@')[0] || 'Adventurer'
+  // Get profile (may not exist if migrations haven't run)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', user.id)
+    .single()
 
-  try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.display_name) {
-      displayName = profile.display_name
-    }
-  } catch {
-    // Profile table may not exist yet - use email fallback
-  }
+  const displayName = profile?.display_name || user.email || 'Adventurer'
 
   return (
-    <main className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto">
-        <header className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Welcome, {displayName}!</h1>
-            <p className="text-muted-foreground">Ready to manage your campaigns?</p>
-          </div>
+    <div className="min-h-screen bg-background text-foreground p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">
+            Welcome, {displayName}!
+          </h1>
           <LogoutButton />
-        </header>
-
-        <section className="mt-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold">Your Campaigns</h2>
-          </div>
-
-          <div className="border border-dashed border-muted-foreground/25 rounded-lg p-12 text-center">
-            <p className="text-muted-foreground mb-4">
-              No campaigns yet. Create your first campaign to get started!
-            </p>
-            <p className="text-sm text-muted-foreground/60">
-              Campaign creation coming soon...
-            </p>
-          </div>
-        </section>
+        </div>
+        <p className="text-muted-foreground">Your campaigns will appear here.</p>
       </div>
-    </main>
+    </div>
   )
 }
