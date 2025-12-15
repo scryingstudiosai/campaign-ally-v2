@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -10,7 +9,6 @@ interface LogoutButtonProps {
 }
 
 export function LogoutButton({ variant = 'outline' }: LogoutButtonProps) {
-  const router = useRouter()
   const supabase = createClient()
 
   const handleLogout = async () => {
@@ -23,9 +21,9 @@ export function LogoutButton({ variant = 'outline' }: LogoutButtonProps) {
       }
 
       toast.success('Signed out successfully')
-      router.push('/')
-      router.refresh()
-    } catch (error) {
+      // Use hard redirect to ensure cookies are cleared by middleware
+      window.location.href = '/'
+    } catch {
       toast.error('An unexpected error occurred')
     }
   }
