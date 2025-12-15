@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -10,7 +9,6 @@ interface LogoutButtonProps {
 }
 
 export function LogoutButton({ variant = 'outline' }: LogoutButtonProps) {
-  const router = useRouter()
   const supabase = createClient()
 
   const handleLogout = async () => {
@@ -22,8 +20,7 @@ export function LogoutButton({ variant = 'outline' }: LogoutButtonProps) {
     }
 
     toast.success('Signed out successfully')
-    router.refresh()
-    router.push('/')
+    window.location.href = '/'
   }
 
   return (
