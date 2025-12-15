@@ -97,24 +97,25 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
   // Fetch relationships
   const { data: rawRelationships } = await supabase
-    .from('entity_relationships')
+    .from('relationships')
     .select(`
       id,
-      source_entity_id,
-      target_entity_id,
+      source_id,
+      target_id,
       relationship_type,
       description,
-      source_entity:source_entity_id(id, name, entity_type),
-      target_entity:target_entity_id(id, name, entity_type)
+      source_entity:source_id(id, name, entity_type),
+      target_entity:target_id(id, name, entity_type)
     `)
-    .or(`source_entity_id.eq.${params.entityId},target_entity_id.eq.${params.entityId}`)
+    .or(`source_id.eq.${params.entityId},target_id.eq.${params.entityId}`)
+    .is('deleted_at', null)
 
   // Transform relationships to match Relationship type
   // Supabase returns joined data as arrays, we need to extract the first element
   const relationships: Relationship[] = (rawRelationships || []).map((rel) => ({
     id: rel.id,
-    source_entity_id: rel.source_entity_id,
-    target_entity_id: rel.target_entity_id,
+    source_id: rel.source_id,
+    target_id: rel.target_id,
     relationship_type: rel.relationship_type,
     description: rel.description,
     source_entity: Array.isArray(rel.source_entity) ? rel.source_entity[0] : rel.source_entity,

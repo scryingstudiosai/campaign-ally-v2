@@ -19,8 +19,8 @@ import { cn } from '@/lib/utils'
 
 export interface Relationship {
   id: string
-  source_entity_id: string
-  target_entity_id: string
+  source_id: string
+  target_id: string
   relationship_type: string
   description?: string
   target_entity?: {
@@ -82,7 +82,7 @@ export function RelationshipDisplay({
 }: RelationshipDisplayProps): JSX.Element {
   // Process relationships to show the "other" entity
   const processedRelationships = relationships.map((rel) => {
-    const isSource = rel.source_entity_id === currentEntityId
+    const isSource = rel.source_id === currentEntityId
     const otherEntity = isSource ? rel.target_entity : rel.source_entity
     const relationshipLabel = isSource
       ? RELATIONSHIP_LABELS[rel.relationship_type] || rel.relationship_type

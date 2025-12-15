@@ -123,12 +123,14 @@ export function AddRelationshipModal({
 
       // Create the relationship
       const { error: relationshipError } = await supabase
-        .from('entity_relationships')
+        .from('relationships')
         .insert({
-          source_entity_id: sourceEntityId,
-          target_entity_id: targetEntityId,
+          campaign_id: campaignId,
+          source_id: sourceEntityId,
+          target_id: targetEntityId,
           relationship_type: relationshipType,
           description: description.trim() || null,
+          bidirectional: bidirectional,
         })
 
       if (relationshipError) throw relationshipError
@@ -137,12 +139,14 @@ export function AddRelationshipModal({
       if (bidirectional) {
         const reverseType = getReverseRelationshipType(relationshipType)
         const { error: reverseError } = await supabase
-          .from('entity_relationships')
+          .from('relationships')
           .insert({
-            source_entity_id: targetEntityId,
-            target_entity_id: sourceEntityId,
+            campaign_id: campaignId,
+            source_id: targetEntityId,
+            target_id: sourceEntityId,
             relationship_type: reverseType,
             description: description.trim() || null,
+            bidirectional: true,
           })
 
         if (reverseError) {
