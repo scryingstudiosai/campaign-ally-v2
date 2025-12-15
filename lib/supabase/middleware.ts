@@ -1,6 +1,12 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Routes that don't require authentication
+const publicRoutes = ['/', '/login', '/signup', '/auth/callback']
+
+// Routes that authenticated users should be redirected away from
+const authRoutes = ['/login', '/signup']
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -54,7 +60,20 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+  const pathname = request.nextUrl.pathname
+
+  // Redirect authenticated users away from auth pages
+  if (user && authRoutes.includes(pathname)) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Redirect unauthenticated users to login for protected routes
+  if (!user && !publicRoutes.includes(pathname)) {
+    const redirectUrl = new URL('/login', request.url)
+    redirectUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(redirectUrl)
+  }
 
   return response
 }
