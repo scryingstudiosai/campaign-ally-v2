@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,7 +23,6 @@ interface DeleteCampaignButtonProps {
 }
 
 export function DeleteCampaignButton({ campaignId, campaignName }: DeleteCampaignButtonProps): JSX.Element {
-  const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -54,7 +52,7 @@ export function DeleteCampaignButton({ campaignId, campaignName }: DeleteCampaig
 
       toast.success(`"${campaignName}" has been deleted`)
       setOpen(false)
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
     } catch (error) {
       console.error('Error deleting campaign:', error)
       toast.error('Failed to delete campaign')
