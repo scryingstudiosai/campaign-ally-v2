@@ -15,18 +15,26 @@ export interface StubCreationResult {
   name: string
 }
 
+export interface StubCreationContext {
+  sourceEntityId?: string
+  sourceEntityName?: string
+}
+
 export async function createStubEntities(
   supabase: SupabaseClient,
   campaignId: string,
   discoveries: Discovery[],
-  sourceForgeType: ForgeType
+  sourceForgeType: ForgeType,
+  sourceContext?: StubCreationContext
 ): Promise<StubCreationResult[]> {
   const results: StubCreationResult[] = []
 
   for (const discovery of discoveries) {
     const historyEntry: HistoryEntry = {
       event: 'stub_created',
-      note: `Auto-created from ${sourceForgeType} forge`,
+      note: sourceContext?.sourceEntityName
+        ? `Discovered in ${sourceContext.sourceEntityName}`
+        : `Auto-created from ${sourceForgeType} forge`,
       timestamp: new Date().toISOString(),
     }
 
@@ -44,6 +52,8 @@ export async function createStubEntities(
           is_stub: true,
           needs_review: true,
           stub_context: discovery.context,
+          source_entity_id: sourceContext?.sourceEntityId,
+          source_entity_name: sourceContext?.sourceEntityName,
           history: [historyEntry],
         },
       })

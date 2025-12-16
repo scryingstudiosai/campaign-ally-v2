@@ -1,9 +1,11 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Sparkles } from 'lucide-react'
 
 // Forge foundation imports
 import { useForge } from '@/hooks/useForge'
@@ -21,6 +23,16 @@ import {
   type GeneratedNPC,
 } from '@/components/forge/npc'
 
+interface StubContext {
+  stubId: string
+  name: string
+  entityType: string
+  sourceEntityId?: string
+  sourceEntityName?: string
+  snippet?: string
+  suggestedTraits?: string[]
+}
+
 interface Profile {
   generations_used: number
   subscription_tier: string
@@ -35,8 +47,17 @@ const GENERATION_LIMITS: Record<string, number> = {
 export default function NpcForgePage(): JSX.Element {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const campaignId = params.id as string
   const supabase = createClient()
+
+  // Parse stub context from URL params
+  const stubId = searchParams.get('stubId')
+  const stubName = searchParams.get('name')
+  const stubContextRaw = searchParams.get('context')
+  const stubContext: StubContext | null = stubContextRaw
+    ? JSON.parse(stubContextRaw)
+    : null
 
   // Campaign and profile state
   const [campaignName, setCampaignName] = useState<string>('')
@@ -263,20 +284,89 @@ export default function NpcForgePage(): JSX.Element {
   const handleCommit = async (): Promise<void> => {
     if (!forge.output) return
 
-    const result = await forge.handleCommit({
-      discoveries: reviewDiscoveries,
-      conflicts: reviewConflicts,
-    })
+    // If fleshing out a stub, update the existing entity instead of creating new
+    if (stubId) {
+      try {
+        // Fetch existing stub to get its history
+        const { data: existingStub } = await supabase
+          .from('entities')
+          .select('attributes')
+          .eq('id', stubId)
+          .single()
 
-    if (result.success && result.entity) {
-      toast.success('NPC saved to Memory!')
-      // Navigate to the new entity
-      const entity = result.entity as { id: string }
-      router.push(
-        `/dashboard/campaigns/${campaignId}/memory/${entity.id}`
-      )
-    } else if (result.error) {
-      toast.error(result.error)
+        const existingHistory =
+          (existingStub?.attributes as Record<string, unknown>)?.history || []
+
+        // Update the stub with the generated content
+        const { error } = await supabase
+          .from('entities')
+          .update({
+            name: forge.output.name,
+            subtype: forge.output.race,
+            summary: forge.output.dmSlug,
+            description: `**Appearance:** ${forge.output.appearance}\n\n**Personality:** ${forge.output.personality}`,
+            attributes: {
+              race: forge.output.race,
+              gender: forge.output.gender,
+              appearance: forge.output.appearance,
+              personality: forge.output.personality,
+              voiceAndMannerisms: forge.output.voiceAndMannerisms,
+              voiceReference: forge.output.voiceReference,
+              motivation: forge.output.motivation,
+              secret: forge.output.secret,
+              plotHook: forge.output.plotHook,
+              loot: forge.output.loot,
+              combatStats: forge.output.combatStats,
+              connectionHooks: forge.output.connectionHooks,
+              is_stub: false,
+              needs_review: false,
+              history: [
+                ...(existingHistory as Array<Record<string, unknown>>),
+                {
+                  event: 'fleshed_out',
+                  timestamp: new Date().toISOString(),
+                  note: 'Completed via NPC forge',
+                },
+              ],
+            },
+          })
+          .eq('id', stubId)
+
+        if (error) {
+          toast.error('Failed to update entity')
+          return
+        }
+
+        // Create relationship to source entity if exists
+        if (stubContext?.sourceEntityId) {
+          await supabase.from('relationships').insert({
+            campaign_id: campaignId,
+            source_id: stubId,
+            target_id: stubContext.sourceEntityId,
+            relationship_type: 'mentioned_in',
+            description: `First mentioned in ${stubContext.sourceEntityName}`,
+          })
+        }
+
+        toast.success('NPC fleshed out and saved!')
+        router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`)
+      } catch {
+        toast.error('Failed to update stub')
+      }
+    } else {
+      // Normal create flow
+      const result = await forge.handleCommit({
+        discoveries: reviewDiscoveries,
+        conflicts: reviewConflicts,
+      })
+
+      if (result.success && result.entity) {
+        toast.success('NPC saved to Memory!')
+        const entity = result.entity as { id: string }
+        router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`)
+      } else if (result.error) {
+        toast.error(result.error)
+      }
     }
   }
 
@@ -309,22 +399,69 @@ export default function NpcForgePage(): JSX.Element {
 
   return (
     <ForgeShell
-      title="NPC Forge"
-      description="Generate unique NPCs with personality, secrets, and plot hooks"
+      title={stubContext ? `Flesh Out: ${stubName}` : 'NPC Forge'}
+      description={
+        stubContext
+          ? 'Complete this stub entity with full details'
+          : 'Generate unique NPCs with personality, secrets, and plot hooks'
+      }
       status={forge.status}
       backHref={`/dashboard/campaigns/${campaignId}`}
       backLabel={`Back to ${campaignName}`}
       inputSection={
-        <NpcInputForm
-          onSubmit={handleGenerate}
-          isLocked={forge.status !== 'idle' && forge.status !== 'error'}
-          preValidation={forge.preValidation}
-          onProceedAnyway={forge.proceedAnyway}
-          existingLocations={locations}
-          existingFactions={factions}
-          generationsRemaining={generationsRemaining}
-          generationsLimit={generationsLimit}
-        />
+        <>
+          {/* Stub Context Banner */}
+          {stubContext && (
+            <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <div className="flex items-center gap-2 text-amber-400 font-medium mb-2">
+                <Sparkles className="w-4 h-4" />
+                Fleshing out: {stubName}
+              </div>
+              {stubContext.sourceEntityName && (
+                <p className="text-sm text-slate-300">
+                  Origin:{' '}
+                  <span className="text-teal-400">
+                    {stubContext.sourceEntityName}
+                  </span>
+                </p>
+              )}
+              {stubContext.snippet && (
+                <p className="text-sm text-slate-400 mt-1 italic">
+                  &quot;{stubContext.snippet.substring(0, 150)}
+                  {stubContext.snippet.length > 150 ? '...' : ''}&quot;
+                </p>
+              )}
+              {stubContext.suggestedTraits &&
+                stubContext.suggestedTraits.length > 0 && (
+                  <div className="flex gap-1 mt-2 flex-wrap">
+                    {stubContext.suggestedTraits.map((trait: string) => (
+                      <Badge key={trait} variant="outline" className="text-xs">
+                        {trait}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+            </div>
+          )}
+          <NpcInputForm
+            onSubmit={handleGenerate}
+            isLocked={forge.status !== 'idle' && forge.status !== 'error'}
+            preValidation={forge.preValidation}
+            onProceedAnyway={forge.proceedAnyway}
+            existingLocations={locations}
+            existingFactions={factions}
+            generationsRemaining={generationsRemaining}
+            generationsLimit={generationsLimit}
+            initialValues={
+              stubContext
+                ? {
+                    name: stubName || '',
+                    slug: `Flesh out ${stubName}. ${stubContext.snippet || ''}`,
+                  }
+                : undefined
+            }
+          />
+        </>
       }
       outputSection={
         forge.output ? (

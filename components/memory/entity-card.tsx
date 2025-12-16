@@ -15,6 +15,7 @@ import {
   Star,
   Crown,
   Sparkles,
+  Wand2,
 } from 'lucide-react'
 
 export interface Entity {
@@ -30,6 +31,13 @@ export interface Entity {
   visibility: 'public' | 'dm_only' | 'revealable'
   created_at: string
   updated_at: string
+  attributes?: {
+    is_stub?: boolean
+    needs_review?: boolean
+    stub_context?: string
+    source_entity_name?: string
+    [key: string]: unknown
+  }
 }
 
 interface EntityCardProps {
@@ -53,10 +61,18 @@ const IMPORTANCE_CONFIG: Record<string, { icon: typeof Star; color: string }> = 
 export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element {
   const statusConfig = STATUS_CONFIG[entity.status]
   const importanceConfig = IMPORTANCE_CONFIG[entity.importance_tier]
+  const isStub = entity.attributes?.is_stub || entity.attributes?.needs_review
 
   return (
     <Link href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}>
-      <Card className="h-full hover:border-primary/50 transition-colors cursor-pointer group">
+      <Card
+        className={cn(
+          'h-full transition-colors cursor-pointer group',
+          isStub
+            ? 'border-dashed border-amber-500/50 opacity-80 bg-amber-500/5 hover:border-amber-500/70'
+            : 'hover:border-primary/50'
+        )}
+      >
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
@@ -68,7 +84,7 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
               )}
             </div>
             <div className="flex items-center gap-1">
-              {importanceConfig && (
+              {importanceConfig && !isStub && (
                 <span title={entity.importance_tier}>
                   <importanceConfig.icon className={cn('w-4 h-4', importanceConfig.color)} />
                 </span>
@@ -85,9 +101,15 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             <EntityTypeBadge type={entity.entity_type} size="sm" />
-            {statusConfig && (
+            {isStub && (
+              <Badge variant="outline" className="text-xs text-amber-400 border-amber-400/50">
+                <Wand2 className="w-3 h-3 mr-1" />
+                Needs Details
+              </Badge>
+            )}
+            {statusConfig && !isStub && (
               <Badge variant="outline" className={cn('text-xs', statusConfig.color)}>
                 <statusConfig.icon className="w-3 h-3 mr-1" />
                 {statusConfig.label}
@@ -96,7 +118,11 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          {entity.summary ? (
+          {isStub && entity.attributes?.source_entity_name ? (
+            <p className="text-sm text-muted-foreground/70 italic line-clamp-2">
+              From: {entity.attributes.source_entity_name}
+            </p>
+          ) : entity.summary ? (
             <p className="text-sm text-muted-foreground line-clamp-2">
               {renderWithBold(entity.summary)}
             </p>

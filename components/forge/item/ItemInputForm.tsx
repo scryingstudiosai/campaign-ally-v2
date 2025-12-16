@@ -47,6 +47,10 @@ interface ItemInputFormProps {
   campaignId: string
   generationsRemaining?: number
   generationsLimit?: number
+  initialValues?: {
+    name?: string
+    dmSlug?: string
+  }
 }
 
 const ITEM_TYPES = [
@@ -124,9 +128,10 @@ export function ItemInputForm({
   campaignId,
   generationsRemaining,
   generationsLimit = 50,
+  initialValues,
 }: ItemInputFormProps): JSX.Element {
-  const [name, setName] = useState('')
-  const [dmSlug, setDmSlug] = useState('')
+  const [name, setName] = useState(initialValues?.name || '')
+  const [dmSlug, setDmSlug] = useState(initialValues?.dmSlug || '')
   const [itemType, setItemType] = useState('let_ai_decide')
   const [rarity, setRarity] = useState('let_ai_decide')
   const [magicalAura, setMagicalAura] = useState('let_ai_decide')

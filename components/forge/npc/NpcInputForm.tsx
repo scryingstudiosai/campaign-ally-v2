@@ -26,6 +26,10 @@ interface NpcInputFormProps {
   existingFactions?: Array<{ id: string; name: string }>
   generationsRemaining?: number
   generationsLimit?: number
+  initialValues?: {
+    name?: string
+    slug?: string
+  }
 }
 
 export interface NpcInputData {
@@ -113,9 +117,10 @@ export function NpcInputForm({
   existingFactions = [],
   generationsRemaining,
   generationsLimit = 50,
+  initialValues,
 }: NpcInputFormProps): JSX.Element {
-  const [name, setName] = useState('')
-  const [role, setRole] = useState('')
+  const [name, setName] = useState(initialValues?.name || '')
+  const [role, setRole] = useState(initialValues?.slug || '')
   const [race, setRace] = useState('let_ai_decide')
   const [customRace, setCustomRace] = useState('')
   const [gender, setGender] = useState('let_ai_decide')

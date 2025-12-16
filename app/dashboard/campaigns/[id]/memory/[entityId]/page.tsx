@@ -8,6 +8,7 @@ import { EntityTypeBadge, EntityType } from '@/components/memory/entity-type-bad
 import { Relationship } from '@/components/memory/relationship-display'
 import { EntityRelationshipsSection } from '@/components/memory/entity-relationships-section'
 import { DeleteEntityButton } from '@/components/memory/delete-entity-button'
+import { StubBanner } from '@/components/memory/stub-banner'
 import {
   ArrowLeft,
   Pencil,
@@ -126,6 +127,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const statusConfig = STATUS_CONFIG[entity.status]
   const importanceConfig = IMPORTANCE_CONFIG[entity.importance_tier]
   const attributes = entity.attributes || {}
+  const isStub = attributes.is_stub || attributes.needs_review
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
@@ -137,6 +139,19 @@ export default async function EntityDetailPage({ params }: PageProps) {
             Back to Memory
           </Link>
         </Button>
+
+        {/* Stub Banner */}
+        {isStub && (
+          <StubBanner
+            entityId={entity.id}
+            entityName={entity.name}
+            entityType={entity.entity_type}
+            campaignId={params.id}
+            stubContext={attributes.stub_context as string | undefined}
+            sourceEntityId={attributes.source_entity_id as string | undefined}
+            sourceEntityName={attributes.source_entity_name as string | undefined}
+          />
+        )}
 
         {/* Header */}
         <div className="mb-8">
