@@ -52,8 +52,11 @@ const RELATIONSHIP_TYPES = [
   { value: 'member_of', label: 'Member of', category: 'Professional' },
   { value: 'leads', label: 'Leads', category: 'Professional' },
   { value: 'located_in', label: 'Located in', category: 'Spatial' },
+  { value: 'contains', label: 'Contains', category: 'Spatial' },
   { value: 'owns', label: 'Owns', category: 'Spatial' },
+  { value: 'owned_by', label: 'Owned by', category: 'Spatial' },
   { value: 'created_by', label: 'Created by', category: 'Other' },
+  { value: 'created', label: 'Created', category: 'Other' },
   { value: 'related_to', label: 'Related to', category: 'Other' },
 ]
 
@@ -341,9 +344,12 @@ function getReverseRelationshipType(type: string): string {
     serves: 'employs',
     leads: 'member_of',
     member_of: 'leads',
-    owns: 'located_in',
-    located_in: 'owns',
-    created_by: 'related_to',
+    owns: 'owned_by',
+    owned_by: 'owns',
+    located_in: 'contains',
+    contains: 'located_in',
+    created_by: 'created',
+    created: 'created_by',
   }
   return reverseMap[type] || type
 }

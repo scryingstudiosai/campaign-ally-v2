@@ -14,6 +14,7 @@ import {
   Briefcase,
   Swords,
   Building,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -54,7 +55,11 @@ const RELATIONSHIP_ICONS: Record<string, typeof Link2> = {
   member_of: Building,
   leads: Building,
   located_in: MapPin,
+  contains: MapPin,
   owns: MapPin,
+  owned_by: MapPin,
+  created_by: Sparkles,
+  created: Sparkles,
 }
 
 const RELATIONSHIP_LABELS: Record<string, string> = {
@@ -69,8 +74,11 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
   member_of: 'Member of',
   leads: 'Leads',
   located_in: 'Located in',
+  contains: 'Contains',
   owns: 'Owns',
+  owned_by: 'Owned by',
   created_by: 'Created by',
+  created: 'Created',
   related_to: 'Related to',
 }
 
