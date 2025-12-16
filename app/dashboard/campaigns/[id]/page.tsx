@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeleteCampaignButton } from '@/components/campaigns/delete-campaign-button'
-import { ArrowLeft, BookOpen, Brain, Calendar, Pencil, Sparkles, User, MapPin, Swords } from 'lucide-react'
+import { ArrowLeft, BookOpen, Brain, Calendar, Pencil, Sparkles, User, MapPin, Swords, Gem } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 interface PageProps {
@@ -223,18 +223,20 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </CardContent>
             </Card>
 
-            <Card className="opacity-50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  Item Forge
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Coming soon...
-                </p>
-              </CardContent>
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer group">
+              <Link href={`/dashboard/campaigns/${params.id}/forge/item`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Gem className="w-4 h-4 text-primary" />
+                    Item Forge
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Generate unique items with dual player/DM descriptions
+                  </p>
+                </CardContent>
+              </Link>
             </Card>
           </div>
         </div>
