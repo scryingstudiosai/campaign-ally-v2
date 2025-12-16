@@ -167,6 +167,7 @@ export default function ItemForgePage(): JSX.Element {
             </CardHeader>
             <CardContent>
               <ItemInputForm
+                campaignId={campaignId}
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
                 generationsUsed={generationsUsed}
@@ -230,6 +231,8 @@ export default function ItemForgePage(): JSX.Element {
                   <ItemSaveToMemoryButton
                     item={generatedItem}
                     campaignId={campaignId}
+                    ownerId={lastInputs?.ownerId || null}
+                    locationId={lastInputs?.locationId || null}
                     onSaved={handleSaved}
                   />
                 </div>

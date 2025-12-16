@@ -88,7 +88,9 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 }
 
 // Parse markdown bold syntax and render as JSX
-function renderWithBold(text: string): JSX.Element {
+function renderWithBold(text: string | undefined | null): JSX.Element {
+  if (!text) return <></>
+
   const parts = text.split(/(\*\*[^*]+\*\*)/g)
   return (
     <>

@@ -170,20 +170,26 @@ export function AddRelationshipModal({
       if (relationshipError) throw relationshipError
 
       // Create reverse relationship if bidirectional
+      // Skip for symmetric relationships (where reverse type equals original type)
       if (bidirectional) {
         const reverseType = getReverseRelationshipType(relationshipType)
-        const { error: reverseError } = await supabase
-          .from('relationships')
-          .insert({
-            campaign_id: campaignId,
-            source_id: targetEntityId,
-            target_id: sourceEntityId,
-            relationship_type: reverseType,
-            description: description.trim() || null,
-          })
 
-        if (reverseError) {
-          console.error('Failed to create reverse relationship:', reverseError)
+        // Only create reverse if it's a different type (asymmetric relationship)
+        // Symmetric types like "knows", "friend", "enemy" don't need a second row
+        if (reverseType !== relationshipType) {
+          const { error: reverseError } = await supabase
+            .from('relationships')
+            .insert({
+              campaign_id: campaignId,
+              source_id: targetEntityId,
+              target_id: sourceEntityId,
+              relationship_type: reverseType,
+              description: description.trim() || null,
+            })
+
+          if (reverseError) {
+            console.error('Failed to create reverse relationship:', reverseError)
+          }
         }
       }
 

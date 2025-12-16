@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,7 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Sparkles, Dices } from 'lucide-react'
+import { Loader2, Sparkles, Dices, MapPin, User } from 'lucide-react'
+
+interface Entity {
+  id: string
+  name: string
+  entity_type: string
+}
 
 export interface ItemInputs {
   name: string
@@ -21,11 +28,15 @@ export interface ItemInputs {
   itemType: string
   rarity: string
   magicalAura: string
+  state: string
   isIdentified: boolean
+  ownerId: string | null
+  locationId: string | null
   additionalRequirements: string
 }
 
 interface ItemInputFormProps {
+  campaignId: string
   onGenerate: (inputs: ItemInputs) => Promise<void>
   isGenerating: boolean
   generationsUsed?: number
@@ -87,10 +98,18 @@ const DM_SLUG_SEEDS = [
   'prototype invention that backfired',
 ]
 
+const STATES = [
+  { value: 'carried', label: 'Carried' },
+  { value: 'equipped', label: 'Equipped' },
+  { value: 'stashed', label: 'Stashed' },
+  { value: 'hidden', label: 'Hidden' },
+]
+
 const RANDOMIZABLE_TYPES = ITEM_TYPES.filter(t => t.value !== 'let_ai_decide')
 const RANDOMIZABLE_RARITIES = RARITIES.filter(r => r.value !== 'let_ai_decide')
 
 export function ItemInputForm({
+  campaignId,
   onGenerate,
   isGenerating,
   generationsUsed = 0,
@@ -101,8 +120,51 @@ export function ItemInputForm({
   const [itemType, setItemType] = useState('let_ai_decide')
   const [rarity, setRarity] = useState('let_ai_decide')
   const [magicalAura, setMagicalAura] = useState('let_ai_decide')
+  const [state, setState] = useState('carried')
   const [isIdentified, setIsIdentified] = useState(true)
+  const [ownerId, setOwnerId] = useState<string>('none')
+  const [locationId, setLocationId] = useState<string>('none')
   const [additionalRequirements, setAdditionalRequirements] = useState('')
+
+  // Entity lists for dropdowns
+  const [locations, setLocations] = useState<Entity[]>([])
+  const [npcs, setNpcs] = useState<Entity[]>([])
+  const [loadingEntities, setLoadingEntities] = useState(true)
+
+  // Fetch entities on mount
+  useEffect(() => {
+    const fetchEntities = async () => {
+      try {
+        const supabase = createClient()
+
+        const { data: locationData } = await supabase
+          .from('entities')
+          .select('id, name, entity_type')
+          .eq('campaign_id', campaignId)
+          .eq('entity_type', 'location')
+          .is('deleted_at', null)
+          .order('name')
+
+        setLocations(locationData || [])
+
+        const { data: npcData } = await supabase
+          .from('entities')
+          .select('id, name, entity_type')
+          .eq('campaign_id', campaignId)
+          .eq('entity_type', 'npc')
+          .is('deleted_at', null)
+          .order('name')
+
+        setNpcs(npcData || [])
+      } catch (error) {
+        console.error('Failed to fetch entities:', error)
+      } finally {
+        setLoadingEntities(false)
+      }
+    }
+
+    fetchEntities()
+  }, [campaignId])
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
@@ -113,7 +175,10 @@ export function ItemInputForm({
       itemType,
       rarity,
       magicalAura,
+      state,
       isIdentified,
+      ownerId: ownerId !== 'none' ? ownerId : null,
+      locationId: locationId !== 'none' ? locationId : null,
       additionalRequirements: additionalRequirements.trim(),
     }
 
@@ -261,6 +326,62 @@ export function ItemInputForm({
               {MAGICAL_AURAS.map((a) => (
                 <SelectItem key={a.value} value={a.value}>
                   {a.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="state">State</Label>
+          <Select value={state} onValueChange={setState} disabled={isGenerating}>
+            <SelectTrigger id="state">
+              <SelectValue placeholder="Select state" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="owner" className="flex items-center gap-1">
+            <User className="w-3 h-3" />
+            Owner (optional)
+          </Label>
+          <Select value={ownerId} onValueChange={setOwnerId} disabled={isGenerating || loadingEntities}>
+            <SelectTrigger id="owner">
+              <SelectValue placeholder="Select owner..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No owner</SelectItem>
+              {npcs.map((npc) => (
+                <SelectItem key={npc.id} value={npc.id}>
+                  {npc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="location" className="flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            Location (optional)
+          </Label>
+          <Select value={locationId} onValueChange={setLocationId} disabled={isGenerating || loadingEntities}>
+            <SelectTrigger id="location">
+              <SelectValue placeholder="Select location..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No location</SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={loc.id}>
+                  {loc.name}
                 </SelectItem>
               ))}
             </SelectContent>
