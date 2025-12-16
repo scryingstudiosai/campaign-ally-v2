@@ -1,0 +1,372 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Loader2, Link2, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { EntityTypeBadge, EntityType } from './entity-type-badge'
+
+interface Entity {
+  id: string
+  name: string
+  entity_type: EntityType
+}
+
+interface AddRelationshipModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  sourceEntityId: string
+  sourceEntityName: string
+  campaignId: string
+}
+
+const RELATIONSHIP_TYPES = [
+  // Personal
+  { value: 'knows', label: 'Knows', category: 'Personal' },
+  { value: 'friend', label: 'Friend of', category: 'Personal' },
+  { value: 'enemy', label: 'Enemy of', category: 'Personal' },
+  { value: 'rival', label: 'Rival of', category: 'Personal' },
+  { value: 'parent_of', label: 'Parent of', category: 'Personal' },
+  { value: 'child_of', label: 'Child of', category: 'Personal' },
+  { value: 'sibling_of', label: 'Sibling of', category: 'Personal' },
+  { value: 'spouse_of', label: 'Spouse of', category: 'Personal' },
+  { value: 'lover', label: 'Lover of', category: 'Personal' },
+
+  // Professional
+  { value: 'employs', label: 'Employs', category: 'Professional' },
+  { value: 'serves', label: 'Serves', category: 'Professional' },
+  { value: 'leads', label: 'Leads', category: 'Professional' },
+  { value: 'member_of', label: 'Member of', category: 'Professional' },
+  { value: 'student_of', label: 'Student of', category: 'Professional' },
+  { value: 'mentor_of', label: 'Mentor of', category: 'Professional' },
+
+  // Spatial
+  { value: 'located_in', label: 'Located in', category: 'Spatial' },
+  { value: 'contains', label: 'Contains', category: 'Spatial' },
+  { value: 'owns', label: 'Owns', category: 'Spatial' },
+  { value: 'owned_by', label: 'Owned by', category: 'Spatial' },
+
+  // Divine
+  { value: 'worships', label: 'Worships', category: 'Divine' },
+  { value: 'deity_of', label: 'Deity/Patron of', category: 'Divine' },
+
+  // Duty
+  { value: 'protects', label: 'Protects/Guards', category: 'Duty' },
+  { value: 'guarded_by', label: 'Guarded by', category: 'Duty' },
+
+  // Intrigue
+  { value: 'debt_to', label: 'Indebted to', category: 'Intrigue' },
+  { value: 'creditor_of', label: 'Creditor of', category: 'Intrigue' },
+  { value: 'blackmails', label: 'Blackmails', category: 'Intrigue' },
+  { value: 'blackmailed_by', label: 'Blackmailed by', category: 'Intrigue' },
+
+  // History
+  { value: 'creator_of', label: 'Creator of', category: 'History' },
+  { value: 'created_by', label: 'Created by', category: 'History' },
+
+  // Quest
+  { value: 'seeks', label: 'Seeks', category: 'Quest' },
+  { value: 'sought_by', label: 'Sought by', category: 'Quest' },
+
+  // Other
+  { value: 'related_to', label: 'Related to', category: 'Other' },
+]
+
+export function AddRelationshipModal({
+  open,
+  onOpenChange,
+  sourceEntityId,
+  sourceEntityName,
+  campaignId,
+}: AddRelationshipModalProps): JSX.Element {
+  const router = useRouter()
+  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [entities, setEntities] = useState<Entity[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // Form state
+  const [targetEntityId, setTargetEntityId] = useState<string>('')
+  const [relationshipType, setRelationshipType] = useState<string>('')
+  const [description, setDescription] = useState('')
+
+  // Fetch entities
+  useEffect(() => {
+    if (!open) return
+
+    const fetchEntities = async () => {
+      setLoading(true)
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('entities')
+          .select('id, name, entity_type')
+          .eq('campaign_id', campaignId)
+          .neq('id', sourceEntityId)
+          .is('deleted_at', null)
+          .order('name')
+
+        if (error) throw error
+        setEntities(data || [])
+      } catch (error) {
+        console.error('Failed to fetch entities:', error)
+        toast.error('Failed to load entities')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchEntities()
+  }, [open, campaignId, sourceEntityId])
+
+  // Filter entities by search
+  const filteredEntities = entities.filter((e) =>
+    e.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const handleSubmit = async () => {
+    if (!targetEntityId || !relationshipType) {
+      toast.error('Please select a target entity and relationship type')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const supabase = createClient()
+
+      // Create ONE relationship row - display logic handles perspective
+      const { error: relationshipError } = await supabase
+        .from('relationships')
+        .insert({
+          campaign_id: campaignId,
+          source_id: sourceEntityId,
+          target_id: targetEntityId,
+          relationship_type: relationshipType,
+          description: description.trim() || null,
+        })
+
+      if (relationshipError) throw relationshipError
+
+      toast.success('Relationship added')
+      onOpenChange(false)
+      router.refresh()
+
+      // Reset form
+      setTargetEntityId('')
+      setRelationshipType('')
+      setDescription('')
+      setSearchTerm('')
+    } catch (error) {
+      console.error('Failed to create relationship:', error)
+      toast.error('Failed to add relationship')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Link2 className="w-5 h-5 text-primary" />
+            Add Relationship
+          </DialogTitle>
+          <DialogDescription>
+            Create a relationship from <strong>{sourceEntityName}</strong> to another entity.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Target Entity */}
+          <div className="space-y-2">
+            <Label>Target Entity *</Label>
+            {targetEntityId ? (
+              // Show selected entity
+              <div className="flex items-center justify-between p-3 border rounded-md bg-primary/10">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">
+                    {entities.find(e => e.id === targetEntityId)?.name}
+                  </span>
+                  <EntityTypeBadge
+                    type={entities.find(e => e.id === targetEntityId)?.entity_type || 'other'}
+                    size="sm"
+                    showIcon={false}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTargetEntityId('')
+                    setSearchTerm('')
+                  }}
+                  className="h-6 px-2"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              // Show search input with dropdown results
+              <>
+                <Input
+                  placeholder="Type to search entities..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {loading ? (
+                  <div className="flex items-center justify-center py-4 border rounded-md">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : searchTerm ? (
+                  <div className="max-h-[200px] overflow-y-auto border rounded-md">
+                    {filteredEntities.length === 0 ? (
+                      <div className="py-4 text-center text-sm text-muted-foreground">
+                        No entities found
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-border">
+                        {filteredEntities.slice(0, 10).map((entity) => (
+                          <button
+                            key={entity.id}
+                            type="button"
+                            onClick={() => {
+                              setTargetEntityId(entity.id)
+                              setSearchTerm('')
+                            }}
+                            className="w-full flex items-center justify-between p-2 hover:bg-muted/50 transition-colors text-left"
+                          >
+                            <span className="font-medium">{entity.name}</span>
+                            <EntityTypeBadge type={entity.entity_type} size="sm" showIcon={false} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : entities.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No other entities in this campaign</p>
+                ) : null}
+              </>
+            )}
+          </div>
+
+          {/* Relationship Type */}
+          <div className="space-y-2">
+            <Label>Relationship Type *</Label>
+            <Select value={relationshipType} onValueChange={setRelationshipType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select relationship..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_personal" className="text-muted-foreground text-xs" disabled>
+                  — Personal —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Personal').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_professional" className="text-muted-foreground text-xs" disabled>
+                  — Professional —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Professional').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_spatial" className="text-muted-foreground text-xs" disabled>
+                  — Spatial —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Spatial').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_divine" className="text-muted-foreground text-xs" disabled>
+                  — Divine —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Divine').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_duty" className="text-muted-foreground text-xs" disabled>
+                  — Duty —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Duty').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_intrigue" className="text-muted-foreground text-xs" disabled>
+                  — Intrigue —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Intrigue').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_history" className="text-muted-foreground text-xs" disabled>
+                  — History —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'History').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_quest" className="text-muted-foreground text-xs" disabled>
+                  — Quest —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Quest').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_other" className="text-muted-foreground text-xs" disabled>
+                  — Other —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Other').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <Label>Description (optional)</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g., secretly resents, old war buddy"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={saving || !targetEntityId || !relationshipType}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              'Add Relationship'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

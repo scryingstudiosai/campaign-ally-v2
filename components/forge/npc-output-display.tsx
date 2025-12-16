@@ -1,0 +1,512 @@
+'use client'
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { renderWithBold } from '@/lib/text-utils'
+import {
+  Eye,
+  Heart,
+  MessageSquare,
+  Target,
+  Lock,
+  Link2,
+  Plus,
+  X,
+  Shield,
+  Swords,
+  Backpack,
+  Lightbulb,
+  EyeOff,
+  Mic,
+} from 'lucide-react'
+
+export interface GeneratedNPC {
+  name: string
+  dmSlug: string
+  race: string
+  gender: string
+  appearance: string
+  personality: string
+  voiceAndMannerisms: string
+  voiceReference?: string
+  motivation: string
+  secret: string
+  plotHook: string
+  loot: string[]
+  combatStats: {
+    armorClass: number
+    hitPoints: string
+    primaryWeapon: string
+    combatStyle: string
+  }
+  connectionHooks: string[]
+}
+
+interface NPCOutputDisplayProps {
+  npc: GeneratedNPC
+  isEditing?: boolean
+  onUpdate?: (npc: GeneratedNPC) => void
+}
+
+export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutputDisplayProps): JSX.Element {
+  const handleFieldChange = (field: keyof GeneratedNPC, value: string | string[] | object) => {
+    if (onUpdate) {
+      onUpdate({ ...npc, [field]: value })
+    }
+  }
+
+  const handleStatsChange = (field: keyof GeneratedNPC['combatStats'], value: string | number) => {
+    if (onUpdate) {
+      onUpdate({
+        ...npc,
+        combatStats: { ...npc.combatStats, [field]: value }
+      })
+    }
+  }
+
+  const handleHookChange = (index: number, value: string) => {
+    const newHooks = [...npc.connectionHooks]
+    newHooks[index] = value
+    handleFieldChange('connectionHooks', newHooks)
+  }
+
+  const addHook = () => {
+    handleFieldChange('connectionHooks', [...npc.connectionHooks, ''])
+  }
+
+  const removeHook = (index: number) => {
+    const newHooks = npc.connectionHooks.filter((_, i) => i !== index)
+    handleFieldChange('connectionHooks', newHooks)
+  }
+
+  if (isEditing) {
+    return (
+      <div className="space-y-6">
+        {/* Header - Editable */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-name">Name</Label>
+            <Input
+              id="edit-name"
+              value={npc.name}
+              onChange={(e) => handleFieldChange('name', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-race">Race</Label>
+            <Input
+              id="edit-race"
+              value={npc.race}
+              onChange={(e) => handleFieldChange('race', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-gender">Gender</Label>
+            <Input
+              id="edit-gender"
+              value={npc.gender}
+              onChange={(e) => handleFieldChange('gender', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="edit-slug">DM Slug (quick reference)</Label>
+          <Input
+            id="edit-slug"
+            value={npc.dmSlug}
+            onChange={(e) => handleFieldChange('dmSlug', e.target.value)}
+          />
+        </div>
+
+        {/* Primary Fields - Editable */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-appearance" className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-primary" />
+              Appearance
+            </Label>
+            <Textarea
+              id="edit-appearance"
+              value={npc.appearance}
+              onChange={(e) => handleFieldChange('appearance', e.target.value)}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-personality" className="flex items-center gap-2">
+              <Heart className="w-4 h-4 text-primary" />
+              Personality
+            </Label>
+            <Textarea
+              id="edit-personality"
+              value={npc.personality}
+              onChange={(e) => handleFieldChange('personality', e.target.value)}
+              rows={2}
+            />
+          </div>
+        </div>
+
+        {/* Secondary Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-voice" className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+              Voice & Mannerisms
+            </Label>
+            <Textarea
+              id="edit-voice"
+              value={npc.voiceAndMannerisms}
+              onChange={(e) => handleFieldChange('voiceAndMannerisms', e.target.value)}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-loot" className="flex items-center gap-2">
+              <Backpack className="w-4 h-4 text-muted-foreground" />
+              Loot & Pockets (one per line)
+            </Label>
+            <Textarea
+              id="edit-loot"
+              value={Array.isArray(npc.loot) ? npc.loot.join('\n') : npc.loot}
+              onChange={(e) => handleFieldChange('loot', e.target.value.split('\n').filter(s => s.trim()))}
+              rows={3}
+            />
+          </div>
+        </div>
+
+        {/* Voice Reference - Editable */}
+        {npc.voiceReference && (
+          <div className="space-y-2">
+            <Label htmlFor="edit-voice-ref" className="flex items-center gap-2">
+              <Mic className="w-4 h-4 text-muted-foreground" />
+              Voice Reference
+            </Label>
+            <Input
+              id="edit-voice-ref"
+              value={npc.voiceReference || ''}
+              onChange={(e) => handleFieldChange('voiceReference', e.target.value)}
+            />
+          </div>
+        )}
+
+        {/* Combat Stats - Editable */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-muted-foreground" />
+            Combat Stats
+          </Label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">AC</Label>
+              <Input
+                type="number"
+                value={npc.combatStats?.armorClass || 10}
+                onChange={(e) => handleStatsChange('armorClass', parseInt(e.target.value) || 10)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">HP</Label>
+              <Input
+                value={npc.combatStats?.hitPoints || ''}
+                onChange={(e) => handleStatsChange('hitPoints', e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Weapon</Label>
+              <Input
+                value={npc.combatStats?.primaryWeapon || ''}
+                onChange={(e) => handleStatsChange('primaryWeapon', e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Style</Label>
+              <Input
+                value={npc.combatStats?.combatStyle || ''}
+                onChange={(e) => handleStatsChange('combatStyle', e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Plot-Relevant Fields - Editable */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-motivation" className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-primary" />
+              Motivation
+            </Label>
+            <Textarea
+              id="edit-motivation"
+              value={npc.motivation}
+              onChange={(e) => handleFieldChange('motivation', e.target.value)}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-secret" className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-amber-500" />
+              <span className="text-amber-500">Secret</span>
+            </Label>
+            <Textarea
+              id="edit-secret"
+              value={npc.secret}
+              onChange={(e) => handleFieldChange('secret', e.target.value)}
+              rows={2}
+              className="border-amber-500/30"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-hook" className="flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-cyan-500" />
+              <span className="text-cyan-500">Plot Hook</span>
+            </Label>
+            <Textarea
+              id="edit-hook"
+              value={npc.plotHook}
+              onChange={(e) => handleFieldChange('plotHook', e.target.value)}
+              rows={2}
+              className="border-cyan-500/30"
+            />
+          </div>
+        </div>
+
+        {/* Connection Hooks - Editable */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-primary" />
+            Connection Hooks
+          </Label>
+          <div className="space-y-2">
+            {npc.connectionHooks.map((hook, index) => (
+              <div key={index} className="flex gap-2 items-start">
+                <span className="text-primary font-bold mt-2">{index + 1}.</span>
+                <Textarea
+                  value={hook}
+                  onChange={(e) => handleHookChange(index, e.target.value)}
+                  rows={1}
+                  className="flex-1"
+                />
+                {npc.connectionHooks.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeHook(index)}
+                    className="mt-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addHook}
+              className="mt-2"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Hook
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Display mode (non-editing) - New horizontal layout with hierarchy
+  return (
+    <div className="space-y-4">
+      {/* Header - Name, DM Slug, Badges */}
+      <div className="text-center pb-4 border-b border-border">
+        <h2 className="text-2xl font-bold text-primary">{npc.name}</h2>
+        <p className="text-muted-foreground italic mt-1">{npc.dmSlug}</p>
+        <div className="flex items-center justify-center gap-2 mt-3">
+          <Badge variant="secondary">{npc.race}</Badge>
+          <Badge variant="outline">{npc.gender}</Badge>
+        </div>
+      </div>
+
+      {/* PRIMARY SECTION - Appearance & Personality (most important for roleplay) */}
+      <div className="grid grid-cols-1 gap-3">
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-2 pt-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Eye className="w-4 h-4 text-primary" />
+              Appearance
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {renderWithBold(npc.appearance)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-2 pt-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Heart className="w-4 h-4 text-primary" />
+              Personality
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {renderWithBold(npc.personality)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* COMBAT STATS - Prominent colored pills for quick scanning */}
+      {npc.combatStats && (
+        <Card className="border-slate-500/30 bg-slate-500/5">
+          <CardContent className="py-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-slate-400" />
+                <span className="text-sm font-medium text-slate-400">Combat:</span>
+              </div>
+              <Badge className="bg-blue-600 hover:bg-blue-600 text-white text-base px-3 py-1 font-bold">
+                AC {npc.combatStats.armorClass}
+              </Badge>
+              <Badge className="bg-red-600 hover:bg-red-600 text-white text-base px-3 py-1 font-bold">
+                HP {npc.combatStats.hitPoints}
+              </Badge>
+              <div className="flex items-center gap-2 text-sm">
+                <Swords className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">{npc.combatStats.primaryWeapon}</span>
+              </div>
+              <span className="text-sm text-muted-foreground italic">
+                {npc.combatStats.combatStyle}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* SECONDARY SECTION - Voice, Loot (supporting info) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Card className="bg-muted/30">
+          <CardHeader className="pb-2 pt-3">
+            <CardTitle className="text-xs flex items-center gap-2 text-muted-foreground">
+              <MessageSquare className="w-3 h-3" />
+              Voice & Mannerisms
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <p className="text-sm text-muted-foreground">{renderWithBold(npc.voiceAndMannerisms)}</p>
+            {npc.voiceReference && (
+              <div className="mt-2 pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Mic className="w-3 h-3" />
+                  <span className="italic">&quot;{npc.voiceReference}&quot;</span>
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-muted/30">
+          <CardHeader className="pb-2 pt-3">
+            <CardTitle className="text-xs flex items-center gap-2 text-muted-foreground">
+              <Backpack className="w-3 h-3" />
+              Loot & Pockets
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3">
+            {Array.isArray(npc.loot) ? (
+              <ul className="text-sm text-muted-foreground space-y-1">
+                {npc.loot.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>{renderWithBold(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">{npc.loot}</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* PLOT-RELEVANT SECTION - Motivation, Secret, Plot Hook (game drivers) */}
+      <div className="space-y-3 pt-2">
+        <Card>
+          <CardHeader className="pb-2 pt-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Target className="w-4 h-4 text-primary" />
+              Motivation
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <p className="text-sm text-muted-foreground">{renderWithBold(npc.motivation)}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardHeader className="pb-2 pt-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Lock className="w-4 h-4 text-amber-500" />
+              <span className="text-amber-500">Secret</span>
+              <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                <EyeOff className="w-3 h-3" />
+                DM Only
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <p className="text-sm text-muted-foreground">{renderWithBold(npc.secret)}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-cyan-500/30 bg-cyan-500/5">
+          <CardHeader className="pb-2 pt-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-cyan-500" />
+              <span className="text-cyan-500">Plot Hook</span>
+              <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                <EyeOff className="w-3 h-3" />
+                DM Only
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <p className="text-sm text-muted-foreground">{renderWithBold(npc.plotHook)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Connection Hooks */}
+      <Card>
+        <CardHeader className="pb-2 pt-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-primary" />
+            Connection Hooks
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-3">
+          <ul className="space-y-1">
+            {npc.connectionHooks.map((hook, index) => (
+              <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                <span className="text-primary font-bold">{index + 1}.</span>
+                <span>{renderWithBold(hook)}</span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

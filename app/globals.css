@@ -10,7 +10,7 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 168 76% 40%;
+    --primary: 174 72% 40%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -22,30 +22,31 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 168 76% 40%;
+    --ring: 174 72% 40%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 168 76% 40%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    /* Modern Slate Dark Theme - Reduced Eye Strain */
+    --background: 222.2 47.4% 11.2%; /* slate-900 */
+    --foreground: 214.3 31.8% 91.4%; /* slate-200 - soft, not pure white */
+    --card: 217.2 32.6% 17.5%; /* slate-800 */
+    --card-foreground: 214.3 31.8% 91.4%; /* slate-200 */
+    --popover: 215.3 25% 26.7%; /* slate-700 - elevated */
+    --popover-foreground: 214.3 31.8% 91.4%;
+    --primary: 174 72% 40%; /* teal-500 */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%; /* slate-800 */
+    --secondary-foreground: 214.3 31.8% 91.4%;
+    --muted: 222.2 47.4% 11.2%; /* slate-900 */
+    --muted-foreground: 215.4 16.3% 46.9%; /* slate-500 */
+    --accent: 174 72% 40%; /* teal-500 */
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 168 76% 40%;
+    --border: 215.3 25% 26.7%; /* slate-700 */
+    --input: 217.2 32.6% 17.5%; /* slate-800 */
+    --ring: 174 72% 40%; /* teal-500 */
   }
 }
 
@@ -54,6 +55,6 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
 }
