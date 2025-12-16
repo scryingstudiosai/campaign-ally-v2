@@ -267,21 +267,21 @@ export function RelationshipDisplay({
             No relationships yet
           </p>
         ) : (
-          <div className="space-y-2">
-            {processedRelationships.map((rel) => {
-              const Icon = RELATIONSHIP_ICONS[rel.displayType] || Link2
-              const isDeleting = deletingId === rel.id
-              return (
-                <div
-                  key={rel.id}
-                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
-                >
-                  <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {rel.relationshipLabel}
-                  </span>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                  <TooltipProvider>
+          <TooltipProvider delayDuration={200}>
+            <div className="space-y-2">
+              {processedRelationships.map((rel) => {
+                const Icon = RELATIONSHIP_ICONS[rel.displayType] || Link2
+                const isDeleting = deletingId === rel.id
+                return (
+                  <div
+                    key={rel.id}
+                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
+                  >
+                    <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      {rel.relationshipLabel}
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Link
@@ -295,29 +295,29 @@ export function RelationshipDisplay({
                         <p>{rel.otherEntity?.name}</p>
                       </TooltipContent>
                     </Tooltip>
-                  </TooltipProvider>
-                  <EntityTypeBadge
-                    type={rel.otherEntity?.entity_type || 'other'}
-                    size="sm"
-                    showIcon={false}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(rel)}
-                    disabled={isDeleting}
-                    className="ml-auto flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50"
-                    title="Delete relationship"
-                  >
-                    {isDeleting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              )
-            })}
-          </div>
+                    <EntityTypeBadge
+                      type={rel.otherEntity?.entity_type || 'other'}
+                      size="sm"
+                      showIcon={false}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(rel)}
+                      disabled={isDeleting}
+                      className="ml-auto flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50"
+                      title="Delete relationship"
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </TooltipProvider>
         )}
       </CardContent>
     </Card>

@@ -21,8 +21,17 @@ export async function scanGeneratedContent(
   const discoveries: Discovery[] = []
   const existingEntityMentions: ScanResult['existingEntityMentions'] = []
 
+  // DEBUG: Log scanner inputs
+  console.log('=== SCANNER DEBUG ===')
+  console.log('currentEntityName:', currentEntityName)
+  console.log('textContent length:', textContent.length)
+  console.log('textContent preview:', textContent.substring(0, 200))
+
   // Extract potential entity names from text (excluding current entity name)
   const potentialEntities = extractProperNouns(textContent, currentEntityName)
+
+  // DEBUG: Log extracted entities
+  console.log('potentialEntities found:', potentialEntities.map(e => e.text))
 
   // Fetch all entities for this campaign to check against
   const { data: allEntities } = await supabase
@@ -79,7 +88,9 @@ export async function scanGeneratedContent(
 
       if (!isPartialMatch) {
         // Skip blocklisted terms (D&D mechanics, common words, etc.)
-        if (shouldIgnoreTerm(potential.text)) {
+        const isBlocklisted = shouldIgnoreTerm(potential.text)
+        console.log(`Blocklist check: "${potential.text}" -> ${isBlocklisted ? 'BLOCKED' : 'ALLOWED'}`)
+        if (isBlocklisted) {
           continue
         }
 
@@ -100,6 +111,12 @@ export async function scanGeneratedContent(
     discoveries.length,
     existingEntityMentions.length
   )
+
+  // DEBUG: Final results
+  console.log('=== SCANNER RESULTS ===')
+  console.log('discoveries:', discoveries.map(d => ({ text: d.text, type: d.suggestedType })))
+  console.log('existingEntityMentions:', existingEntityMentions.map(e => e.name))
+  console.log('canonScore:', canonScore)
 
   return {
     discoveries,

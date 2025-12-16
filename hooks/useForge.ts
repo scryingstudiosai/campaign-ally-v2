@@ -105,7 +105,7 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
         return { success: false, reason: 'error' }
       }
     },
-    [campaignId, forgeType, generateFn, getTextContent, supabase]
+    [campaignId, forgeType, generateFn, getTextContent, getEntityName, supabase]
   )
 
   // Step 2: User reviews and commits

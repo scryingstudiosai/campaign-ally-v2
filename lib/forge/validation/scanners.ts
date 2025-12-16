@@ -259,6 +259,10 @@ export function extractProperNouns(
   const results: PotentialEntity[] = []
   const excludeLower = excludeEntityName?.toLowerCase()
 
+  // DEBUG: Log exclusion
+  console.log('extractProperNouns - excludeEntityName:', excludeEntityName)
+  console.log('extractProperNouns - excludeLower:', excludeLower)
+
   // Pattern 1: Quoted text (high confidence entity names)
   const quotedPattern = /"([A-Z][^"]+)"/g
 
