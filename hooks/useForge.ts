@@ -29,6 +29,7 @@ interface CommitResult {
   success: boolean
   entity?: unknown
   stubs?: Array<{ discoveryId: string; entityId: string; name: string }>
+  error?: string
 }
 
 export function useForge<TInput extends BaseForgeInput, TOutput>(
@@ -141,12 +142,13 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
 
         return { success: true, entity: savedEntity, stubs: createdStubs }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Save failed'
         setState((prev) => ({
           ...prev,
           status: 'error',
-          error: error instanceof Error ? error.message : 'Save failed',
+          error: errorMessage,
         }))
-        return { success: false }
+        return { success: false, error: errorMessage }
       }
     },
     [campaignId, forgeType, state.output, supabase]

@@ -1,21 +1,25 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import React, { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { NPCInputForm, NPCInputs } from '@/components/forge/npc-input-form'
-import { NPCOutputDisplay, GeneratedNPC } from '@/components/forge/npc-output-display'
-import { SaveToMemoryButton } from '@/components/forge/save-to-memory-button'
-import { ArrowLeft, RefreshCw, Pencil, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 
-interface Campaign {
-  id: string
-  name: string
-}
+// Forge foundation imports
+import { useForge } from '@/hooks/useForge'
+import { ForgeShell } from '@/components/forge/ForgeShell'
+import { CommitPanel } from '@/components/forge/CommitPanel'
+import { EmptyForgeState } from '@/components/forge/EmptyForgeState'
+import { extractTextForScanning } from '@/lib/forge/validation/post-gen'
+import type { Discovery, Conflict } from '@/types/forge'
+
+// NPC-specific components
+import {
+  NpcInputForm,
+  NpcOutputCard,
+  type NpcInputData,
+  type GeneratedNPC,
+} from '@/components/forge/npc'
 
 interface Profile {
   generations_used: number
@@ -28,26 +32,87 @@ const GENERATION_LIMITS: Record<string, number> = {
   legendary: 9999,
 }
 
-export default function NPCForgePage(): JSX.Element {
+export default function NpcForgePage(): JSX.Element {
   const params = useParams()
+  const router = useRouter()
   const campaignId = params.id as string
+  const supabase = createClient()
 
-  const [campaign, setCampaign] = useState<Campaign | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [generatedNPC, setGeneratedNPC] = useState<GeneratedNPC | null>(null)
-  const [lastInputs, setLastInputs] = useState<NPCInputs | null>(null)
-  const [generationsUsed, setGenerationsUsed] = useState(0)
-  const [generationsLimit, setGenerationsLimit] = useState(50)
-  const [isEditing, setIsEditing] = useState(false)
+  // Campaign and profile state
+  const [campaignName, setCampaignName] = useState<string>('')
   const [loading, setLoading] = useState(true)
 
+  // Related entities for dropdowns
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>(
+    []
+  )
+  const [factions, setFactions] = useState<Array<{ id: string; name: string }>>(
+    []
+  )
+  const [generationsUsed, setGenerationsUsed] = useState(0)
+  const [generationsLimit, setGenerationsLimit] = useState(50)
+
+  // Local state for managing discoveries/conflicts during review
+  const [reviewDiscoveries, setReviewDiscoveries] = useState<Discovery[]>([])
+  const [reviewConflicts, setReviewConflicts] = useState<Conflict[]>([])
+
+  // The forge hook
+  const forge = useForge<NpcInputData, GeneratedNPC>({
+    campaignId,
+    forgeType: 'npc',
+    generateFn: async (input) => {
+      // Call existing API endpoint with existing format
+      const response = await fetch('/api/generate/npc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId, inputs: input }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Generation failed')
+      }
+
+      // Update generation count from response
+      if (data.generationsUsed !== undefined) {
+        setGenerationsUsed(data.generationsUsed)
+      }
+
+      return data.npc
+    },
+    getTextContent: (output) => {
+      // Extract all text fields for entity scanning
+      return extractTextForScanning({
+        appearance: output.appearance,
+        personality: output.personality,
+        voiceAndMannerisms: output.voiceAndMannerisms,
+        motivation: output.motivation,
+        secret: output.secret,
+        plotHook: output.plotHook,
+        loot: output.loot,
+        connectionHooks: output.connectionHooks,
+      })
+    },
+  })
+
+  // Sync scan results to local review state
   useEffect(() => {
-    const fetchData = async (): Promise<void> => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+    if (forge.scanResult) {
+      setReviewDiscoveries(forge.scanResult.discoveries)
+      setReviewConflicts(forge.scanResult.conflicts)
+    }
+  }, [forge.scanResult])
+
+  // Fetch initial data
+  useEffect(() => {
+    async function fetchData(): Promise<void> {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
       if (!user) {
-        window.location.href = '/login'
+        router.push('/login')
         return
       }
 
@@ -61,11 +126,11 @@ export default function NPCForgePage(): JSX.Element {
         .single()
 
       if (campaignError || !campaignData) {
-        window.location.href = '/dashboard'
+        router.push('/dashboard')
         return
       }
 
-      setCampaign(campaignData)
+      setCampaignName(campaignData.name)
 
       // Fetch profile for generation counts
       const { data: profileData } = await supabase
@@ -75,56 +140,93 @@ export default function NPCForgePage(): JSX.Element {
         .single()
 
       if (profileData) {
-        setGenerationsUsed(profileData.generations_used || 0)
-        const tier = profileData.subscription_tier || 'free'
+        setGenerationsUsed((profileData as Profile).generations_used || 0)
+        const tier = (profileData as Profile).subscription_tier || 'free'
         setGenerationsLimit(GENERATION_LIMITS[tier] || 50)
       }
+
+      // Fetch locations for dropdown
+      const { data: locationData } = await supabase
+        .from('entities')
+        .select('id, name')
+        .eq('campaign_id', campaignId)
+        .eq('entity_type', 'location')
+        .is('deleted_at', null)
+        .order('name')
+
+      if (locationData) setLocations(locationData)
+
+      // Fetch factions for dropdown
+      const { data: factionData } = await supabase
+        .from('entities')
+        .select('id, name')
+        .eq('campaign_id', campaignId)
+        .eq('entity_type', 'faction')
+        .is('deleted_at', null)
+        .order('name')
+
+      if (factionData) setFactions(factionData)
 
       setLoading(false)
     }
 
     fetchData()
-  }, [campaignId])
+  }, [campaignId, supabase, router])
 
-  const handleGenerate = async (inputs: NPCInputs): Promise<void> => {
-    setIsGenerating(true)
-    setLastInputs(inputs)
-    setGeneratedNPC(null)
-    setIsEditing(false)
+  // Handle discovery actions
+  const handleDiscoveryAction = (
+    discoveryId: string,
+    action: Discovery['status'],
+    linkedEntityId?: string
+  ): void => {
+    setReviewDiscoveries((prev) =>
+      prev.map((d) =>
+        d.id === discoveryId ? { ...d, status: action, linkedEntityId } : d
+      )
+    )
+  }
 
+  // Handle conflict resolutions
+  const handleConflictResolution = (
+    conflictId: string,
+    resolution: Conflict['resolution']
+  ): void => {
+    setReviewConflicts((prev) =>
+      prev.map((c) => (c.id === conflictId ? { ...c, resolution } : c))
+    )
+  }
+
+  // Handle commit
+  const handleCommit = async (): Promise<void> => {
+    if (!forge.output) return
+
+    const result = await forge.handleCommit({
+      discoveries: reviewDiscoveries,
+      conflicts: reviewConflicts,
+    })
+
+    if (result.success && result.entity) {
+      toast.success('NPC saved to Memory!')
+      // Navigate to the new entity
+      const entity = result.entity as { id: string }
+      router.push(
+        `/dashboard/campaigns/${campaignId}/memory/${entity.id}`
+      )
+    } else if (result.error) {
+      toast.error(result.error)
+    }
+  }
+
+  // Handle generation with toast
+  const handleGenerate = async (input: NpcInputData): Promise<void> => {
     try {
-      const response = await fetch('/api/generate/npc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaignId, inputs }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Generation failed')
-      }
-
-      setGeneratedNPC(data.npc)
-      setGenerationsUsed(data.generationsUsed)
+      await forge.handleGenerate(input)
       toast.success('NPC generated successfully!')
     } catch (error) {
-      console.error('Generation error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to generate NPC')
-    } finally {
-      setIsGenerating(false)
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to generate NPC'
+      )
     }
-  }
-
-  const handleRegenerate = async (): Promise<void> => {
-    if (lastInputs) {
-      await handleGenerate(lastInputs)
-    }
-  }
-
-  const handleSaved = (entityId: string): void => {
-    // Optionally navigate to the entity or show option to generate another
-    console.log('Saved entity:', entityId)
   }
 
   if (loading) {
@@ -140,124 +242,58 @@ export default function NPCForgePage(): JSX.Element {
     )
   }
 
+  const generationsRemaining = generationsLimit - generationsUsed
+
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <Button variant="ghost" asChild className="mb-4">
-            <Link href={`/dashboard/campaigns/${campaignId}`}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to {campaign?.name || 'Campaign'}
-            </Link>
-          </Button>
-
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-lg bg-primary/10">
-              <Sparkles className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">NPC Forge</h1>
-              <p className="text-muted-foreground">
-                Generate unique NPCs for your campaign
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Input Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Input</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <NPCInputForm
-                onGenerate={handleGenerate}
-                isGenerating={isGenerating}
-                generationsUsed={generationsUsed}
-                generationsLimit={generationsLimit}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Output Display */}
-          <div className="space-y-4">
-            {isGenerating && (
-              <Card>
-                <CardContent className="py-12">
-                  <div className="flex flex-col items-center justify-center gap-4">
-                    <div className="relative">
-                      <div className="w-16 h-16 border-4 border-primary/20 rounded-full" />
-                      <div className="absolute inset-0 w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                    </div>
-                    <p className="text-muted-foreground">Forging your NPC...</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {!isGenerating && generatedNPC && (
-              <>
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle>Generated NPC</CardTitle>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsEditing(!isEditing)}
-                        >
-                          <Pencil className="w-4 h-4 mr-1" />
-                          {isEditing ? 'Done Editing' : 'Edit'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRegenerate}
-                        >
-                          <RefreshCw className="w-4 h-4 mr-1" />
-                          Regenerate
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <NPCOutputDisplay
-                      npc={generatedNPC}
-                      isEditing={isEditing}
-                      onUpdate={setGeneratedNPC}
-                    />
-                  </CardContent>
-                </Card>
-
-                <div className="flex gap-4 justify-end">
-                  <SaveToMemoryButton
-                    npc={generatedNPC}
-                    campaignId={campaignId}
-                    onSaved={handleSaved}
-                  />
-                </div>
-              </>
-            )}
-
-            {!isGenerating && !generatedNPC && (
-              <Card className="h-full min-h-[400px]">
-                <CardContent className="h-full flex flex-col items-center justify-center text-center p-8">
-                  <div className="p-4 rounded-full bg-muted mb-4">
-                    <Sparkles className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">Ready to Forge</h3>
-                  <p className="text-muted-foreground max-w-sm">
-                    Fill in the details on the left and click &quot;Generate NPC&quot; to create a unique character for your campaign.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <ForgeShell
+      title="NPC Forge"
+      description="Generate unique NPCs with personality, secrets, and plot hooks"
+      status={forge.status}
+      backHref={`/dashboard/campaigns/${campaignId}`}
+      backLabel={`Back to ${campaignName}`}
+      inputSection={
+        <NpcInputForm
+          onSubmit={handleGenerate}
+          isLocked={forge.status !== 'idle' && forge.status !== 'error'}
+          preValidation={forge.preValidation}
+          onProceedAnyway={forge.proceedAnyway}
+          existingLocations={locations}
+          existingFactions={factions}
+          generationsRemaining={generationsRemaining}
+          generationsLimit={generationsLimit}
+        />
+      }
+      outputSection={
+        forge.output ? (
+          <NpcOutputCard
+            data={forge.output}
+            scanResult={forge.scanResult}
+            campaignId={campaignId}
+            onDiscoveryAction={handleDiscoveryAction}
+          />
+        ) : (
+          <EmptyForgeState
+            forgeType="NPC"
+            description='Enter the NPC&apos;s role on the left and click "Generate NPC" to bring them to life.'
+          />
+        )
+      }
+      commitPanel={
+        (forge.status === 'review' || forge.status === 'saving') && forge.scanResult ? (
+          <CommitPanel
+            scanResult={{
+              ...forge.scanResult,
+              discoveries: reviewDiscoveries,
+              conflicts: reviewConflicts,
+            }}
+            onDiscoveryAction={handleDiscoveryAction}
+            onConflictResolution={handleConflictResolution}
+            onCommit={handleCommit}
+            onDiscard={forge.reset}
+            isCommitting={forge.status === 'saving'}
+          />
+        ) : undefined
+      }
+    />
   )
 }
