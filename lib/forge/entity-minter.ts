@@ -68,6 +68,11 @@ interface CommitContext {
   discoveries: Discovery[]
   conflicts: Conflict[]
   createdStubs: StubCreationResult[]
+  metadata?: {
+    ownerId?: string
+    locationId?: string
+    factionId?: string
+  }
 }
 
 // Maps forge type to entity type
@@ -143,6 +148,41 @@ export async function saveForgedEntity(
       relationship_type: 'related_to',
       description: `Discovered via ${forgeType} forge`,
     })
+  }
+
+  // Create metadata-based relationships (owner, location, faction)
+  if (context.metadata) {
+    const { ownerId, locationId, factionId } = context.metadata
+
+    if (ownerId) {
+      await supabase.from('relationships').insert({
+        campaign_id: campaignId,
+        source_id: savedEntity.id,
+        target_id: ownerId,
+        relationship_type: 'owned_by',
+        description: `Assigned owner from ${forgeType} forge`,
+      })
+    }
+
+    if (locationId) {
+      await supabase.from('relationships').insert({
+        campaign_id: campaignId,
+        source_id: savedEntity.id,
+        target_id: locationId,
+        relationship_type: 'located_in',
+        description: `Assigned location from ${forgeType} forge`,
+      })
+    }
+
+    if (factionId) {
+      await supabase.from('relationships').insert({
+        campaign_id: campaignId,
+        source_id: savedEntity.id,
+        target_id: factionId,
+        relationship_type: 'member_of',
+        description: `Assigned faction from ${forgeType} forge`,
+      })
+    }
   }
 
   return savedEntity

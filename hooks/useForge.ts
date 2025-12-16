@@ -110,6 +110,11 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
     async (decisions: {
       discoveries: Discovery[] // With updated status (create_stub, link_existing, ignore)
       conflicts: Conflict[] // With updated resolution
+      metadata?: {
+        ownerId?: string
+        locationId?: string
+        factionId?: string
+      }
     }): Promise<CommitResult> => {
       setState((prev) => ({ ...prev, status: 'saving' }))
 
@@ -125,6 +130,14 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
           forgeType
         )
 
+        // Extract metadata from input if not provided explicitly
+        const inputData = state.input as Record<string, unknown> | null
+        const metadata = decisions.metadata || {
+          ownerId: inputData?.ownerId as string | undefined,
+          locationId: inputData?.locationId as string | undefined,
+          factionId: inputData?.factionId as string | undefined,
+        }
+
         // Save the main entity
         const savedEntity = await saveForgedEntity(
           supabase,
@@ -135,6 +148,7 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
             discoveries: decisions.discoveries,
             conflicts: decisions.conflicts,
             createdStubs,
+            metadata,
           }
         )
 
@@ -151,7 +165,7 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
         return { success: false, error: errorMessage }
       }
     },
-    [campaignId, forgeType, state.output, supabase]
+    [campaignId, forgeType, state.input, state.output, supabase]
   )
 
   // Reset to start over

@@ -268,16 +268,16 @@ export function RelationshipDisplay({
               return (
                 <div
                   key={rel.id}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
+                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
                 >
                   <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
                     {rel.relationshipLabel}
                   </span>
                   <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                   <Link
                     href={`/dashboard/campaigns/${campaignId}/memory/${rel.otherEntity?.id}`}
-                    className="font-medium text-foreground hover:text-primary transition-colors"
+                    className="font-medium text-foreground hover:text-primary transition-colors truncate min-w-0"
                   >
                     {rel.otherEntity?.name}
                   </Link>
@@ -290,7 +290,7 @@ export function RelationshipDisplay({
                     type="button"
                     onClick={() => handleDelete(rel)}
                     disabled={isDeleting}
-                    className="ml-auto opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50"
+                    className="ml-auto flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50"
                     title="Delete relationship"
                   >
                     {isDeleting ? (

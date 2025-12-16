@@ -53,6 +53,7 @@ const ITEM_TYPES = [
   { value: 'let_ai_decide', label: 'Let AI decide' },
   { value: 'weapon', label: 'Weapon' },
   { value: 'armor', label: 'Armor' },
+  { value: 'ring', label: 'Ring' },
   { value: 'potion', label: 'Potion' },
   { value: 'scroll', label: 'Scroll' },
   { value: 'wondrous_item', label: 'Wondrous Item' },

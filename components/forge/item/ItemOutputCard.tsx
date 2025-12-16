@@ -81,6 +81,7 @@ const RARITY_LABELS: Record<string, string> = {
 const ITEM_TYPE_LABELS: Record<string, string> = {
   weapon: 'Weapon',
   armor: 'Armor',
+  ring: 'Ring',
   potion: 'Potion',
   scroll: 'Scroll',
   wondrous_item: 'Wondrous Item',
