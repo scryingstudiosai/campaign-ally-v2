@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Link2 } from 'lucide-react'
+import { Loader2, Link2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { EntityTypeBadge, EntityType } from './entity-type-badge'
 
@@ -222,44 +222,51 @@ export function AddRelationshipModal({
                     setTargetEntityId('')
                     setSearchTerm('')
                   }}
+                  className="h-6 px-2"
                 >
-                  Change
+                  <X className="w-4 h-4" />
                 </Button>
               </div>
             ) : (
-              // Show search and list
+              // Show search input with dropdown results
               <>
                 <Input
-                  placeholder="Search entities..."
+                  placeholder="Type to search entities..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="mb-2"
                 />
-                <div className="max-h-[200px] overflow-y-auto border rounded-md">
-                  {loading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : filteredEntities.length === 0 ? (
-                    <div className="py-4 text-center text-sm text-muted-foreground">
-                      {entities.length === 0 ? 'No other entities in this campaign' : 'No matching entities'}
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-border">
-                      {filteredEntities.map((entity) => (
-                        <button
-                          key={entity.id}
-                          type="button"
-                          onClick={() => setTargetEntityId(entity.id)}
-                          className="w-full flex items-center justify-between p-2 hover:bg-muted/50 transition-colors text-left"
-                        >
-                          <span className="font-medium">{entity.name}</span>
-                          <EntityTypeBadge type={entity.entity_type} size="sm" showIcon={false} />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {loading ? (
+                  <div className="flex items-center justify-center py-4 border rounded-md">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : searchTerm ? (
+                  <div className="max-h-[200px] overflow-y-auto border rounded-md">
+                    {filteredEntities.length === 0 ? (
+                      <div className="py-4 text-center text-sm text-muted-foreground">
+                        No entities found
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-border">
+                        {filteredEntities.slice(0, 10).map((entity) => (
+                          <button
+                            key={entity.id}
+                            type="button"
+                            onClick={() => {
+                              setTargetEntityId(entity.id)
+                              setSearchTerm('')
+                            }}
+                            className="w-full flex items-center justify-between p-2 hover:bg-muted/50 transition-colors text-left"
+                          >
+                            <span className="font-medium">{entity.name}</span>
+                            <EntityTypeBadge type={entity.entity_type} size="sm" showIcon={false} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : entities.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No other entities in this campaign</p>
+                ) : null}
               </>
             )}
           </div>
