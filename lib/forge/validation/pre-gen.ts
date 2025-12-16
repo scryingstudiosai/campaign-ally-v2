@@ -157,14 +157,18 @@ export async function validatePreGeneration(
   }
 
   // 4. CODEX CONFLICT CHECK
-  const { data: campaign } = await supabase
-    .from('campaigns')
-    .select('codex')
-    .eq('id', campaignId)
+  const { data: codexData, error: codexError } = await supabase
+    .from('codex')
+    .select('*')
+    .eq('campaign_id', campaignId)
     .single()
 
-  if (campaign?.codex) {
-    const codex = campaign.codex as Record<string, unknown>
+  if (codexError) {
+    console.log('Codex fetch:', codexError.code === 'PGRST116' ? 'No codex found' : codexError.message)
+  }
+
+  if (codexData) {
+    const codex = codexData as Record<string, unknown>
 
     // Check naming conventions
     const namingConventions = codex.naming_conventions as Record<string, unknown> | undefined
@@ -190,8 +194,8 @@ export async function validatePreGeneration(
   }
 
   // 5. CODEX CONTENT VALIDATION
-  if (campaign?.codex) {
-    const codex = campaign.codex as CampaignCodex
+  if (codexData) {
+    const codex = codexData as CampaignCodex
     const codexValidation = validateAgainstCodex(input as Record<string, unknown>, codex)
     if (!codexValidation.isValid) {
       for (const warning of codexValidation.warnings) {

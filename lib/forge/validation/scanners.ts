@@ -256,6 +256,9 @@ export function extractProperNouns(
   text: string,
   excludeEntityName?: string
 ): PotentialEntity[] {
+  // Clean the text first - remove excessive whitespace/newlines
+  const cleanedText = text.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim()
+
   const results: PotentialEntity[] = []
   const excludeLower = excludeEntityName?.toLowerCase()
 
@@ -267,7 +270,7 @@ export function extractProperNouns(
   const sentenceStartPattern = /(?:^|[.!?]\s+)([A-Z][a-z]+)/g
   const sentenceStarters = new Set<string>()
   let starterMatch
-  while ((starterMatch = sentenceStartPattern.exec(text)) !== null) {
+  while ((starterMatch = sentenceStartPattern.exec(cleanedText)) !== null) {
     sentenceStarters.add(starterMatch[1].toLowerCase())
   }
   console.log('Detected sentence starters:', [...sentenceStarters])
@@ -276,7 +279,7 @@ export function extractProperNouns(
   const quotedPattern = /"([A-Z][^"]+)"/g
 
   let match
-  while ((match = quotedPattern.exec(text)) !== null) {
+  while ((match = quotedPattern.exec(cleanedText)) !== null) {
     const matchText = match[1].trim()
 
     // Skip if it's the entity being created
@@ -287,8 +290,8 @@ export function extractProperNouns(
 
     // Get surrounding context (50 chars on each side)
     const contextStart = Math.max(0, match.index - 50)
-    const contextEnd = Math.min(text.length, match.index + matchText.length + 50)
-    const context = text.substring(contextStart, contextEnd)
+    const contextEnd = Math.min(cleanedText.length, match.index + matchText.length + 50)
+    const context = cleanedText.substring(contextStart, contextEnd)
 
     results.push({
       text: matchText,
@@ -303,7 +306,7 @@ export function extractProperNouns(
   // First capture titled names (Lord X, Lady Y, etc.)
   const titledNamePattern = /(?:Lord|Lady|King|Queen|Prince|Princess|Duke|Duchess|Baron|Baroness|Count|Countess|Sir|Dame|Master|Captain|Commander|Chief|Elder|High Priest|Archmage)\s+[A-Z][a-z]+(?:\s+(?:the|of)\s+(?:the\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)?/g
 
-  while ((match = titledNamePattern.exec(text)) !== null) {
+  while ((match = titledNamePattern.exec(cleanedText)) !== null) {
     const matchText = match[0].trim()
 
     // Skip if it's the entity being created
@@ -315,8 +318,8 @@ export function extractProperNouns(
 
     // Get surrounding context
     const contextStart = Math.max(0, match.index - 50)
-    const contextEnd = Math.min(text.length, match.index + matchText.length + 50)
-    const context = text.substring(contextStart, contextEnd)
+    const contextEnd = Math.min(cleanedText.length, match.index + matchText.length + 50)
+    const context = cleanedText.substring(contextStart, contextEnd)
 
     results.push({
       text: matchText,
@@ -329,7 +332,7 @@ export function extractProperNouns(
   // Pattern 3: Names with epithets (e.g., "Vorn the Terrible", "Mirella of the Mists")
   const epithetPattern = /[A-Z][a-z]+(?:\s+(?:the|of)\s+(?:the\s+)?[A-Z][a-z]+)+/g
 
-  while ((match = epithetPattern.exec(text)) !== null) {
+  while ((match = epithetPattern.exec(cleanedText)) !== null) {
     const matchText = match[0].trim()
 
     // Skip if it's the entity being created
@@ -344,8 +347,8 @@ export function extractProperNouns(
 
     // Get surrounding context
     const contextStart = Math.max(0, match.index - 50)
-    const contextEnd = Math.min(text.length, match.index + matchText.length + 50)
-    const context = text.substring(contextStart, contextEnd)
+    const contextEnd = Math.min(cleanedText.length, match.index + matchText.length + 50)
+    const context = cleanedText.substring(contextStart, contextEnd)
 
     results.push({
       text: matchText,
@@ -359,7 +362,7 @@ export function extractProperNouns(
   // Matches: "The X Y", "X Y Z", etc. where words are capitalized
   const multiWordPattern = /(?:The\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/g
 
-  while ((match = multiWordPattern.exec(text)) !== null) {
+  while ((match = multiWordPattern.exec(cleanedText)) !== null) {
     const matchText = match[0].trim()
 
     // Skip if it's the entity being created
@@ -378,8 +381,8 @@ export function extractProperNouns(
 
     // Get surrounding context (50 chars on each side)
     const contextStart = Math.max(0, match.index - 50)
-    const contextEnd = Math.min(text.length, match.index + matchText.length + 50)
-    const context = text.substring(contextStart, contextEnd)
+    const contextEnd = Math.min(cleanedText.length, match.index + matchText.length + 50)
+    const context = cleanedText.substring(contextStart, contextEnd)
 
     results.push({
       text: matchText,
@@ -394,7 +397,7 @@ export function extractProperNouns(
   // More restrictive to avoid false positives
   const singleWordPattern = /(?<=[\.\!\?]\s+[A-Z][a-z]+\s+)[A-Z][a-z]{2,}(?=[,\s\.\!\?\'\"])|(?<=[,;:]\s*)[A-Z][a-z]{2,}(?=[,\s\.\!\?\'\"])/g
 
-  while ((match = singleWordPattern.exec(text)) !== null) {
+  while ((match = singleWordPattern.exec(cleanedText)) !== null) {
     const matchText = match[0]
 
     // Skip if it's the entity being created
@@ -411,8 +414,8 @@ export function extractProperNouns(
 
     // Get surrounding context
     const contextStart = Math.max(0, match.index - 50)
-    const contextEnd = Math.min(text.length, match.index + matchText.length + 50)
-    const context = text.substring(contextStart, contextEnd)
+    const contextEnd = Math.min(cleanedText.length, match.index + matchText.length + 50)
+    const context = cleanedText.substring(contextStart, contextEnd)
 
     results.push({
       text: matchText,
@@ -452,7 +455,7 @@ export function extractProperNouns(
   // Look for standalone names (at least 4 chars, capitalized) near NPC context
   const standaloneNamePattern = /\b[A-Z][a-z]{3,}\b/g
 
-  while ((match = standaloneNamePattern.exec(text)) !== null) {
+  while ((match = standaloneNamePattern.exec(cleanedText)) !== null) {
     const matchText = match[0]
 
     // Skip if it's the entity being created
@@ -469,8 +472,8 @@ export function extractProperNouns(
 
     // Get surrounding context (100 chars on each side for better context matching)
     const contextStart = Math.max(0, match.index - 100)
-    const contextEnd = Math.min(text.length, match.index + matchText.length + 100)
-    const context = text.substring(contextStart, contextEnd).toLowerCase()
+    const contextEnd = Math.min(cleanedText.length, match.index + matchText.length + 100)
+    const context = cleanedText.substring(contextStart, contextEnd).toLowerCase()
 
     // Only include if context contains NPC-indicating phrases
     const hasNpcContext = npcContextVerbs.some((verb) => context.includes(verb))
@@ -478,8 +481,8 @@ export function extractProperNouns(
 
     // Get shorter context for the result
     const shortContextStart = Math.max(0, match.index - 50)
-    const shortContextEnd = Math.min(text.length, match.index + matchText.length + 50)
-    const shortContext = text.substring(shortContextStart, shortContextEnd)
+    const shortContextEnd = Math.min(cleanedText.length, match.index + matchText.length + 50)
+    const shortContext = cleanedText.substring(shortContextStart, shortContextEnd)
 
     results.push({
       text: matchText,

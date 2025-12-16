@@ -89,7 +89,17 @@ export function PreValidationAlert({
           ))}
 
           <div className="flex gap-2 mt-4">
-            <Button onClick={onProceedAnyway} variant="outline" size="sm">
+            <Button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onProceedAnyway()
+              }}
+              variant="outline"
+              size="sm"
+              className="relative z-10"
+              type="button"
+            >
               Generate Anyway
             </Button>
           </div>
