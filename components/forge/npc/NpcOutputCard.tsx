@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { InteractiveText } from '@/components/forge/InteractiveText'
+import { SelectionPopover } from '@/components/forge/SelectionPopover'
 import { renderWithBold } from '@/lib/text-utils'
 import type { ScanResult, Discovery } from '@/types/forge'
 import {
@@ -49,6 +50,9 @@ interface NpcOutputCardProps {
   scanResult: ScanResult | null
   campaignId: string
   onDiscoveryAction?: (discoveryId: string, action: Discovery['status']) => void
+  onManualDiscovery?: (text: string, type: string) => void
+  onLinkExisting?: (entityId: string) => void
+  existingEntities?: Array<{ id: string; name: string; type: string }>
 }
 
 export function NpcOutputCard({
@@ -56,8 +60,12 @@ export function NpcOutputCard({
   scanResult,
   campaignId,
   onDiscoveryAction,
+  onManualDiscovery,
+  onLinkExisting,
+  existingEntities,
 }: NpcOutputCardProps): JSX.Element {
   const [viewMode, setViewMode] = useState<'player' | 'dm'>('dm')
+  const contentRef = useRef<HTMLDivElement>(null)
 
   // Render text with interactive links if scan result available, otherwise bold
   const renderText = (text: string | undefined): React.ReactNode => {
@@ -78,7 +86,7 @@ export function NpcOutputCard({
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={contentRef} className="space-y-4">
       {/* Header - Name, DM Slug, Badges */}
       <div className="flex items-start justify-between">
         <div className="text-center flex-1">
@@ -299,6 +307,16 @@ export function NpcOutputCard({
           </ul>
         </CardContent>
       </Card>
+
+      {/* Selection Popover for manual discovery creation */}
+      {onManualDiscovery && (
+        <SelectionPopover
+          containerRef={contentRef}
+          onCreateDiscovery={onManualDiscovery}
+          onSearchExisting={onLinkExisting || (() => {})}
+          existingEntities={existingEntities}
+        />
+      )}
     </div>
   )
 }

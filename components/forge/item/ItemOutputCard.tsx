@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { SelectionPopover } from '@/components/forge/SelectionPopover'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -58,6 +59,9 @@ interface ItemOutputCardProps {
     discoveryId: string,
     action: Discovery['status']
   ) => void
+  onManualDiscovery?: (text: string, type: string) => void
+  onLinkExisting?: (entityId: string) => void
+  existingEntities?: Array<{ id: string; name: string; type: string }>
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -97,8 +101,12 @@ export function ItemOutputCard({
   scanResult,
   campaignId,
   onDiscoveryAction,
+  onManualDiscovery,
+  onLinkExisting,
+  existingEntities,
 }: ItemOutputCardProps): JSX.Element {
   const [viewMode, setViewMode] = useState<'player' | 'dm'>('dm')
+  const contentRef = useRef<HTMLDivElement>(null)
 
   // Render text with interactive links if scan result available, otherwise bold
   const renderText = (text: string | undefined): React.ReactNode => {
@@ -124,7 +132,7 @@ export function ItemOutputCard({
   const vendorPrice = Math.floor(data.value_gp * 0.5)
 
   return (
-    <div className="space-y-4">
+    <div ref={contentRef} className="space-y-4">
       {/* Header - Name and badges */}
       <div className="flex items-start justify-between">
         <div className="text-center flex-1">
@@ -407,6 +415,16 @@ export function ItemOutputCard({
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Selection Popover for manual discovery creation */}
+      {onManualDiscovery && (
+        <SelectionPopover
+          containerRef={contentRef}
+          onCreateDiscovery={onManualDiscovery}
+          onSearchExisting={onLinkExisting || (() => {})}
+          existingEntities={existingEntities}
+        />
+      )}
     </div>
   )
 }

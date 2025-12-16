@@ -48,6 +48,11 @@ export default function ItemForgePage(): JSX.Element {
   const [reviewDiscoveries, setReviewDiscoveries] = useState<Discovery[]>([])
   const [reviewConflicts, setReviewConflicts] = useState<Conflict[]>([])
 
+  // All entities for linking
+  const [allEntities, setAllEntities] = useState<
+    Array<{ id: string; name: string; type: string }>
+  >([])
+
   // The forge hook
   const forge = useForge<ItemInputData, GeneratedItem>({
     campaignId,
@@ -140,6 +145,23 @@ export default function ItemForgePage(): JSX.Element {
     fetchData()
   }, [campaignId, supabase, router])
 
+  // Fetch all entities for linking
+  useEffect(() => {
+    async function fetchEntities(): Promise<void> {
+      const { data } = await supabase
+        .from('entities')
+        .select('id, name, entity_type')
+        .eq('campaign_id', campaignId)
+        .is('deleted_at', null)
+      if (data) {
+        setAllEntities(
+          data.map((e) => ({ id: e.id, name: e.name, type: e.entity_type }))
+        )
+      }
+    }
+    fetchEntities()
+  }, [campaignId, supabase])
+
   // Handle discovery actions
   const handleDiscoveryAction = (
     discoveryId: string,
@@ -173,6 +195,34 @@ export default function ItemForgePage(): JSX.Element {
     setReviewConflicts((prev) =>
       prev.map((c) => (c.id === conflictId ? { ...c, resolution } : c))
     )
+  }
+
+  // Handle manual discovery creation from text selection
+  const handleManualDiscovery = (text: string, type: string): void => {
+    const newDiscovery: Discovery = {
+      id: `manual-${Date.now()}`,
+      text,
+      suggestedType: type as EntityType,
+      context: 'Manually selected by user',
+      status: 'pending',
+    }
+    setReviewDiscoveries((prev) => [...prev, newDiscovery])
+  }
+
+  // Handle linking to existing entity from text selection
+  const handleLinkExisting = (entityId: string): void => {
+    const entity = allEntities.find((e) => e.id === entityId)
+    if (entity) {
+      const newDiscovery: Discovery = {
+        id: `link-${Date.now()}`,
+        text: entity.name,
+        suggestedType: entity.type as EntityType,
+        context: 'Manually linked by user',
+        status: 'link_existing',
+        linkedEntityId: entityId,
+      }
+      setReviewDiscoveries((prev) => [...prev, newDiscovery])
+    }
   }
 
   // Handle commit
@@ -248,6 +298,9 @@ export default function ItemForgePage(): JSX.Element {
             scanResult={forge.scanResult}
             campaignId={campaignId}
             onDiscoveryAction={handleDiscoveryAction}
+            onManualDiscovery={handleManualDiscovery}
+            onLinkExisting={handleLinkExisting}
+            existingEntities={allEntities}
           />
         ) : (
           <EmptyForgeState
