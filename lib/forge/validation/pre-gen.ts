@@ -8,6 +8,8 @@ import type {
   Conflict,
   BaseForgeInput,
 } from '@/types/forge'
+import { validateAgainstCodex } from '../codex-validator'
+import type { CampaignCodex } from '../prompt-builder'
 
 interface NPCInput extends BaseForgeInput {
   role?: string
@@ -183,6 +185,20 @@ export async function validatePreGeneration(
         warnings.push(
           `Faction "${npcInput.faction}" is not in the codex. Consider adding it.`
         )
+      }
+    }
+  }
+
+  // 5. CODEX CONTENT VALIDATION
+  if (campaign?.codex) {
+    const codex = campaign.codex as CampaignCodex
+    const codexValidation = validateAgainstCodex(input as Record<string, unknown>, codex)
+    if (!codexValidation.isValid) {
+      for (const warning of codexValidation.warnings) {
+        warnings.push(warning)
+      }
+      for (const suggestion of codexValidation.suggestions) {
+        warnings.push(`Suggestion: ${suggestion}`)
       }
     }
   }
