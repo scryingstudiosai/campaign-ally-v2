@@ -122,8 +122,8 @@ export function NpcInputForm({
   const [personalityHints, setPersonalityHints] = useState('')
   const [voiceReference, setVoiceReference] = useState('')
   const [additionalRequirements, setAdditionalRequirements] = useState('')
-  const [locationId, setLocationId] = useState('')
-  const [factionId, setFactionId] = useState('')
+  const [locationId, setLocationId] = useState('none')
+  const [factionId, setFactionId] = useState('none')
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()
@@ -137,8 +137,8 @@ export function NpcInputForm({
       personalityHints: personalityHints.trim() || undefined,
       voiceReference: voiceReference.trim() || undefined,
       additionalRequirements: additionalRequirements.trim() || undefined,
-      locationId: locationId || undefined,
-      factionId: factionId || undefined,
+      locationId: locationId === 'none' ? undefined : locationId,
+      factionId: factionId === 'none' ? undefined : factionId,
     })
   }
 
@@ -317,7 +317,7 @@ export function NpcInputForm({
               <SelectValue placeholder="Select a location..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No specific location</SelectItem>
+              <SelectItem value="none">No specific location</SelectItem>
               {existingLocations.map((loc) => (
                 <SelectItem key={loc.id} value={loc.id}>
                   {loc.name}
@@ -341,7 +341,7 @@ export function NpcInputForm({
               <SelectValue placeholder="Select a faction..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No faction affiliation</SelectItem>
+              <SelectItem value="none">No faction affiliation</SelectItem>
               {existingFactions.map((fac) => (
                 <SelectItem key={fac.id} value={fac.id}>
                   {fac.name}
