@@ -33,6 +33,12 @@ export function InteractiveText({
     name: string
   } | null>(null)
 
+  // DEBUG: Log what we receive
+  console.log('InteractiveText received:')
+  console.log('- text:', text?.substring(0, 100))
+  console.log('- existingEntityMentions:', scanResult?.existingEntityMentions)
+  console.log('- discoveries:', scanResult?.discoveries?.map(d => d.text))
+
   // Build a map of all text ranges that need special rendering
   const segments = buildSegments(text, scanResult)
 
@@ -173,13 +179,19 @@ function buildSegments(text: string, scanResult: ScanResult): Segment[] {
     data: ScanResult['existingEntityMentions'][0] | Discovery
   }> = []
 
+  // For existing entities, search for their name in this specific text
+  // (startIndex/endIndex are from combined text, not this field)
   for (const entity of scanResult.existingEntityMentions) {
-    markers.push({
-      start: entity.startIndex,
-      end: entity.endIndex,
-      type: 'existing',
-      data: entity,
-    })
+    const index = text.indexOf(entity.name)
+    if (index !== -1) {
+      markers.push({
+        start: index,
+        end: index + entity.name.length,
+        type: 'existing',
+        data: entity,
+      })
+      console.log(`Found existing entity "${entity.name}" at index ${index}`)
+    }
   }
 
   for (const discovery of scanResult.discoveries) {

@@ -10,7 +10,6 @@ import {
   LOCATION_INDICATORS,
   FACTION_INDICATORS,
   ITEM_INDICATORS,
-  IGNORED_TERMS,
 } from './blocklist'
 
 export interface PotentialEntity {
@@ -490,21 +489,21 @@ export function extractProperNouns(
     })
   }
 
-  // Deduplicate by text (case-insensitive) and filter out sentence starters in blocklist
+  // Deduplicate by text (case-insensitive) and filter out blocklisted terms
   const seen = new Set<string>()
   return results.filter((r) => {
     const key = r.text.toLowerCase()
     if (seen.has(key)) return false
     seen.add(key)
 
-    // Skip if it's a sentence starter AND in blocklist
-    if (sentenceStarters.has(key) && IGNORED_TERMS.has(key)) {
+    // Skip if it's a sentence starter AND in blocklist (case-insensitive)
+    if (sentenceStarters.has(key) && shouldIgnoreTerm(r.text)) {
       console.log(`Filtering sentence starter in blocklist: "${r.text}"`)
       return false
     }
 
-    // Skip if single word and in blocklist
-    if (!r.text.includes(' ') && IGNORED_TERMS.has(key)) {
+    // Skip if single word and in blocklist (case-insensitive)
+    if (!r.text.includes(' ') && shouldIgnoreTerm(r.text)) {
       console.log(`Filtering single word in blocklist: "${r.text}"`)
       return false
     }
