@@ -21,10 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Link2, ArrowLeftRight } from 'lucide-react'
+import { Loader2, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { EntityTypeBadge, EntityType } from './entity-type-badge'
-import { cn } from '@/lib/utils'
 
 interface Entity {
   id: string
@@ -109,7 +108,6 @@ export function AddRelationshipModal({
   const [targetEntityId, setTargetEntityId] = useState<string>('')
   const [relationshipType, setRelationshipType] = useState<string>('')
   const [description, setDescription] = useState('')
-  const [bidirectional, setBidirectional] = useState(false)
 
   // Fetch entities
   useEffect(() => {
@@ -156,7 +154,7 @@ export function AddRelationshipModal({
     try {
       const supabase = createClient()
 
-      // Create the relationship
+      // Create ONE relationship row - display logic handles perspective
       const { error: relationshipError } = await supabase
         .from('relationships')
         .insert({
@@ -169,30 +167,6 @@ export function AddRelationshipModal({
 
       if (relationshipError) throw relationshipError
 
-      // Create reverse relationship if bidirectional
-      // Skip for symmetric relationships (where reverse type equals original type)
-      if (bidirectional) {
-        const reverseType = getReverseRelationshipType(relationshipType)
-
-        // Only create reverse if it's a different type (asymmetric relationship)
-        // Symmetric types like "knows", "friend", "enemy" don't need a second row
-        if (reverseType !== relationshipType) {
-          const { error: reverseError } = await supabase
-            .from('relationships')
-            .insert({
-              campaign_id: campaignId,
-              source_id: targetEntityId,
-              target_id: sourceEntityId,
-              relationship_type: reverseType,
-              description: description.trim() || null,
-            })
-
-          if (reverseError) {
-            console.error('Failed to create reverse relationship:', reverseError)
-          }
-        }
-      }
-
       toast.success('Relationship added')
       onOpenChange(false)
       router.refresh()
@@ -201,7 +175,6 @@ export function AddRelationshipModal({
       setTargetEntityId('')
       setRelationshipType('')
       setDescription('')
-      setBidirectional(false)
       setSearchTerm('')
     } catch (error) {
       console.error('Failed to create relationship:', error)
@@ -366,21 +339,6 @@ export function AddRelationshipModal({
               placeholder="e.g., secretly resents, old war buddy"
             />
           </div>
-
-          {/* Bidirectional */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="bidirectional"
-              checked={bidirectional}
-              onChange={(e) => setBidirectional(e.target.checked)}
-              className="rounded border-input"
-            />
-            <Label htmlFor="bidirectional" className="flex items-center gap-2 cursor-pointer">
-              <ArrowLeftRight className="w-4 h-4 text-muted-foreground" />
-              Create reverse relationship too
-            </Label>
-          </div>
         </div>
 
         <DialogFooter>
@@ -404,42 +362,4 @@ export function AddRelationshipModal({
       </DialogContent>
     </Dialog>
   )
-}
-
-function getReverseRelationshipType(type: string): string {
-  const reverseMap: Record<string, string> = {
-    // Professional
-    employs: 'serves',
-    serves: 'employs',
-    leads: 'member_of',
-    member_of: 'leads',
-    student_of: 'mentor_of',
-    mentor_of: 'student_of',
-    // Personal
-    parent_of: 'child_of',
-    child_of: 'parent_of',
-    // Spatial
-    located_in: 'contains',
-    contains: 'located_in',
-    owns: 'owned_by',
-    owned_by: 'owns',
-    // Divine
-    worships: 'deity_of',
-    deity_of: 'worships',
-    // Duty
-    protects: 'guarded_by',
-    guarded_by: 'protects',
-    // Intrigue
-    debt_to: 'creditor_of',
-    creditor_of: 'debt_to',
-    blackmails: 'blackmailed_by',
-    blackmailed_by: 'blackmails',
-    // History
-    creator_of: 'created_by',
-    created_by: 'creator_of',
-    // Quest
-    seeks: 'sought_by',
-    sought_by: 'seeks',
-  }
-  return reverseMap[type] || type
 }

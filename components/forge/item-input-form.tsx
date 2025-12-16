@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Sparkles, Dices, MapPin, User } from 'lucide-react'
+import { Loader2, Sparkles, Dices, MapPin, User, X } from 'lucide-react'
 
 interface Entity {
   id: string
@@ -126,10 +126,12 @@ export function ItemInputForm({
   const [locationId, setLocationId] = useState<string>('none')
   const [additionalRequirements, setAdditionalRequirements] = useState('')
 
-  // Entity lists for dropdowns
+  // Entity lists for search boxes
   const [locations, setLocations] = useState<Entity[]>([])
   const [npcs, setNpcs] = useState<Entity[]>([])
   const [loadingEntities, setLoadingEntities] = useState(true)
+  const [ownerSearch, setOwnerSearch] = useState('')
+  const [locationSearch, setLocationSearch] = useState('')
 
   // Fetch entities on mount
   useEffect(() => {
@@ -349,43 +351,127 @@ export function ItemInputForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="owner" className="flex items-center gap-1">
+          <Label className="flex items-center gap-1">
             <User className="w-3 h-3" />
             Owner (optional)
           </Label>
-          <Select value={ownerId} onValueChange={setOwnerId} disabled={isGenerating || loadingEntities}>
-            <SelectTrigger id="owner">
-              <SelectValue placeholder="Select owner..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No owner</SelectItem>
-              {npcs.map((npc) => (
-                <SelectItem key={npc.id} value={npc.id}>
-                  {npc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {ownerId !== 'none' ? (
+            <div className="flex items-center justify-between p-2 border rounded-md bg-primary/10">
+              <span className="text-sm font-medium">
+                {npcs.find(n => n.id === ownerId)?.name}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setOwnerId('none')
+                  setOwnerSearch('')
+                }}
+                disabled={isGenerating}
+                className="h-6 px-2"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Input
+                placeholder="Search NPCs..."
+                value={ownerSearch}
+                onChange={(e) => setOwnerSearch(e.target.value)}
+                disabled={isGenerating || loadingEntities}
+                className="h-8 text-sm"
+              />
+              {ownerSearch && (
+                <div className="max-h-[120px] overflow-y-auto border rounded-md">
+                  {npcs
+                    .filter(n => n.name.toLowerCase().includes(ownerSearch.toLowerCase()))
+                    .slice(0, 5)
+                    .map((npc) => (
+                      <button
+                        key={npc.id}
+                        type="button"
+                        onClick={() => {
+                          setOwnerId(npc.id)
+                          setOwnerSearch('')
+                        }}
+                        className="w-full p-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                      >
+                        {npc.name}
+                      </button>
+                    ))}
+                  {npcs.filter(n => n.name.toLowerCase().includes(ownerSearch.toLowerCase())).length === 0 && (
+                    <div className="p-2 text-xs text-muted-foreground text-center">
+                      No NPCs found
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="location" className="flex items-center gap-1">
+          <Label className="flex items-center gap-1">
             <MapPin className="w-3 h-3" />
             Location (optional)
           </Label>
-          <Select value={locationId} onValueChange={setLocationId} disabled={isGenerating || loadingEntities}>
-            <SelectTrigger id="location">
-              <SelectValue placeholder="Select location..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No location</SelectItem>
-              {locations.map((loc) => (
-                <SelectItem key={loc.id} value={loc.id}>
-                  {loc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {locationId !== 'none' ? (
+            <div className="flex items-center justify-between p-2 border rounded-md bg-primary/10">
+              <span className="text-sm font-medium">
+                {locations.find(l => l.id === locationId)?.name}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setLocationId('none')
+                  setLocationSearch('')
+                }}
+                disabled={isGenerating}
+                className="h-6 px-2"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Input
+                placeholder="Search locations..."
+                value={locationSearch}
+                onChange={(e) => setLocationSearch(e.target.value)}
+                disabled={isGenerating || loadingEntities}
+                className="h-8 text-sm"
+              />
+              {locationSearch && (
+                <div className="max-h-[120px] overflow-y-auto border rounded-md">
+                  {locations
+                    .filter(l => l.name.toLowerCase().includes(locationSearch.toLowerCase()))
+                    .slice(0, 5)
+                    .map((loc) => (
+                      <button
+                        key={loc.id}
+                        type="button"
+                        onClick={() => {
+                          setLocationId(loc.id)
+                          setLocationSearch('')
+                        }}
+                        className="w-full p-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                      >
+                        {loc.name}
+                      </button>
+                    ))}
+                  {locations.filter(l => l.name.toLowerCase().includes(locationSearch.toLowerCase())).length === 0 && (
+                    <div className="p-2 text-xs text-muted-foreground text-center">
+                      No locations found
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

@@ -21,6 +21,7 @@ import {
   ScrollText,
   History,
 } from 'lucide-react'
+import { renderWithBold } from '@/lib/text-utils'
 
 export interface GeneratedItem {
   name: string
@@ -85,27 +86,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   treasure: 'Treasure',
   tool: 'Tool',
   material: 'Material',
-}
-
-// Parse markdown bold syntax and render as JSX
-function renderWithBold(text: string | undefined | null): JSX.Element {
-  if (!text) return <></>
-
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  return (
-    <>
-      {parts.map((part, index) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return (
-            <strong key={index} className="text-foreground font-semibold">
-              {part.slice(2, -2)}
-            </strong>
-          )
-        }
-        return <span key={index}>{part}</span>
-      })}
-    </>
-  )
 }
 
 export function ItemOutputDisplay({ item, isEditing = false, onUpdate }: ItemOutputDisplayProps): JSX.Element {

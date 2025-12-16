@@ -143,6 +143,48 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
   related_to: 'Related to',
 }
 
+// Maps a relationship type to its reverse (for display from the target's perspective)
+const REVERSE_RELATIONSHIP_TYPES: Record<string, string> = {
+  // Symmetric relationships (same both ways)
+  knows: 'knows',
+  friend: 'friend',
+  enemy: 'enemy',
+  rival: 'rival',
+  sibling_of: 'sibling_of',
+  spouse_of: 'spouse_of',
+  lover: 'lover',
+  related_to: 'related_to',
+  // Asymmetric relationships (different label for reverse)
+  parent_of: 'child_of',
+  child_of: 'parent_of',
+  employs: 'serves',
+  serves: 'employs',
+  leads: 'member_of',
+  member_of: 'leads',
+  student_of: 'mentor_of',
+  mentor_of: 'student_of',
+  located_in: 'contains',
+  contains: 'located_in',
+  owns: 'owned_by',
+  owned_by: 'owns',
+  worships: 'deity_of',
+  deity_of: 'worships',
+  protects: 'guarded_by',
+  guarded_by: 'protects',
+  debt_to: 'creditor_of',
+  creditor_of: 'debt_to',
+  blackmails: 'blackmailed_by',
+  blackmailed_by: 'blackmails',
+  creator_of: 'created_by',
+  created_by: 'creator_of',
+  seeks: 'sought_by',
+  sought_by: 'seeks',
+}
+
+function getReverseRelationshipType(type: string): string {
+  return REVERSE_RELATIONSHIP_TYPES[type] || type
+}
+
 export function RelationshipDisplay({
   relationships,
   currentEntityId,
@@ -152,18 +194,23 @@ export function RelationshipDisplay({
   const router = useRouter()
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Process relationships to show the "other" entity
+  // Process relationships to show the "other" entity with correct perspective
   const processedRelationships = relationships.map((rel) => {
     const isSource = rel.source_id === currentEntityId
     const otherEntity = isSource ? rel.target_entity : rel.source_entity
-    const relationshipLabel = isSource
-      ? RELATIONSHIP_LABELS[rel.relationship_type] || rel.relationship_type
-      : `${RELATIONSHIP_LABELS[rel.relationship_type] || rel.relationship_type} (reverse)`
+
+    // Get the correct relationship type for this perspective
+    const displayType = isSource
+      ? rel.relationship_type
+      : getReverseRelationshipType(rel.relationship_type)
+
+    const relationshipLabel = RELATIONSHIP_LABELS[displayType] || displayType
 
     return {
       ...rel,
       otherEntity,
       relationshipLabel,
+      displayType, // Use this for icon lookup
       isSource,
     }
   }).filter(rel => rel.otherEntity) // Only show relationships where we have the other entity
@@ -174,21 +221,13 @@ export function RelationshipDisplay({
     try {
       const supabase = createClient()
 
-      // Delete the relationship
+      // Delete the relationship (single row model - no reverse to delete)
       const { error } = await supabase
         .from('relationships')
         .delete()
         .eq('id', rel.id)
 
       if (error) throw error
-
-      // Also delete any reverse relationship (source/target swapped)
-      await supabase
-        .from('relationships')
-        .delete()
-        .eq('source_id', rel.target_id)
-        .eq('target_id', rel.source_id)
-        .eq('campaign_id', campaignId)
 
       toast.success('Relationship deleted')
       router.refresh()
@@ -224,7 +263,7 @@ export function RelationshipDisplay({
         ) : (
           <div className="space-y-2">
             {processedRelationships.map((rel) => {
-              const Icon = RELATIONSHIP_ICONS[rel.relationship_type] || Link2
+              const Icon = RELATIONSHIP_ICONS[rel.displayType] || Link2
               const isDeleting = deletingId === rel.id
               return (
                 <div
