@@ -6,6 +6,12 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { EntityTypeBadge, EntityType } from './entity-type-badge'
 import {
   Link2,
@@ -275,13 +281,21 @@ export function RelationshipDisplay({
                     {rel.relationshipLabel}
                   </span>
                   <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                  <Link
-                    href={`/dashboard/campaigns/${campaignId}/memory/${rel.otherEntity?.id}`}
-                    className="font-medium text-foreground hover:text-primary transition-colors truncate min-w-0"
-                    title={rel.otherEntity?.name}
-                  >
-                    {rel.otherEntity?.name}
-                  </Link>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href={`/dashboard/campaigns/${campaignId}/memory/${rel.otherEntity?.id}`}
+                          className="font-medium text-foreground hover:text-primary transition-colors truncate min-w-0"
+                        >
+                          {rel.otherEntity?.name}
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{rel.otherEntity?.name}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <EntityTypeBadge
                     type={rel.otherEntity?.entity_type || 'other'}
                     size="sm"

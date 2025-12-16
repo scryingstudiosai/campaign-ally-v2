@@ -13,7 +13,23 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { Discovery, Conflict, ScanResult } from '@/types/forge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import type { Discovery, Conflict, ScanResult, EntityType } from '@/types/forge'
+
+const ENTITY_TYPES: { value: EntityType; label: string }[] = [
+  { value: 'npc', label: 'NPC' },
+  { value: 'location', label: 'Location' },
+  { value: 'item', label: 'Item' },
+  { value: 'faction', label: 'Faction' },
+  { value: 'quest', label: 'Quest' },
+  { value: 'other', label: 'Other' },
+]
 
 interface CommitPanelProps {
   scanResult: ScanResult
@@ -22,6 +38,7 @@ interface CommitPanelProps {
     action: Discovery['status'],
     linkedEntityId?: string
   ) => void
+  onDiscoveryTypeChange?: (discoveryId: string, newType: EntityType) => void
   onConflictResolution: (
     conflictId: string,
     resolution: Conflict['resolution']
@@ -34,6 +51,7 @@ interface CommitPanelProps {
 export function CommitPanel({
   scanResult,
   onDiscoveryAction,
+  onDiscoveryTypeChange,
   onConflictResolution,
   onCommit,
   onDiscard,
@@ -98,6 +116,11 @@ export function CommitPanel({
                   discovery={discovery}
                   onAction={(action, linkedId) =>
                     onDiscoveryAction(discovery.id, action, linkedId)
+                  }
+                  onTypeChange={
+                    onDiscoveryTypeChange
+                      ? (newType) => onDiscoveryTypeChange(discovery.id, newType)
+                      : undefined
                   }
                 />
               ))}
@@ -254,9 +277,11 @@ function ConflictCard({
 function DiscoveryCard({
   discovery,
   onAction,
+  onTypeChange,
 }: {
   discovery: Discovery
   onAction: (action: Discovery['status'], linkedEntityId?: string) => void
+  onTypeChange?: (newType: EntityType) => void
 }): JSX.Element {
   const isHandled = discovery.status !== 'pending'
 
@@ -268,14 +293,35 @@ function DiscoveryCard({
           : 'bg-amber-500/10 border-amber-500/30'
       }`}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-foreground">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground truncate">
             &quot;{discovery.text}&quot;
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Suggested type: {discovery.suggestedType}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-muted-foreground">Type:</span>
+            {onTypeChange && !isHandled ? (
+              <Select
+                value={discovery.suggestedType}
+                onValueChange={(value) => onTypeChange(value as EntityType)}
+              >
+                <SelectTrigger className="h-6 w-24 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ENTITY_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                {ENTITY_TYPES.find((t) => t.value === discovery.suggestedType)?.label || discovery.suggestedType}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

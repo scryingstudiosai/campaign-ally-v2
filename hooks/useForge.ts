@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { validatePreGeneration } from '@/lib/forge/validation/pre-gen'
-import { scanGeneratedContent } from '@/lib/forge/validation/post-gen'
+import { scanGeneratedContent, ScanOptions } from '@/lib/forge/validation/post-gen'
 import { saveForgedEntity, createStubEntities } from '@/lib/forge/entity-minter'
 import type {
   ForgeType,
@@ -18,6 +18,7 @@ interface UseForgeOptions<TInput extends BaseForgeInput, TOutput> {
   forgeType: ForgeType
   generateFn: (input: TInput) => Promise<TOutput>
   getTextContent: (output: TOutput) => string // Extracts text for scanning
+  getEntityName?: (output: TOutput) => string // Extracts entity name to exclude from discoveries
 }
 
 interface GenerateResult {
@@ -35,7 +36,7 @@ interface CommitResult {
 export function useForge<TInput extends BaseForgeInput, TOutput>(
   options: UseForgeOptions<TInput, TOutput>
 ) {
-  const { campaignId, forgeType, generateFn, getTextContent } = options
+  const { campaignId, forgeType, generateFn, getTextContent, getEntityName } = options
   const supabase = createClient()
 
   const [state, setState] = useState<ForgeState<TInput, TOutput>>({
@@ -80,10 +81,12 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
 
         // Post-generation scanning
         const textContent = getTextContent(output)
+        const currentEntityName = getEntityName ? getEntityName(output) : undefined
         const scanResult = await scanGeneratedContent(
           supabase,
           campaignId,
-          textContent
+          textContent,
+          { currentEntityName }
         )
 
         setState((prev) => ({
@@ -189,15 +192,17 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
       setState((prev) => ({ ...prev, status: 'scanning', output }))
 
       const textContent = getTextContent(output)
+      const currentEntityName = getEntityName ? getEntityName(output) : undefined
       const scanResult = await scanGeneratedContent(
         supabase,
         campaignId,
-        textContent
+        textContent,
+        { currentEntityName }
       )
 
       setState((prev) => ({ ...prev, status: 'review', scanResult }))
     }
-  }, [state.input, generateFn, getTextContent, supabase, campaignId])
+  }, [state.input, generateFn, getTextContent, getEntityName, supabase, campaignId])
 
   // Update a specific discovery's status
   const updateDiscovery = useCallback(

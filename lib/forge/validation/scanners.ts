@@ -409,6 +409,73 @@ export function extractProperNouns(
     })
   }
 
+  // Pattern 6: Standalone capitalized names in NPC-indicating context
+  // Captures names like "Tharivol", "Illara", "Elarion" when near NPC verbs
+  const npcContextVerbs = [
+    'forged by',
+    'crafted by',
+    'made by',
+    'created by',
+    'enchanted by',
+    'blessed by',
+    'cursed by',
+    'owned by',
+    'given by',
+    'stolen from',
+    'belonging to',
+    'the smith',
+    'the mage',
+    'the wizard',
+    'the sorcerer',
+    'the priest',
+    'the priestess',
+    'the merchant',
+    'the blacksmith',
+    'known as',
+    'called',
+    'named',
+  ]
+
+  // Look for standalone names (at least 4 chars, capitalized) near NPC context
+  const standaloneNamePattern = /\b[A-Z][a-z]{3,}\b/g
+
+  while ((match = standaloneNamePattern.exec(text)) !== null) {
+    const matchText = match[0]
+
+    // Skip if it's the entity being created
+    if (excludeLower && matchText.toLowerCase() === excludeLower) continue
+
+    // Skip common words
+    if (SKIP_WORDS.has(matchText)) continue
+
+    // Skip blocklisted terms
+    if (shouldIgnoreTerm(matchText)) continue
+
+    // Skip known spell names
+    if (SPELL_NAMES.has(matchText)) continue
+
+    // Get surrounding context (100 chars on each side for better context matching)
+    const contextStart = Math.max(0, match.index - 100)
+    const contextEnd = Math.min(text.length, match.index + matchText.length + 100)
+    const context = text.substring(contextStart, contextEnd).toLowerCase()
+
+    // Only include if context contains NPC-indicating phrases
+    const hasNpcContext = npcContextVerbs.some((verb) => context.includes(verb))
+    if (!hasNpcContext) continue
+
+    // Get shorter context for the result
+    const shortContextStart = Math.max(0, match.index - 50)
+    const shortContextEnd = Math.min(text.length, match.index + matchText.length + 50)
+    const shortContext = text.substring(shortContextStart, shortContextEnd)
+
+    results.push({
+      text: matchText,
+      startIndex: match.index,
+      endIndex: match.index + matchText.length,
+      context: shortContext,
+    })
+  }
+
   // Deduplicate by text (case-insensitive)
   const seen = new Set<string>()
   return results.filter((r) => {

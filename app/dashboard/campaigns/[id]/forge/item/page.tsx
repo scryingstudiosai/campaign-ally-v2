@@ -11,7 +11,7 @@ import { ForgeShell } from '@/components/forge/ForgeShell'
 import { CommitPanel } from '@/components/forge/CommitPanel'
 import { EmptyForgeState } from '@/components/forge/EmptyForgeState'
 import { extractTextForScanning } from '@/lib/forge/validation/post-gen'
-import type { Discovery, Conflict } from '@/types/forge'
+import type { Discovery, Conflict, EntityType } from '@/types/forge'
 
 // Item-specific components
 import {
@@ -82,6 +82,7 @@ export default function ItemForgePage(): JSX.Element {
         secret: output.secret,
       })
     },
+    getEntityName: (output) => output.name, // Exclude item name from discoveries
   })
 
   // Sync scan results to local review state
@@ -148,6 +149,18 @@ export default function ItemForgePage(): JSX.Element {
     setReviewDiscoveries((prev) =>
       prev.map((d) =>
         d.id === discoveryId ? { ...d, status: action, linkedEntityId } : d
+      )
+    )
+  }
+
+  // Handle discovery type changes
+  const handleDiscoveryTypeChange = (
+    discoveryId: string,
+    newType: EntityType
+  ): void => {
+    setReviewDiscoveries((prev) =>
+      prev.map((d) =>
+        d.id === discoveryId ? { ...d, suggestedType: newType } : d
       )
     )
   }
@@ -252,6 +265,7 @@ export default function ItemForgePage(): JSX.Element {
               conflicts: reviewConflicts,
             }}
             onDiscoveryAction={handleDiscoveryAction}
+            onDiscoveryTypeChange={handleDiscoveryTypeChange}
             onConflictResolution={handleConflictResolution}
             onCommit={handleCommit}
             onDiscard={forge.reset}
