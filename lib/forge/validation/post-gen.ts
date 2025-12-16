@@ -11,6 +11,16 @@ export interface ScanOptions {
   currentEntityName?: string
 }
 
+// Helper function to get significant words (3+ chars, not common words)
+function getSignificantWords(text: string): Set<string> {
+  const commonWords = ['the', 'of', 'and', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'with', 'from']
+  return new Set(
+    text.toLowerCase()
+      .split(/\s+/)
+      .filter(word => word.length >= 3 && !commonWords.includes(word))
+  )
+}
+
 export async function scanGeneratedContent(
   supabase: SupabaseClient,
   campaignId: string,
@@ -106,20 +116,40 @@ export async function scanGeneratedContent(
     }
   }
 
+  // Filter out self-references using word overlap matching
+  const entityWords = currentEntityName ? getSignificantWords(currentEntityName) : new Set<string>()
+  console.log('entityWords for self-reference check:', [...entityWords])
+
+  const filteredDiscoveries = discoveries.filter(d => {
+    if (!currentEntityName || entityWords.size === 0) return true
+
+    const discoveryWords = getSignificantWords(d.text)
+
+    // Check if any significant words overlap
+    const hasOverlap = [...discoveryWords].some(word => entityWords.has(word))
+
+    if (hasOverlap) {
+      console.log(`Excluding self-reference (word overlap): "${d.text}" matches "${currentEntityName}"`)
+      return false
+    }
+    return true
+  })
+
   // Calculate canon score based on how well the content fits existing lore
   const canonScore = calculateCanonScore(
-    discoveries.length,
+    filteredDiscoveries.length,
     existingEntityMentions.length
   )
 
   // DEBUG: Final results
   console.log('=== SCANNER RESULTS ===')
-  console.log('discoveries:', discoveries.map(d => ({ text: d.text, type: d.suggestedType })))
+  console.log('discoveries before self-filter:', discoveries.map(d => ({ text: d.text, type: d.suggestedType })))
+  console.log('discoveries after self-filter:', filteredDiscoveries.map(d => ({ text: d.text, type: d.suggestedType })))
   console.log('existingEntityMentions:', existingEntityMentions.map(e => e.name))
   console.log('canonScore:', canonScore)
 
   return {
-    discoveries,
+    discoveries: filteredDiscoveries,
     conflicts: [], // Post-gen conflicts can be added later
     canonScore,
     existingEntityMentions,

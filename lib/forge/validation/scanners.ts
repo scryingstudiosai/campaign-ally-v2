@@ -10,6 +10,7 @@ import {
   LOCATION_INDICATORS,
   FACTION_INDICATORS,
   ITEM_INDICATORS,
+  IGNORED_TERMS,
 } from './blocklist'
 
 export interface PotentialEntity {
@@ -263,6 +264,15 @@ export function extractProperNouns(
   console.log('extractProperNouns - excludeEntityName:', excludeEntityName)
   console.log('extractProperNouns - excludeLower:', excludeLower)
 
+  // Detect sentence starters (words at the start of sentences that are just capitalized, not proper nouns)
+  const sentenceStartPattern = /(?:^|[.!?]\s+)([A-Z][a-z]+)/g
+  const sentenceStarters = new Set<string>()
+  let starterMatch
+  while ((starterMatch = sentenceStartPattern.exec(text)) !== null) {
+    sentenceStarters.add(starterMatch[1].toLowerCase())
+  }
+  console.log('Detected sentence starters:', [...sentenceStarters])
+
   // Pattern 1: Quoted text (high confidence entity names)
   const quotedPattern = /"([A-Z][^"]+)"/g
 
@@ -480,12 +490,25 @@ export function extractProperNouns(
     })
   }
 
-  // Deduplicate by text (case-insensitive)
+  // Deduplicate by text (case-insensitive) and filter out sentence starters in blocklist
   const seen = new Set<string>()
   return results.filter((r) => {
     const key = r.text.toLowerCase()
     if (seen.has(key)) return false
     seen.add(key)
+
+    // Skip if it's a sentence starter AND in blocklist
+    if (sentenceStarters.has(key) && IGNORED_TERMS.has(key)) {
+      console.log(`Filtering sentence starter in blocklist: "${r.text}"`)
+      return false
+    }
+
+    // Skip if single word and in blocklist
+    if (!r.text.includes(' ') && IGNORED_TERMS.has(key)) {
+      console.log(`Filtering single word in blocklist: "${r.text}"`)
+      return false
+    }
+
     return true
   })
 }
