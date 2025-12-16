@@ -187,40 +187,67 @@ export function AddRelationshipModal({
           {/* Target Entity */}
           <div className="space-y-2">
             <Label>Target Entity *</Label>
-            <Input
-              placeholder="Search entities..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="mb-2"
-            />
-            <div className="max-h-[200px] overflow-y-auto border rounded-md">
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            {targetEntityId ? (
+              // Show selected entity
+              <div className="flex items-center justify-between p-3 border rounded-md bg-primary/10">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">
+                    {entities.find(e => e.id === targetEntityId)?.name}
+                  </span>
+                  <EntityTypeBadge
+                    type={entities.find(e => e.id === targetEntityId)?.entity_type || 'other'}
+                    size="sm"
+                    showIcon={false}
+                  />
                 </div>
-              ) : filteredEntities.length === 0 ? (
-                <div className="py-4 text-center text-sm text-muted-foreground">
-                  {entities.length === 0 ? 'No other entities in this campaign' : 'No matching entities'}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTargetEntityId('')
+                    setSearchTerm('')
+                  }}
+                >
+                  Change
+                </Button>
+              </div>
+            ) : (
+              // Show search and list
+              <>
+                <Input
+                  placeholder="Search entities..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="mb-2"
+                />
+                <div className="max-h-[200px] overflow-y-auto border rounded-md">
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : filteredEntities.length === 0 ? (
+                    <div className="py-4 text-center text-sm text-muted-foreground">
+                      {entities.length === 0 ? 'No other entities in this campaign' : 'No matching entities'}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {filteredEntities.map((entity) => (
+                        <button
+                          key={entity.id}
+                          type="button"
+                          onClick={() => setTargetEntityId(entity.id)}
+                          className="w-full flex items-center justify-between p-2 hover:bg-muted/50 transition-colors text-left"
+                        >
+                          <span className="font-medium">{entity.name}</span>
+                          <EntityTypeBadge type={entity.entity_type} size="sm" showIcon={false} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {filteredEntities.map((entity) => (
-                    <button
-                      key={entity.id}
-                      type="button"
-                      onClick={() => setTargetEntityId(entity.id)}
-                      className={cn(
-                        'w-full flex items-center justify-between p-2 hover:bg-muted/50 transition-colors text-left',
-                        targetEntityId === entity.id && 'bg-primary/10'
-                      )}
-                    >
-                      <span className="font-medium">{entity.name}</span>
-                      <EntityTypeBadge type={entity.entity_type} size="sm" showIcon={false} />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
 
           {/* Relationship Type */}
