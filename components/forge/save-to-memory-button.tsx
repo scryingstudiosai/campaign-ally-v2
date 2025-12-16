@@ -105,7 +105,6 @@ export function SaveToMemoryButton({
         importance_tier: 'minor',
         visibility: 'dm_only',
         status: 'active',
-        parent_entity_id: selectedLocation !== 'none' ? selectedLocation : null,
       }
 
       const { data, error } = await supabase
@@ -116,6 +115,22 @@ export function SaveToMemoryButton({
 
       if (error) {
         throw error
+      }
+
+      // Create location relationship if a location was selected
+      if (selectedLocation !== 'none' && data?.id) {
+        const { error: relationshipError } = await supabase
+          .from('relationships')
+          .insert({
+            campaign_id: campaignId,
+            source_id: data.id,
+            target_id: selectedLocation,
+            relationship_type: 'located_in',
+          })
+
+        if (relationshipError) {
+          console.error('Failed to create location relationship:', relationshipError)
+        }
       }
 
       setSaved(true)
@@ -141,7 +156,7 @@ export function SaveToMemoryButton({
           <span>Saved to Memory</span>
         </div>
         {savedEntityId && (
-          <Link href={`/campaign/${campaignId}/memory/${savedEntityId}`}>
+          <Link href={`/dashboard/campaigns/${campaignId}/memory/${savedEntityId}`}>
             <Button variant="outline" size="sm" className="gap-2">
               <ExternalLink className="w-3 h-3" />
               View in Memory
