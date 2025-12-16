@@ -20,6 +20,13 @@ import {
   Sparkles,
   Trash2,
   Loader2,
+  GraduationCap,
+  Crown,
+  Shield,
+  Coins,
+  Eye,
+  Search,
+  Scroll,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -49,41 +56,90 @@ interface RelationshipDisplayProps {
 }
 
 const RELATIONSHIP_ICONS: Record<string, typeof Link2> = {
+  // Personal
   knows: Users,
-  family: Heart,
   friend: Heart,
   enemy: Swords,
   rival: Swords,
+  parent_of: Users,
+  child_of: Users,
+  sibling_of: Users,
+  spouse_of: Heart,
   lover: Heart,
+  // Professional
   employs: Briefcase,
   serves: Briefcase,
-  member_of: Building,
   leads: Building,
+  member_of: Building,
+  student_of: GraduationCap,
+  mentor_of: GraduationCap,
+  // Spatial
   located_in: MapPin,
   contains: MapPin,
   owns: MapPin,
   owned_by: MapPin,
+  // Divine
+  worships: Crown,
+  deity_of: Crown,
+  // Duty
+  protects: Shield,
+  guarded_by: Shield,
+  // Intrigue
+  debt_to: Coins,
+  creditor_of: Coins,
+  blackmails: Eye,
+  blackmailed_by: Eye,
+  // History
+  creator_of: Sparkles,
   created_by: Sparkles,
-  created: Sparkles,
+  // Quest
+  seeks: Search,
+  sought_by: Search,
+  // Other
+  related_to: Link2,
 }
 
 const RELATIONSHIP_LABELS: Record<string, string> = {
+  // Personal
   knows: 'Knows',
-  family: 'Family of',
   friend: 'Friend of',
   enemy: 'Enemy of',
   rival: 'Rival of',
+  parent_of: 'Parent of',
+  child_of: 'Child of',
+  sibling_of: 'Sibling of',
+  spouse_of: 'Spouse of',
   lover: 'Lover of',
+  // Professional
   employs: 'Employs',
   serves: 'Serves',
-  member_of: 'Member of',
   leads: 'Leads',
+  member_of: 'Member of',
+  student_of: 'Student of',
+  mentor_of: 'Mentor of',
+  // Spatial
   located_in: 'Located in',
   contains: 'Contains',
   owns: 'Owns',
   owned_by: 'Owned by',
+  // Divine
+  worships: 'Worships',
+  deity_of: 'Deity/Patron of',
+  // Duty
+  protects: 'Protects/Guards',
+  guarded_by: 'Guarded by',
+  // Intrigue
+  debt_to: 'Indebted to',
+  creditor_of: 'Creditor of',
+  blackmails: 'Blackmails',
+  blackmailed_by: 'Blackmailed by',
+  // History
+  creator_of: 'Creator of',
   created_by: 'Created by',
-  created: 'Created',
+  // Quest
+  seeks: 'Seeks',
+  sought_by: 'Sought by',
+  // Other
   related_to: 'Related to',
 }
 

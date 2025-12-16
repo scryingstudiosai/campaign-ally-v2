@@ -41,22 +41,54 @@ interface AddRelationshipModalProps {
 }
 
 const RELATIONSHIP_TYPES = [
+  // Personal
   { value: 'knows', label: 'Knows', category: 'Personal' },
-  { value: 'family', label: 'Family of', category: 'Personal' },
   { value: 'friend', label: 'Friend of', category: 'Personal' },
   { value: 'enemy', label: 'Enemy of', category: 'Personal' },
   { value: 'rival', label: 'Rival of', category: 'Personal' },
+  { value: 'parent_of', label: 'Parent of', category: 'Personal' },
+  { value: 'child_of', label: 'Child of', category: 'Personal' },
+  { value: 'sibling_of', label: 'Sibling of', category: 'Personal' },
+  { value: 'spouse_of', label: 'Spouse of', category: 'Personal' },
   { value: 'lover', label: 'Lover of', category: 'Personal' },
+
+  // Professional
   { value: 'employs', label: 'Employs', category: 'Professional' },
   { value: 'serves', label: 'Serves', category: 'Professional' },
-  { value: 'member_of', label: 'Member of', category: 'Professional' },
   { value: 'leads', label: 'Leads', category: 'Professional' },
+  { value: 'member_of', label: 'Member of', category: 'Professional' },
+  { value: 'student_of', label: 'Student of', category: 'Professional' },
+  { value: 'mentor_of', label: 'Mentor of', category: 'Professional' },
+
+  // Spatial
   { value: 'located_in', label: 'Located in', category: 'Spatial' },
   { value: 'contains', label: 'Contains', category: 'Spatial' },
   { value: 'owns', label: 'Owns', category: 'Spatial' },
   { value: 'owned_by', label: 'Owned by', category: 'Spatial' },
-  { value: 'created_by', label: 'Created by', category: 'Other' },
-  { value: 'created', label: 'Created', category: 'Other' },
+
+  // Divine
+  { value: 'worships', label: 'Worships', category: 'Divine' },
+  { value: 'deity_of', label: 'Deity/Patron of', category: 'Divine' },
+
+  // Duty
+  { value: 'protects', label: 'Protects/Guards', category: 'Duty' },
+  { value: 'guarded_by', label: 'Guarded by', category: 'Duty' },
+
+  // Intrigue
+  { value: 'debt_to', label: 'Indebted to', category: 'Intrigue' },
+  { value: 'creditor_of', label: 'Creditor of', category: 'Intrigue' },
+  { value: 'blackmails', label: 'Blackmails', category: 'Intrigue' },
+  { value: 'blackmailed_by', label: 'Blackmailed by', category: 'Intrigue' },
+
+  // History
+  { value: 'creator_of', label: 'Creator of', category: 'History' },
+  { value: 'created_by', label: 'Created by', category: 'History' },
+
+  // Quest
+  { value: 'seeks', label: 'Seeks', category: 'Quest' },
+  { value: 'sought_by', label: 'Sought by', category: 'Quest' },
+
+  // Other
   { value: 'related_to', label: 'Related to', category: 'Other' },
 ]
 
@@ -261,7 +293,7 @@ export function AddRelationshipModal({
                 <SelectValue placeholder="Select relationship..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="knows" className="text-muted-foreground text-xs" disabled>
+                <SelectItem value="_personal" className="text-muted-foreground text-xs" disabled>
                   — Personal —
                 </SelectItem>
                 {RELATIONSHIP_TYPES.filter(r => r.category === 'Personal').map((r) => (
@@ -277,6 +309,36 @@ export function AddRelationshipModal({
                   — Spatial —
                 </SelectItem>
                 {RELATIONSHIP_TYPES.filter(r => r.category === 'Spatial').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_divine" className="text-muted-foreground text-xs" disabled>
+                  — Divine —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Divine').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_duty" className="text-muted-foreground text-xs" disabled>
+                  — Duty —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Duty').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_intrigue" className="text-muted-foreground text-xs" disabled>
+                  — Intrigue —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Intrigue').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_history" className="text-muted-foreground text-xs" disabled>
+                  — History —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'History').map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+                <SelectItem value="_quest" className="text-muted-foreground text-xs" disabled>
+                  — Quest —
+                </SelectItem>
+                {RELATIONSHIP_TYPES.filter(r => r.category === 'Quest').map((r) => (
                   <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                 ))}
                 <SelectItem value="_other" className="text-muted-foreground text-xs" disabled>
@@ -340,16 +402,38 @@ export function AddRelationshipModal({
 
 function getReverseRelationshipType(type: string): string {
   const reverseMap: Record<string, string> = {
+    // Professional
     employs: 'serves',
     serves: 'employs',
     leads: 'member_of',
     member_of: 'leads',
-    owns: 'owned_by',
-    owned_by: 'owns',
+    student_of: 'mentor_of',
+    mentor_of: 'student_of',
+    // Personal
+    parent_of: 'child_of',
+    child_of: 'parent_of',
+    // Spatial
     located_in: 'contains',
     contains: 'located_in',
-    created_by: 'created',
-    created: 'created_by',
+    owns: 'owned_by',
+    owned_by: 'owns',
+    // Divine
+    worships: 'deity_of',
+    deity_of: 'worships',
+    // Duty
+    protects: 'guarded_by',
+    guarded_by: 'protects',
+    // Intrigue
+    debt_to: 'creditor_of',
+    creditor_of: 'debt_to',
+    blackmails: 'blackmailed_by',
+    blackmailed_by: 'blackmails',
+    // History
+    creator_of: 'created_by',
+    created_by: 'creator_of',
+    // Quest
+    seeks: 'sought_by',
+    sought_by: 'seeks',
   }
   return reverseMap[type] || type
 }
