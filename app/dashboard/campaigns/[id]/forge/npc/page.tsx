@@ -374,8 +374,12 @@ export default function NpcForgePage(): JSX.Element {
   // Handle generation with toast
   const handleGenerate = async (input: NpcInputData): Promise<void> => {
     try {
-      await forge.handleGenerate(input)
-      toast.success('NPC generated successfully!')
+      const result = await forge.handleGenerate(input)
+      // Only show success toast if generation actually completed
+      if (result.success) {
+        toast.success('NPC generated successfully!')
+      }
+      // Don't show error toast for validation_failed - the UI shows the warnings
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Failed to generate NPC'
