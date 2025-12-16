@@ -5,6 +5,7 @@ import { EntityTypeBadge } from './entity-type-badge'
 import { Badge } from '@/components/ui/badge'
 import { Entity } from './entity-card'
 import { cn } from '@/lib/utils'
+import { renderWithBold } from '@/lib/text-utils'
 import {
   Skull,
   AlertTriangle,
@@ -65,7 +66,7 @@ export function EntityListItem({ entity, campaignId }: EntityListItemProps): JSX
         </div>
         {entity.summary && (
           <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {entity.summary}
+            {renderWithBold(entity.summary)}
           </p>
         )}
       </div>

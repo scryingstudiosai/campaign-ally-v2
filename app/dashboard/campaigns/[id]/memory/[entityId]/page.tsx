@@ -31,6 +31,7 @@ import {
   Wand2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { renderWithBold } from '@/lib/text-utils'
 
 interface PageProps {
   params: { id: string; entityId: string }
@@ -199,7 +200,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   <CardTitle className="text-lg">Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground italic">{entity.summary}</p>
+                  <p className="text-muted-foreground italic">{renderWithBold(entity.summary)}</p>
                 </CardContent>
               </Card>
             )}
@@ -211,7 +212,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   <CardTitle className="text-lg">Description</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{entity.description}</p>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{renderWithBold(entity.description)}</p>
                 </CardContent>
               </Card>
             )}
@@ -230,7 +231,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pb-3">
-                        <p className="text-sm text-muted-foreground">{attributes.appearance}</p>
+                        <p className="text-sm text-muted-foreground">{renderWithBold(attributes.appearance)}</p>
                       </CardContent>
                     </Card>
                   )}
@@ -243,7 +244,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pb-3">
-                        <p className="text-sm text-muted-foreground">{attributes.personality}</p>
+                        <p className="text-sm text-muted-foreground">{renderWithBold(attributes.personality)}</p>
                       </CardContent>
                     </Card>
                   )}
@@ -259,7 +260,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pb-3">
-                      <p className="text-sm text-muted-foreground">{attributes.voiceAndMannerisms}</p>
+                      <p className="text-sm text-muted-foreground">{renderWithBold(attributes.voiceAndMannerisms)}</p>
                     </CardContent>
                   </Card>
                 )}
@@ -305,7 +306,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pb-3">
-                      <p className="text-sm text-muted-foreground">{attributes.motivation}</p>
+                      <p className="text-sm text-muted-foreground">{renderWithBold(attributes.motivation)}</p>
                     </CardContent>
                   </Card>
                 )}
@@ -324,7 +325,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pb-3">
-                      <p className="text-sm text-muted-foreground">{attributes.secret}</p>
+                      <p className="text-sm text-muted-foreground">{renderWithBold(attributes.secret)}</p>
                     </CardContent>
                   </Card>
                 )}
@@ -339,7 +340,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pb-3">
-                      <p className="text-sm text-muted-foreground">{attributes.plotHook}</p>
+                      <p className="text-sm text-muted-foreground">{renderWithBold(attributes.plotHook)}</p>
                     </CardContent>
                   </Card>
                 )}
@@ -359,12 +360,12 @@ export default async function EntityDetailPage({ params }: PageProps) {
                           {attributes.loot.map((item: string, idx: number) => (
                             <li key={idx} className="flex items-start gap-2">
                               <span className="text-primary">•</span>
-                              <span>{item}</span>
+                              <span>{renderWithBold(item)}</span>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-sm text-muted-foreground">{attributes.loot}</p>
+                        <p className="text-sm text-muted-foreground">{renderWithBold(attributes.loot)}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -385,7 +386,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{entity.public_notes}</p>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{renderWithBold(entity.public_notes)}</p>
                 </CardContent>
               </Card>
             )}
@@ -403,7 +404,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{entity.dm_notes}</p>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{renderWithBold(entity.dm_notes)}</p>
                 </CardContent>
               </Card>
             )}

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EntityTypeBadge, EntityType } from './entity-type-badge'
 import { cn } from '@/lib/utils'
+import { renderWithBold } from '@/lib/text-utils'
 import {
   Skull,
   AlertTriangle,
@@ -97,11 +98,11 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
         <CardContent className="pt-0">
           {entity.summary ? (
             <p className="text-sm text-muted-foreground line-clamp-2">
-              {entity.summary}
+              {renderWithBold(entity.summary)}
             </p>
           ) : entity.description ? (
             <p className="text-sm text-muted-foreground line-clamp-2">
-              {entity.description}
+              {renderWithBold(entity.description)}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground/50 italic">

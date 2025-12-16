@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { renderWithBold } from '@/lib/text-utils'
 import {
   Eye,
   Heart,
@@ -49,25 +50,6 @@ interface NPCOutputDisplayProps {
   npc: GeneratedNPC
   isEditing?: boolean
   onUpdate?: (npc: GeneratedNPC) => void
-}
-
-// Parse markdown bold syntax and render as JSX
-function renderWithBold(text: string): JSX.Element {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  return (
-    <>
-      {parts.map((part, index) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return (
-            <strong key={index} className="text-foreground font-semibold">
-              {part.slice(2, -2)}
-            </strong>
-          )
-        }
-        return <span key={index}>{part}</span>
-      })}
-    </>
-  )
 }
 
 export function NPCOutputDisplay({ npc, isEditing = false, onUpdate }: NPCOutputDisplayProps): JSX.Element {
