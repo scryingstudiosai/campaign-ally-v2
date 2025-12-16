@@ -78,6 +78,7 @@ export default function ItemForgePage(): JSX.Element {
   const forge = useForge<ItemInputData, GeneratedItem>({
     campaignId,
     forgeType: 'item',
+    stubId: stubId || undefined, // Skip duplicate check when fleshing out a stub
     generateFn: async (input) => {
       // Call existing API endpoint with existing format
       const response = await fetch('/api/generate/item', {

@@ -86,6 +86,7 @@ export default function NpcForgePage(): JSX.Element {
   const forge = useForge<NpcInputData, GeneratedNPC>({
     campaignId,
     forgeType: 'npc',
+    stubId: stubId || undefined, // Skip duplicate check when fleshing out a stub
     generateFn: async (input) => {
       // Call existing API endpoint with existing format
       const response = await fetch('/api/generate/npc', {

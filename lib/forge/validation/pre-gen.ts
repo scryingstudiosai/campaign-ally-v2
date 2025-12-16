@@ -16,17 +16,23 @@ interface NPCInput extends BaseForgeInput {
   faction?: string
 }
 
+export interface PreValidationOptions {
+  stubId?: string // Skip duplicate check for this entity (when fleshing out a stub)
+}
+
 export async function validatePreGeneration(
   supabase: SupabaseClient,
   campaignId: string,
   forgeType: ForgeType,
-  input: BaseForgeInput
+  input: BaseForgeInput,
+  options?: PreValidationOptions
 ): Promise<PreValidationResult> {
   const conflicts: Conflict[] = []
   const warnings: string[] = []
 
   // 1. DUPLICATE NAME CHECK
-  if (input.name) {
+  // Skip if we're fleshing out a stub (the entity already exists)
+  if (input.name && !options?.stubId) {
     const { data: existingByName } = await supabase
       .from('entities')
       .select('id, name, entity_type, status, attributes')
@@ -40,7 +46,8 @@ export async function validatePreGeneration(
         (e) => e.name.toLowerCase() === input.name?.toLowerCase()
       )
 
-      if (exactMatch) {
+      // Skip if the found entity IS the stub we're fleshing out
+      if (exactMatch && exactMatch.id !== options?.stubId) {
         // Check if deceased
         const isDeceased = exactMatch.status === 'deceased'
 
@@ -58,11 +65,14 @@ export async function validatePreGeneration(
             : ['Edit existing', 'Create anyway', 'Use different name'],
           resolution: 'pending',
         })
-      } else if (existingByName.length > 0) {
-        // Similar names found
-        warnings.push(
-          `Similar names exist: ${existingByName.map((e) => e.name).join(', ')}`
-        )
+      } else if (existingByName.length > 0 && !existingByName.some(e => e.id === options?.stubId)) {
+        // Similar names found (excluding the stub itself)
+        const otherEntities = existingByName.filter(e => e.id !== options?.stubId)
+        if (otherEntities.length > 0) {
+          warnings.push(
+            `Similar names exist: ${otherEntities.map((e) => e.name).join(', ')}`
+          )
+        }
       }
     }
   }
