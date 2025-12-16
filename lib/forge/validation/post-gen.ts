@@ -3,18 +3,26 @@
 
 import { SupabaseClient } from '@supabase/supabase-js'
 import { extractProperNouns, guessEntityType } from './scanners'
+import { shouldIgnoreTerm } from './blocklist'
 import type { ScanResult, Discovery, EntityType } from '@/types/forge'
+
+export interface ScanOptions {
+  /** Name of the entity currently being created (to exclude from discoveries) */
+  currentEntityName?: string
+}
 
 export async function scanGeneratedContent(
   supabase: SupabaseClient,
   campaignId: string,
-  textContent: string
+  textContent: string,
+  options: ScanOptions = {}
 ): Promise<ScanResult> {
+  const { currentEntityName } = options
   const discoveries: Discovery[] = []
   const existingEntityMentions: ScanResult['existingEntityMentions'] = []
 
-  // Extract potential entity names from text
-  const potentialEntities = extractProperNouns(textContent)
+  // Extract potential entity names from text (excluding current entity name)
+  const potentialEntities = extractProperNouns(textContent, currentEntityName)
 
   // Fetch all entities for this campaign to check against
   const { data: allEntities } = await supabase
@@ -70,6 +78,11 @@ export async function scanGeneratedContent(
       }
 
       if (!isPartialMatch) {
+        // Skip blocklisted terms (D&D mechanics, common words, etc.)
+        if (shouldIgnoreTerm(potential.text)) {
+          continue
+        }
+
         // New entity discovered - will be shown with gold underline
         discoveries.push({
           id: `discovery-${potential.startIndex}-${Date.now()}`,

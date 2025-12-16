@@ -278,6 +278,7 @@ export function RelationshipDisplay({
                   <Link
                     href={`/dashboard/campaigns/${campaignId}/memory/${rel.otherEntity?.id}`}
                     className="font-medium text-foreground hover:text-primary transition-colors truncate min-w-0"
+                    title={rel.otherEntity?.name}
                   >
                     {rel.otherEntity?.name}
                   </Link>

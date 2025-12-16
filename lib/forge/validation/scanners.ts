@@ -1,5 +1,17 @@
 // Entity mention scanners for post-generation text analysis
 
+import {
+  shouldIgnoreTerm,
+  matchesNpcPattern,
+  matchesLocationPattern,
+  matchesFactionPattern,
+  matchesItemPattern,
+  NPC_INDICATORS,
+  LOCATION_INDICATORS,
+  FACTION_INDICATORS,
+  ITEM_INDICATORS,
+} from './blocklist'
+
 export interface PotentialEntity {
   text: string
   startIndex: number
@@ -273,9 +285,66 @@ export function extractProperNouns(
     })
   }
 
-  // Pattern 2: Multi-word proper nouns (e.g., "The Drowned Rat", "Iron Fist Guild")
+  // Pattern 2: Multi-word proper nouns with improved name capture
+  // Handles: "The Drowned Rat", "Iron Fist Guild", "Mirella of the Mists", "Lord Vorn the Terrible"
+  // First capture titled names (Lord X, Lady Y, etc.)
+  const titledNamePattern = /(?:Lord|Lady|King|Queen|Prince|Princess|Duke|Duchess|Baron|Baroness|Count|Countess|Sir|Dame|Master|Captain|Commander|Chief|Elder|High Priest|Archmage)\s+[A-Z][a-z]+(?:\s+(?:the|of)\s+(?:the\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)?/g
+
+  while ((match = titledNamePattern.exec(text)) !== null) {
+    const matchText = match[0].trim()
+
+    // Skip if it's the entity being created
+    if (excludeLower && matchText.toLowerCase() === excludeLower) continue
+    if (excludeLower && matchText.toLowerCase().includes(excludeLower)) continue
+
+    // Skip blocklisted terms
+    if (shouldIgnoreTerm(matchText)) continue
+
+    // Get surrounding context
+    const contextStart = Math.max(0, match.index - 50)
+    const contextEnd = Math.min(text.length, match.index + matchText.length + 50)
+    const context = text.substring(contextStart, contextEnd)
+
+    results.push({
+      text: matchText,
+      startIndex: match.index,
+      endIndex: match.index + matchText.length,
+      context,
+    })
+  }
+
+  // Pattern 3: Names with epithets (e.g., "Vorn the Terrible", "Mirella of the Mists")
+  const epithetPattern = /[A-Z][a-z]+(?:\s+(?:the|of)\s+(?:the\s+)?[A-Z][a-z]+)+/g
+
+  while ((match = epithetPattern.exec(text)) !== null) {
+    const matchText = match[0].trim()
+
+    // Skip if it's the entity being created
+    if (excludeLower && matchText.toLowerCase() === excludeLower) continue
+    if (excludeLower && matchText.toLowerCase().includes(excludeLower)) continue
+
+    // Skip blocklisted terms
+    if (shouldIgnoreTerm(matchText)) continue
+
+    // Skip known spell names
+    if (SPELL_NAMES.has(matchText)) continue
+
+    // Get surrounding context
+    const contextStart = Math.max(0, match.index - 50)
+    const contextEnd = Math.min(text.length, match.index + matchText.length + 50)
+    const context = text.substring(contextStart, contextEnd)
+
+    results.push({
+      text: matchText,
+      startIndex: match.index,
+      endIndex: match.index + matchText.length,
+      context,
+    })
+  }
+
+  // Pattern 4: Multi-word proper nouns (e.g., "The Drowned Rat", "Iron Fist Guild")
   // Matches: "The X Y", "X Y Z", etc. where words are capitalized
-  const multiWordPattern = /(?:The\s+)?[A-Z][a-z]+(?:\s+(?:of|the|and|de|von|van)\s+)?(?:\s*[A-Z][a-z]+)+/g
+  const multiWordPattern = /(?:The\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/g
 
   while ((match = multiWordPattern.exec(text)) !== null) {
     const matchText = match[0].trim()
@@ -307,7 +376,7 @@ export function extractProperNouns(
     })
   }
 
-  // Pattern 3: Single proper nouns - ONLY if they appear mid-sentence (not at start)
+  // Pattern 5: Single proper nouns - ONLY if they appear mid-sentence (not at start)
   // and are likely names (followed by verbs or specific patterns)
   // More restrictive to avoid false positives
   const singleWordPattern = /(?<=[\.\!\?]\s+[A-Z][a-z]+\s+)[A-Z][a-z]{2,}(?=[,\s\.\!\?\'\"])|(?<=[,;:]\s*)[A-Z][a-z]{2,}(?=[,\s\.\!\?\'\"])/g
@@ -356,211 +425,69 @@ export function guessEntityType(
   context: string
 ): 'npc' | 'location' | 'item' | 'faction' | 'quest' | 'other' {
   const lowerContext = context.toLowerCase()
-  const lowerText = text.toLowerCase()
 
   // First, check if it's a known spell (should be ignored/other)
   if (SPELL_NAMES.has(text)) {
     return 'other'
   }
 
-  // Check if text itself contains title patterns (strong NPC indicator)
-  const npcTitlePatterns = [
-    /^lord\s+/i,
-    /^lady\s+/i,
-    /^king\s+/i,
-    /^queen\s+/i,
-    /^prince\s+/i,
-    /^princess\s+/i,
-    /^duke\s+/i,
-    /^duchess\s+/i,
-    /^baron\s+/i,
-    /^baroness\s+/i,
-    /^count\s+/i,
-    /^countess\s+/i,
-    /^sir\s+/i,
-    /^dame\s+/i,
-    /^master\s+/i,
-    /^mistress\s+/i,
-    /^captain\s+/i,
-    /^commander\s+/i,
-    /^chief\s+/i,
-    /^doctor\s+/i,
-    /^professor\s+/i,
-    /^elder\s+/i,
-    /^high\s+priest/i,
-    /^archmage\s+/i,
-  ]
-  if (npcTitlePatterns.some((p) => p.test(text))) {
+  // Check if it's a blocklisted term
+  if (shouldIgnoreTerm(text)) {
+    return 'other'
+  }
+
+  // Use blocklist pattern matchers for strong indicators in the name itself
+  // NPC patterns (titles, epithets)
+  if (matchesNpcPattern(text)) {
     return 'npc'
   }
 
-  // Check for "the [Title]" pattern (e.g., "Vorn the Terrible", "Mirella of the Mists")
-  if (/\s+the\s+[A-Z]/i.test(text) || /\s+of\s+the\s+/i.test(text)) {
-    return 'npc'
-  }
-
-  // Location indicators - check if the text itself contains location words
-  const locationInNameWords = [
-    'mountains',
-    'mountain',
-    'forest',
-    'woods',
-    'lake',
-    'river',
-    'sea',
-    'ocean',
-    'island',
-    'castle',
-    'tower',
-    'fortress',
-    'citadel',
-    'city',
-    'town',
-    'village',
-    'vale',
-    'valley',
-    'plains',
-    'desert',
-    'swamp',
-    'marsh',
-    'bay',
-    'port',
-    'harbor',
-    'keep',
-    'hold',
-    'hall',
-    'palace',
-    'temple',
-    'shrine',
-    'sanctum',
-    'dungeon',
-    'cavern',
-    'cave',
-    'mines',
-    'realm',
-    'kingdom',
-    'empire',
-  ]
-  if (locationInNameWords.some((w) => lowerText.includes(w))) {
+  // Location patterns (words like "Castle", "Forest", etc. in the name)
+  if (matchesLocationPattern(text)) {
     return 'location'
   }
 
-  // Location indicators in context
-  const locationWords = [
-    'tavern',
-    'inn',
-    'city',
-    'village',
-    'town',
-    'forest',
-    'mountain',
-    'river',
-    'lake',
-    'ocean',
-    'sea',
-    'island',
-    'castle',
-    'tower',
-    'dungeon',
-    'cave',
-    'temple',
-    'shrine',
-    'market',
-    'district',
-    'quarter',
-    'street',
-    'road',
-    'path',
-    'bridge',
-    'gate',
-    'wall',
-    'kingdom',
-    'realm',
-    'land',
-    'region',
-    'province',
-    'territory',
-    'located',
-    'situated',
-    'found in',
-    'lies in',
-    'stands in',
-  ]
-  if (locationWords.some((w) => lowerContext.includes(w))) {
-    return 'location'
-  }
-
-  // Item indicators
-  const itemWords = [
-    'sword',
-    'blade',
-    'ring',
-    'amulet',
-    'necklace',
-    'potion',
-    'elixir',
-    'staff',
-    'wand',
-    'weapon',
-    'armor',
-    'shield',
-    'helm',
-    'boots',
-    'gloves',
-    'cloak',
-    'robe',
-    'artifact',
-    'relic',
-    'treasure',
-    'gem',
-    'jewel',
-    'crystal',
-    'orb',
-    'tome',
-    'book',
-    'scroll',
-    'wielded',
-    'carried',
-    'worn',
-    'holds',
-    'possesses',
-  ]
-  if (itemWords.some((w) => lowerContext.includes(w))) {
-    return 'item'
-  }
-
-  // Faction indicators
-  const factionWords = [
-    'guild',
-    'order',
-    'brotherhood',
-    'sisterhood',
-    'clan',
-    'tribe',
-    'house',
-    'family',
-    'organization',
-    'society',
-    'cult',
-    'church',
-    'temple',
-    'army',
-    'legion',
-    'band',
-    'group',
-    'faction',
-    'alliance',
-    'council',
-    'member of',
-    'belongs to',
-    'joined',
-    'leader of',
-  ]
-  if (factionWords.some((w) => lowerContext.includes(w))) {
+  // Faction patterns (words like "Guild", "Order", etc. in the name)
+  if (matchesFactionPattern(text)) {
     return 'faction'
   }
 
-  // Quest indicators
+  // Item patterns (words like "Sword", "Ring", etc. in the name)
+  if (matchesItemPattern(text)) {
+    return 'item'
+  }
+
+  // Check context for clues - use the comprehensive indicator lists
+  // Location context
+  if (LOCATION_INDICATORS.contextWords.some((w) => lowerContext.includes(w))) {
+    return 'location'
+  }
+  if (LOCATION_INDICATORS.locationWords.some((w) => lowerContext.includes(w))) {
+    return 'location'
+  }
+
+  // Faction context
+  if (FACTION_INDICATORS.contextWords.some((w) => lowerContext.includes(w))) {
+    return 'faction'
+  }
+  if (FACTION_INDICATORS.factionWords.some((w) => lowerContext.includes(w))) {
+    return 'faction'
+  }
+
+  // Item context
+  if (ITEM_INDICATORS.contextWords.some((w) => lowerContext.includes(w))) {
+    return 'item'
+  }
+  if (ITEM_INDICATORS.itemWords.some((w) => lowerContext.includes(w))) {
+    return 'item'
+  }
+
+  // NPC context (action verbs suggest a person)
+  if (NPC_INDICATORS.contextWords.some((w) => lowerContext.includes(w))) {
+    return 'npc'
+  }
+
+  // Quest indicators in context
   const questWords = [
     'quest',
     'mission',
@@ -576,37 +503,11 @@ export function guessEntityType(
     return 'quest'
   }
 
-  // NPC name patterns in context (titles, etc.)
-  const npcContextPatterns = [
-    /lord\s+/i,
-    /lady\s+/i,
-    /king\s+/i,
-    /queen\s+/i,
-    /prince\s+/i,
-    /princess\s+/i,
-    /duke\s+/i,
-    /duchess\s+/i,
-    /baron\s+/i,
-    /baroness\s+/i,
-    /count\s+/i,
-    /countess\s+/i,
-    /sir\s+/i,
-    /dame\s+/i,
-    /master\s+/i,
-    /mistress\s+/i,
-    /captain\s+/i,
-    /commander\s+/i,
-    /chief\s+/i,
-  ]
-  if (npcContextPatterns.some((p) => p.test(lowerContext))) {
-    return 'npc'
-  }
-
   // Check if the text itself looks like a person's name (first + last name pattern)
   if (/^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(text)) {
     return 'npc'
   }
 
-  // Default to NPC for unknown proper nouns
+  // Default to NPC for unknown proper nouns (most common entity type in D&D)
   return 'npc'
 }
