@@ -74,17 +74,22 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
           { stubId }
         )
 
-        if (!preValidation.canProceed) {
-          // Has blocking errors - stop and show them
+        // Check if there are any issues to show the user
+        const hasIssues = preValidation.conflicts.length > 0 || preValidation.warnings.length > 0
+
+        if (!preValidation.canProceed || hasIssues) {
+          // Has blocking errors OR warnings to review - stop and show them
           setState((prev) => ({
             ...prev,
             status: 'idle',
             preValidation,
           }))
+          // Reset the guard so "Generate Anyway" can be clicked
+          setIsGenerating(false)
           return { success: false, reason: 'validation_failed' }
         }
 
-        // Validation passed (or only warnings) - proceed to generate
+        // No issues - proceed to generate
         setState((prev) => ({ ...prev, status: 'generating', preValidation }))
 
         const output = await generateFn(input)
