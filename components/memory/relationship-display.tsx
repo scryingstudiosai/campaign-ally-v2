@@ -7,6 +7,13 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -33,6 +40,9 @@ import {
   Eye,
   Search,
   Scroll,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -191,6 +201,42 @@ function getReverseRelationshipType(type: string): string {
   return REVERSE_RELATIONSHIP_TYPES[type] || type
 }
 
+// Relationship type options for the dropdown
+const RELATIONSHIP_TYPE_OPTIONS = [
+  { value: 'related_to', label: 'Related to' },
+  { value: 'knows', label: 'Knows' },
+  { value: 'friend', label: 'Friend of' },
+  { value: 'enemy', label: 'Enemy of' },
+  { value: 'rival', label: 'Rival of' },
+  { value: 'parent_of', label: 'Parent of' },
+  { value: 'child_of', label: 'Child of' },
+  { value: 'sibling_of', label: 'Sibling of' },
+  { value: 'spouse_of', label: 'Spouse of' },
+  { value: 'lover', label: 'Lover of' },
+  { value: 'employs', label: 'Employs' },
+  { value: 'serves', label: 'Serves' },
+  { value: 'leads', label: 'Leads' },
+  { value: 'member_of', label: 'Member of' },
+  { value: 'student_of', label: 'Student of' },
+  { value: 'mentor_of', label: 'Mentor of' },
+  { value: 'located_in', label: 'Located in' },
+  { value: 'contains', label: 'Contains' },
+  { value: 'owns', label: 'Owns' },
+  { value: 'owned_by', label: 'Owned by' },
+  { value: 'worships', label: 'Worships' },
+  { value: 'deity_of', label: 'Deity/Patron of' },
+  { value: 'protects', label: 'Protects/Guards' },
+  { value: 'guarded_by', label: 'Guarded by' },
+  { value: 'debt_to', label: 'Indebted to' },
+  { value: 'creditor_of', label: 'Creditor of' },
+  { value: 'blackmails', label: 'Blackmails' },
+  { value: 'blackmailed_by', label: 'Blackmailed by' },
+  { value: 'creator_of', label: 'Creator of' },
+  { value: 'created_by', label: 'Created by' },
+  { value: 'seeks', label: 'Seeks' },
+  { value: 'sought_by', label: 'Sought by' },
+]
+
 export function RelationshipDisplay({
   relationships,
   currentEntityId,
@@ -199,6 +245,9 @@ export function RelationshipDisplay({
 }: RelationshipDisplayProps): JSX.Element {
   const router = useRouter()
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editedType, setEditedType] = useState<string>('')
+  const [savingId, setSavingId] = useState<string | null>(null)
 
   // Process relationships to show the "other" entity with correct perspective
   const processedRelationships = relationships.map((rel) => {
@@ -245,6 +294,49 @@ export function RelationshipDisplay({
     }
   }
 
+  const handleSave = async (rel: (typeof processedRelationships)[0]) => {
+    if (!editedType) return
+    setSavingId(rel.id)
+
+    try {
+      const supabase = createClient()
+
+      // Determine the actual type to save based on perspective
+      // If we're viewing from the source's perspective, save the type as-is
+      // If we're viewing from the target's perspective, we need to save the reverse type
+      const typeToSave = rel.isSource
+        ? editedType
+        : getReverseRelationshipType(editedType)
+
+      const { error } = await supabase
+        .from('relationships')
+        .update({ relationship_type: typeToSave })
+        .eq('id', rel.id)
+
+      if (error) throw error
+
+      toast.success('Relationship updated')
+      setEditingId(null)
+      setEditedType('')
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to update relationship:', error)
+      toast.error('Failed to update relationship')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const startEditing = (rel: (typeof processedRelationships)[0]) => {
+    setEditingId(rel.id)
+    setEditedType(rel.displayType)
+  }
+
+  const cancelEditing = () => {
+    setEditingId(null)
+    setEditedType('')
+  }
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -272,47 +364,109 @@ export function RelationshipDisplay({
               {processedRelationships.map((rel) => {
                 const Icon = RELATIONSHIP_ICONS[rel.displayType] || Link2
                 const isDeleting = deletingId === rel.id
+                const isEditing = editingId === rel.id
+                const isSaving = savingId === rel.id
+
                 return (
                   <div
                     key={rel.id}
                     className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
                   >
-                    <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">
-                      {rel.relationshipLabel}
-                    </span>
-                    <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Link
-                          href={`/dashboard/campaigns/${campaignId}/memory/${rel.otherEntity?.id}`}
-                          className="font-medium text-foreground hover:text-primary transition-colors truncate min-w-0"
-                        >
+                    {isEditing ? (
+                      // Edit mode
+                      <>
+                        <Select value={editedType} onValueChange={setEditedType}>
+                          <SelectTrigger className="w-36 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {RELATIONSHIP_TYPE_OPTIONS.map((type) => (
+                              <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <span className="font-medium text-foreground truncate min-w-0">
                           {rel.otherEntity?.name}
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{rel.otherEntity?.name}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <EntityTypeBadge
-                      type={rel.otherEntity?.entity_type || 'other'}
-                      size="sm"
-                      showIcon={false}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(rel)}
-                      disabled={isDeleting}
-                      className="ml-auto flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50"
-                      title="Delete relationship"
-                    >
-                      {isDeleting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </button>
+                        </span>
+                        <div className="ml-auto flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSave(rel)}
+                            disabled={isSaving}
+                            className="p-1 rounded hover:bg-primary/10 hover:text-primary transition-all disabled:opacity-50"
+                            title="Save"
+                          >
+                            {isSaving ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Check className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEditing}
+                            disabled={isSaving}
+                            className="p-1 rounded hover:bg-muted transition-all disabled:opacity-50"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      // View mode
+                      <>
+                        <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm text-muted-foreground whitespace-nowrap">
+                          {rel.relationshipLabel}
+                        </span>
+                        <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Link
+                              href={`/dashboard/campaigns/${campaignId}/memory/${rel.otherEntity?.id}`}
+                              className="font-medium text-foreground hover:text-primary transition-colors truncate min-w-0"
+                            >
+                              {rel.otherEntity?.name}
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{rel.otherEntity?.name}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <EntityTypeBadge
+                          type={rel.otherEntity?.entity_type || 'other'}
+                          size="sm"
+                          showIcon={false}
+                        />
+                        <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => startEditing(rel)}
+                            className="p-1 rounded hover:bg-muted transition-all"
+                            title="Edit relationship"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(rel)}
+                            disabled={isDeleting}
+                            className="p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50"
+                            title="Delete relationship"
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )
               })}
