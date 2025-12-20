@@ -34,6 +34,7 @@ import {
   Calendar,
   Wand2,
   BookOpen,
+  Heart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { renderWithBold } from '@/lib/text-utils'
@@ -158,11 +159,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
         )}
 
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2">{entity.name}</h1>
-              <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-3xl font-bold">{entity.name}</h1>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <EntityTypeBadge type={entity.entity_type as EntityType} size="lg" />
                 {entity.subtype && (
                   <Badge variant="outline">{entity.subtype}</Badge>
@@ -192,6 +193,12 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </Badge>
                 )}
               </div>
+              {/* Summary as subtitle - the quick reference */}
+              {(entity.dm_slug || entity.summary) && (
+                <p className="text-slate-400 italic mt-3">
+                  {entity.dm_slug || entity.summary}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" asChild>
@@ -222,164 +229,82 @@ export default async function EntityDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Summary */}
-            {entity.summary && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground italic">{renderWithBold(entity.summary)}</p>
-                </CardContent>
-              </Card>
+        {/* Main Dashboard Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+          {/* === LEFT COLUMN (2/3) - The Actor === */}
+          <div className="lg:col-span-2 space-y-4">
+
+            {/* Voice Profile - How to speak this character */}
+            {entity.entity_type === 'npc' && entity.voice && Object.keys(entity.voice as object).length > 0 && (entity.voice as Voice).style?.length > 0 && (
+              <VoiceCard voice={entity.voice as Voice} />
             )}
 
-            {/* Description */}
-            {entity.description && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Description</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{renderWithBold(entity.description)}</p>
-                </CardContent>
-              </Card>
+            {/* Appearance - What players see */}
+            {attributes.appearance && (
+              <div className="ca-panel p-4">
+                <div className="ca-section-header mb-2">
+                  <User className="w-4 h-4" />
+                  <span>Appearance</span>
+                </div>
+                <p className="text-sm text-slate-300">{renderWithBold(attributes.appearance)}</p>
+              </div>
             )}
 
-            {/* NPC-specific attributes */}
-            {entity.entity_type === 'npc' && attributes && (
-              <>
-                {/* Voice Profile (New Brain/Voice Architecture) */}
-                {entity.voice && Object.keys(entity.voice as object).length > 0 && (entity.voice as Voice).style?.length > 0 && (
-                  <VoiceCard voice={entity.voice as Voice} />
-                )}
-
-                {/* Appearance & Personality */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {attributes.appearance && (
-                    <div className="ca-panel p-4">
-                      <div className="ca-section-header">
-                        <User className="w-4 h-4 text-primary" />
-                        <span>Appearance</span>
-                      </div>
-                      <p className="text-sm text-slate-300">{renderWithBold(attributes.appearance)}</p>
-                    </div>
-                  )}
-                  {/* Show personality only if NO brain (brain.desire/fear replaces this) */}
-                  {!isNpcBrain(entity.brain as NpcBrain) && attributes.personality && (
-                    <div className="ca-panel p-4">
-                      <div className="ca-section-header">
-                        <MessageSquare className="w-4 h-4 text-primary" />
-                        <span>Personality</span>
-                      </div>
-                      <p className="text-sm text-slate-300">{renderWithBold(attributes.personality)}</p>
-                    </div>
+            {/* Combat Stats */}
+            {attributes.combatStats && (
+              <div className="ca-panel p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Shield className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm font-medium text-slate-400">Combat</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="ca-stat-pill ca-stat-pill--ac">AC {attributes.combatStats.armorClass}</span>
+                  <span className="ca-stat-pill ca-stat-pill--hp">HP {attributes.combatStats.hitPoints}</span>
+                  {attributes.combatStats.primaryWeapon && (
+                    <span className="text-sm text-slate-400">
+                      <Swords className="w-4 h-4 inline mr-1" />
+                      {attributes.combatStats.primaryWeapon}
+                    </span>
                   )}
                 </div>
-
-                {/* Voice & Mannerisms - Only show if NO voice profile */}
-                {!(entity.voice && (entity.voice as Voice).style?.length > 0) && attributes.voiceAndMannerisms && (
-                  <div className="ca-panel p-4">
-                    <div className="ca-section-header">
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Voice & Mannerisms</span>
-                    </div>
-                    <p className="text-sm text-slate-300">{renderWithBold(attributes.voiceAndMannerisms)}</p>
-                  </div>
+                {attributes.combatStats.combatStyle && (
+                  <p className="text-xs text-slate-500 mt-2 italic">{attributes.combatStats.combatStyle}</p>
                 )}
+              </div>
+            )}
 
-                {/* Combat Stats */}
-                {attributes.combatStats && (
-                  <div className="ca-panel p-4">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-slate-400" />
-                        <span className="text-sm font-medium text-slate-400">Combat:</span>
-                      </div>
-                      <span className="ca-stat-pill ca-stat-pill--ac">
-                        AC {attributes.combatStats.armorClass}
-                      </span>
-                      <span className="ca-stat-pill ca-stat-pill--hp">
-                        HP {attributes.combatStats.hitPoints}
-                      </span>
-                      {attributes.combatStats.primaryWeapon && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Swords className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">{attributes.combatStats.primaryWeapon}</span>
-                        </div>
-                      )}
-                      {attributes.combatStats.combatStyle && (
-                        <span className="text-sm text-muted-foreground italic">
-                          {attributes.combatStats.combatStyle}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
+            {/* Loot */}
+            {attributes.loot && (
+              <LootDisplay
+                loot={attributes.loot}
+                entityId={entity.id}
+                entityName={entity.name}
+                entityType={entity.entity_type}
+                campaignId={params.id}
+              />
+            )}
 
-                {/* Motivation - Only show if NO brain (brain.desire replaces this) */}
-                {!isNpcBrain(entity.brain as NpcBrain) && attributes.motivation && (
-                  <Card>
-                    <CardHeader className="pb-2 pt-3">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Target className="w-4 h-4 text-primary" />
-                        Motivation
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-3">
-                      <p className="text-sm text-muted-foreground">{renderWithBold(attributes.motivation)}</p>
-                    </CardContent>
-                  </Card>
-                )}
+            {/* Legacy Voice/Mannerisms - Only if no Voice profile */}
+            {!(entity.voice && (entity.voice as Voice).style?.length > 0) && attributes.voiceAndMannerisms && (
+              <div className="ca-panel p-4">
+                <div className="ca-section-header mb-2">
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Voice & Mannerisms</span>
+                </div>
+                <p className="text-sm text-slate-300">{renderWithBold(attributes.voiceAndMannerisms)}</p>
+              </div>
+            )}
 
-                {/* Secret */}
-                {attributes.secret && (
-                  <Card className="border-amber-500/30 bg-amber-500/5">
-                    <CardHeader className="pb-2 pt-3">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-amber-500" />
-                        <span className="text-amber-500">Secret</span>
-                        <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-                          <EyeOff className="w-3 h-3" />
-                          DM Only
-                        </span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-3">
-                      <p className="text-sm text-muted-foreground">{renderWithBold(attributes.secret)}</p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Plot Hook */}
-                {attributes.plotHook && (
-                  <Card className="border-cyan-500/30 bg-cyan-500/5">
-                    <CardHeader className="pb-2 pt-3">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Lightbulb className="w-4 h-4 text-cyan-500" />
-                        <span className="text-cyan-500">Plot Hook</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-3">
-                      <p className="text-sm text-muted-foreground">{renderWithBold(attributes.plotHook)}</p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Loot */}
-                {attributes.loot && (
-                  <LootDisplay
-                    loot={attributes.loot}
-                    entityId={entity.id}
-                    entityName={entity.name}
-                    entityType={entity.entity_type}
-                    campaignId={params.id}
-                  />
-                )}
-              </>
+            {/* Legacy Description - Only show if NO brain AND NO voice (old entities) */}
+            {!isNpcBrain(entity.brain as NpcBrain) && !(entity.voice && (entity.voice as Voice).style?.length > 0) && entity.description && (
+              <div className="ca-panel p-4">
+                <div className="ca-section-header mb-2">
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Description</span>
+                </div>
+                <p className="text-sm text-slate-300 whitespace-pre-wrap">{renderWithBold(entity.description)}</p>
+              </div>
             )}
 
             {/* Public Notes */}
@@ -419,11 +344,58 @@ export default async function EntityDetailPage({ params }: PageProps) {
             )}
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* NPC Brain - Prominent and Isolated (DM Only) */}
+
+          {/* === RIGHT COLUMN (1/3) - The Logic === */}
+          <div className="space-y-4">
+
+            {/* NPC Brain - The psychology */}
             {entity.entity_type === 'npc' && entity.brain && isNpcBrain(entity.brain as NpcBrain) && (
               <BrainCard brain={entity.brain as NpcBrain} viewMode="dm" />
+            )}
+
+            {/* Secret - DM Only */}
+            {attributes.secret && (
+              <div className="ca-panel p-4 border-l-2 border-amber-500/50">
+                <div className="flex items-center gap-2 text-amber-400 mb-2">
+                  <Lock className="w-4 h-4" />
+                  <span className="text-sm font-medium">Secret</span>
+                  <Badge variant="outline" className="ml-auto text-xs">DM Only</Badge>
+                </div>
+                <p className="text-sm text-slate-300">{renderWithBold(attributes.secret)}</p>
+              </div>
+            )}
+
+            {/* Plot Hook */}
+            {attributes.plotHook && (
+              <div className="ca-panel p-4 border-l-2 border-purple-500/50">
+                <div className="flex items-center gap-2 text-purple-400 mb-2">
+                  <Lightbulb className="w-4 h-4" />
+                  <span className="text-sm font-medium">Plot Hook</span>
+                </div>
+                <p className="text-sm text-slate-300">{renderWithBold(attributes.plotHook)}</p>
+              </div>
+            )}
+
+            {/* Legacy Motivation - Only if NO brain */}
+            {!isNpcBrain(entity.brain as NpcBrain) && attributes.motivation && (
+              <div className="ca-panel p-4">
+                <div className="ca-section-header mb-2">
+                  <Target className="w-4 h-4" />
+                  <span>Motivation</span>
+                </div>
+                <p className="text-sm text-slate-300">{renderWithBold(attributes.motivation)}</p>
+              </div>
+            )}
+
+            {/* Legacy Personality - Only if NO brain */}
+            {!isNpcBrain(entity.brain as NpcBrain) && attributes.personality && (
+              <div className="ca-panel p-4">
+                <div className="ca-section-header mb-2">
+                  <Heart className="w-4 h-4" />
+                  <span>Personality</span>
+                </div>
+                <p className="text-sm text-slate-300">{renderWithBold(attributes.personality)}</p>
+              </div>
             )}
 
             {/* Relationships */}
