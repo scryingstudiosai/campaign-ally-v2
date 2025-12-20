@@ -50,6 +50,7 @@ export interface HeroInputs {
 export interface NpcInputData {
   name?: string
   role: string
+  concept?: string  // Situation/context describing the NPC
   race?: string
   gender?: string
   personalityHints?: string

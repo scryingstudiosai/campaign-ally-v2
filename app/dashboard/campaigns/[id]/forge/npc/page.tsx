@@ -93,6 +93,9 @@ export default function NpcForgePage(): JSX.Element {
   // NPC type (standard, villain, hero)
   const [npcType, setNpcType] = useState<'standard' | 'villain' | 'hero'>('standard')
 
+  // Standard NPC state
+  const [concept, setConcept] = useState('')
+
   // Villain state
   const [villainConcept, setVillainConcept] = useState('')
   const [villainScheme, setVillainScheme] = useState('')
@@ -108,9 +111,8 @@ export default function NpcForgePage(): JSX.Element {
   const [heroAvailability, setHeroAvailability] = useState('scheduled')
   const [heroPowerTier, setHeroPowerTier] = useState('equal')
 
-  // Quick Reference - track referenced entity IDs for context injection
-  const [referencedEntityIds, setReferencedEntityIds] = useState<string[]>([])
-  const [referencedEntityNames, setReferencedEntityNames] = useState<Record<string, string>>({})
+  // Quick Reference - track referenced entities for context injection
+  const [referencedEntities, setReferencedEntities] = useState<{ id: string; name: string }[]>([])
 
   // The forge hook
   const forge = useForge<NpcInputData, GeneratedNPC>({
@@ -311,29 +313,39 @@ export default function NpcForgePage(): JSX.Element {
     }
   }
 
-  // Handle quick reference entity selection
-  const handleQuickReferenceSelect = (name: string, entityId: string): void => {
-    if (!referencedEntityIds.includes(entityId)) {
-      setReferencedEntityIds((prev) => [...prev, entityId])
-      setReferencedEntityNames((prev) => ({ ...prev, [entityId]: name }))
+  // Handle quick reference entity selection - insert name into concept and track for context
+  const handleQuickReferenceSelect = (
+    name: string,
+    entityId: string,
+    targetTab: 'standard' | 'villain' | 'hero' = 'standard'
+  ): void => {
+    // Insert entity name into the appropriate concept field
+    const insertName = (prev: string) =>
+      prev + (prev.endsWith(' ') || prev === '' ? '' : ' ') + name
+
+    if (targetTab === 'standard') {
+      setConcept(insertName)
+    } else if (targetTab === 'villain') {
+      setVillainConcept(insertName)
+    } else if (targetTab === 'hero') {
+      setHeroConcept(insertName)
+    }
+
+    // Track entity for context injection (if not already tracked)
+    if (!referencedEntities.some((e) => e.id === entityId)) {
+      setReferencedEntities((prev) => [...prev, { id: entityId, name }])
     }
   }
 
   // Remove referenced entity
   const handleRemoveReferencedEntity = (entityId: string): void => {
-    setReferencedEntityIds((prev) => prev.filter((id) => id !== entityId))
-    setReferencedEntityNames((prev) => {
-      const newNames = { ...prev }
-      delete newNames[entityId]
-      return newNames
-    })
+    setReferencedEntities((prev) => prev.filter((e) => e.id !== entityId))
   }
 
   // Clear referenced entities after successful generation
   useEffect(() => {
     if (forge.output) {
-      setReferencedEntityIds([])
-      setReferencedEntityNames({})
+      setReferencedEntities([])
     }
   }, [forge.output])
 
@@ -458,10 +470,12 @@ export default function NpcForgePage(): JSX.Element {
   // Handle generation with toast
   const handleGenerate = async (input: NpcInputData): Promise<void> => {
     try {
-      // Include referenced entity IDs for context injection
+      // Include concept and referenced entity IDs for context injection
+      const referencedIds = referencedEntities.map((e) => e.id)
       const inputWithContext = {
         ...input,
-        referencedEntityIds: referencedEntityIds.length > 0 ? referencedEntityIds : undefined,
+        concept: concept.trim() || undefined,
+        referencedEntityIds: referencedIds.length > 0 ? referencedIds : undefined,
       }
       const result = await forge.handleGenerate(inputWithContext)
       // Only show success toast if generation actually completed
@@ -483,6 +497,8 @@ export default function NpcForgePage(): JSX.Element {
       return
     }
 
+    const referencedIds = referencedEntities.map((e) => e.id)
+
     try {
       const result = await forge.handleGenerate({
         role: villainConcept,
@@ -493,7 +509,7 @@ export default function NpcForgePage(): JSX.Element {
           threatLevel,
           escapePlan: villainEscapePlan,
         },
-        referencedEntityIds: referencedEntityIds.length > 0 ? referencedEntityIds : undefined,
+        referencedEntityIds: referencedIds.length > 0 ? referencedIds : undefined,
       } as NpcInputData)
 
       if (result.success) {
@@ -514,6 +530,7 @@ export default function NpcForgePage(): JSX.Element {
     }
 
     const limitation = heroLimitation === 'other' ? heroLimitationCustom : heroLimitation
+    const referencedIds = referencedEntities.map((e) => e.id)
 
     try {
       const result = await forge.handleGenerate({
@@ -525,7 +542,7 @@ export default function NpcForgePage(): JSX.Element {
           availability: heroAvailability,
           powerTier: heroPowerTier,
         },
-        referencedEntityIds: referencedEntityIds.length > 0 ? referencedEntityIds : undefined,
+        referencedEntityIds: referencedIds.length > 0 ? referencedIds : undefined,
       } as NpcInputData)
 
       if (result.success) {
@@ -600,45 +617,6 @@ export default function NpcForgePage(): JSX.Element {
             </div>
           )}
 
-          {/* Quick Reference - Entity Context Injection */}
-          <div className="mb-4 p-4 bg-slate-800/50 border border-slate-700 rounded-lg">
-            <QuickReference
-              campaignId={campaignId}
-              onSelect={handleQuickReferenceSelect}
-              excludeIds={referencedEntityIds}
-            />
-
-            {/* Show selected entities as removable tags */}
-            {referencedEntityIds.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-slate-700">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs text-slate-400">Context from:</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {referencedEntityIds.map((id) => (
-                    <Badge
-                      key={id}
-                      variant="outline"
-                      className="bg-primary/10 border-primary/30 text-primary pr-1 flex items-center gap-1"
-                    >
-                      {referencedEntityNames[id] || 'Unknown'}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveReferencedEntity(id)}
-                        className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-500 mt-2">
-                  These entities will be included in the AI context for world-consistent generation.
-                </p>
-              </div>
-            )}
-          </div>
-
           {/* NPC Type Tabs */}
           <Tabs
             value={npcType}
@@ -660,7 +638,33 @@ export default function NpcForgePage(): JSX.Element {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="standard">
+            <TabsContent value="standard" className="space-y-4">
+              {/* Concept / Situation field with integrated QuickReference */}
+              <div className="ca-panel p-4 space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="concept">Concept / Situation</Label>
+                  <Textarea
+                    id="concept"
+                    placeholder="A nervous merchant recently threatened by a local gang... A retired soldier haunted by a past mistake..."
+                    value={concept}
+                    onChange={(e) => setConcept(e.target.value)}
+                    className="min-h-[80px] bg-slate-900/50 border-slate-700"
+                    disabled={forge.status !== 'idle' && forge.status !== 'error'}
+                  />
+                  <p className="text-xs text-slate-500">
+                    Describe the situation, connections, or story hooks for this NPC
+                  </p>
+                </div>
+
+                {/* Quick Reference - click to insert entity names */}
+                <QuickReference
+                  campaignId={campaignId}
+                  onSelect={(name, entityId) => handleQuickReferenceSelect(name, entityId, 'standard')}
+                  excludeIds={referencedEntities.map((e) => e.id)}
+                />
+              </div>
+
+              {/* Standard NPC form */}
               <NpcInputForm
                 onSubmit={handleGenerate}
                 isLocked={forge.status !== 'idle' && forge.status !== 'error'}
@@ -693,6 +697,15 @@ export default function NpcForgePage(): JSX.Element {
                     value={villainConcept}
                     onChange={(e) => setVillainConcept(e.target.value)}
                     className="min-h-[80px] bg-slate-900/50 border-slate-700"
+                    disabled={forge.status !== 'idle' && forge.status !== 'error'}
+                  />
+                  <p className="text-xs text-slate-500">
+                    Click entities below to reference them in your villain&apos;s story
+                  </p>
+                  <QuickReference
+                    campaignId={campaignId}
+                    onSelect={(name, entityId) => handleQuickReferenceSelect(name, entityId, 'villain')}
+                    excludeIds={referencedEntities.map((e) => e.id)}
                   />
                 </div>
 
@@ -800,6 +813,15 @@ export default function NpcForgePage(): JSX.Element {
                     value={heroConcept}
                     onChange={(e) => setHeroConcept(e.target.value)}
                     className="min-h-[80px] bg-slate-900/50 border-slate-700"
+                    disabled={forge.status !== 'idle' && forge.status !== 'error'}
+                  />
+                  <p className="text-xs text-slate-500">
+                    Click entities below to reference them in your hero&apos;s story
+                  </p>
+                  <QuickReference
+                    campaignId={campaignId}
+                    onSelect={(name, entityId) => handleQuickReferenceSelect(name, entityId, 'hero')}
+                    excludeIds={referencedEntities.map((e) => e.id)}
                   />
                 </div>
 
@@ -938,6 +960,33 @@ export default function NpcForgePage(): JSX.Element {
               </div>
             </TabsContent>
           </Tabs>
+
+          {/* Show tracked context entities */}
+          {referencedEntities.length > 0 && (
+            <div className="mt-4 p-3 bg-slate-800/30 rounded-lg border border-slate-700">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-slate-500">Context from:</span>
+                {referencedEntities.map((entity) => (
+                  <span
+                    key={entity.id}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-700/50 rounded text-xs text-slate-300"
+                  >
+                    {entity.name}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveReferencedEntity(entity.id)}
+                      className="text-slate-500 hover:text-red-400 ml-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-slate-600 mt-2">
+                These entities will be included in the AI context for world-consistent generation.
+              </p>
+            </div>
+          )}
         </>
       }
       outputSection={

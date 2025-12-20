@@ -20,6 +20,7 @@ interface HeroInputs {
 interface NPCInputs {
   name?: string
   role: string
+  concept?: string
   race?: string
   gender?: string
   personalityHints?: string
@@ -605,7 +606,11 @@ function buildUserPrompt(inputs: NPCInputs): string {
     ? `Generate a HERO/ALLY with the following specifications:\n\n`
     : `Generate an NPC with the following specifications:\n\n`
 
-  prompt += `Role/Concept: ${inputs.role}\n`
+  prompt += `Role/Occupation: ${inputs.role}\n`
+
+  if (inputs.concept) {
+    prompt += `Situation/Context: ${inputs.concept}\n`
+  }
 
   if (inputs.name) {
     prompt += `Name: ${inputs.name}\n`
