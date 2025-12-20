@@ -18,6 +18,8 @@ import {
   Clock,
   Zap,
   TrendingUp,
+  Heart,
+  Lock,
 } from 'lucide-react'
 
 interface BrainCardProps {
@@ -153,18 +155,30 @@ export function BrainCard({
         {/* Hero-specific fields */}
         {isHeroBrain(brain) && (
           <>
+            <div className="ca-panel p-3 border-l-2 border-amber-500/50 bg-amber-500/5">
+              <div className="flex gap-3">
+                <Lock className="w-4 h-4 text-amber-500 mt-1 shrink-0" />
+                <div>
+                  <span className="text-xs text-amber-400 uppercase tracking-wide">
+                    Limitation (Why They Can&apos;t Solve It)
+                  </span>
+                  <p className="text-sm text-slate-300">{brain.limitation}</p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-2 border-t border-slate-700">
-              <AlertTriangle className="w-4 h-4 text-amber-400 mt-1 shrink-0" />
+              <Heart className="w-4 h-4 text-teal-400 mt-1 shrink-0" />
               <div>
                 <span className="text-xs text-slate-500 uppercase tracking-wide">
-                  Limitation
+                  Support Role
                 </span>
-                <p className="text-sm text-slate-300">{brain.limitation}</p>
+                <p className="text-sm text-slate-300">{brain.support_role}</p>
               </div>
             </div>
 
             <div className="flex gap-3">
-              <Clock className="w-4 h-4 text-teal-400 mt-1 shrink-0" />
+              <Clock className="w-4 h-4 text-blue-400 mt-1 shrink-0" />
               <div>
                 <span className="text-xs text-slate-500 uppercase tracking-wide">
                   Availability

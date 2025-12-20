@@ -99,6 +99,14 @@ export default function NpcForgePage(): JSX.Element {
   const [threatLevel, setThreatLevel] = useState('regional')
   const [villainEscapePlan, setVillainEscapePlan] = useState('')
 
+  // Hero state
+  const [heroConcept, setHeroConcept] = useState('')
+  const [heroLimitation, setHeroLimitation] = useState('')
+  const [heroLimitationCustom, setHeroLimitationCustom] = useState('')
+  const [heroSupportRoles, setHeroSupportRoles] = useState<string[]>([])
+  const [heroAvailability, setHeroAvailability] = useState('scheduled')
+  const [heroPowerTier, setHeroPowerTier] = useState('equal')
+
   // The forge hook
   const forge = useForge<NpcInputData, GeneratedNPC>({
     campaignId,
@@ -461,6 +469,37 @@ export default function NpcForgePage(): JSX.Element {
     }
   }
 
+  // Handle hero generation
+  const handleGenerateHero = async (): Promise<void> => {
+    if (!heroConcept.trim()) {
+      toast.error('Please enter a hero concept')
+      return
+    }
+
+    const limitation = heroLimitation === 'other' ? heroLimitationCustom : heroLimitation
+
+    try {
+      const result = await forge.handleGenerate({
+        role: heroConcept,
+        npcType: 'hero',
+        heroInputs: {
+          limitation,
+          supportRoles: heroSupportRoles,
+          availability: heroAvailability,
+          powerTier: heroPowerTier,
+        },
+      } as NpcInputData)
+
+      if (result.success) {
+        toast.success('Hero forged successfully!')
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to forge hero'
+      )
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background text-foreground p-8">
@@ -672,13 +711,153 @@ export default function NpcForgePage(): JSX.Element {
               </div>
             </TabsContent>
 
-            <TabsContent value="hero">
-              <div className="ca-panel p-6 text-center text-slate-500">
-                <Shield className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="font-medium">Hero Forge</p>
-                <p className="text-sm">
-                  Coming soon - Generate helpful allies with built-in limitations
-                </p>
+            <TabsContent value="hero" className="space-y-4">
+              {/* Hero-specific inputs */}
+              <div className="ca-panel p-4 space-y-4">
+                {/* The Concept */}
+                <div className="space-y-2">
+                  <Label htmlFor="heroConcept">Hero Concept</Label>
+                  <Textarea
+                    id="heroConcept"
+                    placeholder="A retired adventurer who runs the local tavern, a young squire with a noble heart..."
+                    value={heroConcept}
+                    onChange={(e) => setHeroConcept(e.target.value)}
+                    className="min-h-[80px] bg-slate-900/50 border-slate-700"
+                  />
+                </div>
+
+                {/* The Limitation (Why they can't solve the plot) */}
+                <div className="space-y-2">
+                  <Label>The Limitation</Label>
+                  <p className="text-xs text-slate-500 mb-2">Why can&apos;t they solve the problem themselves?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: 'old_injured', label: 'Too Old / Injured', desc: 'Past their prime, body failing' },
+                      { value: 'cursed', label: 'Cursed', desc: 'Magical restriction prevents action' },
+                      { value: 'oath_bound', label: 'Bound by Oath', desc: 'Sworn vow limits what they can do' },
+                      { value: 'political', label: 'Political Constraints', desc: 'Action would cause diplomatic crisis' },
+                      { value: 'protecting', label: 'Must Protect Something', desc: 'Cannot leave their charge' },
+                      { value: 'hunted', label: 'Hunted / In Hiding', desc: 'Drawing attention means death' },
+                      { value: 'powerless', label: 'Lost Their Power', desc: 'Once mighty, now diminished' },
+                      { value: 'other', label: 'Other', desc: 'Custom limitation' },
+                    ].map((limitation) => (
+                      <button
+                        key={limitation.value}
+                        type="button"
+                        onClick={() => setHeroLimitation(limitation.value)}
+                        className={cn(
+                          'p-3 rounded-lg border text-left transition-colors',
+                          heroLimitation === limitation.value
+                            ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                            : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                        )}
+                      >
+                        <div className="font-medium text-sm">{limitation.label}</div>
+                        <div className="text-xs opacity-70">{limitation.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                  {heroLimitation === 'other' && (
+                    <Input
+                      placeholder="Describe their limitation..."
+                      value={heroLimitationCustom}
+                      onChange={(e) => setHeroLimitationCustom(e.target.value)}
+                      className="mt-2 bg-slate-900/50 border-slate-700"
+                    />
+                  )}
+                </div>
+
+                {/* The Support Role (How they help) */}
+                <div className="space-y-2">
+                  <Label>Support Role</Label>
+                  <p className="text-xs text-slate-500 mb-2">What do they offer the party?</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      'Knowledge / Lore',
+                      'Safe Haven',
+                      'Healing',
+                      'Political Access',
+                      'Rare Items',
+                      'Combat Training',
+                      'Information Network',
+                      'Transportation',
+                      'Magical Aid',
+                    ].map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => {
+                          setHeroSupportRoles(prev =>
+                            prev.includes(role)
+                              ? prev.filter(r => r !== role)
+                              : [...prev, role]
+                          )
+                        }}
+                        className={cn(
+                          'px-3 py-1.5 rounded-full text-sm border transition-colors',
+                          heroSupportRoles.includes(role)
+                            ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                            : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                        )}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Availability */}
+                <div className="space-y-2">
+                  <Label htmlFor="availability">Availability</Label>
+                  <Select value={heroAvailability} onValueChange={setHeroAvailability}>
+                    <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                      <SelectValue placeholder="How often can they help?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="always">Always Available - Lives nearby, easy to reach</SelectItem>
+                      <SelectItem value="scheduled">By Appointment - Busy but can be scheduled</SelectItem>
+                      <SelectItem value="emergency">Emergencies Only - Has own responsibilities</SelectItem>
+                      <SelectItem value="once">One-Time Help - After this, they&apos;re unavailable</SelectItem>
+                      <SelectItem value="random">Unpredictable - Shows up when least expected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Power Tier */}
+                <div className="space-y-2">
+                  <Label htmlFor="powerTier">Power Level (Relative to Party)</Label>
+                  <Select value={heroPowerTier} onValueChange={setHeroPowerTier}>
+                    <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                      <SelectValue placeholder="How powerful are they?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weaker">Weaker - Needs party&apos;s protection sometimes</SelectItem>
+                      <SelectItem value="equal">Equal - Peer to the party</SelectItem>
+                      <SelectItem value="stronger">Stronger - Could solve problems but won&apos;t/can&apos;t</SelectItem>
+                      <SelectItem value="legendary">Legendary - Famous hero, way above party level</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">Stronger heroes need stronger limitations to explain why they don&apos;t just fix everything.</p>
+                </div>
+
+                {/* Generate Button */}
+                <Button
+                  onClick={handleGenerateHero}
+                  disabled={forge.status === 'generating' || forge.status === 'validating' || !heroConcept.trim()}
+                  className="w-full ca-btn ca-btn-primary"
+                >
+                  {forge.status === 'generating' || forge.status === 'validating' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Forging Hero...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="w-4 h-4 mr-2" />
+                      Forge Hero
+                    </>
+                  )}
+                </Button>
               </div>
             </TabsContent>
           </Tabs>

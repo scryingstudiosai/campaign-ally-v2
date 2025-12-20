@@ -40,6 +40,13 @@ export interface VillainInputs {
   escapePlan?: string
 }
 
+export interface HeroInputs {
+  limitation?: string
+  supportRoles?: string[]
+  availability?: string
+  powerTier?: string
+}
+
 export interface NpcInputData {
   name?: string
   role: string
@@ -52,6 +59,7 @@ export interface NpcInputData {
   factionId?: string
   npcType?: 'standard' | 'villain' | 'hero'
   villainInputs?: VillainInputs
+  heroInputs?: HeroInputs
   [key: string]: unknown
 }
 

@@ -9,6 +9,13 @@ interface VillainInputs {
   escapePlan?: string
 }
 
+interface HeroInputs {
+  limitation?: string
+  supportRoles?: string[]
+  availability?: string
+  powerTier?: string
+}
+
 interface NPCInputs {
   name?: string
   role: string
@@ -19,6 +26,7 @@ interface NPCInputs {
   additionalRequirements?: string
   npcType?: 'standard' | 'villain' | 'hero'
   villainInputs?: VillainInputs
+  heroInputs?: HeroInputs
 }
 
 interface NpcBrain {
@@ -34,6 +42,12 @@ interface VillainBrain extends NpcBrain {
   resources: string[]
   escape_plan: string
   escalation: string
+}
+
+interface HeroBrain extends NpcBrain {
+  limitation: string
+  support_role: string
+  availability: string
 }
 
 interface NpcVoice {
@@ -56,7 +70,7 @@ interface GeneratedNPC {
   sub_type: string
 
   // New Brain/Voice/Facts structure
-  brain: NpcBrain | VillainBrain
+  brain: NpcBrain | VillainBrain | HeroBrain
   voice: NpcVoice
   facts: NpcFact[]
   read_aloud: string
@@ -297,6 +311,37 @@ Generate 8-12 atomic facts including:
 `
   }
 
+  // Add hero-specific guidelines
+  if (npcType === 'hero') {
+    prompt += `
+
+## HERO/ALLY-SPECIFIC GUIDELINES
+
+You are generating a HERO/ALLY NPC. The "sub_type" field MUST be "hero".
+
+HERO BRAIN GUIDELINES:
+The hero brain extends the standard brain with additional fields:
+- **Limitation/Power Balance**: The more powerful the hero, the more restrictive the limitation must be. A legendary hero needs a legendary curse. A village healer just needs to be "too old to travel."
+- **Limitation**: Must be SPECIFIC and IMMUTABLE. Not "busy" but "Sworn to guard the Eternal Flame - if they leave, the flame dies and the demon escapes."
+- **Support Role**: Must be CONCRETE and LIMITED. Not "helps in combat" but "Can cast one healing spell per day before their curse drains them."
+- **Availability**: Be specific. "Can be reached via sending stone, but only responds during full moons."
+- **Why They Don't Solve It**: The limitation must logically prevent them from just fixing the main plot. This is crucial for player agency.
+
+ANTI-SPOTLIGHT STEALING RULES:
+1. Hero should use Help action in combat, not attack rolls
+2. Hero provides information, not solutions
+3. Hero opens doors, party must walk through them
+4. If hero is stronger than party, they should be physically absent or restricted
+
+HERO FACTS GUIDELINES:
+Generate 6-10 atomic facts including:
+- 2-3 appearance facts (visibility: "public") - convey trustworthiness or faded heroism
+- 2-3 personality facts (visibility: "public") - why they want to help
+- 1-2 backstory facts (visibility: "public") - their heroic past
+- 1-2 secret facts (visibility: "dm_only") - hidden burden that explains limitation
+`
+  }
+
   if (codex) {
     prompt += `\n\nCAMPAIGN CONTEXT:\n`
 
@@ -406,6 +451,70 @@ IMPORTANT:
 - hitPoints must be a NUMBER, not a string
 - energy must be one of: subdued, measured, animated, manic
 - vocabulary must be one of: simple, educated, archaic, technical, street`
+  } else if (npcType === 'hero') {
+    prompt += `\n\nRESPONSE FORMAT FOR HERO/ALLY:
+Return a JSON object with these exact fields:
+{
+  "name": "Full name of the hero",
+  "sub_type": "hero",
+
+  "brain": {
+    "desire": "What they want - usually to help or protect",
+    "fear": "What holds them back or threatens them",
+    "leverage": "How party could convince them to help more",
+    "line": "What they refuse to do, even to help",
+    "limitation": "The SPECIFIC reason they cannot solve the problem themselves",
+    "support_role": "Exactly HOW they help the party without stealing spotlight",
+    "availability": "When and how often they can be called upon"
+  },
+
+  "voice": {
+    "style": ["Adjective1", "Adjective2", "Adjective3"],
+    "speech_patterns": ["Pattern 1", "Pattern 2"],
+    "catchphrase": "A memorable supportive phrase",
+    "energy": "subdued|measured|animated|manic",
+    "vocabulary": "simple|educated|archaic|technical|street",
+    "tells": ["Physical behaviors that show they care"]
+  },
+
+  "facts": [
+    {"content": "Appearance fact - convey trustworthiness", "category": "appearance", "visibility": "public"},
+    {"content": "Their heroic past", "category": "backstory", "visibility": "public"},
+    {"content": "Why they're limited now", "category": "plot", "visibility": "dm_only"}
+  ],
+
+  "read_aloud": "40-60 word sensory description emphasizing their warmth, wisdom, or faded glory",
+  "dm_slug": "One-line reference, e.g. 'Retired paladin who can't leave the shrine he guards'",
+  "dmSlug": "Same as dm_slug for compatibility",
+
+  "race": "Race/species",
+  "gender": "Gender",
+  "appearance": "Full appearance - should convey trustworthiness or faded heroism",
+  "personality": "Personality showing WHY they want to help",
+  "voiceAndMannerisms": "How they speak - should feel safe/reliable",
+  "motivation": "What drives them to aid the party",
+  "secret": "Hidden burden or past that explains their limitation",
+  "plotHook": "How the party earns their trust or assistance",
+  "loot": ["Items they might gift or lend to worthy heroes"],
+  "combatStats": {
+    "armorClass": 14,
+    "hitPoints": 35,
+    "primaryWeapon": "Weapon",
+    "combatStyle": "Protective and measured"
+  },
+  "connectionHooks": ["Ways the hero can meaningfully help without solving everything"],
+  "tags": ["hero", "ally", "support"]
+}
+
+IMPORTANT:
+- sub_type MUST be "hero"
+- brain MUST include: limitation, support_role, availability
+- limitation must explain why they cannot solve the main problem
+- support_role must be specific and LIMITED
+- loot must be an array of strings, NOT a single string
+- hitPoints must be a NUMBER, not a string
+- energy must be one of: subdued, measured, animated, manic
+- vocabulary must be one of: simple, educated, archaic, technical, street`
   } else {
     prompt += `\n\nRESPONSE FORMAT:
 Return a JSON object with these exact fields:
@@ -470,9 +579,12 @@ IMPORTANT:
 
 function buildUserPrompt(inputs: NPCInputs): string {
   const isVillain = inputs.npcType === 'villain'
+  const isHero = inputs.npcType === 'hero'
 
   let prompt = isVillain
     ? `Generate a VILLAIN with the following specifications:\n\n`
+    : isHero
+    ? `Generate a HERO/ALLY with the following specifications:\n\n`
     : `Generate an NPC with the following specifications:\n\n`
 
   prompt += `Role/Concept: ${inputs.role}\n`
@@ -527,6 +639,56 @@ function buildUserPrompt(inputs: NPCInputs): string {
     } else {
       prompt += `Escape Plan: Invent a creative escape mechanism\n`
     }
+  }
+
+  // Hero-specific inputs
+  if (isHero && inputs.heroInputs) {
+    const hi = inputs.heroInputs
+    prompt += `\n## HERO INPUTS:\n`
+
+    if (hi.limitation) {
+      const limitationDescriptions: Record<string, string> = {
+        old_injured: 'Too Old / Injured - Past their prime, body failing',
+        cursed: 'Cursed - Magical restriction prevents action',
+        oath_bound: 'Bound by Oath - Sworn vow limits what they can do',
+        political: 'Political Constraints - Action would cause diplomatic crisis',
+        protecting: 'Must Protect Something - Cannot leave their charge',
+        hunted: 'Hunted / In Hiding - Drawing attention means death',
+        powerless: 'Lost Their Power - Once mighty, now diminished',
+      }
+      prompt += `Limitation: ${limitationDescriptions[hi.limitation] || hi.limitation}\n`
+    } else {
+      prompt += `Limitation: Create an appropriate limitation for this hero\n`
+    }
+
+    if (hi.supportRoles && hi.supportRoles.length > 0) {
+      prompt += `Support Roles: ${hi.supportRoles.join(', ')}\n`
+    } else {
+      prompt += `Support Roles: Determine appropriate ways they can help\n`
+    }
+
+    if (hi.availability) {
+      const availabilityDescriptions: Record<string, string> = {
+        always: 'Always Available - Lives nearby, easy to reach',
+        scheduled: 'By Appointment - Busy but can be scheduled',
+        emergency: 'Emergencies Only - Has own responsibilities',
+        once: 'One-Time Help - After this, they are unavailable',
+        random: 'Unpredictable - Shows up when least expected',
+      }
+      prompt += `Availability: ${availabilityDescriptions[hi.availability] || hi.availability}\n`
+    }
+
+    if (hi.powerTier) {
+      const powerDescriptions: Record<string, string> = {
+        weaker: 'Weaker than party - Needs their protection sometimes',
+        equal: 'Equal to party - Peer to the adventurers',
+        stronger: 'Stronger than party - Could solve problems but cannot/will not',
+        legendary: 'Legendary - Famous hero, way above party level (requires VERY strong limitation)',
+      }
+      prompt += `Power Level: ${powerDescriptions[hi.powerTier] || hi.powerTier}\n`
+    }
+
+    prompt += `\nIMPORTANT: The limitation MUST explain why this hero cannot just solve the main problem. If they are "Legendary" power tier, the limitation must be equally legendary.\n`
   }
 
   if (inputs.personalityHints) {
