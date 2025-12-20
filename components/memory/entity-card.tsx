@@ -43,6 +43,75 @@ interface EntityCardProps {
   campaignId: string
 }
 
+// Composite key style map for entity + subtype combinations
+interface EntityStyle {
+  borderClass: string
+  glowClass: string
+  hoverClass: string
+}
+
+const STYLE_MAP: Record<string, EntityStyle> = {
+  // NPC subtypes
+  npc_villain: {
+    borderClass: 'border-red-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
+    hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
+  },
+  npc_hero: {
+    borderClass: 'border-amber-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(245,158,11,0.15)]',
+    hoverClass: 'hover:border-amber-500/60 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)]',
+  },
+  npc_standard: {
+    borderClass: 'border-teal-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-teal-500/50',
+  },
+  // Default fallbacks for other entity types
+  location_default: {
+    borderClass: 'border-green-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-green-500/50',
+  },
+  item_default: {
+    borderClass: 'border-purple-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-purple-500/50',
+  },
+  faction_default: {
+    borderClass: 'border-orange-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-orange-500/50',
+  },
+  quest_default: {
+    borderClass: 'border-yellow-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-yellow-500/50',
+  },
+  other_default: {
+    borderClass: 'border-slate-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-slate-500/50',
+  },
+}
+
+function getEntityStyle(entityType: EntityType, subtype?: string): EntityStyle {
+  // Try composite key first (e.g., npc_villain)
+  const compositeKey = `${entityType}_${subtype || 'standard'}`
+  if (STYLE_MAP[compositeKey]) {
+    return STYLE_MAP[compositeKey]
+  }
+
+  // Fall back to entity type default
+  const defaultKey = `${entityType}_default`
+  if (STYLE_MAP[defaultKey]) {
+    return STYLE_MAP[defaultKey]
+  }
+
+  // Ultimate fallback
+  return STYLE_MAP.other_default
+}
+
 const STATUS_CONFIG: Record<string, { icon: typeof Skull; color: string; label: string }> = {
   deceased: { icon: Skull, color: 'text-red-400', label: 'Deceased' },
   destroyed: { icon: AlertTriangle, color: 'text-slate-400', label: 'Destroyed' },
@@ -60,12 +129,16 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
   const statusConfig = STATUS_CONFIG[entity.status]
   const importanceConfig = IMPORTANCE_CONFIG[entity.importance_tier]
   const isStub = entity.attributes?.is_stub || entity.attributes?.needs_review
+  const entityStyle = getEntityStyle(entity.entity_type, entity.subtype)
 
   return (
     <Link href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}>
       <div
         className={cn(
-          `ca-card ca-card--${entity.entity_type} ca-card-interactive h-full p-4 group`,
+          'ca-card ca-card-interactive h-full p-4 group border',
+          entityStyle.borderClass,
+          entityStyle.glowClass,
+          entityStyle.hoverClass,
           isStub && 'border-dashed border-amber-500/50 opacity-90'
         )}
       >
@@ -98,7 +171,7 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
             </div>
           </div>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <EntityTypeBadge type={entity.entity_type} size="sm" />
+            <EntityTypeBadge type={entity.entity_type} subtype={entity.subtype} size="sm" />
             {isStub && (
               <span className="ca-inset px-2 py-0.5 text-xs text-amber-400 flex items-center gap-1">
                 <Wand2 className="w-3 h-3" />
