@@ -33,16 +33,25 @@ interface NpcInputFormProps {
   }
 }
 
+export interface VillainInputs {
+  scheme?: string
+  resources?: string[]
+  threatLevel?: string
+  escapePlan?: string
+}
+
 export interface NpcInputData {
   name?: string
   role: string
-  race: string
-  gender: string
+  race?: string
+  gender?: string
   personalityHints?: string
   voiceReference?: string
   additionalRequirements?: string
   locationId?: string
   factionId?: string
+  npcType?: 'standard' | 'villain' | 'hero'
+  villainInputs?: VillainInputs
   [key: string]: unknown
 }
 

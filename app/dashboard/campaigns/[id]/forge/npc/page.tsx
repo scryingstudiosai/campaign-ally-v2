@@ -6,7 +6,13 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Sparkles, User, Skull, Shield } from 'lucide-react'
+import { Sparkles, User, Skull, Shield, Loader2 } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
 // Forge foundation imports
 import { useForge } from '@/hooks/useForge'
@@ -85,6 +91,13 @@ export default function NpcForgePage(): JSX.Element {
 
   // NPC type (standard, villain, hero)
   const [npcType, setNpcType] = useState<'standard' | 'villain' | 'hero'>('standard')
+
+  // Villain state
+  const [villainConcept, setVillainConcept] = useState('')
+  const [villainScheme, setVillainScheme] = useState('')
+  const [villainResources, setVillainResources] = useState<string[]>([])
+  const [threatLevel, setThreatLevel] = useState('regional')
+  const [villainEscapePlan, setVillainEscapePlan] = useState('')
 
   // The forge hook
   const forge = useForge<NpcInputData, GeneratedNPC>({
@@ -419,6 +432,35 @@ export default function NpcForgePage(): JSX.Element {
     }
   }
 
+  // Handle villain generation
+  const handleGenerateVillain = async (): Promise<void> => {
+    if (!villainConcept.trim()) {
+      toast.error('Please enter a villain concept')
+      return
+    }
+
+    try {
+      const result = await forge.handleGenerate({
+        role: villainConcept,
+        npcType: 'villain',
+        villainInputs: {
+          scheme: villainScheme,
+          resources: villainResources,
+          threatLevel,
+          escapePlan: villainEscapePlan,
+        },
+      } as NpcInputData)
+
+      if (result.success) {
+        toast.success('Villain forged successfully!')
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to forge villain'
+      )
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background text-foreground p-8">
@@ -523,14 +565,110 @@ export default function NpcForgePage(): JSX.Element {
               />
             </TabsContent>
 
-            <TabsContent value="villain">
-              <div className="ca-panel p-6 text-center text-slate-500">
-                <Skull className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="font-medium">Villain Forge</p>
-                <p className="text-sm">
-                  Coming soon - Generate memorable antagonists with schemes and
-                  escape plans
-                </p>
+            <TabsContent value="villain" className="space-y-4">
+              {/* Villain-specific inputs */}
+              <div className="ca-panel p-4 space-y-4">
+                {/* The Concept */}
+                <div className="space-y-2">
+                  <Label htmlFor="villainConcept">Villain Concept</Label>
+                  <Textarea
+                    id="villainConcept"
+                    placeholder="A corrupt noble who secretly controls the thieves guild..."
+                    value={villainConcept}
+                    onChange={(e) => setVillainConcept(e.target.value)}
+                    className="min-h-[80px] bg-slate-900/50 border-slate-700"
+                  />
+                </div>
+
+                {/* The Master Plan (Scheme) */}
+                <div className="space-y-2">
+                  <Label htmlFor="scheme">The Master Plan</Label>
+                  <Textarea
+                    id="scheme"
+                    placeholder="Summon a demon, overthrow the king, monopolize the grain trade..."
+                    value={villainScheme}
+                    onChange={(e) => setVillainScheme(e.target.value)}
+                    className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                  />
+                  <p className="text-xs text-slate-500">What is their active goal right now?</p>
+                </div>
+
+                {/* The Power Source (Resources) */}
+                <div className="space-y-2">
+                  <Label>Power Source</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Magic', 'Wealth', 'Political Power', 'Brute Force', 'Cult/Minions', 'Knowledge', 'Fear'].map((resource) => (
+                      <button
+                        key={resource}
+                        type="button"
+                        onClick={() => {
+                          setVillainResources(prev =>
+                            prev.includes(resource)
+                              ? prev.filter(r => r !== resource)
+                              : [...prev, resource]
+                          )
+                        }}
+                        className={cn(
+                          'px-3 py-1.5 rounded-full text-sm border transition-colors',
+                          villainResources.includes(resource)
+                            ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                            : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                        )}
+                      >
+                        {resource}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500">How do they enforce their will? (Select multiple)</p>
+                </div>
+
+                {/* Threat Level */}
+                <div className="space-y-2">
+                  <Label htmlFor="threatLevel">Threat Level</Label>
+                  <Select value={threatLevel} onValueChange={setThreatLevel}>
+                    <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                      <SelectValue placeholder="Select threat level..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="local">Local Nuisance - Affects a village or neighborhood</SelectItem>
+                      <SelectItem value="regional">Regional Threat - Affects a city or region</SelectItem>
+                      <SelectItem value="kingdom">Kingdom Threat - Affects the entire realm</SelectItem>
+                      <SelectItem value="world">World Threat - Apocalyptic stakes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* The Failsafe (Escape Plan) - Optional */}
+                <div className="space-y-2">
+                  <Label htmlFor="escapePlan">Escape Plan (Optional)</Label>
+                  <Input
+                    id="escapePlan"
+                    placeholder="Teleportation ring, body double, holds a hostage..."
+                    value={villainEscapePlan}
+                    onChange={(e) => setVillainEscapePlan(e.target.value)}
+                    className="bg-slate-900/50 border-slate-700"
+                  />
+                  <p className="text-xs text-slate-500">How do they escape when beaten? Leave blank for AI to invent one.</p>
+                </div>
+
+                {/* Generate Button */}
+                <Button
+                  onClick={handleGenerateVillain}
+                  disabled={forge.status === 'generating' || forge.status === 'validating' || !villainConcept.trim()}
+                  className="w-full ca-btn ca-btn-primary"
+                >
+                  {forge.status === 'generating' || forge.status === 'validating' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Forging Villain...
+                    </>
+                  ) : (
+                    <>
+                      <Skull className="w-4 h-4 mr-2" />
+                      Forge Villain
+                    </>
+                  )}
+                </Button>
               </div>
             </TabsContent>
 

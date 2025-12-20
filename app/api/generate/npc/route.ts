@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/openai'
 
+interface VillainInputs {
+  scheme?: string
+  resources?: string[]
+  threatLevel?: string
+  escapePlan?: string
+}
+
 interface NPCInputs {
   name?: string
   role: string
@@ -10,6 +17,8 @@ interface NPCInputs {
   personalityHints?: string
   voiceReference?: string
   additionalRequirements?: string
+  npcType?: 'standard' | 'villain' | 'hero'
+  villainInputs?: VillainInputs
 }
 
 interface NpcBrain {
@@ -17,6 +26,14 @@ interface NpcBrain {
   fear: string
   leverage: string
   line: string
+}
+
+interface VillainBrain extends NpcBrain {
+  scheme: string
+  scheme_phase: 'planning' | 'executing' | 'desperate'
+  resources: string[]
+  escape_plan: string
+  escalation: string
 }
 
 interface NpcVoice {
@@ -39,7 +56,7 @@ interface GeneratedNPC {
   sub_type: string
 
   // New Brain/Voice/Facts structure
-  brain: NpcBrain
+  brain: NpcBrain | VillainBrain
   voice: NpcVoice
   facts: NpcFact[]
   read_aloud: string
@@ -141,7 +158,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Build the prompt
-    const systemPrompt = buildSystemPrompt(codex)
+    const systemPrompt = buildSystemPrompt(codex, inputs.npcType || 'standard')
     const userPrompt = buildUserPrompt(inputs)
 
     // Call OpenAI
@@ -209,7 +226,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function buildSystemPrompt(codex: Record<string, unknown> | null): string {
+function buildSystemPrompt(codex: Record<string, unknown> | null, npcType: 'standard' | 'villain' | 'hero' = 'standard'): string {
   let prompt = `You are a creative assistant for Dungeon Masters, specializing in generating memorable NPCs for tabletop RPG campaigns.
 
 Your task is to generate a detailed NPC optimized for "at-the-table" use. DMs need to glance at info in 5 seconds and roleplay convincingly.
@@ -249,6 +266,36 @@ Generate 5-8 atomic facts:
 - 1-2 secret facts (visibility: "dm_only")
 - 1-2 plot/lore facts (visibility: "dm_only")
 `
+
+  // Add villain-specific guidelines
+  if (npcType === 'villain') {
+    prompt += `
+
+## VILLAIN-SPECIFIC GUIDELINES
+
+You are generating a VILLAIN. The "sub_type" field MUST be "villain".
+
+VILLAIN BRAIN GUIDELINES:
+The villain brain extends the standard brain with additional fields:
+- **Desire/Scheme Alignment**: Ensure the Desire (internal goal) aligns with the Scheme (external action). If the desire is "Respect", the scheme should be about "Forcing submission", not "Destroying the world". The scheme is HOW they achieve their desire.
+- **Scheme**: Must be SPECIFIC with clear phases. Not "take over the world" but "assassinate the Duke during the festival, blame the elves, use the chaos to seize the trade routes"
+- **Scheme Phase**:
+  - "planning" = gathering resources, hasn't acted yet
+  - "executing" = plan is in motion, party might catch hints
+  - "desperate" = plan is failing, villain is dangerous and unpredictable
+- **Resources**: Be specific. Not just "minions" but "A cult of 30 fanatics, a corrupted guard captain, 10,000 gold in bribes"
+- **Escape Plan**: Must be CONCRETE. "At 25% HP, activates the teleportation sigil hidden under his throne"
+- **Escalation**: What happens if unchecked? "Within 3 months, the plague spreads to the capital. Within 6, half the kingdom is dead."
+- **Line**: Even villains have limits. This makes them human. "Will never harm children" or "Refuses to break a sworn oath"
+
+VILLAIN FACTS GUIDELINES:
+Generate 8-12 atomic facts including:
+- 2-3 appearance facts (visibility: "public") - emphasize menace or hidden danger
+- 2-3 personality facts (visibility: "public") - what people notice about them
+- 2-3 secret facts (visibility: "dm_only") - their true nature, dark secrets
+- 2-3 plot facts (visibility: "dm_only") - scheme details, connections, weaknesses
+`
+  }
 
   if (codex) {
     prompt += `\n\nCAMPAIGN CONTEXT:\n`
@@ -291,7 +338,76 @@ Generate 5-8 atomic facts:
     }
   }
 
-  prompt += `\n\nRESPONSE FORMAT:
+  // Add response format based on NPC type
+  if (npcType === 'villain') {
+    prompt += `\n\nRESPONSE FORMAT FOR VILLAIN:
+Return a JSON object with these exact fields:
+{
+  "name": "Full name of the villain",
+  "sub_type": "villain",
+
+  "brain": {
+    "desire": "Their ultimate goal - what they want to achieve",
+    "fear": "What terrifies them - their weakness",
+    "leverage": "How the party could manipulate or pressure them",
+    "line": "The one thing they will NEVER do, even for their goals",
+    "scheme": "Their active plot - specific and actionable with clear steps",
+    "scheme_phase": "planning|executing|desperate",
+    "resources": ["Specific resource 1", "Specific resource 2"],
+    "escape_plan": "How they survive when beaten - specific method",
+    "escalation": "What happens if the party fails to stop them - the stakes"
+  },
+
+  "voice": {
+    "style": ["Adjective1", "Adjective2", "Adjective3"],
+    "speech_patterns": ["Pattern 1", "Pattern 2"],
+    "catchphrase": "A memorable villainous phrase",
+    "energy": "subdued|measured|animated|manic",
+    "vocabulary": "simple|educated|archaic|technical|street",
+    "tells": ["Physical tells when lying or threatened"]
+  },
+
+  "facts": [
+    {"content": "Appearance fact - emphasize menace", "category": "appearance", "visibility": "public"},
+    {"content": "Personality fact - what people notice", "category": "personality", "visibility": "public"},
+    {"content": "Dark secret", "category": "secret", "visibility": "dm_only"},
+    {"content": "Plot-relevant info", "category": "plot", "visibility": "dm_only"}
+  ],
+
+  "read_aloud": "40-60 word sensory description emphasizing their menace or presence",
+  "dm_slug": "One-line reference, e.g. 'Power-hungry mage building an undead army'",
+  "dmSlug": "Same as dm_slug for compatibility",
+
+  "race": "Race/species",
+  "gender": "Gender",
+  "appearance": "Full appearance - should convey menace or hidden danger",
+  "personality": "Personality that explains WHY they became a villain",
+  "voiceAndMannerisms": "How they speak - should be memorable",
+  "motivation": "What drives their villainy - tied to desire",
+  "secret": "Their darkest secret or true identity",
+  "plotHook": "How the party encounters or opposes them",
+  "loot": ["Valuable or plot-relevant items"],
+  "combatStats": {
+    "armorClass": 15,
+    "hitPoints": 45,
+    "primaryWeapon": "Weapon",
+    "combatStyle": "Tactical and dangerous"
+  },
+  "connectionHooks": ["Ways the villain connects to or threatens the party"],
+  "tags": ["villain", "antagonist", "threat-level"]
+}
+
+IMPORTANT:
+- sub_type MUST be "villain"
+- brain MUST include: scheme, scheme_phase, resources, escape_plan, escalation
+- scheme_phase must be one of: planning, executing, desperate
+- resources must be an array of specific strings
+- loot must be an array of strings, NOT a single string
+- hitPoints must be a NUMBER, not a string
+- energy must be one of: subdued, measured, animated, manic
+- vocabulary must be one of: simple, educated, archaic, technical, street`
+  } else {
+    prompt += `\n\nRESPONSE FORMAT:
 Return a JSON object with these exact fields:
 {
   "name": "Full name of the NPC",
@@ -347,14 +463,19 @@ IMPORTANT:
 - hitPoints must be a NUMBER, not a string
 - energy must be one of: subdued, measured, animated, manic
 - vocabulary must be one of: simple, educated, archaic, technical, street`
+  }
 
   return prompt
 }
 
 function buildUserPrompt(inputs: NPCInputs): string {
-  let prompt = `Generate an NPC with the following specifications:\n\n`
+  const isVillain = inputs.npcType === 'villain'
 
-  prompt += `Role: ${inputs.role}\n`
+  let prompt = isVillain
+    ? `Generate a VILLAIN with the following specifications:\n\n`
+    : `Generate an NPC with the following specifications:\n\n`
+
+  prompt += `Role/Concept: ${inputs.role}\n`
 
   if (inputs.name) {
     prompt += `Name: ${inputs.name}\n`
@@ -372,6 +493,40 @@ function buildUserPrompt(inputs: NPCInputs): string {
     prompt += `Gender: ${inputs.gender}\n`
   } else {
     prompt += `Gender: Choose as appropriate\n`
+  }
+
+  // Villain-specific inputs
+  if (isVillain && inputs.villainInputs) {
+    const vi = inputs.villainInputs
+    prompt += `\n## VILLAIN INPUTS:\n`
+
+    if (vi.scheme) {
+      prompt += `Master Plan: ${vi.scheme}\n`
+    } else {
+      prompt += `Master Plan: Create an appropriate scheme for this villain\n`
+    }
+
+    if (vi.resources && vi.resources.length > 0) {
+      prompt += `Power Sources: ${vi.resources.join(', ')}\n`
+    } else {
+      prompt += `Power Sources: Determine appropriate resources\n`
+    }
+
+    if (vi.threatLevel) {
+      const threatDescriptions: Record<string, string> = {
+        local: 'Local Nuisance - Affects a village or neighborhood',
+        regional: 'Regional Threat - Affects a city or region',
+        kingdom: 'Kingdom Threat - Affects the entire realm',
+        world: 'World Threat - Apocalyptic stakes',
+      }
+      prompt += `Threat Level: ${threatDescriptions[vi.threatLevel] || vi.threatLevel}\n`
+    }
+
+    if (vi.escapePlan) {
+      prompt += `Escape Plan: ${vi.escapePlan}\n`
+    } else {
+      prompt += `Escape Plan: Invent a creative escape mechanism\n`
+    }
   }
 
   if (inputs.personalityHints) {

@@ -16,6 +16,8 @@ import {
   Skull,
   Shield,
   Clock,
+  Zap,
+  TrendingUp,
 } from 'lucide-react'
 
 interface BrainCardProps {
@@ -86,12 +88,41 @@ export function BrainCard({
             <div className="flex gap-3 pt-2 border-t border-slate-700">
               <Skull className="w-4 h-4 text-purple-400 mt-1 shrink-0" />
               <div>
-                <span className="text-xs text-slate-500 uppercase tracking-wide">
-                  Scheme
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 uppercase tracking-wide">
+                    Scheme
+                  </span>
+                  {brain.scheme_phase && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                      brain.scheme_phase === 'planning' ? 'bg-blue-500/20 text-blue-400' :
+                      brain.scheme_phase === 'executing' ? 'bg-amber-500/20 text-amber-400' :
+                      'bg-red-500/20 text-red-400'
+                    }`}>
+                      {brain.scheme_phase}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-slate-300">{brain.scheme}</p>
               </div>
             </div>
+
+            {brain.resources && brain.resources.length > 0 && (
+              <div className="flex gap-3">
+                <Zap className="w-4 h-4 text-amber-400 mt-1 shrink-0" />
+                <div>
+                  <span className="text-xs text-slate-500 uppercase tracking-wide">
+                    Resources
+                  </span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {brain.resources.map((resource, idx) => (
+                      <span key={idx} className="text-xs px-2 py-0.5 bg-slate-800 rounded text-slate-300">
+                        {resource}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <Shield className="w-4 h-4 text-blue-400 mt-1 shrink-0" />
@@ -102,6 +133,20 @@ export function BrainCard({
                 <p className="text-sm text-slate-300">{brain.escape_plan}</p>
               </div>
             </div>
+
+            {brain.escalation && (
+              <div className="ca-panel p-3 border-l-2 border-red-500/50 bg-red-500/5">
+                <div className="flex gap-3">
+                  <TrendingUp className="w-4 h-4 text-red-500 mt-1 shrink-0" />
+                  <div>
+                    <span className="text-xs text-red-400 uppercase tracking-wide">
+                      Escalation (If Unchecked)
+                    </span>
+                    <p className="text-sm text-slate-300">{brain.escalation}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
