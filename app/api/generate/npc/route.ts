@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/openai'
+import { fetchEntityContext, formatEntityContextForPrompt } from '@/lib/forge/context-fetcher'
 
 interface VillainInputs {
   scheme?: string
@@ -27,6 +28,7 @@ interface NPCInputs {
   npcType?: 'standard' | 'villain' | 'hero'
   villainInputs?: VillainInputs
   heroInputs?: HeroInputs
+  referencedEntityIds?: string[]
 }
 
 interface NpcBrain {
@@ -171,8 +173,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Fetch context for referenced entities
+    let entityContext = ''
+    if (inputs.referencedEntityIds && inputs.referencedEntityIds.length > 0) {
+      const contextEntities = await fetchEntityContext(inputs.referencedEntityIds)
+      entityContext = formatEntityContextForPrompt(contextEntities)
+    }
+
     // Build the prompt
-    const systemPrompt = buildSystemPrompt(codex, inputs.npcType || 'standard')
+    const systemPrompt = buildSystemPrompt(codex, inputs.npcType || 'standard', entityContext)
     const userPrompt = buildUserPrompt(inputs)
 
     // Call OpenAI
@@ -240,7 +249,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function buildSystemPrompt(codex: Record<string, unknown> | null, npcType: 'standard' | 'villain' | 'hero' = 'standard'): string {
+function buildSystemPrompt(
+  codex: Record<string, unknown> | null,
+  npcType: 'standard' | 'villain' | 'hero' = 'standard',
+  entityContext: string = ''
+): string {
   let prompt = `You are a creative assistant for Dungeon Masters, specializing in generating memorable NPCs for tabletop RPG campaigns.
 
 Your task is to generate a detailed NPC optimized for "at-the-table" use. DMs need to glance at info in 5 seconds and roleplay convincingly.
@@ -381,6 +394,11 @@ Generate 6-10 atomic facts including:
     if (Array.isArray(codex.open_questions) && codex.open_questions.length > 0) {
       prompt += `\nOPEN QUESTIONS (do not commit to answers for these): ${codex.open_questions.join('; ')}\n`
     }
+  }
+
+  // Inject entity context if provided (from Quick Reference)
+  if (entityContext) {
+    prompt += `\n\n${entityContext}`
   }
 
   // Add response format based on NPC type

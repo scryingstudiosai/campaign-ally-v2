@@ -60,6 +60,7 @@ export interface NpcInputData {
   npcType?: 'standard' | 'villain' | 'hero'
   villainInputs?: VillainInputs
   heroInputs?: HeroInputs
+  referencedEntityIds?: string[]  // Entity IDs selected via QuickReference
   [key: string]: unknown
 }
 

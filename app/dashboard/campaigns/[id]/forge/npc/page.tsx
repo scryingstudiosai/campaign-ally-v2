@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Sparkles, User, Skull, Shield, Loader2 } from 'lucide-react'
+import { Sparkles, User, Skull, Shield, Loader2, X } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
@@ -29,6 +29,7 @@ import {
   type NpcInputData,
   type GeneratedNPC,
 } from '@/components/forge/npc'
+import { QuickReference } from '@/components/forge/QuickReference'
 
 interface StubContext {
   stubId: string
@@ -106,6 +107,10 @@ export default function NpcForgePage(): JSX.Element {
   const [heroSupportRoles, setHeroSupportRoles] = useState<string[]>([])
   const [heroAvailability, setHeroAvailability] = useState('scheduled')
   const [heroPowerTier, setHeroPowerTier] = useState('equal')
+
+  // Quick Reference - track referenced entity IDs for context injection
+  const [referencedEntityIds, setReferencedEntityIds] = useState<string[]>([])
+  const [referencedEntityNames, setReferencedEntityNames] = useState<Record<string, string>>({})
 
   // The forge hook
   const forge = useForge<NpcInputData, GeneratedNPC>({
@@ -306,6 +311,32 @@ export default function NpcForgePage(): JSX.Element {
     }
   }
 
+  // Handle quick reference entity selection
+  const handleQuickReferenceSelect = (name: string, entityId: string): void => {
+    if (!referencedEntityIds.includes(entityId)) {
+      setReferencedEntityIds((prev) => [...prev, entityId])
+      setReferencedEntityNames((prev) => ({ ...prev, [entityId]: name }))
+    }
+  }
+
+  // Remove referenced entity
+  const handleRemoveReferencedEntity = (entityId: string): void => {
+    setReferencedEntityIds((prev) => prev.filter((id) => id !== entityId))
+    setReferencedEntityNames((prev) => {
+      const newNames = { ...prev }
+      delete newNames[entityId]
+      return newNames
+    })
+  }
+
+  // Clear referenced entities after successful generation
+  useEffect(() => {
+    if (forge.output) {
+      setReferencedEntityIds([])
+      setReferencedEntityNames({})
+    }
+  }, [forge.output])
+
   // Handle commit
   const handleCommit = async (): Promise<void> => {
     if (!forge.output) return
@@ -427,7 +458,12 @@ export default function NpcForgePage(): JSX.Element {
   // Handle generation with toast
   const handleGenerate = async (input: NpcInputData): Promise<void> => {
     try {
-      const result = await forge.handleGenerate(input)
+      // Include referenced entity IDs for context injection
+      const inputWithContext = {
+        ...input,
+        referencedEntityIds: referencedEntityIds.length > 0 ? referencedEntityIds : undefined,
+      }
+      const result = await forge.handleGenerate(inputWithContext)
       // Only show success toast if generation actually completed
       if (result.success) {
         toast.success('NPC generated successfully!')
@@ -457,6 +493,7 @@ export default function NpcForgePage(): JSX.Element {
           threatLevel,
           escapePlan: villainEscapePlan,
         },
+        referencedEntityIds: referencedEntityIds.length > 0 ? referencedEntityIds : undefined,
       } as NpcInputData)
 
       if (result.success) {
@@ -488,6 +525,7 @@ export default function NpcForgePage(): JSX.Element {
           availability: heroAvailability,
           powerTier: heroPowerTier,
         },
+        referencedEntityIds: referencedEntityIds.length > 0 ? referencedEntityIds : undefined,
       } as NpcInputData)
 
       if (result.success) {
@@ -561,6 +599,45 @@ export default function NpcForgePage(): JSX.Element {
                 )}
             </div>
           )}
+
+          {/* Quick Reference - Entity Context Injection */}
+          <div className="mb-4 p-4 bg-slate-800/50 border border-slate-700 rounded-lg">
+            <QuickReference
+              campaignId={campaignId}
+              onSelect={handleQuickReferenceSelect}
+              excludeIds={referencedEntityIds}
+            />
+
+            {/* Show selected entities as removable tags */}
+            {referencedEntityIds.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-slate-400">Context from:</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {referencedEntityIds.map((id) => (
+                    <Badge
+                      key={id}
+                      variant="outline"
+                      className="bg-primary/10 border-primary/30 text-primary pr-1 flex items-center gap-1"
+                    >
+                      {referencedEntityNames[id] || 'Unknown'}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveReferencedEntity(id)}
+                        className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  These entities will be included in the AI context for world-consistent generation.
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* NPC Type Tabs */}
           <Tabs
