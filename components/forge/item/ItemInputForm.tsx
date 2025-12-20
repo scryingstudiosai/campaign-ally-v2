@@ -50,7 +50,10 @@ interface ItemInputFormProps {
   initialValues?: {
     name?: string
     dmSlug?: string
+    ownerId?: string
+    ownerName?: string
   }
+  lockedOwnerId?: string // When set, owner cannot be changed (for forge from loot)
 }
 
 const ITEM_TYPES = [
@@ -129,6 +132,7 @@ export function ItemInputForm({
   generationsRemaining,
   generationsLimit = 50,
   initialValues,
+  lockedOwnerId,
 }: ItemInputFormProps): JSX.Element {
   const [name, setName] = useState(initialValues?.name || '')
   const [dmSlug, setDmSlug] = useState(initialValues?.dmSlug || '')
@@ -137,7 +141,7 @@ export function ItemInputForm({
   const [magicalAura, setMagicalAura] = useState('let_ai_decide')
   const [state, setState] = useState('carried')
   const [isIdentified, setIsIdentified] = useState(true)
-  const [ownerId, setOwnerId] = useState<string>('')
+  const [ownerId, setOwnerId] = useState<string>(initialValues?.ownerId || lockedOwnerId || '')
   const [locationId, setLocationId] = useState<string>('')
   const [additionalRequirements, setAdditionalRequirements] = useState('')
 
@@ -389,9 +393,17 @@ export function ItemInputForm({
         <div className="space-y-2">
           <Label className="flex items-center gap-1">
             <User className="w-3 h-3" />
-            Owner (optional)
+            Owner {lockedOwnerId ? '' : '(optional)'}
           </Label>
-          {ownerId ? (
+          {lockedOwnerId ? (
+            // Locked owner - show display only
+            <div className="flex items-center justify-between p-2 border rounded-md bg-amber-500/10 border-amber-500/30">
+              <span className="text-sm font-medium text-amber-400">
+                {initialValues?.ownerName || npcs.find((n) => n.id === lockedOwnerId)?.name || 'Loading...'}
+              </span>
+              <span className="text-xs text-muted-foreground">(from loot)</span>
+            </div>
+          ) : ownerId ? (
             <div className="flex items-center justify-between p-2 border rounded-md bg-primary/10">
               <span className="text-sm font-medium">
                 {npcs.find((n) => n.id === ownerId)?.name}

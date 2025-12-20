@@ -9,6 +9,7 @@ import { Relationship } from '@/components/memory/relationship-display'
 import { EntityRelationshipsSection } from '@/components/memory/entity-relationships-section'
 import { DeleteEntityButton } from '@/components/memory/delete-entity-button'
 import { StubBanner } from '@/components/memory/stub-banner'
+import { LootDisplay } from '@/components/memory/loot-display'
 import {
   ArrowLeft,
   Pencil,
@@ -27,7 +28,6 @@ import {
   Target,
   Lock,
   Lightbulb,
-  Backpack,
   Calendar,
   Wand2,
 } from 'lucide-react'
@@ -362,28 +362,13 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
                 {/* Loot */}
                 {attributes.loot && (
-                  <Card className="bg-muted/30">
-                    <CardHeader className="pb-2 pt-3">
-                      <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
-                        <Backpack className="w-4 h-4" />
-                        Loot & Pockets
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-3">
-                      {Array.isArray(attributes.loot) ? (
-                        <ul className="text-sm text-muted-foreground space-y-1">
-                          {attributes.loot.map((item: string, idx: number) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <span className="text-primary">•</span>
-                              <span>{renderWithBold(item)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">{renderWithBold(attributes.loot)}</p>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <LootDisplay
+                    loot={attributes.loot}
+                    entityId={entity.id}
+                    entityName={entity.name}
+                    entityType={entity.entity_type}
+                    campaignId={params.id}
+                  />
                 )}
               </>
             )}

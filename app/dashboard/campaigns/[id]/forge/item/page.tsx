@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Backpack } from 'lucide-react'
 
 // Forge foundation imports
 import { useForge } from '@/hooks/useForge'
@@ -33,6 +33,15 @@ interface StubContext {
   suggestedTraits?: string[]
 }
 
+interface LootContext {
+  fromLoot: boolean
+  sourceEntityId: string
+  sourceEntityName: string
+  sourceEntityType: string
+  originalLootText: string
+  snippet?: string
+}
+
 interface Profile {
   generations_used: number
   subscription_tier: string
@@ -58,6 +67,15 @@ export default function ItemForgePage(): JSX.Element {
   const stubContext: StubContext | null = stubContextRaw
     ? JSON.parse(stubContextRaw)
     : null
+
+  // Parse loot context from URL params (when forging from NPC loot)
+  const lootName = searchParams.get('lootName')
+  const lootOwnerId = searchParams.get('ownerId')
+  const lootContextRaw = searchParams.get('context')
+  const lootContext: LootContext | null =
+    lootContextRaw && !stubContextRaw
+      ? JSON.parse(lootContextRaw)
+      : null
 
   // Campaign and profile state
   const [campaignName, setCampaignName] = useState<string>('')
@@ -326,9 +344,21 @@ export default function ItemForgePage(): JSX.Element {
       })
 
       if (result.success && result.entity) {
+        const entity = result.entity as { id: string }
+
+        // If forging from loot, create owned_by relationship
+        if (lootContext && lootOwnerId) {
+          await supabase.from('relationships').insert({
+            campaign_id: campaignId,
+            source_id: entity.id,
+            target_id: lootOwnerId,
+            relationship_type: 'owned_by',
+            description: `Carried by ${lootContext.sourceEntityName}`,
+          })
+        }
+
         toast.success('Item saved to Memory!')
         // Navigate to the new entity
-        const entity = result.entity as { id: string }
         router.push(
           `/dashboard/campaigns/${campaignId}/memory/${entity.id}`
         )
@@ -369,14 +399,23 @@ export default function ItemForgePage(): JSX.Element {
 
   const generationsRemaining = generationsLimit - generationsUsed
 
+  // Determine title and description based on context
+  const forgeTitle = stubContext
+    ? `Flesh Out: ${stubName}`
+    : lootContext
+      ? `Forge from Loot`
+      : 'Item Forge'
+
+  const forgeDescription = stubContext
+    ? 'Complete this stub entity with full details'
+    : lootContext
+      ? `Create a detailed item from ${lootContext.sourceEntityName}'s loot`
+      : 'Generate unique items with dual player/DM descriptions'
+
   return (
     <ForgeShell
-      title={stubContext ? `Flesh Out: ${stubName}` : 'Item Forge'}
-      description={
-        stubContext
-          ? 'Complete this stub entity with full details'
-          : 'Generate unique items with dual player/DM descriptions'
-      }
+      title={forgeTitle}
+      description={forgeDescription}
       status={forge.status}
       backHref={`/dashboard/campaigns/${campaignId}`}
       backLabel={`Back to ${campaignName}`}
@@ -415,6 +454,28 @@ export default function ItemForgePage(): JSX.Element {
                 )}
             </div>
           )}
+
+          {/* Loot Context Banner */}
+          {lootContext && (
+            <div className="mb-4 p-4 bg-teal-500/10 border border-teal-500/30 rounded-lg">
+              <div className="flex items-center gap-2 text-teal-400 font-medium mb-2">
+                <Backpack className="w-4 h-4" />
+                Forging from loot: {lootName}
+              </div>
+              <p className="text-sm text-slate-300">
+                Owner:{' '}
+                <span className="text-amber-400">
+                  {lootContext.sourceEntityName}
+                </span>
+              </p>
+              {lootContext.originalLootText && (
+                <p className="text-sm text-slate-400 mt-1 italic">
+                  Original: &quot;{lootContext.originalLootText}&quot;
+                </p>
+              )}
+            </div>
+          )}
+
           <ItemInputForm
             onSubmit={handleGenerate}
             isLocked={forge.status !== 'idle' && forge.status !== 'error'}
@@ -429,8 +490,16 @@ export default function ItemForgePage(): JSX.Element {
                     name: stubName || '',
                     dmSlug: `Flesh out ${stubName}. ${stubContext.snippet || ''}`,
                   }
-                : undefined
+                : lootContext
+                  ? {
+                      name: lootName || '',
+                      dmSlug: lootContext.originalLootText || lootName || '',
+                      ownerId: lootOwnerId || undefined,
+                      ownerName: lootContext.sourceEntityName,
+                    }
+                  : undefined
             }
+            lockedOwnerId={lootOwnerId || undefined}
           />
         </>
       }
