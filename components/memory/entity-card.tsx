@@ -20,7 +20,8 @@ export interface Entity {
   id: string
   campaign_id: string
   entity_type: EntityType
-  subtype?: string
+  subtype?: string      // Legacy: race/species (e.g., "Human", "Half-Orc")
+  sub_type?: string     // NPC role: "standard" | "villain" | "hero"
   name: string
   summary?: string
   description?: string
@@ -129,7 +130,7 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
   const statusConfig = STATUS_CONFIG[entity.status]
   const importanceConfig = IMPORTANCE_CONFIG[entity.importance_tier]
   const isStub = entity.attributes?.is_stub || entity.attributes?.needs_review
-  const entityStyle = getEntityStyle(entity.entity_type, entity.subtype)
+  const entityStyle = getEntityStyle(entity.entity_type, entity.sub_type)
 
   return (
     <Link href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}>
@@ -171,7 +172,7 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
             </div>
           </div>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <EntityTypeBadge type={entity.entity_type} subtype={entity.subtype} size="sm" />
+            <EntityTypeBadge type={entity.entity_type} subtype={entity.sub_type} size="sm" />
             {isStub && (
               <span className="ca-inset px-2 py-0.5 text-xs text-amber-400 flex items-center gap-1">
                 <Wand2 className="w-3 h-3" />
