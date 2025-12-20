@@ -13,6 +13,7 @@ import { LootDisplay } from '@/components/memory/loot-display'
 import { BrainCard } from '@/components/entity/BrainCard'
 import { VoiceCard } from '@/components/entity/VoiceCard'
 import { ReadAloudCard } from '@/components/entity/ReadAloudCard'
+import { FactsWidget } from '@/components/entity/FactsWidget'
 import { NpcBrain, Voice, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
@@ -399,6 +400,9 @@ export default async function EntityDetailPage({ params }: PageProps) {
               currentEntityName={entity.name}
               campaignId={params.id}
             />
+
+            {/* Facts */}
+            <FactsWidget entityId={entity.id} campaignId={params.id} />
 
             {/* Metadata */}
             <Card>
