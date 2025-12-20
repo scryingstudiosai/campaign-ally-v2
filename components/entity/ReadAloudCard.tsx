@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { BookOpen, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { renderWithBold } from '@/lib/text-utils'
 
 interface ReadAloudProps {
   text: string
@@ -57,7 +58,7 @@ export function ReadAloudCard({ text, entityId, onUpdate }: ReadAloudProps) {
           {/* Preview text when collapsed */}
           {!isOpen && (
             <span className="text-xs text-slate-500 ml-2 truncate max-w-[300px] italic">
-              {text.substring(0, 50)}...
+              {text.replace(/\*\*/g, '').substring(0, 50)}...
             </span>
           )}
         </div>
@@ -80,7 +81,9 @@ export function ReadAloudCard({ text, entityId, onUpdate }: ReadAloudProps) {
 
       {isOpen && (
         <div className="mt-3 pl-6 border-l-2 border-primary/20">
-          <p className="text-sm text-slate-300 italic leading-relaxed">{text}</p>
+          <p className="text-sm text-slate-300 italic leading-relaxed">
+            {renderWithBold(text)}
+          </p>
         </div>
       )}
     </div>
