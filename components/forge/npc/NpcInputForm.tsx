@@ -15,6 +15,7 @@ import {
 import { Sparkles, Dices, Loader2 } from 'lucide-react'
 import type { PreValidationResult } from '@/types/forge'
 import { PreValidationAlert } from '@/components/forge/PreValidationAlert'
+import { RoleCombobox } from '@/components/forge/RoleCombobox'
 
 interface NpcInputFormProps {
   onSubmit: (data: NpcInputData) => void
@@ -94,17 +95,20 @@ const PERSONALITY_SEEDS = [
   'mischievous and cunning',
 ]
 
-const ROLE_SUGGESTIONS = [
-  'Tavern keeper',
+const RANDOM_ROLES = [
+  'Guard',
+  'Shopkeeper',
+  'Innkeeper',
   'Blacksmith',
-  'Mysterious stranger',
-  'Guild leader',
-  'Street urchin',
-  'Noble',
   'Merchant',
-  'Guard captain',
-  'Hedge wizard',
-  'Retired adventurer',
+  'Noble',
+  'Priest',
+  'Scholar',
+  'Adventurer',
+  'Mercenary',
+  'Wizard',
+  'Thief',
+  'Bard',
 ]
 
 export function NpcInputForm({
@@ -169,7 +173,7 @@ export function NpcInputForm({
 
   const randomizeRole = (): void => {
     const randomRole =
-      ROLE_SUGGESTIONS[Math.floor(Math.random() * ROLE_SUGGESTIONS.length)]
+      RANDOM_ROLES[Math.floor(Math.random() * RANDOM_ROLES.length)]
     setRole(randomRole)
   }
 
@@ -202,7 +206,7 @@ export function NpcInputForm({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="role">
-            Role <span className="text-destructive">*</span>
+            Role / Occupation <span className="text-destructive">*</span>
           </Label>
           <Button
             type="button"
@@ -216,16 +220,14 @@ export function NpcInputForm({
             Surprise me
           </Button>
         </div>
-        <Input
-          id="role"
+        <RoleCombobox
           value={role}
-          onChange={(e) => setRole(e.target.value)}
-          placeholder='e.g., "tavern keeper", "corrupt guard", "mysterious stranger"'
-          required
-          disabled={isLocked}
+          onChange={setRole}
+          placeholder="Guard, Shopkeeper, or type your own..."
         />
         <p className="text-xs text-muted-foreground">
-          The NPC&apos;s occupation or function in the world
+          Select a common role or type something unique like &quot;Ex-Gladiator
+          turned Florist&quot;
         </p>
       </div>
 

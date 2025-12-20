@@ -5,7 +5,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
-import { Sparkles } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Sparkles, User, Skull, Shield } from 'lucide-react'
 
 // Forge foundation imports
 import { useForge } from '@/hooks/useForge'
@@ -81,6 +82,9 @@ export default function NpcForgePage(): JSX.Element {
   const [allEntities, setAllEntities] = useState<
     Array<{ id: string; name: string; type: string }>
   >([])
+
+  // NPC type (standard, villain, hero)
+  const [npcType, setNpcType] = useState<'standard' | 'villain' | 'hero'>('standard')
 
   // The forge hook
   const forge = useForge<NpcInputData, GeneratedNPC>({
@@ -476,24 +480,70 @@ export default function NpcForgePage(): JSX.Element {
                 )}
             </div>
           )}
-          <NpcInputForm
-            onSubmit={handleGenerate}
-            isLocked={forge.status !== 'idle' && forge.status !== 'error'}
-            preValidation={forge.preValidation}
-            onProceedAnyway={forge.proceedAnyway}
-            existingLocations={locations}
-            existingFactions={factions}
-            generationsRemaining={generationsRemaining}
-            generationsLimit={generationsLimit}
-            initialValues={
-              stubContext
-                ? {
-                    name: stubName || '',
-                    slug: `Flesh out ${stubName}. ${stubContext.snippet || ''}`,
-                  }
-                : undefined
-            }
-          />
+
+          {/* NPC Type Tabs */}
+          <Tabs
+            value={npcType}
+            onValueChange={(v) => setNpcType(v as typeof npcType)}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="standard" className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Standard
+              </TabsTrigger>
+              <TabsTrigger value="villain" className="flex items-center gap-2">
+                <Skull className="w-4 h-4" />
+                Villain
+              </TabsTrigger>
+              <TabsTrigger value="hero" className="flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                Hero
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="standard">
+              <NpcInputForm
+                onSubmit={handleGenerate}
+                isLocked={forge.status !== 'idle' && forge.status !== 'error'}
+                preValidation={forge.preValidation}
+                onProceedAnyway={forge.proceedAnyway}
+                existingLocations={locations}
+                existingFactions={factions}
+                generationsRemaining={generationsRemaining}
+                generationsLimit={generationsLimit}
+                initialValues={
+                  stubContext
+                    ? {
+                        name: stubName || '',
+                        slug: `Flesh out ${stubName}. ${stubContext.snippet || ''}`,
+                      }
+                    : undefined
+                }
+              />
+            </TabsContent>
+
+            <TabsContent value="villain">
+              <div className="ca-panel p-6 text-center text-slate-500">
+                <Skull className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="font-medium">Villain Forge</p>
+                <p className="text-sm">
+                  Coming soon - Generate memorable antagonists with schemes and
+                  escape plans
+                </p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="hero">
+              <div className="ca-panel p-6 text-center text-slate-500">
+                <Shield className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="font-medium">Hero Forge</p>
+                <p className="text-sm">
+                  Coming soon - Generate helpful allies with built-in limitations
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
         </>
       }
       outputSection={
