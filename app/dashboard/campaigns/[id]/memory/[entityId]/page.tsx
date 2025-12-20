@@ -10,6 +10,9 @@ import { EntityRelationshipsSection } from '@/components/memory/entity-relations
 import { DeleteEntityButton } from '@/components/memory/delete-entity-button'
 import { StubBanner } from '@/components/memory/stub-banner'
 import { LootDisplay } from '@/components/memory/loot-display'
+import { BrainCard } from '@/components/entity/BrainCard'
+import { VoiceCard } from '@/components/entity/VoiceCard'
+import { NpcBrain, Voice, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -30,6 +33,7 @@ import {
   Lightbulb,
   Calendar,
   Wand2,
+  BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { renderWithBold } from '@/lib/text-utils'
@@ -205,6 +209,19 @@ export default async function EntityDetailPage({ params }: PageProps) {
           </div>
         </div>
 
+        {/* Read Aloud - Quick DM Reference (Full Width, Right After Header) */}
+        {entity.read_aloud && (
+          <div className="ca-panel p-4 border-l-2 border-primary/50 mb-6">
+            <div className="flex items-center gap-2 text-primary mb-2">
+              <BookOpen className="w-4 h-4" />
+              <span className="text-sm font-medium">Read Aloud</span>
+            </div>
+            <p className="text-slate-300 italic leading-relaxed">
+              {entity.read_aloud}
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -235,6 +252,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* NPC-specific attributes */}
             {entity.entity_type === 'npc' && attributes && (
               <>
+                {/* Voice Profile (New Brain/Voice Architecture) */}
+                {entity.voice && Object.keys(entity.voice as object).length > 0 && (entity.voice as Voice).style?.length > 0 && (
+                  <VoiceCard voice={entity.voice as Voice} />
+                )}
+
                 {/* Appearance & Personality */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {attributes.appearance && (
@@ -246,7 +268,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
                       <p className="text-sm text-slate-300">{renderWithBold(attributes.appearance)}</p>
                     </div>
                   )}
-                  {attributes.personality && (
+                  {/* Show personality only if NO brain (brain.desire/fear replaces this) */}
+                  {!isNpcBrain(entity.brain as NpcBrain) && attributes.personality && (
                     <div className="ca-panel p-4">
                       <div className="ca-section-header">
                         <MessageSquare className="w-4 h-4 text-primary" />
@@ -257,8 +280,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   )}
                 </div>
 
-                {/* Voice & Mannerisms */}
-                {attributes.voiceAndMannerisms && (
+                {/* Voice & Mannerisms - Only show if NO voice profile */}
+                {!(entity.voice && (entity.voice as Voice).style?.length > 0) && attributes.voiceAndMannerisms && (
                   <div className="ca-panel p-4">
                     <div className="ca-section-header">
                       <MessageSquare className="w-4 h-4" />
@@ -297,8 +320,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {/* Motivation */}
-                {attributes.motivation && (
+                {/* Motivation - Only show if NO brain (brain.desire replaces this) */}
+                {!isNpcBrain(entity.brain as NpcBrain) && attributes.motivation && (
                   <Card>
                     <CardHeader className="pb-2 pt-3">
                       <CardTitle className="text-sm flex items-center gap-2">
@@ -398,6 +421,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* NPC Brain - Prominent and Isolated (DM Only) */}
+            {entity.entity_type === 'npc' && entity.brain && isNpcBrain(entity.brain as NpcBrain) && (
+              <BrainCard brain={entity.brain as NpcBrain} viewMode="dm" />
+            )}
+
             {/* Relationships */}
             <EntityRelationshipsSection
               relationships={relationships}
