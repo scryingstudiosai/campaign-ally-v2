@@ -60,22 +60,22 @@ export default function ItemForgePage(): JSX.Element {
   const campaignId = params.id as string
   const supabase = createClient()
 
-  // Parse stub context from URL params
+  // Parse URL params
   const stubId = searchParams.get('stubId')
   const stubName = searchParams.get('name')
-  const stubContextRaw = searchParams.get('context')
-  const stubContext: StubContext | null = stubContextRaw
-    ? JSON.parse(stubContextRaw)
-    : null
-
-  // Parse loot context from URL params (when forging from NPC loot)
   const lootName = searchParams.get('lootName')
   const lootOwnerId = searchParams.get('ownerId')
-  const lootContextRaw = searchParams.get('context')
+  const contextRaw = searchParams.get('context')
+
+  // Parse context and determine type based on URL params
+  // stubId indicates stub context, lootName indicates loot context
+  const parsedContext = contextRaw ? JSON.parse(contextRaw) : null
+
+  const stubContext: StubContext | null =
+    stubId && parsedContext ? parsedContext : null
+
   const lootContext: LootContext | null =
-    lootContextRaw && !stubContextRaw
-      ? JSON.parse(lootContextRaw)
-      : null
+    lootName && !stubId && parsedContext ? parsedContext : null
 
   // Campaign and profile state
   const [campaignName, setCampaignName] = useState<string>('')
@@ -493,7 +493,9 @@ export default function ItemForgePage(): JSX.Element {
                 : lootContext
                   ? {
                       name: lootName || '',
-                      dmSlug: lootContext.originalLootText || lootName || '',
+                      dmSlug: lootName
+                        ? `${lootName} - carried by ${lootContext.sourceEntityName}`
+                        : `Item carried by ${lootContext.sourceEntityName}`,
                       ownerId: lootOwnerId || undefined,
                       ownerName: lootContext.sourceEntityName,
                     }
