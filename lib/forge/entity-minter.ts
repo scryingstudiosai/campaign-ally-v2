@@ -8,6 +8,7 @@ import type {
   ForgeType,
   HistoryEntry,
 } from '@/types/forge'
+import type { ForgeFactOutput } from '@/types/living-entity'
 
 export interface StubCreationResult {
   discoveryId: string
@@ -134,6 +135,27 @@ export async function saveForgedEntity(
 
   if (error) throw error
 
+  // Save facts to the facts table (for NPC forge with Brain/Voice architecture)
+  const facts = output.facts as ForgeFactOutput[] | undefined
+  if (facts && Array.isArray(facts) && facts.length > 0) {
+    const factRecords = facts.map((fact) => ({
+      entity_id: savedEntity.id,
+      campaign_id: campaignId,
+      content: fact.content,
+      category: fact.category,
+      visibility: fact.visibility || 'dm_only',
+      is_current: true,
+      source_type: 'generated',
+    }))
+
+    const { error: factsError } = await supabase.from('facts').insert(factRecords)
+
+    if (factsError) {
+      console.error('Failed to save facts:', factsError)
+      // Don't throw - entity was saved successfully, facts are supplementary
+    }
+  }
+
   // Create relationships to linked entities
   const linkedDiscoveries = context.discoveries.filter(
     (d) => d.status === 'link_existing' && d.linkedEntityId
@@ -220,11 +242,19 @@ function buildEntityData(
     case 'npc':
       return {
         ...baseData,
+        // New Brain/Voice architecture columns
+        sub_type: (output.sub_type as string) || 'standard',
+        brain: output.brain || {},
+        voice: output.voice || {},
+        read_aloud: output.read_aloud as string,
+        dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
+        // Legacy fields for backward compatibility
         subtype: output.race as string,
-        summary: output.dmSlug as string,
+        summary: (output.dm_slug as string) || (output.dmSlug as string),
         description: buildNPCDescription(output),
         attributes: {
           ...additionalAttributes,
+          // Legacy NPC fields (kept for backward compatibility)
           race: output.race,
           gender: output.gender,
           appearance: output.appearance,

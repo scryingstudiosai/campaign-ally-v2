@@ -407,3 +407,40 @@ export interface ForgeOutput {
   dm_slug: string;
   tags: string[];
 }
+
+// NPC-specific forge output with legacy fields for backward compatibility
+export interface NpcForgeOutput {
+  name: string;
+  sub_type: EntitySubType;
+
+  // Brain
+  brain: NpcBrain | VillainBrain | HeroBrain;
+
+  // Voice
+  voice: Voice;
+
+  // Facts (will be saved to facts table)
+  facts: ForgeFactOutput[];
+
+  // Quick access
+  read_aloud: string;
+  dm_slug: string;
+
+  // Legacy fields (for backward compatibility with existing UI)
+  appearance: string;
+  personality: string;
+  motivation: string;
+  secret: string;
+  plotHook: string;
+  voiceAndMannerisms: string;
+  connectionHooks: string[];
+  combatStats?: {
+    armorClass: number;
+    hitPoints: number;
+    primaryWeapon: string;
+    combatStyle: string;
+  };
+  loot?: string[];
+
+  tags: string[];
+}

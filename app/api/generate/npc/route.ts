@@ -12,8 +12,40 @@ interface NPCInputs {
   additionalRequirements?: string
 }
 
+interface NpcBrain {
+  desire: string
+  fear: string
+  leverage: string
+  line: string
+}
+
+interface NpcVoice {
+  style: string[]
+  speech_patterns: string[]
+  catchphrase?: string
+  energy: 'subdued' | 'measured' | 'animated' | 'manic'
+  vocabulary: 'simple' | 'educated' | 'archaic' | 'technical' | 'street'
+  tells?: string[]
+}
+
+interface NpcFact {
+  content: string
+  category: 'appearance' | 'personality' | 'secret' | 'plot' | 'lore' | 'backstory' | 'mechanical' | 'flavor'
+  visibility: 'public' | 'limited' | 'dm_only'
+}
+
 interface GeneratedNPC {
   name: string
+  sub_type: string
+
+  // New Brain/Voice/Facts structure
+  brain: NpcBrain
+  voice: NpcVoice
+  facts: NpcFact[]
+  read_aloud: string
+  dm_slug: string
+
+  // Legacy fields for backward compatibility
   dmSlug: string
   race: string
   gender: string
@@ -27,11 +59,12 @@ interface GeneratedNPC {
   loot: string[]
   combatStats: {
     armorClass: number
-    hitPoints: string
+    hitPoints: string | number
     primaryWeapon: string
     combatStyle: string
   }
   connectionHooks: string[]
+  tags: string[]
 }
 
 export async function POST(request: NextRequest) {
@@ -183,18 +216,38 @@ Your task is to generate a detailed NPC optimized for "at-the-table" use. DMs ne
 
 The NPC should be:
 - Memorable and distinct with a clear hook
-- Have a quick-reference summary (the dmSlug)
+- Have a quick-reference summary (the dm_slug)
+- Include a "brain" with psychology for roleplaying decisions
+- Include a "voice" profile for speaking in character
+- Include atomic facts about appearance, personality, secrets
 - Include practical combat stats for potential encounters
 - Provide items they carry for looting/pickpocketing (as separate items for quick reading)
 - Have secrets and plot hooks that drive gameplay
 
 IMPORTANT GUIDELINES:
-- The dmSlug should be ONE punchy line that captures their essence (e.g., "Stoic Elf Guard who secretly hates conflict")
-- Use **bold** markdown for key descriptors in appearance and personality (hair color, eye color, build, distinguishing features, key traits)
+- The dm_slug should be ONE punchy line that captures their essence (e.g., "Stoic Elf Guard who secretly hates conflict")
+- Use **bold** markdown for key descriptors in appearance and personality
 - Keep descriptions vivid but concise (2-3 sentences each section)
-- Combat stats should be appropriate for their role (a merchant has low AC/HP, a veteran guard has higher)
-- Loot should be an ARRAY of 3-5 separate items, each a short descriptive string
-- The secret should be something hidden; the plotHook shows how to USE this NPC in gameplay
+
+BRAIN GUIDELINES (The NPC's psychology - helps DM make decisions as this character):
+- **Desire**: Must be SPECIFIC and CURRENT. Not "wants power" but "wants to secure the mining contract before the Festival"
+- **Fear**: Must be VISCERAL. Not "fears failure" but "fears his children will discover he murdered their mother"
+- **Leverage**: Must be ACTIONABLE. How can the party pressure this NPC?
+- **Line**: Must be ABSOLUTE. The hard limit that defines their character.
+
+VOICE GUIDELINES (How they speak - helps DM roleplay):
+- **Style**: 2-3 adjectives that capture how they SOUND (e.g., "Gravelly", "Slow", "Menacing")
+- **Speech patterns**: Specific verbal habits (speaks in third person, never uses contractions, curses frequently)
+- **Energy**: subdued/measured/animated/manic
+- **Vocabulary**: simple/educated/archaic/technical/street
+- **Tells**: Physical behaviors when lying or nervous (optional but valuable)
+
+FACTS GUIDELINES:
+Generate 5-8 atomic facts:
+- 2-3 appearance facts (visibility: "public")
+- 2-3 personality facts (visibility: "public")
+- 1-2 secret facts (visibility: "dm_only")
+- 1-2 plot/lore facts (visibility: "dm_only")
 `
 
   if (codex) {
@@ -242,26 +295,58 @@ IMPORTANT GUIDELINES:
 Return a JSON object with these exact fields:
 {
   "name": "Full name of the NPC",
-  "dmSlug": "One-line summary for quick reference (e.g., 'Gruff Dwarf blacksmith with a gambling problem')",
+  "sub_type": "standard",
+
+  "brain": {
+    "desire": "What they want RIGHT NOW - specific and actionable",
+    "fear": "What terrifies them - be specific",
+    "leverage": "How someone could manipulate or pressure them",
+    "line": "The one thing they will NEVER do, no matter what"
+  },
+
+  "voice": {
+    "style": ["Adjective1", "Adjective2", "Adjective3"],
+    "speech_patterns": ["Pattern 1", "Pattern 2"],
+    "catchphrase": "A phrase they repeat (optional)",
+    "energy": "subdued|measured|animated|manic",
+    "vocabulary": "simple|educated|archaic|technical|street",
+    "tells": ["Physical tell when lying or nervous"]
+  },
+
+  "facts": [
+    {"content": "Appearance fact", "category": "appearance", "visibility": "public"},
+    {"content": "Personality fact", "category": "personality", "visibility": "public"},
+    {"content": "Secret fact", "category": "secret", "visibility": "dm_only"}
+  ],
+
+  "read_aloud": "A 40-60 word sensory description for when players first meet this character. Focus on sight, sound, smell.",
+  "dm_slug": "One-line quick reference (e.g., 'Nervous blacksmith hiding a dark secret')",
+  "dmSlug": "Same as dm_slug for compatibility",
+
   "race": "Race/species of the NPC",
   "gender": "Gender of the NPC",
   "appearance": "Physical description with **bold** key features (2-3 sentences)",
-  "personality": "Key personality traits with **bold** emphasis on main traits (2-3 sentences)",
-  "voiceAndMannerisms": "How they speak, distinctive habits or gestures (1-2 sentences)",
-  "motivation": "What drives this character, their goals (1-2 sentences)",
-  "secret": "A hidden truth about them that could impact the story (1-2 sentences)",
-  "plotHook": "How this NPC can actively drive gameplay or connect to the party (1-2 sentences)",
-  "loot": ["Item 1", "Item 2", "Item 3", "Item 4"],
+  "personality": "Key personality traits with **bold** emphasis (2-3 sentences)",
+  "voiceAndMannerisms": "How they speak, distinctive habits (1-2 sentences)",
+  "motivation": "What drives this character (1-2 sentences)",
+  "secret": "A hidden truth about them (1-2 sentences)",
+  "plotHook": "How to involve this NPC in gameplay (1-2 sentences)",
+  "loot": ["Item 1", "Item 2", "Item 3"],
   "combatStats": {
     "armorClass": 12,
-    "hitPoints": "8-12",
-    "primaryWeapon": "Dagger or walking stick",
-    "combatStyle": "Avoids combat, will flee or surrender"
+    "hitPoints": 25,
+    "primaryWeapon": "Weapon name",
+    "combatStyle": "How they fight or avoid combat"
   },
-  "connectionHooks": ["Array of 2-3 ways to connect this NPC to the story or party"]
+  "connectionHooks": ["Way to connect to party 1", "Way to connect to party 2"],
+  "tags": ["tag1", "tag2"]
 }
 
-IMPORTANT: loot must be an array of strings, NOT a single string.`
+IMPORTANT:
+- loot must be an array of strings, NOT a single string
+- hitPoints must be a NUMBER, not a string
+- energy must be one of: subdued, measured, animated, manic
+- vocabulary must be one of: simple, educated, archaic, technical, street`
 
   return prompt
 }

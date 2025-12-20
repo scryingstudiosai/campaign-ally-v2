@@ -1,12 +1,13 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { InteractiveText } from '@/components/forge/InteractiveText'
 import { SelectionPopover } from '@/components/forge/SelectionPopover'
+import { BrainCard } from '@/components/entity/BrainCard'
+import { VoiceCard } from '@/components/entity/VoiceCard'
 import { renderWithBold } from '@/lib/text-utils'
 import type { ScanResult, Discovery } from '@/types/forge'
+import type { NpcBrain, VillainBrain, HeroBrain, Voice, ForgeFactOutput } from '@/types/living-entity'
 import {
   Eye,
   Heart,
@@ -20,11 +21,22 @@ import {
   Lightbulb,
   EyeOff,
   Mic,
+  BookOpen,
 } from 'lucide-react'
 
-// Match the existing GeneratedNPC structure from the API
+// Match the existing GeneratedNPC structure from the API with new Brain/Voice fields
 export interface GeneratedNPC {
   name: string
+  sub_type?: string
+
+  // New Brain/Voice/Facts structure
+  brain?: NpcBrain | VillainBrain | HeroBrain
+  voice?: Partial<Voice>
+  facts?: ForgeFactOutput[]
+  read_aloud?: string
+  dm_slug?: string
+
+  // Legacy fields for backward compatibility
   dmSlug: string
   race: string
   gender: string
@@ -38,11 +50,12 @@ export interface GeneratedNPC {
   loot: string[]
   combatStats: {
     armorClass: number
-    hitPoints: string
+    hitPoints: string | number
     primaryWeapon: string
     combatStyle: string
   }
   connectionHooks: string[]
+  tags?: string[]
 }
 
 interface NpcOutputCardProps {
@@ -116,6 +129,29 @@ export function NpcOutputCard({
           )}
         </button>
       </div>
+
+      {/* Read Aloud Section (if available) */}
+      {data.read_aloud && (
+        <div className="ca-panel p-4 border-l-2 border-primary/50">
+          <div className="ca-section-header">
+            <BookOpen className="w-4 h-4 text-primary" />
+            <span>Read Aloud</span>
+          </div>
+          <p className="text-sm text-slate-300 italic leading-relaxed">
+            {data.read_aloud}
+          </p>
+        </div>
+      )}
+
+      {/* Brain Section - DM Only (if available) */}
+      {viewMode === 'dm' && data.brain && (
+        <BrainCard brain={data.brain} viewMode={viewMode} />
+      )}
+
+      {/* Voice Section (if available) */}
+      {data.voice && Object.keys(data.voice).length > 0 && (
+        <VoiceCard voice={data.voice} />
+      )}
 
       {/* PRIMARY SECTION - Appearance & Personality */}
       <div className="grid grid-cols-1 gap-3">

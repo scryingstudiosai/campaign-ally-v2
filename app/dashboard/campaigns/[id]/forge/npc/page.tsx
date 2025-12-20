@@ -304,8 +304,15 @@ export default function NpcForgePage(): JSX.Element {
           .update({
             name: forge.output.name,
             subtype: forge.output.race,
-            summary: forge.output.dmSlug,
+            summary: forge.output.dm_slug || forge.output.dmSlug,
             description: `**Appearance:** ${forge.output.appearance}\n\n**Personality:** ${forge.output.personality}`,
+            // New Brain/Voice architecture columns
+            sub_type: forge.output.sub_type || 'standard',
+            brain: forge.output.brain || {},
+            voice: forge.output.voice || {},
+            read_aloud: forge.output.read_aloud,
+            dm_slug: forge.output.dm_slug || forge.output.dmSlug,
+            // Legacy attributes (backward compatibility)
             attributes: {
               race: forge.output.race,
               gender: forge.output.gender,
@@ -336,6 +343,27 @@ export default function NpcForgePage(): JSX.Element {
         if (error) {
           toast.error('Failed to update entity')
           return
+        }
+
+        // Save facts to the facts table (if available)
+        const facts = forge.output.facts
+        if (facts && Array.isArray(facts) && facts.length > 0) {
+          const factRecords = facts.map((fact) => ({
+            entity_id: stubId,
+            campaign_id: campaignId,
+            content: fact.content,
+            category: fact.category,
+            visibility: fact.visibility || 'dm_only',
+            is_current: true,
+            source_type: 'generated',
+          }))
+
+          const { error: factsError } = await supabase.from('facts').insert(factRecords)
+
+          if (factsError) {
+            console.error('Failed to save facts:', factsError)
+            // Don't fail the commit - entity was saved successfully
+          }
         }
 
         // Create relationship to source entity if exists
