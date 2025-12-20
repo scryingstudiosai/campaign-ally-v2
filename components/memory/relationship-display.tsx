@@ -373,99 +373,112 @@ export function RelationshipDisplay({
                     className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden"
                   >
                     {isEditing ? (
-                      // Edit mode
-                      <>
-                        <Select value={editedType} onValueChange={setEditedType}>
-                          <SelectTrigger className="w-36 h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {RELATIONSHIP_TYPE_OPTIONS.map((type) => (
-                              <SelectItem key={type.value} value={type.value}>
-                                {type.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="font-medium text-foreground truncate min-w-0">
-                          {rel.otherEntity?.name}
-                        </span>
-                        <div className="ml-auto flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleSave(rel)}
-                            disabled={isSaving}
-                            className="p-1 rounded hover:bg-primary/10 hover:text-primary transition-all disabled:opacity-50"
-                            title="Save"
-                          >
-                            {isSaving ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Check className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelEditing}
-                            disabled={isSaving}
-                            className="p-1 rounded hover:bg-muted transition-all disabled:opacity-50"
-                            title="Cancel"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      // View mode
-                      <>
-                        <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        <span className="text-sm text-muted-foreground whitespace-nowrap">
-                          {rel.relationshipLabel}
-                        </span>
-                        <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Link
-                              href={`/dashboard/campaigns/${campaignId}/memory/${rel.otherEntity?.id}`}
-                              className="font-medium text-foreground hover:text-primary transition-colors truncate min-w-0"
+                      // Edit mode - two lines
+                      <div className="w-full">
+                        <div className="flex items-center justify-between">
+                          <Select value={editedType} onValueChange={setEditedType}>
+                            <SelectTrigger className="w-36 h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {RELATIONSHIP_TYPE_OPTIONS.map((type) => (
+                                <SelectItem key={type.value} value={type.value}>
+                                  {type.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleSave(rel)}
+                              disabled={isSaving}
+                              className="p-1 rounded hover:bg-primary/10 hover:text-primary transition-all disabled:opacity-50"
+                              title="Save"
                             >
-                              {rel.otherEntity?.name}
-                            </Link>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{rel.otherEntity?.name}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <EntityTypeBadge
-                          type={rel.otherEntity?.entity_type || 'other'}
-                          size="sm"
-                          showIcon={false}
-                        />
-                        <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            type="button"
-                            onClick={() => startEditing(rel)}
-                            className="p-1 rounded hover:bg-muted transition-all"
-                            title="Edit relationship"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(rel)}
-                            disabled={isDeleting}
-                            className="p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50"
-                            title="Delete relationship"
-                          >
-                            {isDeleting ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
+                              {isSaving ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Check className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditing}
+                              disabled={isSaving}
+                              className="p-1 rounded hover:bg-muted transition-all disabled:opacity-50"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                      </>
+                        <div className="flex items-center gap-2 mt-1">
+                          <ArrowRight className="w-3 h-3 text-slate-600 flex-shrink-0" />
+                          <span className="font-medium text-foreground truncate">
+                            {rel.otherEntity?.name}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      // View mode - two lines
+                      <div className="w-full">
+                        {/* Line 1: Relationship type + edit/delete buttons */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Icon className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                            <span className="text-xs text-slate-500">
+                              {rel.relationshipLabel}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => startEditing(rel)}
+                              className="p-0.5 rounded hover:bg-muted transition-all"
+                              title="Edit relationship"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(rel)}
+                              disabled={isDeleting}
+                              className="p-0.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-50"
+                              title="Delete relationship"
+                            >
+                              {isDeleting ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        {/* Line 2: Entity name with link */}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <ArrowRight className="w-3 h-3 text-slate-600 flex-shrink-0" />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Link
+                                href={`/dashboard/campaigns/${campaignId}/memory/${rel.otherEntity?.id}`}
+                                className="text-teal-400 hover:text-teal-300 transition-colors truncate max-w-[140px]"
+                              >
+                                {rel.otherEntity?.name}
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{rel.otherEntity?.name}</p>
+                              <p className="text-xs text-slate-400">{rel.otherEntity?.entity_type}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <EntityTypeBadge
+                            type={rel.otherEntity?.entity_type || 'other'}
+                            size="sm"
+                            showIcon={false}
+                          />
+                        </div>
+                      </div>
                     )}
                   </div>
                 )
