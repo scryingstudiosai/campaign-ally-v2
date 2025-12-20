@@ -12,6 +12,7 @@ import { StubBanner } from '@/components/memory/stub-banner'
 import { LootDisplay } from '@/components/memory/loot-display'
 import { BrainCard } from '@/components/entity/BrainCard'
 import { VoiceCard } from '@/components/entity/VoiceCard'
+import { ReadAloudCard } from '@/components/entity/ReadAloudCard'
 import { NpcBrain, Voice, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
@@ -33,7 +34,6 @@ import {
   Lightbulb,
   Calendar,
   Wand2,
-  BookOpen,
   Heart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -218,14 +218,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
         {/* Read Aloud - Quick DM Reference (Full Width, Right After Header) */}
         {entity.read_aloud && (
-          <div className="ca-panel p-4 border-l-2 border-primary/50 mb-6">
-            <div className="flex items-center gap-2 text-primary mb-2">
-              <BookOpen className="w-4 h-4" />
-              <span className="text-sm font-medium">Read Aloud</span>
-            </div>
-            <p className="text-slate-300 italic leading-relaxed">
-              {entity.read_aloud}
-            </p>
+          <div className="mb-6">
+            <ReadAloudCard text={entity.read_aloud} entityId={entity.id} />
           </div>
         )}
 
