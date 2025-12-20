@@ -118,7 +118,7 @@ export async function scanGeneratedContent(
 
   // Filter out self-references using word overlap matching
   const entityWords = currentEntityName ? getSignificantWords(currentEntityName) : new Set<string>()
-  console.log('entityWords for self-reference check:', [...entityWords])
+  console.log('entityWords for self-reference check:', Array.from(entityWords))
 
   const filteredDiscoveries = discoveries.filter(d => {
     if (!currentEntityName || entityWords.size === 0) return true
@@ -126,7 +126,7 @@ export async function scanGeneratedContent(
     const discoveryWords = getSignificantWords(d.text)
 
     // Check if any significant words overlap
-    const hasOverlap = [...discoveryWords].some(word => entityWords.has(word))
+    const hasOverlap = Array.from(discoveryWords).some(word => entityWords.has(word))
 
     if (hasOverlap) {
       console.log(`Excluding self-reference (word overlap): "${d.text}" matches "${currentEntityName}"`)

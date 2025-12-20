@@ -19,7 +19,7 @@ interface HeroInputs {
 
 interface NPCInputs {
   name?: string
-  role: string
+  role?: string  // Optional if concept is provided
   concept?: string
   race?: string
   gender?: string
@@ -113,9 +113,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { campaignId, inputs } = body as { campaignId: string; inputs: NPCInputs }
 
-    if (!campaignId || !inputs?.role) {
+    // Role is optional if concept is provided
+    if (!campaignId || (!inputs?.role && !inputs?.concept)) {
       return NextResponse.json(
-        { error: 'Campaign ID and role are required' },
+        { error: 'Campaign ID and either role or concept are required' },
         { status: 400 }
       )
     }
@@ -606,7 +607,12 @@ function buildUserPrompt(inputs: NPCInputs): string {
     ? `Generate a HERO/ALLY with the following specifications:\n\n`
     : `Generate an NPC with the following specifications:\n\n`
 
-  prompt += `Role/Occupation: ${inputs.role}\n`
+  // Role is optional - AI can infer from concept if not provided
+  if (inputs.role) {
+    prompt += `Role/Occupation: ${inputs.role}\n`
+  } else {
+    prompt += `Role/Occupation: Infer from the context below\n`
+  }
 
   if (inputs.concept) {
     prompt += `Situation/Context: ${inputs.concept}\n`

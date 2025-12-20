@@ -51,14 +51,18 @@ export function LootDisplay({
         if (data) {
           const items = data
             .filter((r) => {
-              const entity = r.source_entity as { entity_type?: string } | null
-              return entity?.entity_type === 'item'
+              // Supabase may return array or object depending on the join type
+              const entityData = r.source_entity as unknown
+              const entity = Array.isArray(entityData) ? entityData[0] : entityData
+              return entity && (entity as { entity_type?: string }).entity_type === 'item'
             })
             .map((r) => {
-              const entity = r.source_entity as { id: string; name: string }
+              const entityData = r.source_entity as unknown
+              const entity = Array.isArray(entityData) ? entityData[0] : entityData
+              const typedEntity = entity as { id: string; name: string }
               return {
-                id: entity.id,
-                name: entity.name,
+                id: typedEntity.id,
+                name: typedEntity.name,
               }
             })
           setOwnedItems(items)

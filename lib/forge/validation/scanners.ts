@@ -273,7 +273,7 @@ export function extractProperNouns(
   while ((starterMatch = sentenceStartPattern.exec(cleanedText)) !== null) {
     sentenceStarters.add(starterMatch[1].toLowerCase())
   }
-  console.log('Detected sentence starters:', [...sentenceStarters])
+  console.log('Detected sentence starters:', Array.from(sentenceStarters))
 
   // Pattern 1: Quoted text (high confidence entity names)
   const quotedPattern = /"([A-Z][^"]+)"/g

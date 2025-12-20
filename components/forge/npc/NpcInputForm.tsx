@@ -31,6 +31,7 @@ interface NpcInputFormProps {
     name?: string
     slug?: string
   }
+  conceptProvided?: boolean  // True if concept field has content (from parent)
 }
 
 export interface VillainInputs {
@@ -49,7 +50,7 @@ export interface HeroInputs {
 
 export interface NpcInputData {
   name?: string
-  role: string
+  role?: string  // Optional if concept is provided
   concept?: string  // Situation/context describing the NPC
   race?: string
   gender?: string
@@ -141,6 +142,7 @@ export function NpcInputForm({
   generationsRemaining,
   generationsLimit = 50,
   initialValues,
+  conceptProvided = false,
 }: NpcInputFormProps): JSX.Element {
   const [name, setName] = useState(initialValues?.name || '')
   const [role, setRole] = useState(initialValues?.slug || '')
@@ -155,11 +157,12 @@ export function NpcInputForm({
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()
-    if (!role.trim()) return
+    // Allow submission if either role or concept is provided
+    if (!role.trim() && !conceptProvided) return
 
     onSubmit({
       name: name.trim() || undefined,
-      role: role.trim(),
+      role: role.trim() || '',  // Empty string if not provided - API will handle
       race: race === 'other' ? customRace.trim() : race,
       gender,
       personalityHints: personalityHints.trim() || undefined,
@@ -221,11 +224,11 @@ export function NpcInputForm({
         </span>
       </div>
 
-      {/* Role - Required */}
+      {/* Role - Optional if concept is provided */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="role">
-            Role / Occupation <span className="text-destructive">*</span>
+            Role / Occupation {!conceptProvided && <span className="text-destructive">*</span>}
           </Label>
           <Button
             type="button"
@@ -242,11 +245,12 @@ export function NpcInputForm({
         <RoleCombobox
           value={role}
           onChange={setRole}
-          placeholder="Guard, Shopkeeper, or type your own..."
+          placeholder="Guard, Shopkeeper, or let AI decide..."
         />
         <p className="text-xs text-muted-foreground">
-          Select a common role or type something unique like &quot;Ex-Gladiator
-          turned Florist&quot;
+          {conceptProvided
+            ? 'Optional - AI will infer from your concept if left blank'
+            : 'Select a common role or type something unique'}
         </p>
       </div>
 
@@ -437,7 +441,7 @@ export function NpcInputForm({
       {/* Submit */}
       <Button
         type="submit"
-        disabled={!role.trim() || isLocked || remainingGenerations <= 0}
+        disabled={(!role.trim() && !conceptProvided) || isLocked || remainingGenerations <= 0}
         className="w-full"
         size="lg"
       >

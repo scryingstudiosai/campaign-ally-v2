@@ -113,6 +113,8 @@ export default function NpcForgePage(): JSX.Element {
 
   // Quick Reference - track referenced entities for context injection
   const [referencedEntities, setReferencedEntities] = useState<{ id: string; name: string }[]>([])
+  // Store referenced entities at generation time for use during commit
+  const [generationReferencedEntities, setGenerationReferencedEntities] = useState<{ id: string; name: string; type?: string; sub_type?: string }[]>([])
 
   // The forge hook
   const forge = useForge<NpcInputData, GeneratedNPC>({
@@ -342,12 +344,53 @@ export default function NpcForgePage(): JSX.Element {
     setReferencedEntities((prev) => prev.filter((e) => e.id !== entityId))
   }
 
-  // Clear referenced entities after successful generation
+  // Helper function to infer relationship type based on entity types
+  const inferRelationshipType = (
+    mySubType: string,
+    theirType: string,
+    theirSubType?: string
+  ): string => {
+    // Villain relationships
+    if (mySubType === 'villain') {
+      if (theirType === 'npc' && theirSubType === 'villain') return 'rival_of'
+      if (theirType === 'npc' && theirSubType === 'hero') return 'nemesis_of'
+      if (theirType === 'npc') return 'threatens'
+      if (theirType === 'location') return 'terrorizes'
+      if (theirType === 'faction') return 'opposes'
+      return 'connected_to'
+    }
+    // Hero relationships
+    if (mySubType === 'hero') {
+      if (theirType === 'npc' && theirSubType === 'villain') return 'opposes'
+      if (theirType === 'npc' && theirSubType === 'hero') return 'allied_with'
+      if (theirType === 'npc') return 'protects'
+      if (theirType === 'location') return 'defends'
+      if (theirType === 'faction') return 'champions'
+      return 'connected_to'
+    }
+    // Standard NPC relationships
+    if (theirType === 'npc') return 'knows'
+    if (theirType === 'location') return 'frequents'
+    if (theirType === 'faction') return 'affiliated_with'
+    if (theirType === 'item') return 'possesses_knowledge_of'
+    return 'connected_to'
+  }
+
+  // Clear referenced entities after successful generation (but preserve for commit)
   useEffect(() => {
     if (forge.output) {
+      // Store referenced entities with their types for relationship creation during commit
+      const enrichedEntities = referencedEntities.map((e) => {
+        const fullEntity = allEntities.find((ae) => ae.id === e.id)
+        return {
+          ...e,
+          type: fullEntity?.type,
+        }
+      })
+      setGenerationReferencedEntities(enrichedEntities)
       setReferencedEntities([])
     }
-  }, [forge.output])
+  }, [forge.output, referencedEntities, allEntities])
 
   // Handle commit
   const handleCommit = async (): Promise<void> => {
@@ -445,6 +488,28 @@ export default function NpcForgePage(): JSX.Element {
           })
         }
 
+        // Auto-create relationships with referenced entities for stubs too
+        const mySubType = forge.output?.sub_type || 'standard'
+        if (generationReferencedEntities.length > 0) {
+          const relationshipPromises = generationReferencedEntities.map((refEntity) =>
+            supabase.from('relationships').insert({
+              campaign_id: campaignId,
+              source_id: stubId,
+              target_id: refEntity.id,
+              relationship_type: inferRelationshipType(
+                mySubType,
+                refEntity.type || 'npc',
+                refEntity.sub_type
+              ),
+              surface_description: `Referenced during creation`,
+              is_active: true,
+            })
+          )
+
+          await Promise.allSettled(relationshipPromises)
+        }
+        setGenerationReferencedEntities([])
+
         toast.success('NPC fleshed out and saved!')
         router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`)
       } catch {
@@ -458,8 +523,37 @@ export default function NpcForgePage(): JSX.Element {
       })
 
       if (result.success && result.entity) {
-        toast.success('NPC saved to Memory!')
         const entity = result.entity as { id: string }
+        const mySubType = forge.output?.sub_type || 'standard'
+
+        // Auto-create relationships with referenced entities
+        if (generationReferencedEntities.length > 0) {
+          const relationshipPromises = generationReferencedEntities.map((refEntity) =>
+            supabase.from('relationships').insert({
+              campaign_id: campaignId,
+              source_id: entity.id,
+              target_id: refEntity.id,
+              relationship_type: inferRelationshipType(
+                mySubType,
+                refEntity.type || 'npc',
+                refEntity.sub_type
+              ),
+              surface_description: `Referenced during creation`,
+              is_active: true,
+            })
+          )
+
+          const relationshipResults = await Promise.allSettled(relationshipPromises)
+          const failures = relationshipResults.filter((r) => r.status === 'rejected')
+          if (failures.length > 0) {
+            console.error('Some relationships failed to create:', failures)
+          }
+        }
+
+        // Clear generation referenced entities after commit
+        setGenerationReferencedEntities([])
+
+        toast.success('NPC saved to Memory!')
         router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`)
       } else if (result.error) {
         toast.error(result.error)
@@ -682,6 +776,7 @@ export default function NpcForgePage(): JSX.Element {
                       }
                     : undefined
                 }
+                conceptProvided={!!concept.trim()}
               />
             </TabsContent>
 
