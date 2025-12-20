@@ -1,11 +1,12 @@
 :root {
   /* === COLORS === */
-  --ca-bg-base: #0f1219;
-  --ca-bg-raised: #1a1f2e;
-  --ca-bg-sunken: rgba(0,0,0,0.20);
+  --ca-bg-base: #0a0d12;
+  --ca-bg-raised: #141a24;
+  --ca-bg-sunken: rgba(0,0,0,0.35);
 
-  --ca-stroke: rgba(255,255,255,0.06);
-  --ca-stroke-light: rgba(255,255,255,0.10);
+  --ca-stroke: rgba(255,255,255,0.08);
+  --ca-stroke-light: rgba(255,255,255,0.12);
+  --ca-stroke-glow: rgba(45, 212, 191, 0.3);
 
   --ca-text-primary: #e2e8f0;
   --ca-text-secondary: #94a3b8;
@@ -15,15 +16,25 @@
   --ca-accent-gold: #fbbf24;
   --ca-accent-purple: #a855f7;
   --ca-accent-red: #ef4444;
+  --ca-accent-blue: #3b82f6;
 
-  /* === SHADOWS === */
-  --ca-shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
-  --ca-shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-  --ca-shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+  /* === STRONGER LAYERED SHADOWS === */
+  --ca-shadow-sm: 0 2px 4px rgba(0,0,0,0.5);
+  --ca-shadow-md:
+    0 4px 8px rgba(0,0,0,0.4),
+    0 8px 16px rgba(0,0,0,0.3),
+    0 16px 32px rgba(0,0,0,0.15);
+  --ca-shadow-lg:
+    0 8px 16px rgba(0,0,0,0.5),
+    0 16px 32px rgba(0,0,0,0.4),
+    0 32px 64px rgba(0,0,0,0.25);
+  --ca-shadow-glow-teal: 0 0 20px rgba(45, 212, 191, 0.15);
+  --ca-shadow-glow-gold: 0 0 20px rgba(251, 191, 36, 0.15);
+  --ca-shadow-glow-purple: 0 0 20px rgba(168, 85, 247, 0.15);
 
-  --ca-inset-hi: inset 0 1px 0 rgba(255,255,255,0.05);
-  --ca-inset-lo: inset 0 -1px 0 rgba(0,0,0,0.3);
-  --ca-inset-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+  --ca-inset-hi: inset 0 1px 0 rgba(255,255,255,0.08);
+  --ca-inset-lo: inset 0 -1px 0 rgba(0,0,0,0.5);
+  --ca-inset-deep: inset 0 2px 6px rgba(0,0,0,0.5);
 
   /* === RADII === */
   --ca-radius-sm: 6px;
@@ -34,6 +45,6 @@
   /* === TRANSITIONS === */
   --ca-ease-snap: cubic-bezier(0.2, 0, 0, 1);
   --ca-ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-  --ca-duration-fast: 140ms;
+  --ca-duration-fast: 150ms;
   --ca-duration-normal: 200ms;
 }

@@ -59,6 +59,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    background-color: var(--ca-bg-base);
+    @apply text-foreground antialiased;
   }
 }

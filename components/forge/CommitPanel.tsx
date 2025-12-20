@@ -180,32 +180,32 @@ function CanonScoreBadge({
     high: {
       label: 'High Canon Score',
       description: 'Uses existing world elements',
-      color: 'bg-green-500/20 text-green-400 border-green-500/30',
+      alertClass: 'ca-alert ca-alert--success',
       icon: '✓',
     },
     medium: {
       label: 'Medium Canon Score',
       description: 'Some new elements discovered',
-      color: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+      alertClass: 'ca-alert ca-alert--warning',
       icon: '⚠',
     },
     low: {
       label: 'Low Canon Score',
       description: 'Many new or conflicting elements',
-      color: 'bg-red-500/20 text-red-400 border-red-500/30',
+      alertClass: 'ca-alert ca-alert--error',
       icon: '!',
     },
   }
 
-  const { label, description, color, icon } = config[score]
+  const { label, description, alertClass, icon } = config[score]
 
   return (
-    <div className={`rounded-lg border p-3 ${color}`}>
+    <div className={alertClass}>
       <div className="flex items-center gap-2">
         <span className="text-lg">{icon}</span>
         <div>
-          <p className="text-sm font-medium">{label}</p>
-          <p className="text-xs opacity-75">{description}</p>
+          <p className="text-sm font-medium text-slate-200">{label}</p>
+          <p className="text-xs text-slate-400">{description}</p>
         </div>
       </div>
     </div>
@@ -224,10 +224,10 @@ function ConflictCard({
 
   return (
     <div
-      className={`rounded-lg border p-3 ${
+      className={`ca-panel p-3 ${
         isResolved
-          ? 'bg-muted/50 border-border'
-          : 'bg-red-500/10 border-red-500/30'
+          ? ''
+          : 'border-l-2 border-red-500/50'
       }`}
     >
       <button
@@ -235,19 +235,19 @@ function ConflictCard({
         className="w-full flex items-start justify-between text-left"
       >
         <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">
+          <p className="text-sm font-medium text-slate-200">
             {conflict.description}
           </p>
           {conflict.existingEntityName && (
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Existing: {conflict.existingEntityName}
             </p>
           )}
         </div>
         {expanded ? (
-          <ChevronUp className="w-4 h-4" />
+          <ChevronUp className="w-4 h-4 text-slate-400" />
         ) : (
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown className="w-4 h-4 text-slate-400" />
         )}
       </button>
 
@@ -257,7 +257,7 @@ function ConflictCard({
             <button
               key={i}
               onClick={() => onResolve(mapSuggestionToResolution(suggestion))}
-              className="px-2 py-1 text-xs rounded bg-muted hover:bg-muted/80 transition-colors"
+              className="ca-btn ca-btn-sm"
             >
               {suggestion}
             </button>
@@ -287,19 +287,19 @@ function DiscoveryCard({
 
   return (
     <div
-      className={`rounded-lg border p-3 ${
+      className={`ca-panel p-3 ${
         isHandled
-          ? 'bg-muted/50 border-border'
-          : 'bg-amber-500/10 border-amber-500/30'
+          ? ''
+          : 'border-l-2 border-amber-500/50'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">
+          <p className="text-sm font-medium text-slate-200 truncate">
             &quot;{discovery.text}&quot;
           </p>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-muted-foreground">Type:</span>
+            <span className="text-xs text-slate-500">Type:</span>
             {onTypeChange && !isHandled ? (
               <Select
                 value={discovery.suggestedType}
@@ -317,7 +317,7 @@ function DiscoveryCard({
                 </SelectContent>
               </Select>
             ) : (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-slate-500">
                 {ENTITY_TYPES.find((t) => t.value === discovery.suggestedType)?.label || discovery.suggestedType}
               </span>
             )}
@@ -329,19 +329,19 @@ function DiscoveryCard({
         <div className="mt-3 flex gap-1">
           <button
             onClick={() => onAction('create_stub')}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white transition-colors"
+            className="ca-btn ca-btn-primary ca-btn-sm flex items-center gap-1"
           >
             <Plus className="w-3 h-3" /> Create Stub
           </button>
           <button
             onClick={() => onAction('link_existing')}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-muted hover:bg-muted/80 transition-colors"
+            className="ca-btn ca-btn-sm flex items-center gap-1"
           >
             <Link2 className="w-3 h-3" /> Link
           </button>
           <button
             onClick={() => onAction('ignore')}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-muted hover:bg-muted/80 transition-colors"
+            className="ca-btn ca-btn-ghost ca-btn-sm flex items-center gap-1"
           >
             <X className="w-3 h-3" /> Ignore
           </button>
