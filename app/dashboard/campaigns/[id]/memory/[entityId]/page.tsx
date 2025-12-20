@@ -238,77 +238,63 @@ export default async function EntityDetailPage({ params }: PageProps) {
                 {/* Appearance & Personality */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {attributes.appearance && (
-                    <Card className="border-primary/20 bg-primary/5">
-                      <CardHeader className="pb-2 pt-3">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                          <User className="w-4 h-4 text-primary" />
-                          Appearance
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pb-3">
-                        <p className="text-sm text-muted-foreground">{renderWithBold(attributes.appearance)}</p>
-                      </CardContent>
-                    </Card>
+                    <div className="ca-panel p-4">
+                      <div className="ca-section-header">
+                        <User className="w-4 h-4 text-primary" />
+                        <span>Appearance</span>
+                      </div>
+                      <p className="text-sm text-slate-300">{renderWithBold(attributes.appearance)}</p>
+                    </div>
                   )}
                   {attributes.personality && (
-                    <Card className="border-primary/20 bg-primary/5">
-                      <CardHeader className="pb-2 pt-3">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4 text-primary" />
-                          Personality
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pb-3">
-                        <p className="text-sm text-muted-foreground">{renderWithBold(attributes.personality)}</p>
-                      </CardContent>
-                    </Card>
+                    <div className="ca-panel p-4">
+                      <div className="ca-section-header">
+                        <MessageSquare className="w-4 h-4 text-primary" />
+                        <span>Personality</span>
+                      </div>
+                      <p className="text-sm text-slate-300">{renderWithBold(attributes.personality)}</p>
+                    </div>
                   )}
                 </div>
 
                 {/* Voice & Mannerisms */}
                 {attributes.voiceAndMannerisms && (
-                  <Card className="bg-muted/30">
-                    <CardHeader className="pb-2 pt-3">
-                      <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
-                        <MessageSquare className="w-4 h-4" />
-                        Voice & Mannerisms
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-3">
-                      <p className="text-sm text-muted-foreground">{renderWithBold(attributes.voiceAndMannerisms)}</p>
-                    </CardContent>
-                  </Card>
+                  <div className="ca-panel p-4">
+                    <div className="ca-section-header">
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Voice & Mannerisms</span>
+                    </div>
+                    <p className="text-sm text-slate-300">{renderWithBold(attributes.voiceAndMannerisms)}</p>
+                  </div>
                 )}
 
                 {/* Combat Stats */}
                 {attributes.combatStats && (
-                  <Card className="border-slate-500/30 bg-slate-500/5">
-                    <CardContent className="py-4">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <Shield className="w-5 h-5 text-slate-400" />
-                          <span className="text-sm font-medium text-slate-400">Combat:</span>
-                        </div>
-                        <Badge className="bg-blue-600 hover:bg-blue-600 text-white text-base px-3 py-1 font-bold">
-                          AC {attributes.combatStats.armorClass}
-                        </Badge>
-                        <Badge className="bg-red-600 hover:bg-red-600 text-white text-base px-3 py-1 font-bold">
-                          HP {attributes.combatStats.hitPoints}
-                        </Badge>
-                        {attributes.combatStats.primaryWeapon && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Swords className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">{attributes.combatStats.primaryWeapon}</span>
-                          </div>
-                        )}
-                        {attributes.combatStats.combatStyle && (
-                          <span className="text-sm text-muted-foreground italic">
-                            {attributes.combatStats.combatStyle}
-                          </span>
-                        )}
+                  <div className="ca-panel p-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-400">Combat:</span>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <span className="ca-stat-pill ca-stat-pill--ac">
+                        AC {attributes.combatStats.armorClass}
+                      </span>
+                      <span className="ca-stat-pill ca-stat-pill--hp">
+                        HP {attributes.combatStats.hitPoints}
+                      </span>
+                      {attributes.combatStats.primaryWeapon && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Swords className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">{attributes.combatStats.primaryWeapon}</span>
+                        </div>
+                      )}
+                      {attributes.combatStats.combatStyle && (
+                        <span className="text-sm text-muted-foreground italic">
+                          {attributes.combatStats.combatStyle}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 )}
 
                 {/* Motivation */}

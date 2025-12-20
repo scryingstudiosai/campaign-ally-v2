@@ -1,8 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { EntityTypeBadge, EntityType } from './entity-type-badge'
 import { cn } from '@/lib/utils'
 import { renderWithBold } from '@/lib/text-utils'
@@ -65,22 +63,20 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
 
   return (
     <Link href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}>
-      <Card
+      <div
         className={cn(
-          'h-full transition-colors cursor-pointer group',
-          isStub
-            ? 'border-dashed border-amber-500/50 opacity-80 bg-amber-500/5 hover:border-amber-500/70'
-            : 'hover:border-primary/50'
+          `ca-card ca-card--${entity.entity_type} ca-card-interactive h-full p-4 group`,
+          isStub && 'border-dashed border-amber-500/50 opacity-90'
         )}
       >
-        <CardHeader className="pb-2">
+        <div className="pb-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+              <h3 className="font-semibold text-slate-100 group-hover:text-primary transition-colors truncate">
                 {entity.name}
               </h3>
               {entity.subtype && (
-                <p className="text-xs text-muted-foreground">{entity.subtype}</p>
+                <p className="text-xs text-slate-500">{entity.subtype}</p>
               )}
             </div>
             <div className="flex items-center gap-1">
@@ -91,12 +87,12 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
               )}
               {entity.visibility === 'dm_only' && (
                 <span title="DM Only">
-                  <EyeOff className="w-4 h-4 text-muted-foreground" />
+                  <EyeOff className="w-4 h-4 text-slate-500" />
                 </span>
               )}
               {entity.visibility === 'revealable' && (
                 <span title="Revealable">
-                  <Eye className="w-4 h-4 text-muted-foreground" />
+                  <Eye className="w-4 h-4 text-slate-500" />
                 </span>
               )}
             </div>
@@ -104,39 +100,39 @@ export function EntityCard({ entity, campaignId }: EntityCardProps): JSX.Element
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <EntityTypeBadge type={entity.entity_type} size="sm" />
             {isStub && (
-              <Badge variant="outline" className="text-xs text-amber-400 border-amber-400/50">
-                <Wand2 className="w-3 h-3 mr-1" />
+              <span className="ca-inset px-2 py-0.5 text-xs text-amber-400 flex items-center gap-1">
+                <Wand2 className="w-3 h-3" />
                 Needs Details
-              </Badge>
+              </span>
             )}
             {statusConfig && !isStub && (
-              <Badge variant="outline" className={cn('text-xs', statusConfig.color)}>
-                <statusConfig.icon className="w-3 h-3 mr-1" />
+              <span className={cn('ca-inset px-2 py-0.5 text-xs flex items-center gap-1', statusConfig.color)}>
+                <statusConfig.icon className="w-3 h-3" />
                 {statusConfig.label}
-              </Badge>
+              </span>
             )}
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
+        </div>
+        <div className="pt-0">
           {isStub && entity.attributes?.source_entity_name ? (
-            <p className="text-sm text-muted-foreground/70 italic line-clamp-2">
+            <p className="text-sm text-slate-500 italic line-clamp-2">
               From: {entity.attributes.source_entity_name}
             </p>
           ) : entity.summary ? (
-            <p className="text-sm text-muted-foreground line-clamp-2">
+            <p className="text-sm text-slate-400 line-clamp-2">
               {renderWithBold(entity.summary)}
             </p>
           ) : entity.description ? (
-            <p className="text-sm text-muted-foreground line-clamp-2">
+            <p className="text-sm text-slate-400 line-clamp-2">
               {renderWithBold(entity.description)}
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground/50 italic">
+            <p className="text-sm text-slate-600 italic">
               No description
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </Link>
   )
 }

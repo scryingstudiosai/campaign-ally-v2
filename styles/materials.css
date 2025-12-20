@@ -1,0 +1,228 @@
+/* === ARTIFACT CARD === */
+/* Main containers - entity cards, forge outputs, modal content */
+.ca-card {
+  border-radius: var(--ca-radius-lg);
+  background: linear-gradient(
+    145deg,
+    rgba(30, 41, 59, 0.8),
+    rgba(15, 23, 42, 0.95)
+  );
+  border: 1px solid var(--ca-stroke);
+  box-shadow:
+    var(--ca-shadow-md),
+    var(--ca-inset-hi),
+    var(--ca-inset-lo);
+  position: relative;
+  overflow: hidden;
+}
+
+.ca-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+/* === PANEL WELL === */
+/* Nested sections - facts, relationships, description areas */
+.ca-panel {
+  border-radius: var(--ca-radius-md);
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.03),
+    rgba(0,0,0,0.18)
+  );
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: var(--ca-inset-hi), var(--ca-inset-lo);
+  overflow: hidden;
+}
+
+/* === INSET SLOT === */
+/* Chips, tags, badges, inline modules */
+.ca-inset {
+  border-radius: var(--ca-radius-sm);
+  background: var(--ca-bg-sunken);
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow:
+    inset 0 1px 2px rgba(0,0,0,0.7),
+    inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+/* === CONTROL BUTTON === */
+/* All interactive buttons */
+.ca-btn {
+  border-radius: var(--ca-radius-md);
+  padding: 10px 16px;
+  border: 1px solid var(--ca-stroke);
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.06),
+    rgba(0,0,0,0.18)
+  );
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  color: var(--ca-text-primary);
+  font-weight: 500;
+  transition:
+    transform var(--ca-duration-fast) var(--ca-ease-snap),
+    box-shadow var(--ca-duration-fast) var(--ca-ease-snap);
+  cursor: pointer;
+}
+
+.ca-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.ca-btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 8px rgba(0,0,0,0.65),
+    inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+/* Button variants */
+.ca-btn-primary {
+  background: linear-gradient(
+    180deg,
+    rgba(45, 212, 191, 0.3),
+    rgba(45, 212, 191, 0.1)
+  );
+  border-color: rgba(45, 212, 191, 0.3);
+  color: var(--ca-accent-teal);
+}
+
+.ca-btn-danger {
+  background: linear-gradient(
+    180deg,
+    rgba(239, 68, 68, 0.2),
+    rgba(239, 68, 68, 0.05)
+  );
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--ca-accent-red);
+}
+
+.ca-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.ca-btn-ghost:hover {
+  background: rgba(255,255,255,0.05);
+  transform: none;
+  box-shadow: none;
+}
+
+/* === ACCENT BORDERS (for entity types) === */
+.ca-card--npc {
+  border-left: 3px solid var(--ca-accent-teal);
+}
+
+.ca-card--item {
+  border-left: 3px solid var(--ca-accent-gold);
+}
+
+.ca-card--location {
+  border-left: 3px solid var(--ca-accent-purple);
+}
+
+.ca-card--villain {
+  border-left: 3px solid var(--ca-accent-red);
+}
+
+.ca-card--hero {
+  border-left: 3px solid #f59e0b; /* amber */
+}
+
+.ca-card--faction {
+  border-left: 3px solid #3b82f6; /* blue */
+}
+
+.ca-card--quest {
+  border-left: 3px solid #ec4899; /* pink */
+}
+
+.ca-card--event {
+  border-left: 3px solid #8b5cf6; /* violet */
+}
+
+/* === STAT PILLS === */
+.ca-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  box-shadow: var(--ca-inset-hi), var(--ca-shadow-sm);
+}
+
+.ca-stat-pill--ac {
+  background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+  color: white;
+}
+
+.ca-stat-pill--hp {
+  background: linear-gradient(180deg, #22c55e, #16a34a);
+  color: white;
+}
+
+.ca-stat-pill--dc {
+  background: linear-gradient(180deg, #f59e0b, #d97706);
+  color: white;
+}
+
+/* === SECTION HEADER === */
+.ca-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ca-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+
+.ca-section-header svg {
+  width: 1rem;
+  height: 1rem;
+  opacity: 0.7;
+}
+
+/* === HOVER LIFT === */
+.ca-hover-lift {
+  transition:
+    transform var(--ca-duration-fast) var(--ca-ease-snap),
+    box-shadow var(--ca-duration-fast) var(--ca-ease-snap);
+}
+
+.ca-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ca-shadow-lg);
+}
+
+/* === INTERACTIVE CARD === */
+.ca-card-interactive {
+  cursor: pointer;
+  transition:
+    transform var(--ca-duration-fast) var(--ca-ease-snap),
+    box-shadow var(--ca-duration-fast) var(--ca-ease-snap),
+    border-color var(--ca-duration-fast) var(--ca-ease-snap);
+}
+
+.ca-card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ca-shadow-lg);
+  border-color: var(--ca-stroke-light);
+}
+
+.ca-card-interactive:active {
+  transform: translateY(0);
+}

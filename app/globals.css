@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Material System Design Tokens & Components */
+@import '../styles/tokens.css';
+@import '../styles/materials.css';
+
 @layer base {
   :root {
     --background: 0 0% 100%;
