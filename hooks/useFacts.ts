@@ -137,6 +137,29 @@ export function useFacts(entityId: string, campaignId: string) {
     }
   }
 
+  // Restore Fact (bring back from superseded)
+  const restoreFact = async (factId: string) => {
+    // Optimistic update
+    setFacts((prev) =>
+      prev.map((f) => (f.id === factId ? { ...f, is_current: true } : f))
+    )
+
+    const { error } = await supabase
+      .from('facts')
+      .update({ is_current: true })
+      .eq('id', factId)
+
+    if (error) {
+      toast.error('Failed to restore fact')
+      // Rollback
+      setFacts((prev) =>
+        prev.map((f) => (f.id === factId ? { ...f, is_current: false } : f))
+      )
+    } else {
+      toast.success('Fact restored')
+    }
+  }
+
   // Delete Fact (Optimistic)
   const deleteFact = async (factId: string) => {
     const oldFacts = [...facts]
@@ -166,6 +189,7 @@ export function useFacts(entityId: string, campaignId: string) {
     addFact,
     toggleVisibility,
     supersedeFact,
+    restoreFact,
     deleteFact,
   }
 }

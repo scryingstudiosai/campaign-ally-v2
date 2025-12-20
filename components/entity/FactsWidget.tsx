@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Sparkles,
   History,
+  RotateCcw,
 } from 'lucide-react'
 import { FactCategory, Visibility } from '@/types/living-entity'
 
@@ -55,11 +56,13 @@ export function FactsWidget({ entityId, campaignId }: FactsWidgetProps) {
     addFact,
     toggleVisibility,
     supersedeFact,
+    restoreFact,
     deleteFact,
   } = useFacts(entityId, campaignId)
 
   const [isOpen, setIsOpen] = useState(true)
   const [showSuperseded, setShowSuperseded] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   // New fact form
   const [isAdding, setIsAdding] = useState(false)
@@ -251,15 +254,39 @@ export function FactsWidget({ entityId, campaignId }: FactsWidgetProps) {
                         >
                           <History className="w-3 h-3 text-slate-500" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0"
-                          onClick={() => deleteFact(fact.id)}
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3 h-3 text-red-400" />
-                        </Button>
+                        {confirmDeleteId === fact.id ? (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 px-2 text-xs text-red-400 hover:bg-red-500/20"
+                              onClick={() => {
+                                deleteFact(fact.id)
+                                setConfirmDeleteId(null)
+                              }}
+                            >
+                              Confirm
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 px-2 text-xs"
+                              onClick={() => setConfirmDeleteId(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => setConfirmDeleteId(fact.id)}
+                            title="Delete permanently"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-400" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )
@@ -281,15 +308,59 @@ export function FactsWidget({ entityId, campaignId }: FactsWidgetProps) {
               </button>
 
               {showSuperseded && (
-                <div className="mt-2 space-y-1 opacity-60">
+                <div className="mt-2 space-y-1">
                   {supersededFacts.map((fact) => (
                     <div
                       key={fact.id}
-                      className="flex items-start gap-2 p-2 rounded"
+                      className="flex items-start gap-2 p-2 rounded hover:bg-slate-800/30 group opacity-60"
                     >
-                      <span className="text-xs text-slate-600 line-through">
+                      <span className="text-xs text-slate-500 line-through flex-1">
                         {fact.content}
                       </span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-5 w-5 p-0"
+                          onClick={() => restoreFact(fact.id)}
+                          title="Restore fact"
+                        >
+                          <RotateCcw className="w-3 h-3 text-green-400" />
+                        </Button>
+                        {confirmDeleteId === fact.id ? (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 px-2 text-xs text-red-400 hover:bg-red-500/20"
+                              onClick={() => {
+                                deleteFact(fact.id)
+                                setConfirmDeleteId(null)
+                              }}
+                            >
+                              Confirm
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 px-2 text-xs"
+                              onClick={() => setConfirmDeleteId(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-5 w-5 p-0"
+                            onClick={() => setConfirmDeleteId(fact.id)}
+                            title="Delete permanently"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-400" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
