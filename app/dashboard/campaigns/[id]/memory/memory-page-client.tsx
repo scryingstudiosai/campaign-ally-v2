@@ -22,6 +22,14 @@ export function MemoryPageClient({
   campaignName,
   initialEntities,
 }: MemoryPageClientProps): JSX.Element {
+  // Track entities in state for optimistic updates on delete
+  const [entities, setEntities] = useState<Entity[]>(initialEntities)
+
+  // Update entities when initialEntities changes (e.g., after navigation)
+  useEffect(() => {
+    setEntities(initialEntities)
+  }, [initialEntities])
+
   // Initialize with default, then hydrate from localStorage
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
 
@@ -39,6 +47,11 @@ export function MemoryPageClient({
     localStorage.setItem(STORAGE_KEY, mode)
   }
 
+  // Handle entity deletion - optimistic update
+  const handleEntityDelete = (deletedId: string) => {
+    setEntities(prev => prev.filter(e => e.id !== deletedId))
+  }
+
   const [filters, setFilters] = useState<EntityFilters>({
     search: '',
     entityType: 'all',
@@ -49,7 +62,7 @@ export function MemoryPageClient({
 
   // Filter entities based on current filters
   const filteredEntities = useMemo(() => {
-    return initialEntities.filter((entity) => {
+    return entities.filter((entity) => {
       // Search filter
       if (filters.search) {
         const searchLower = filters.search.toLowerCase()
@@ -82,16 +95,16 @@ export function MemoryPageClient({
 
       return true
     })
-  }, [initialEntities, filters])
+  }, [entities, filters])
 
   // Count by type for display
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    initialEntities.forEach((entity) => {
+    entities.forEach((entity) => {
       counts[entity.entity_type] = (counts[entity.entity_type] || 0) + 1
     })
     return counts
-  }, [initialEntities])
+  }, [entities])
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
@@ -112,7 +125,7 @@ export function MemoryPageClient({
                 Memory
               </h1>
               <p className="text-muted-foreground mt-1">
-                {initialEntities.length} {initialEntities.length === 1 ? 'entity' : 'entities'} in your campaign knowledge base
+                {entities.length} {entities.length === 1 ? 'entity' : 'entities'} in your campaign knowledge base
               </p>
             </div>
             <Button asChild>
@@ -125,7 +138,7 @@ export function MemoryPageClient({
         </div>
 
         {/* Quick Stats */}
-        {initialEntities.length > 0 && (
+        {entities.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6 text-sm">
             {typeCounts.npc && (
               <span className="px-3 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/30">
@@ -169,7 +182,7 @@ export function MemoryPageClient({
         {filteredEntities.length === 0 ? (
           <Card className="p-12 text-center">
             <Database className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            {initialEntities.length === 0 ? (
+            {entities.length === 0 ? (
               <>
                 <h3 className="text-lg font-semibold mb-2">No entities yet</h3>
                 <p className="text-muted-foreground mb-4">
@@ -201,7 +214,12 @@ export function MemoryPageClient({
         ) : viewMode === 'card' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredEntities.map((entity) => (
-              <EntityCard key={entity.id} entity={entity} campaignId={campaignId} />
+              <EntityCard
+                key={entity.id}
+                entity={entity}
+                campaignId={campaignId}
+                onDelete={handleEntityDelete}
+              />
             ))}
           </div>
         ) : (
@@ -209,16 +227,21 @@ export function MemoryPageClient({
             <EntityListHeader />
             <div className="divide-y divide-border">
               {filteredEntities.map((entity) => (
-                <EntityListItem key={entity.id} entity={entity} campaignId={campaignId} />
+                <EntityListItem
+                  key={entity.id}
+                  entity={entity}
+                  campaignId={campaignId}
+                  onDelete={handleEntityDelete}
+                />
               ))}
             </div>
           </Card>
         )}
 
         {/* Results count */}
-        {filteredEntities.length > 0 && filteredEntities.length !== initialEntities.length && (
+        {filteredEntities.length > 0 && filteredEntities.length !== entities.length && (
           <p className="text-sm text-muted-foreground mt-4 text-center">
-            Showing {filteredEntities.length} of {initialEntities.length} entities
+            Showing {filteredEntities.length} of {entities.length} entities
           </p>
         )}
       </div>

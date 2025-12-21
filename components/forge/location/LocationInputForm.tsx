@@ -13,15 +13,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Map, Mountain, Castle, Building2, DoorOpen, Landmark, Skull, Dices, X } from 'lucide-react'
+import { Loader2, Map, Mountain, Castle, Building2, DoorOpen, Landmark, Skull, X, ChevronDown } from 'lucide-react'
 import type { PreValidationResult } from '@/types/forge'
 import { PreValidationAlert } from '@/components/forge/PreValidationAlert'
 import { QuickReference } from '@/components/forge/QuickReference'
+import type { LucideIcon } from 'lucide-react'
 
 export interface LocationInputData {
   name?: string
   concept: string
   locationType: 'region' | 'settlement' | 'district' | 'building' | 'room' | 'landmark' | 'dungeon'
+  subCategory?: string
   dangerLevel: string
   atmosphere: string
   parentLocationId?: string
@@ -43,27 +45,174 @@ interface LocationInputFormProps {
   }
 }
 
-const LOCATION_TYPES = [
-  { value: 'region', label: 'Region', icon: Mountain, description: 'Kingdoms, territories, wilderness' },
-  { value: 'settlement', label: 'Settlement', icon: Castle, description: 'Cities, towns, villages' },
-  { value: 'district', label: 'District', icon: Map, description: 'Neighborhoods, wards, quarters' },
-  { value: 'building', label: 'Building', icon: Building2, description: 'Taverns, temples, shops' },
-  { value: 'room', label: 'Room', icon: DoorOpen, description: 'Specific chambers or areas' },
-  { value: 'landmark', label: 'Landmark', icon: Landmark, description: 'Monuments, natural features' },
-  { value: 'dungeon', label: 'Dungeon', icon: Skull, description: 'Adventure sites, ruins, lairs' },
-]
+interface LocationConfig {
+  label: string
+  icon: LucideIcon
+  description: string
+  subCategory: {
+    label: string
+    options: Array<{ value: string; label: string }>
+  }
+  placeholder: string
+  defaultDanger: string
+  showDangerLevel: boolean
+}
 
-const DANGER_LEVELS = [
-  { value: 'let_ai_decide', label: 'Let AI decide', color: 'text-slate-400' },
-  { value: 'safe', label: 'Safe', color: 'text-green-400' },
-  { value: 'low', label: 'Low', color: 'text-lime-400' },
-  { value: 'moderate', label: 'Moderate', color: 'text-yellow-400' },
-  { value: 'high', label: 'High', color: 'text-orange-400' },
-  { value: 'deadly', label: 'Deadly', color: 'text-red-400' },
-]
+const LOCATION_CONFIG: Record<string, LocationConfig> = {
+  region: {
+    label: 'Region',
+    icon: Mountain,
+    description: 'Kingdoms, territories, wilderness',
+    subCategory: {
+      label: 'Biome / Terrain',
+      options: [
+        { value: 'forest', label: 'Forest / Woodland' },
+        { value: 'mountain', label: 'Mountain Range' },
+        { value: 'swamp', label: 'Swamp / Marshland' },
+        { value: 'desert', label: 'Desert / Wasteland' },
+        { value: 'tundra', label: 'Tundra / Arctic' },
+        { value: 'plains', label: 'Plains / Grassland' },
+        { value: 'coastal', label: 'Coastal / Islands' },
+        { value: 'underdark', label: 'Underdark / Subterranean' },
+        { value: 'magical', label: 'Magical / Corrupted' },
+      ],
+    },
+    placeholder: 'A sprawling ancient forest where the trees whisper secrets to those who listen...',
+    defaultDanger: 'moderate',
+    showDangerLevel: true,
+  },
+  settlement: {
+    label: 'Settlement',
+    icon: Castle,
+    description: 'Cities, towns, villages',
+    subCategory: {
+      label: 'Settlement Size',
+      options: [
+        { value: 'thorp', label: 'Thorp (< 20 people)' },
+        { value: 'hamlet', label: 'Hamlet (20-80 people)' },
+        { value: 'village', label: 'Village (80-400 people)' },
+        { value: 'town', label: 'Town (400-4,000 people)' },
+        { value: 'city', label: 'City (4,000-25,000 people)' },
+        { value: 'metropolis', label: 'Metropolis (25,000+ people)' },
+      ],
+    },
+    placeholder: 'A bustling trade city built on bridges spanning a deep chasm...',
+    defaultDanger: 'safe',
+    showDangerLevel: false,
+  },
+  district: {
+    label: 'District',
+    icon: Map,
+    description: 'Neighborhoods, wards, quarters',
+    subCategory: {
+      label: 'District Type',
+      options: [
+        { value: 'market', label: 'Market / Trade District' },
+        { value: 'poor_residential', label: 'Poor Residential / Slums' },
+        { value: 'wealthy_residential', label: 'Wealthy Residential' },
+        { value: 'temple', label: 'Temple / Religious Quarter' },
+        { value: 'military', label: 'Military / Guard District' },
+        { value: 'arcane', label: 'Arcane / Magic Quarter' },
+        { value: 'government', label: 'Government / Noble District' },
+        { value: 'docks', label: 'Docks / Harbor District' },
+        { value: 'industrial', label: 'Industrial / Craftsman' },
+      ],
+    },
+    placeholder: 'A smoky industrial district where dwarven smithies work day and night...',
+    defaultDanger: 'low',
+    showDangerLevel: false,
+  },
+  building: {
+    label: 'Building',
+    icon: Building2,
+    description: 'Taverns, temples, shops',
+    subCategory: {
+      label: 'Building Type',
+      options: [
+        { value: 'tavern', label: 'Tavern / Inn' },
+        { value: 'shop', label: 'Shop / Merchant' },
+        { value: 'temple', label: 'Temple / Shrine' },
+        { value: 'blacksmith', label: 'Blacksmith / Armorer' },
+        { value: 'library', label: 'Library / Archive' },
+        { value: 'guildhall', label: 'Guildhall' },
+        { value: 'manor', label: 'Manor / Estate' },
+        { value: 'warehouse', label: 'Warehouse / Storage' },
+        { value: 'fort', label: 'Fort / Keep' },
+      ],
+    },
+    placeholder: 'A cozy tavern built inside the hollow trunk of a massive tree...',
+    defaultDanger: 'safe',
+    showDangerLevel: false,
+  },
+  room: {
+    label: 'Room',
+    icon: DoorOpen,
+    description: 'Specific chambers or areas',
+    subCategory: {
+      label: 'Room Type',
+      options: [
+        { value: 'throne', label: 'Throne Room' },
+        { value: 'treasury', label: 'Treasury / Vault' },
+        { value: 'bedroom', label: 'Bedroom / Quarters' },
+        { value: 'kitchen', label: 'Kitchen / Pantry' },
+        { value: 'library', label: 'Library / Study' },
+        { value: 'cell', label: 'Prison Cell / Dungeon' },
+        { value: 'armory', label: 'Armory / Weapons Room' },
+        { value: 'ritual', label: 'Ritual Chamber' },
+        { value: 'secret', label: 'Secret Room / Passage' },
+      ],
+    },
+    placeholder: 'A dusty library filled with rotting scrolls and a single desk covered in strange symbols...',
+    defaultDanger: 'low',
+    showDangerLevel: true,
+  },
+  landmark: {
+    label: 'Landmark',
+    icon: Landmark,
+    description: 'Monuments, natural features',
+    subCategory: {
+      label: 'Landmark Type',
+      options: [
+        { value: 'natural', label: 'Natural Feature (waterfall, cliff, grove)' },
+        { value: 'ruin', label: 'Ancient Ruin' },
+        { value: 'monument', label: 'Monument / Statue' },
+        { value: 'magical', label: 'Magical Phenomenon' },
+        { value: 'planar', label: 'Planar Breach / Portal' },
+        { value: 'battlefield', label: 'Historic Battlefield' },
+        { value: 'sacred', label: 'Sacred Grove / Holy Site' },
+        { value: 'cursed', label: 'Cursed Ground' },
+      ],
+    },
+    placeholder: 'A weeping statue of a forgotten god that bleeds real blood at midnight...',
+    defaultDanger: 'moderate',
+    showDangerLevel: true,
+  },
+  dungeon: {
+    label: 'Dungeon',
+    icon: Skull,
+    description: 'Adventure sites, ruins, lairs',
+    subCategory: {
+      label: 'Dungeon Origin',
+      options: [
+        { value: 'cave', label: 'Natural Cave System' },
+        { value: 'mine', label: 'Abandoned Mine' },
+        { value: 'tomb', label: 'Ancient Tomb / Crypt' },
+        { value: 'cult', label: 'Cult Lair / Temple' },
+        { value: 'tower', label: "Wizard's Tower" },
+        { value: 'sunken', label: 'Sunken Ruin' },
+        { value: 'prison', label: 'Prison / Asylum' },
+        { value: 'lair', label: 'Monster Lair' },
+        { value: 'fortress', label: 'Fallen Fortress' },
+      ],
+    },
+    placeholder: 'An abandoned dwarven mine where something ancient has awakened in the depths...',
+    defaultDanger: 'high',
+    showDangerLevel: true,
+  },
+}
 
 const ATMOSPHERES = [
-  { value: 'let_ai_decide', label: 'Let AI decide' },
+  { value: 'any', label: 'Let AI decide' },
   { value: 'welcoming', label: 'Welcoming' },
   { value: 'bustling', label: 'Bustling' },
   { value: 'peaceful', label: 'Peaceful' },
@@ -74,24 +223,6 @@ const ATMOSPHERES = [
   { value: 'decaying', label: 'Decaying' },
   { value: 'chaotic', label: 'Chaotic' },
   { value: 'foreboding', label: 'Foreboding' },
-  { value: 'serene', label: 'Serene' },
-  { value: 'vibrant', label: 'Vibrant' },
-  { value: 'melancholic', label: 'Melancholic' },
-  { value: 'haunted', label: 'Haunted' },
-  { value: 'ancient', label: 'Ancient' },
-]
-
-const CONCEPT_SEEDS = [
-  'a crumbling fortress on a cliff overlooking the sea',
-  'a bustling market district known for exotic goods',
-  'a haunted tavern where travelers disappear',
-  'an ancient temple reclaimed by nature',
-  'a dwarven mine that broke into something sinister',
-  'a floating island where mages train',
-  'a thieves\' guild hideout beneath the city',
-  'a cursed forest where trees whisper secrets',
-  'a frontier town on the edge of the wilderness',
-  'a dragon\'s abandoned lair now used by bandits',
 ]
 
 export function LocationInputForm({
@@ -105,14 +236,18 @@ export function LocationInputForm({
 }: LocationInputFormProps): JSX.Element {
   const supabase = createClient()
 
-  // Form state
-  const [name, setName] = useState(initialValues?.name || '')
-  const [concept, setConcept] = useState(initialValues?.concept || '')
+  // Core state
   const [locationType, setLocationType] = useState<LocationInputData['locationType']>(
     (initialValues?.locationType as LocationInputData['locationType']) || 'building'
   )
-  const [dangerLevel, setDangerLevel] = useState('let_ai_decide')
-  const [atmosphere, setAtmosphere] = useState('let_ai_decide')
+  const [subCategory, setSubCategory] = useState('')
+  const [name, setName] = useState(initialValues?.name || '')
+  const [concept, setConcept] = useState(initialValues?.concept || '')
+
+  // Advanced options (collapsed by default)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [dangerLevel, setDangerLevel] = useState('')
+  const [atmosphere, setAtmosphere] = useState('any')
   const [parentLocationId, setParentLocationId] = useState('')
 
   // Context injection
@@ -120,6 +255,15 @@ export function LocationInputForm({
 
   // Available parent locations
   const [availableParents, setAvailableParents] = useState<Array<{ id: string; name: string; sub_type: string }>>([])
+
+  // Get current config
+  const currentConfig = LOCATION_CONFIG[locationType]
+
+  // Reset sub-category and danger level when type changes
+  useEffect(() => {
+    setSubCategory('')
+    setDangerLevel(LOCATION_CONFIG[locationType]?.defaultDanger || 'moderate')
+  }, [locationType])
 
   // Fetch available parent locations
   useEffect(() => {
@@ -139,31 +283,43 @@ export function LocationInputForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Provide a default concept if empty
-    const effectiveConcept = concept.trim() || `A ${locationType} location`
+    // Build enhanced concept with sub-category context
+    let enhancedConcept = ''
+
+    // Add sub-category if selected
+    if (subCategory && subCategory !== 'any') {
+      const subLabel = currentConfig.subCategory.options.find(o => o.value === subCategory)?.label
+      if (subLabel) {
+        enhancedConcept = `[${currentConfig.subCategory.label}: ${subLabel}] `
+      }
+    }
+
+    // Add user concept or generate default
+    if (concept.trim()) {
+      enhancedConcept += concept.trim()
+    } else if (subCategory && subCategory !== 'any') {
+      const subLabel = currentConfig.subCategory.options.find(o => o.value === subCategory)?.label
+      enhancedConcept += `A ${subLabel || currentConfig.label.toLowerCase()}`
+    } else {
+      enhancedConcept += `A ${currentConfig.label.toLowerCase()}`
+    }
 
     const data: LocationInputData = {
       name: name || undefined,
-      concept: effectiveConcept,
+      concept: enhancedConcept,
       locationType,
-      dangerLevel: dangerLevel === 'let_ai_decide' ? '' : dangerLevel,
-      atmosphere: atmosphere === 'let_ai_decide' ? '' : atmosphere,
-      parentLocationId: parentLocationId || undefined,
+      subCategory: subCategory && subCategory !== 'any' ? subCategory : undefined,
+      dangerLevel: dangerLevel || currentConfig.defaultDanger,
+      atmosphere: atmosphere && atmosphere !== 'any' ? atmosphere : '',
+      parentLocationId: parentLocationId && parentLocationId !== 'none' ? parentLocationId : undefined,
       referencedEntityIds: referencedEntities.map(e => e.id),
     }
 
     onSubmit(data)
   }
 
-  const handleRandomConcept = () => {
-    const randomSeed = CONCEPT_SEEDS[Math.floor(Math.random() * CONCEPT_SEEDS.length)]
-    setConcept(randomSeed)
-  }
-
   const handleQuickReferenceSelect = (entityName: string, entityId: string) => {
-    // Add to concept
     setConcept(prev => prev + (prev.endsWith(' ') || prev === '' ? '' : ' ') + entityName)
-    // Add to referenced entities
     setReferencedEntities(prev =>
       prev.some(e => e.id === entityId) ? prev : [...prev, { id: entityId, name: entityName }]
     )
@@ -173,8 +329,7 @@ export function LocationInputForm({
     setReferencedEntities(prev => prev.filter(e => e.id !== entityId))
   }
 
-  const selectedType = LOCATION_TYPES.find(t => t.value === locationType)
-  const canSubmit = !!locationType // Location type is always set, so always submittable
+  const CurrentIcon = currentConfig.icon
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -188,18 +343,18 @@ export function LocationInputForm({
         />
       )}
 
-      {/* Location Type Grid */}
+      {/* SECTION 1: Location Type Grid */}
       <div className="space-y-2">
-        <Label>Location Type</Label>
-        <div className="grid grid-cols-2 gap-2">
-          {LOCATION_TYPES.map((type) => {
-            const Icon = type.icon
-            const isSelected = locationType === type.value
+        <Label>What are you creating?</Label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {Object.entries(LOCATION_CONFIG).map(([key, config]) => {
+            const Icon = config.icon
+            const isSelected = locationType === key
             return (
               <button
-                key={type.value}
+                key={key}
                 type="button"
-                onClick={() => setLocationType(type.value as LocationInputData['locationType'])}
+                onClick={() => setLocationType(key as LocationInputData['locationType'])}
                 disabled={isLocked}
                 className={`
                   p-3 rounded-lg border text-left transition-all
@@ -210,16 +365,32 @@ export function LocationInputForm({
                   ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}
                 `}
               >
-                <Icon className={`w-4 h-4 mb-1 ${isSelected ? 'text-teal-400' : 'text-slate-500'}`} />
-                <div className="font-medium text-sm">{type.label}</div>
-                <div className="text-xs text-slate-500 truncate">{type.description}</div>
+                <Icon className={`w-5 h-5 mb-1 ${isSelected ? 'text-teal-400' : 'text-slate-500'}`} />
+                <div className="font-medium text-sm">{config.label}</div>
+                <div className="text-xs text-slate-500 truncate">{config.description}</div>
               </button>
             )
           })}
         </div>
       </div>
 
-      {/* Name (optional) */}
+      {/* SECTION 2: Dynamic Sub-Category */}
+      <div className="space-y-2">
+        <Label>{currentConfig.subCategory.label}</Label>
+        <Select value={subCategory} onValueChange={setSubCategory} disabled={isLocked}>
+          <SelectTrigger className="bg-slate-900/50 border-slate-700">
+            <SelectValue placeholder="Let AI decide..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Let AI decide</SelectItem>
+            {currentConfig.subCategory.options.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* SECTION 3: Name (Optional) */}
       <div className="space-y-2">
         <Label>Name (optional)</Label>
         <Input
@@ -231,26 +402,13 @@ export function LocationInputForm({
         />
       </div>
 
-      {/* Concept / Description */}
+      {/* SECTION 4: Concept with Dynamic Placeholder */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>Concept / Description (optional)</Label>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleRandomConcept}
-            disabled={isLocked}
-            className="text-xs text-slate-400 hover:text-slate-200"
-          >
-            <Dices className="w-3 h-3 mr-1" />
-            Random
-          </Button>
-        </div>
+        <Label>Describe your vision (optional)</Label>
         <Textarea
           value={concept}
           onChange={(e) => setConcept(e.target.value)}
-          placeholder="A crumbling fortress on a cliff... A bustling market district known for exotic goods... A haunted tavern where travelers disappear..."
+          placeholder={currentConfig.placeholder}
           disabled={isLocked}
           className="min-h-[100px] bg-slate-900/50 border-slate-700"
         />
@@ -283,76 +441,93 @@ export function LocationInputForm({
         </div>
       )}
 
-      {/* Atmosphere & Danger Level */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Atmosphere</Label>
-          <Select value={atmosphere} onValueChange={setAtmosphere} disabled={isLocked}>
-            <SelectTrigger className="bg-slate-900/50 border-slate-700">
-              <SelectValue placeholder="Let AI decide..." />
-            </SelectTrigger>
-            <SelectContent>
-              {ATMOSPHERES.map(atm => (
-                <SelectItem key={atm.value} value={atm.value}>{atm.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* SECTION 5: Advanced Options (Collapsible) */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="w-full flex items-center justify-between p-3 bg-slate-800/30 hover:bg-slate-800/50 transition-colors"
+        >
+          <span className="text-sm text-slate-400">Advanced Options</span>
+          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+        </button>
 
-        <div className="space-y-2">
-          <Label>Danger Level</Label>
-          <Select value={dangerLevel} onValueChange={setDangerLevel} disabled={isLocked}>
-            <SelectTrigger className="bg-slate-900/50 border-slate-700">
-              <SelectValue placeholder="Let AI decide..." />
-            </SelectTrigger>
-            <SelectContent>
-              {DANGER_LEVELS.map(level => (
-                <SelectItem key={level.value} value={level.value}>
-                  <span className={level.color}>{level.label}</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {showAdvanced && (
+          <div className="p-4 space-y-4 border-t border-slate-700">
+            {/* Danger Level - Only show for relevant types */}
+            {currentConfig.showDangerLevel && (
+              <div className="space-y-2">
+                <Label>Danger Level</Label>
+                <Select value={dangerLevel} onValueChange={setDangerLevel} disabled={isLocked}>
+                  <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="safe"><span className="text-green-400">Safe</span></SelectItem>
+                    <SelectItem value="low"><span className="text-lime-400">Low</span></SelectItem>
+                    <SelectItem value="moderate"><span className="text-yellow-400">Moderate</span></SelectItem>
+                    <SelectItem value="high"><span className="text-orange-400">High</span></SelectItem>
+                    <SelectItem value="deadly"><span className="text-red-400">Deadly</span></SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Atmosphere */}
+            <div className="space-y-2">
+              <Label>Atmosphere</Label>
+              <Select value={atmosphere} onValueChange={setAtmosphere} disabled={isLocked}>
+                <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                  <SelectValue placeholder="Let AI decide..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ATMOSPHERES.map(atm => (
+                    <SelectItem key={atm.value} value={atm.value}>{atm.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Parent Location */}
+            <div className="space-y-2">
+              <Label>Located Within</Label>
+              <Select value={parentLocationId} onValueChange={setParentLocationId} disabled={isLocked}>
+                <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                  <SelectValue placeholder="Standalone location..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Standalone (no parent)</SelectItem>
+                  {availableParents.map(loc => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name} ({loc.sub_type})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500">
+                For hierarchy: A room within a building, a building within a district, etc.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Parent Location (Hierarchy) */}
-      <div className="space-y-2">
-        <Label>Located Within (optional)</Label>
-        <Select value={parentLocationId} onValueChange={setParentLocationId} disabled={isLocked}>
-          <SelectTrigger className="bg-slate-900/50 border-slate-700">
-            <SelectValue placeholder="Standalone location..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="standalone">Standalone (no parent)</SelectItem>
-            {availableParents.map(loc => (
-              <SelectItem key={loc.id} value={loc.id}>
-                {loc.name} ({loc.sub_type})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-slate-500">
-          For hierarchy: A room is within a building, a building within a district, etc.
-        </p>
-      </div>
-
-      {/* Generate Button */}
+      {/* SECTION 6: Generate Button */}
       <Button
         type="submit"
-        disabled={isLocked || !canSubmit}
+        disabled={isLocked}
         className="w-full"
         size="lg"
       >
         {isLocked ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Forging Location...
+            Forging {currentConfig.label}...
           </>
         ) : (
           <>
-            {selectedType && <selectedType.icon className="w-4 h-4 mr-2" />}
-            Forge {selectedType?.label || 'Location'}
+            <CurrentIcon className="w-4 h-4 mr-2" />
+            Forge {currentConfig.label}
           </>
         )}
       </Button>
