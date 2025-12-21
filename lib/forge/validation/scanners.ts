@@ -301,10 +301,9 @@ export function extractProperNouns(
     })
   }
 
-  // Pattern 2: Multi-word proper nouns with improved name capture
-  // Handles: "The Drowned Rat", "Iron Fist Guild", "Mirella of the Mists", "Lord Vorn the Terrible"
-  // First capture titled names (Lord X, Lady Y, etc.)
-  const titledNamePattern = /(?:Lord|Lady|King|Queen|Prince|Princess|Duke|Duchess|Baron|Baroness|Count|Countess|Sir|Dame|Master|Captain|Commander|Chief|Elder|High Priest|Archmage)\s+[A-Z][a-z]+(?:\s+(?:the|of)\s+(?:the\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)?/g
+  // Pattern 2: Titled names with comprehensive title list
+  // Handles: "General Valthor", "Sir Garren of Greystone", "High Priest Morven", "Admiral Blackwood"
+  const titledNamePattern = /\b(?:General|Admiral|Captain|Commander|Warlord|King|Queen|Prince|Princess|Lord|Lady|Duke|Duchess|Baron|Baroness|Count|Countess|Earl|Marquis|Viscount|Sir|Dame|Master|Mistress|Elder|Archmage|High Priest|High Priestess|Father|Mother|Brother|Sister|Chief|Emperor|Empress|Grand Master)\s+[A-Z][a-z]+(?:\s+(?:the|of|de|von|van)\s+(?:the\s+)?[A-Z][a-z]+)*(?:\s+[IVXLCDM]+)?/gi
 
   while ((match = titledNamePattern.exec(cleanedText)) !== null) {
     const matchText = match[0].trim()
@@ -329,8 +328,8 @@ export function extractProperNouns(
     })
   }
 
-  // Pattern 3: Names with epithets (e.g., "Vorn the Terrible", "Mirella of the Mists")
-  const epithetPattern = /[A-Z][a-z]+(?:\s+(?:the|of)\s+(?:the\s+)?[A-Z][a-z]+)+/g
+  // Pattern 3: Names with epithets (e.g., "Elara the Cunning", "Vorn the Terrible")
+  const epithetPattern = /\b[A-Z][a-z]+\s+the\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?/g
 
   while ((match = epithetPattern.exec(cleanedText)) !== null) {
     const matchText = match[0].trim()
@@ -356,6 +355,81 @@ export function extractProperNouns(
       endIndex: match.index + matchText.length,
       context,
     })
+  }
+
+  // Pattern 3b: Names with "of" patterns (e.g., "Mirella of the Mists", "Duke of Blackmoor")
+  const ofPattern = /\b[A-Z][a-z]+\s+of\s+(?:the\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?/g
+
+  while ((match = ofPattern.exec(cleanedText)) !== null) {
+    const matchText = match[0].trim()
+
+    // Skip if it's the entity being created
+    if (excludeLower && matchText.toLowerCase() === excludeLower) continue
+    if (excludeLower && matchText.toLowerCase().includes(excludeLower)) continue
+
+    // Skip blocklisted terms
+    if (shouldIgnoreTerm(matchText)) continue
+
+    // Get surrounding context
+    const contextStart = Math.max(0, match.index - 50)
+    const contextEnd = Math.min(cleanedText.length, match.index + matchText.length + 50)
+    const context = cleanedText.substring(contextStart, contextEnd)
+
+    results.push({
+      text: matchText,
+      startIndex: match.index,
+      endIndex: match.index + matchText.length,
+      context,
+    })
+  }
+
+  // Pattern 3c: Location patterns like "the Shattered Keep", "the Silent Glade"
+  const locationPattern = /\bthe\s+[A-Z][a-z]+\s+(?:Keep|Glade|Forest|Mountain|Valley|Plains|Depths|Heights|Spire|Tower|Gate|Bridge|Pass|Wastes|Wilds|Reaches|Shores|Isles?|Bay|Harbor|Port|Falls|Springs|Caverns?|Mines?|Halls?|Tomb|Crypt|Sanctum|Citadel|Fortress|Castle|Palace|Temple|Shrine|Academy|Library|Archive|Pit|Chasm)\b/gi
+
+  while ((match = locationPattern.exec(cleanedText)) !== null) {
+    const matchText = match[0].trim()
+
+    // Skip if it's the entity being created
+    if (excludeLower && matchText.toLowerCase() === excludeLower) continue
+
+    // Get surrounding context
+    const contextStart = Math.max(0, match.index - 50)
+    const contextEnd = Math.min(cleanedText.length, match.index + matchText.length + 50)
+    const context = cleanedText.substring(contextStart, contextEnd)
+
+    results.push({
+      text: matchText,
+      startIndex: match.index,
+      endIndex: match.index + matchText.length,
+      context,
+    })
+  }
+
+  // Pattern 3d: "city/kingdom/realm of X" patterns (location indicators)
+  const placeOfPattern = /\b(?:city|town|village|kingdom|realm|fortress|castle|tower|vault|temple|shrine|forest|mountain|cave|dungeon|keep|citadel|ruins)\s+of\s+(?:the\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?/gi
+
+  while ((match = placeOfPattern.exec(cleanedText)) !== null) {
+    // Extract just the place name (after "of")
+    const fullMatch = match[0].trim()
+    const ofIndex = fullMatch.toLowerCase().indexOf(' of ')
+    if (ofIndex !== -1) {
+      const placeName = fullMatch.substring(ofIndex + 4).replace(/^the\s+/i, '').trim()
+
+      // Skip if it's the entity being created
+      if (excludeLower && placeName.toLowerCase() === excludeLower) continue
+
+      // Get surrounding context
+      const contextStart = Math.max(0, match.index - 50)
+      const contextEnd = Math.min(cleanedText.length, match.index + fullMatch.length + 50)
+      const context = cleanedText.substring(contextStart, contextEnd)
+
+      results.push({
+        text: placeName,
+        startIndex: match.index + ofIndex + 4,
+        endIndex: match.index + fullMatch.length,
+        context,
+      })
+    }
   }
 
   // Pattern 4: Multi-word proper nouns (e.g., "The Drowned Rat", "Iron Fist Guild")
@@ -521,6 +595,7 @@ export function guessEntityType(
   context: string
 ): 'npc' | 'location' | 'item' | 'faction' | 'quest' | 'other' {
   const lowerContext = context.toLowerCase()
+  const lowerText = text.toLowerCase()
 
   // First, check if it's a known spell (should be ignored/other)
   if (SPELL_NAMES.has(text)) {
@@ -530,6 +605,23 @@ export function guessEntityType(
   // Check if it's a blocklisted term
   if (shouldIgnoreTerm(text)) {
     return 'other'
+  }
+
+  // Check name structure first (strongest indicators)
+
+  // Titles strongly indicate NPC
+  if (/^(?:General|Admiral|Captain|Commander|Warlord|King|Queen|Prince|Princess|Lord|Lady|Duke|Duchess|Baron|Baroness|Count|Countess|Sir|Dame|Master|Mistress|Elder|Archmage|High Priest|Father|Mother|Brother|Sister|Chief|Emperor|Empress)/i.test(text)) {
+    return 'npc'
+  }
+
+  // "Name the Epithet" pattern strongly indicates NPC
+  if (/^[A-Z][a-z]+\s+the\s+[A-Z]/i.test(text)) {
+    return 'npc'
+  }
+
+  // "The Adjective Noun" where Noun is a location word strongly indicates location
+  if (/^the\s+[A-Z][a-z]+\s+(?:Keep|Glade|Forest|Mountain|Valley|Tower|Gate|Temple|Shrine|Citadel|Fortress|Castle|Palace|Falls|Depths|Spire|Hall|Tomb|Crypt|Sanctum)/i.test(text)) {
+    return 'location'
   }
 
   // Use blocklist pattern matchers for strong indicators in the name itself
@@ -553,12 +645,32 @@ export function guessEntityType(
     return 'item'
   }
 
+  // Check context for location indicators (before NPC context - more specific)
+  const locationContextIndicators = [
+    'city of', 'town of', 'village of', 'kingdom of', 'realm of',
+    'in the', 'at the', 'traveled to', 'arrived at', 'from the',
+    'located in', 'hidden in', 'beneath', 'within the walls of',
+    'the ruins of', 'the gates of', 'the streets of'
+  ]
+  if (locationContextIndicators.some((w) => lowerContext.includes(w))) {
+    return 'location'
+  }
+
+  // Check context for NPC creation/interaction indicators
+  const npcContextIndicators = [
+    'crafted by', 'forged by', 'made by', 'created by', 'wielded by',
+    'carried by', 'owned by', 'belonged to', 'said', 'spoke', 'told',
+    'the hero', 'the villain', 'the smith', 'the mage', 'the warrior',
+    'assassin', 'blacksmith', 'merchant', 'guard', 'soldier',
+    'killed', 'murdered', 'betrayed', 'saved', 'helped'
+  ]
+  if (npcContextIndicators.some((w) => lowerContext.includes(w))) {
+    return 'npc'
+  }
+
   // Check context for clues - use the comprehensive indicator lists
   // Location context
   if (LOCATION_INDICATORS.contextWords.some((w) => lowerContext.includes(w))) {
-    return 'location'
-  }
-  if (LOCATION_INDICATORS.locationWords.some((w) => lowerContext.includes(w))) {
     return 'location'
   }
 
@@ -572,9 +684,6 @@ export function guessEntityType(
 
   // Item context
   if (ITEM_INDICATORS.contextWords.some((w) => lowerContext.includes(w))) {
-    return 'item'
-  }
-  if (ITEM_INDICATORS.itemWords.some((w) => lowerContext.includes(w))) {
     return 'item'
   }
 
