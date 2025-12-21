@@ -17,7 +17,10 @@ import { FactsWidget } from '@/components/entity/FactsWidget'
 import { ItemBrainCard } from '@/components/entity/ItemBrainCard'
 import { ItemVoiceCard } from '@/components/entity/ItemVoiceCard'
 import { ItemMechanicsCard } from '@/components/entity/ItemMechanicsCard'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, isNpcBrain } from '@/types/living-entity'
+import { LocationBrainCard } from '@/components/entity/LocationBrainCard'
+import { LocationSoulCard } from '@/components/entity/LocationSoulCard'
+import { LocationMechanicsCard } from '@/components/entity/LocationMechanicsCard'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -144,6 +147,12 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const itemMechanics = entity.mechanics as ItemMechanics | null
   const itemCategory = (entity.attributes?.category || entity.attributes?.item_type || entity.subtype) as string | undefined
   const isSentientItem = isItem && itemBrain?.sentience_level && itemBrain.sentience_level !== 'none'
+
+  // Location-specific helpers
+  const isLocation = entity.entity_type === 'location'
+  const locationBrain = entity.brain as LocationBrain | null
+  const locationSoul = entity.soul as LocationSoul | null
+  const locationMechanics = entity.mechanics as LocationMechanics | null
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
@@ -371,6 +380,21 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* Item Brain - Origin, secrets, lore */}
             {isItem && itemBrain && Object.keys(itemBrain).length > 0 && (
               <ItemBrainCard brain={itemBrain} subType={entity.sub_type} />
+            )}
+
+            {/* Location Brain - Purpose, secrets, conflict */}
+            {isLocation && locationBrain && Object.keys(locationBrain).length > 0 && (
+              <LocationBrainCard brain={locationBrain} subType={entity.sub_type} />
+            )}
+
+            {/* Location Soul - Sensory details, atmosphere */}
+            {isLocation && locationSoul && Object.keys(locationSoul).length > 0 && (
+              <LocationSoulCard soul={locationSoul} />
+            )}
+
+            {/* Location Mechanics - Hazards, encounters, resting */}
+            {isLocation && locationMechanics && Object.keys(locationMechanics).length > 0 && (
+              <LocationMechanicsCard mechanics={locationMechanics} />
             )}
 
             {/* Secret - DM Only */}

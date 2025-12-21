@@ -95,6 +95,42 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
     hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
   },
+  // Location subtypes
+  location_region: {
+    borderClass: 'border-indigo-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(99,102,241,0.15)]',
+    hoverClass: 'hover:border-indigo-500/60 hover:shadow-[0_0_20px_rgba(99,102,241,0.25)]',
+  },
+  location_settlement: {
+    borderClass: 'border-indigo-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(99,102,241,0.15)]',
+    hoverClass: 'hover:border-indigo-500/60 hover:shadow-[0_0_20px_rgba(99,102,241,0.25)]',
+  },
+  location_district: {
+    borderClass: 'border-indigo-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-indigo-500/50',
+  },
+  location_building: {
+    borderClass: 'border-indigo-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-indigo-500/50',
+  },
+  location_room: {
+    borderClass: 'border-indigo-500/20',
+    glowClass: '',
+    hoverClass: 'hover:border-indigo-500/40',
+  },
+  location_landmark: {
+    borderClass: 'border-cyan-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(6,182,212,0.15)]',
+    hoverClass: 'hover:border-cyan-500/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)]',
+  },
+  location_dungeon: {
+    borderClass: 'border-red-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
+    hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
+  },
   faction_default: {
     borderClass: 'border-orange-500/30',
     glowClass: '',
