@@ -177,15 +177,17 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
-            <div className="ca-card ca-card--location p-4 opacity-50">
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin className="w-4 h-4 text-primary" />
-                <h3 className="text-base font-semibold text-slate-100">Location Forge</h3>
+            <Link href={`/dashboard/campaigns/${params.id}/forge/location`} className="block">
+              <div className="ca-card ca-card--location ca-card-interactive p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  <h3 className="text-base font-semibold text-slate-100">Location Forge</h3>
+                </div>
+                <p className="text-sm text-slate-400">
+                  Create immersive locations with atmosphere and secrets
+                </p>
               </div>
-              <p className="text-sm text-slate-500">
-                Coming soon...
-              </p>
-            </div>
+            </Link>
 
             <div className="ca-card ca-card--encounter p-4 opacity-50">
               <div className="flex items-center gap-2 mb-2">
