@@ -103,12 +103,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { campaignId, inputs } = body as { campaignId: string; inputs: LocationInputs }
 
-    if (!campaignId || !inputs?.concept) {
+    if (!campaignId || !inputs?.locationType) {
       return NextResponse.json(
-        { error: 'Campaign ID and concept are required' },
+        { error: 'Campaign ID and location type are required' },
         { status: 400 }
       )
     }
+
+    // Default concept if not provided
+    const effectiveConcept = inputs.concept?.trim() || `A ${inputs.locationType} location`
+    // Update inputs with effective concept for prompt building
+    inputs.concept = effectiveConcept
 
     // Verify campaign ownership
     const { data: campaign, error: campaignError } = await supabase

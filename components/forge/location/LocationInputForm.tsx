@@ -139,9 +139,12 @@ export function LocationInputForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Provide a default concept if empty
+    const effectiveConcept = concept.trim() || `A ${locationType} location`
+
     const data: LocationInputData = {
       name: name || undefined,
-      concept,
+      concept: effectiveConcept,
       locationType,
       dangerLevel: dangerLevel === 'let_ai_decide' ? '' : dangerLevel,
       atmosphere: atmosphere === 'let_ai_decide' ? '' : atmosphere,
@@ -171,7 +174,7 @@ export function LocationInputForm({
   }
 
   const selectedType = LOCATION_TYPES.find(t => t.value === locationType)
-  const canSubmit = concept.trim().length > 0
+  const canSubmit = !!locationType // Location type is always set, so always submittable
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -231,7 +234,7 @@ export function LocationInputForm({
       {/* Concept / Description */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>Concept / Description *</Label>
+          <Label>Concept / Description (optional)</Label>
           <Button
             type="button"
             variant="ghost"

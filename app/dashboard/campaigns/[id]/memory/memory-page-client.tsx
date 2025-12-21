@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -8,6 +8,8 @@ import { EntityCard, Entity } from '@/components/memory/entity-card'
 import { EntityListItem, EntityListHeader } from '@/components/memory/entity-list-item'
 import { EntityFiltersBar, EntityFilters } from '@/components/memory/entity-filters'
 import { ArrowLeft, Plus, Brain, Database } from 'lucide-react'
+
+const STORAGE_KEY = 'memory-view-mode'
 
 interface MemoryPageClientProps {
   campaignId: string
@@ -20,7 +22,23 @@ export function MemoryPageClient({
   campaignName,
   initialEntities,
 }: MemoryPageClientProps): JSX.Element {
+  // Initialize with default, then hydrate from localStorage
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
+
+  // Hydrate view mode from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored === 'card' || stored === 'list') {
+      setViewMode(stored)
+    }
+  }, [])
+
+  // Persist view mode changes to localStorage
+  const handleViewModeChange = (mode: 'card' | 'list') => {
+    setViewMode(mode)
+    localStorage.setItem(STORAGE_KEY, mode)
+  }
+
   const [filters, setFilters] = useState<EntityFilters>({
     search: '',
     entityType: 'all',
@@ -143,7 +161,7 @@ export function MemoryPageClient({
             filters={filters}
             onFiltersChange={setFilters}
             viewMode={viewMode}
-            onViewModeChange={setViewMode}
+            onViewModeChange={handleViewModeChange}
           />
         </div>
 
