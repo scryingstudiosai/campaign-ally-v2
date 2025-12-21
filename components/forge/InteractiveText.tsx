@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import Link from 'next/link'
 import {
   Tooltip,
@@ -33,14 +33,11 @@ export function InteractiveText({
     name: string
   } | null>(null)
 
-  // DEBUG: Log what we receive
-  console.log('InteractiveText received:')
-  console.log('- text:', text?.substring(0, 100))
-  console.log('- existingEntityMentions:', scanResult?.existingEntityMentions)
-  console.log('- discoveries:', scanResult?.discoveries?.map(d => d.text))
-
-  // Build a map of all text ranges that need special rendering
-  const segments = buildSegments(text, scanResult)
+  // Memoize segments to prevent infinite re-renders from Tooltip refs
+  const segments = useMemo(
+    () => buildSegments(text, scanResult),
+    [text, scanResult]
+  )
 
   return (
     <TooltipProvider>

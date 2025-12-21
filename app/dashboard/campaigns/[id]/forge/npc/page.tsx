@@ -377,8 +377,9 @@ export default function NpcForgePage(): JSX.Element {
   }
 
   // Clear referenced entities after successful generation (but preserve for commit)
+  // Only runs when there are entities to clear - prevents infinite loop
   useEffect(() => {
-    if (forge.output) {
+    if (forge.output && referencedEntities.length > 0) {
       // Store referenced entities with their types for relationship creation during commit
       const enrichedEntities = referencedEntities.map((e) => {
         const fullEntity = allEntities.find((ae) => ae.id === e.id)
