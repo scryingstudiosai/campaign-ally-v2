@@ -22,7 +22,8 @@ import {
 
 export interface GeneratedItem {
   name: string
-  item_type: string
+  item_type?: string
+  category?: string  // Alias for item_type in new architecture
   rarity: string
   magical_aura: string
   is_identified: boolean
@@ -46,6 +47,26 @@ export interface GeneratedItem {
     session: string | null
     note?: string
   }>
+  // New Brain/Voice architecture fields
+  sub_type?: 'standard' | 'artifact' | 'cursed'
+  brain?: {
+    origin?: string
+    history?: string
+    secret?: string
+    trigger?: string
+    hunger?: string
+    cost?: string
+    sentience_level?: 'none' | 'dormant' | 'awakened' | 'dominant'
+  }
+  voice?: {
+    personality?: string
+    style?: string[]
+    desires?: string
+    communication?: 'telepathic' | 'verbal' | 'empathic' | 'visions'
+  } | null
+  read_aloud?: string
+  dm_slug?: string
+  dmSlug?: string  // Alias for backward compatibility
 }
 
 interface ItemOutputCardProps {
@@ -125,7 +146,8 @@ export function ItemOutputCard({
 
   const rarityColor = RARITY_COLORS[data.rarity] || 'bg-slate-500 text-white'
   const rarityLabel = RARITY_LABELS[data.rarity] || data.rarity
-  const typeLabel = ITEM_TYPE_LABELS[data.item_type] || data.item_type
+  const itemType = data.item_type || data.category || 'item'
+  const typeLabel = ITEM_TYPE_LABELS[itemType] || itemType
   const vendorPrice = Math.floor(data.value_gp * 0.5)
 
   return (

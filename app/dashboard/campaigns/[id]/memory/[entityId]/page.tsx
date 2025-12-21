@@ -14,7 +14,9 @@ import { BrainCard } from '@/components/entity/BrainCard'
 import { VoiceCard } from '@/components/entity/VoiceCard'
 import { ReadAloudCard } from '@/components/entity/ReadAloudCard'
 import { FactsWidget } from '@/components/entity/FactsWidget'
-import { NpcBrain, Voice, isNpcBrain } from '@/types/living-entity'
+import { ItemBrainCard } from '@/components/entity/ItemBrainCard'
+import { ItemVoiceCard } from '@/components/entity/ItemVoiceCard'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -135,6 +137,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const attributes = entity.attributes || {}
   const isStub = attributes.is_stub || attributes.needs_review
 
+  // Item-specific helpers
+  const isItem = entity.entity_type === 'item'
+  const itemBrain = entity.brain as ItemBrain | null
+  const isSentientItem = isItem && itemBrain?.sentience_level && itemBrain.sentience_level !== 'none'
+
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
       <div className="max-w-4xl mx-auto">
@@ -230,9 +237,14 @@ export default async function EntityDetailPage({ params }: PageProps) {
           {/* === LEFT COLUMN (2/3) - The Actor === */}
           <div className="lg:col-span-2 space-y-4">
 
-            {/* Voice Profile - How to speak this character */}
+            {/* Voice Profile - How to speak this character (NPCs) */}
             {entity.entity_type === 'npc' && entity.voice && Object.keys(entity.voice as object).length > 0 && (entity.voice as Voice).style?.length > 0 && (
               <VoiceCard voice={entity.voice as Voice} />
+            )}
+
+            {/* Item Voice - For sentient items only */}
+            {isItem && isSentientItem && entity.voice && (
+              <ItemVoiceCard voice={entity.voice as ItemVoice} />
             )}
 
             {/* Appearance - What players see */}
@@ -346,6 +358,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* NPC Brain - The psychology */}
             {entity.entity_type === 'npc' && entity.brain && isNpcBrain(entity.brain as NpcBrain) && (
               <BrainCard brain={entity.brain as NpcBrain} viewMode="dm" />
+            )}
+
+            {/* Item Brain - Origin, secrets, mechanics */}
+            {isItem && itemBrain && Object.keys(itemBrain).length > 0 && (
+              <ItemBrainCard brain={itemBrain} subType={entity.sub_type} />
             )}
 
             {/* Secret - DM Only */}

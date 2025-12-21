@@ -77,7 +77,12 @@ export default function ItemForgePage(): JSX.Element {
 
   // All entities for linking
   const [allEntities, setAllEntities] = useState<
-    Array<{ id: string; name: string; type: string }>
+    Array<{ id: string; name: string; type: string; sub_type?: string }>
+  >([])
+
+  // Store referenced entities at generation time for use during commit
+  const [generationReferencedEntities, setGenerationReferencedEntities] = useState<
+    { id: string; name: string; type?: string; sub_type?: string }[]
   >([])
 
   // The forge hook
@@ -159,17 +164,64 @@ export default function ItemForgePage(): JSX.Element {
     async function fetchEntities(): Promise<void> {
       const { data } = await supabase
         .from('entities')
-        .select('id, name, entity_type')
+        .select('id, name, entity_type, sub_type')
         .eq('campaign_id', campaignId)
         .is('deleted_at', null)
       if (data) {
         setAllEntities(
-          data.map((e) => ({ id: e.id, name: e.name, type: e.entity_type }))
+          data.map((e) => ({ id: e.id, name: e.name, type: e.entity_type, sub_type: e.sub_type }))
         )
       }
     }
     fetchEntities()
   }, [campaignId, supabase])
+
+  // Capture referenced entities when generation completes
+  useEffect(() => {
+    if (forge.output && forge.status === 'review') {
+      // Get referencedEntityIds from the input
+      const inputData = forge.input as Record<string, unknown> | null
+      const referencedEntityIds = (inputData?.referencedEntityIds as string[]) || []
+
+      if (referencedEntityIds.length > 0) {
+        // Enrich with type/sub_type from allEntities
+        const enrichedEntities = referencedEntityIds.map((id) => {
+          const fullEntity = allEntities.find((e) => e.id === id)
+          return {
+            id,
+            name: fullEntity?.name || 'Unknown',
+            type: fullEntity?.type,
+            sub_type: fullEntity?.sub_type,
+          }
+        })
+        setGenerationReferencedEntities(enrichedEntities)
+      }
+    }
+  }, [forge.output, forge.status, forge.input, allEntities])
+
+  // Helper function to infer relationship type for items
+  const inferItemRelationshipType = (
+    itemSubType: string,
+    theirType: string,
+    theirSubType?: string
+  ): string => {
+    // Item-specific relationship types
+    if (theirType === 'npc') {
+      if (theirSubType === 'villain') return 'wielded_by'
+      return 'owned_by'
+    }
+    if (theirType === 'location') {
+      return 'found_at'
+    }
+    if (theirType === 'faction') {
+      return 'relic_of'
+    }
+    if (theirType === 'item') {
+      if (itemSubType === 'artifact' || theirSubType === 'artifact') return 'paired_with'
+      return 'connected_to'
+    }
+    return 'connected_to'
+  }
 
   // Handle discovery actions
   const handleDiscoveryAction = (
@@ -251,16 +303,22 @@ export default function ItemForgePage(): JSX.Element {
         const existingHistory =
           (existingStub?.attributes as Record<string, unknown>)?.history || []
 
-        // Update the stub with the generated content
+        // Update the stub with the generated content (including brain/voice)
+        const itemSubType = forge.output.sub_type || 'standard'
         const { error } = await supabase
           .from('entities')
           .update({
             name: forge.output.name,
-            subtype: forge.output.item_type,
-            summary: forge.output.public_description.substring(0, 200),
+            sub_type: itemSubType,
+            brain: forge.output.brain || {},
+            voice: forge.output.voice || null,
+            read_aloud: forge.output.read_aloud,
+            dm_slug: forge.output.dm_slug || forge.output.dmSlug,
+            subtype: forge.output.item_type || forge.output.category,
+            summary: forge.output.public_description?.substring(0, 200),
             description: `**Public Description:** ${forge.output.public_description}\n\n**Secret Description:** ${forge.output.secret_description}`,
             attributes: {
-              item_type: forge.output.item_type,
+              item_type: forge.output.item_type || forge.output.category,
               rarity: forge.output.rarity,
               magical_aura: forge.output.magical_aura,
               public_description: forge.output.public_description,
@@ -300,6 +358,27 @@ export default function ItemForgePage(): JSX.Element {
           })
         }
 
+        // Auto-create relationships with referenced entities for stubs too
+        if (generationReferencedEntities.length > 0) {
+          const relationshipPromises = generationReferencedEntities.map((refEntity) =>
+            supabase.from('relationships').insert({
+              campaign_id: campaignId,
+              source_id: stubId,
+              target_id: refEntity.id,
+              relationship_type: inferItemRelationshipType(
+                itemSubType,
+                refEntity.type || 'npc',
+                refEntity.sub_type
+              ),
+              surface_description: 'Referenced during creation',
+              is_active: true,
+            })
+          )
+
+          await Promise.allSettled(relationshipPromises)
+        }
+        setGenerationReferencedEntities([])
+
         toast.success('Item fleshed out and saved!')
         router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`)
       } catch {
@@ -314,6 +393,7 @@ export default function ItemForgePage(): JSX.Element {
 
       if (result.success && result.entity) {
         const entity = result.entity as { id: string }
+        const itemSubType = forge.output?.sub_type || 'standard'
 
         // If forging from loot, create owned_by relationship
         if (lootContext && lootOwnerId) {
@@ -325,6 +405,33 @@ export default function ItemForgePage(): JSX.Element {
             description: `Carried by ${lootContext.sourceEntityName}`,
           })
         }
+
+        // Auto-create relationships with referenced entities
+        if (generationReferencedEntities.length > 0) {
+          const relationshipPromises = generationReferencedEntities.map((refEntity) =>
+            supabase.from('relationships').insert({
+              campaign_id: campaignId,
+              source_id: entity.id,
+              target_id: refEntity.id,
+              relationship_type: inferItemRelationshipType(
+                itemSubType,
+                refEntity.type || 'npc',
+                refEntity.sub_type
+              ),
+              surface_description: 'Referenced during creation',
+              is_active: true,
+            })
+          )
+
+          const relationshipResults = await Promise.allSettled(relationshipPromises)
+          const failures = relationshipResults.filter((r) => r.status === 'rejected')
+          if (failures.length > 0) {
+            console.error('Some relationships failed to create:', failures)
+          }
+        }
+
+        // Clear generation referenced entities after commit
+        setGenerationReferencedEntities([])
 
         toast.success('Item saved to Memory!')
         // Navigate to the new entity
