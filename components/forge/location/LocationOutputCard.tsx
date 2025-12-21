@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import React, { useState, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { InteractiveText } from '@/components/forge/InteractiveText'
+import { SelectionPopover } from '@/components/forge/SelectionPopover'
+import { renderWithBold } from '@/lib/text-utils'
 import {
   Map, Eye, Ear, Wind, Thermometer, Lightbulb,
   AlertTriangle, Swords, Tent, Sparkles, Package, Clock, Gift
@@ -102,6 +103,7 @@ export function LocationOutputCard({
   existingEntities = [],
 }: LocationOutputCardProps): JSX.Element {
   const [activeTab, setActiveTab] = useState('soul')
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const hasBrain = data.brain && Object.keys(data.brain).length > 0
   const hasSoul = data.soul && Object.keys(data.soul).length > 0
@@ -110,8 +112,10 @@ export function LocationOutputCard({
   const dangerLevel = data.brain?.danger_level || 'moderate'
   const dangerClass = DANGER_COLORS[dangerLevel] || DANGER_COLORS.moderate
 
-  // Helper function to render text with entity discovery highlighting
-  const renderTextWithDiscoveries = (text: string) => {
+  // Render text with interactive links if scan result available, otherwise bold
+  const renderTextWithDiscoveries = (text: string | undefined): React.ReactNode => {
+    if (!text) return null
+
     if (scanResult) {
       return (
         <InteractiveText
@@ -122,11 +126,12 @@ export function LocationOutputCard({
         />
       )
     }
-    return text
+
+    return renderWithBold(text)
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={contentRef} className="space-y-4">
       {/* Header */}
       <div className="ca-card p-4">
         <div className="flex items-start justify-between mb-3">
@@ -502,6 +507,16 @@ export function LocationOutputCard({
             ))}
           </div>
         </div>
+      )}
+
+      {/* Selection Popover for manual discovery creation */}
+      {onManualDiscovery && (
+        <SelectionPopover
+          containerRef={contentRef}
+          onCreateDiscovery={onManualDiscovery}
+          onSearchExisting={onLinkExisting || (() => {})}
+          existingEntities={existingEntities}
+        />
       )}
     </div>
   )
