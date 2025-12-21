@@ -41,16 +41,6 @@ interface StubContext {
   suggestedTraits?: string[]
 }
 
-interface Profile {
-  generations_used: number
-  subscription_tier: string
-}
-
-const GENERATION_LIMITS: Record<string, number> = {
-  free: 50,
-  pro: 500,
-  legendary: 9999,
-}
 
 export default function NpcForgePage(): JSX.Element {
   const params = useParams()
@@ -78,8 +68,6 @@ export default function NpcForgePage(): JSX.Element {
   const [factions, setFactions] = useState<Array<{ id: string; name: string }>>(
     []
   )
-  const [generationsUsed, setGenerationsUsed] = useState(0)
-  const [generationsLimit, setGenerationsLimit] = useState(50)
 
   // Local state for managing discoveries/conflicts during review
   const [reviewDiscoveries, setReviewDiscoveries] = useState<Discovery[]>([])
@@ -135,11 +123,6 @@ export default function NpcForgePage(): JSX.Element {
         throw new Error(data.error || 'Generation failed')
       }
 
-      // Update generation count from response
-      if (data.generationsUsed !== undefined) {
-        setGenerationsUsed(data.generationsUsed)
-      }
-
       return data.npc
     },
     getTextContent: (output) => {
@@ -193,19 +176,6 @@ export default function NpcForgePage(): JSX.Element {
       }
 
       setCampaignName(campaignData.name)
-
-      // Fetch profile for generation counts
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('generations_used, subscription_tier')
-        .eq('id', user.id)
-        .single()
-
-      if (profileData) {
-        setGenerationsUsed((profileData as Profile).generations_used || 0)
-        const tier = (profileData as Profile).subscription_tier || 'free'
-        setGenerationsLimit(GENERATION_LIMITS[tier] || 50)
-      }
 
       // Fetch locations for dropdown
       const { data: locationData } = await supabase
@@ -663,8 +633,6 @@ export default function NpcForgePage(): JSX.Element {
     )
   }
 
-  const generationsRemaining = generationsLimit - generationsUsed
-
   return (
     <ForgeShell
       title={stubContext ? `Flesh Out: ${stubName}` : 'NPC Forge'}
@@ -767,8 +735,6 @@ export default function NpcForgePage(): JSX.Element {
                 onProceedAnyway={forge.proceedAnyway}
                 existingLocations={locations}
                 existingFactions={factions}
-                generationsRemaining={generationsRemaining}
-                generationsLimit={generationsLimit}
                 initialValues={
                   stubContext
                     ? {

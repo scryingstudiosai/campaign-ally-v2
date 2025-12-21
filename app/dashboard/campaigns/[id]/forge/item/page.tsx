@@ -42,16 +42,6 @@ interface LootContext {
   snippet?: string
 }
 
-interface Profile {
-  generations_used: number
-  subscription_tier: string
-}
-
-const GENERATION_LIMITS: Record<string, number> = {
-  free: 50,
-  pro: 500,
-  legendary: 9999,
-}
 
 export default function ItemForgePage(): JSX.Element {
   const params = useParams()
@@ -77,11 +67,9 @@ export default function ItemForgePage(): JSX.Element {
   const lootContext: LootContext | null =
     lootName && !stubId && parsedContext ? parsedContext : null
 
-  // Campaign and profile state
+  // Campaign state
   const [campaignName, setCampaignName] = useState<string>('')
   const [loading, setLoading] = useState(true)
-  const [generationsUsed, setGenerationsUsed] = useState(0)
-  const [generationsLimit, setGenerationsLimit] = useState(50)
 
   // Local state for managing discoveries/conflicts during review
   const [reviewDiscoveries, setReviewDiscoveries] = useState<Discovery[]>([])
@@ -109,11 +97,6 @@ export default function ItemForgePage(): JSX.Element {
 
       if (!response.ok) {
         throw new Error(data.error || 'Generation failed')
-      }
-
-      // Update generation count from response
-      if (data.generationsUsed !== undefined) {
-        setGenerationsUsed(data.generationsUsed)
       }
 
       return data.item
@@ -165,20 +148,6 @@ export default function ItemForgePage(): JSX.Element {
       }
 
       setCampaignName(campaignData.name)
-
-      // Fetch profile for generation counts
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('generations_used, subscription_tier')
-        .eq('id', user.id)
-        .single()
-
-      if (profileData) {
-        setGenerationsUsed((profileData as Profile).generations_used || 0)
-        const tier = (profileData as Profile).subscription_tier || 'free'
-        setGenerationsLimit(GENERATION_LIMITS[tier] || 50)
-      }
-
       setLoading(false)
     }
 
@@ -397,8 +366,6 @@ export default function ItemForgePage(): JSX.Element {
     )
   }
 
-  const generationsRemaining = generationsLimit - generationsUsed
-
   // Determine title and description based on context
   const forgeTitle = stubContext
     ? `Flesh Out: ${stubName}`
@@ -482,8 +449,6 @@ export default function ItemForgePage(): JSX.Element {
             preValidation={forge.preValidation}
             onProceedAnyway={forge.proceedAnyway}
             campaignId={campaignId}
-            generationsRemaining={generationsRemaining}
-            generationsLimit={generationsLimit}
             initialValues={
               stubContext
                 ? {

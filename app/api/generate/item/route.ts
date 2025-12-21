@@ -123,40 +123,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
     }
 
-    // Check generation limits
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_tier, generations_used, generations_reset_at')
-      .eq('id', user.id)
-      .single()
-
-    const GENERATION_LIMITS: Record<string, number> = {
-      free: 50,
-      pro: 500,
-      legendary: 9999,
-    }
-
-    const tier = profile?.subscription_tier || 'free'
-    const limit = GENERATION_LIMITS[tier] || 50
-    const used = profile?.generations_used || 0
-
-    // Check if we need to reset the counter (monthly reset)
-    const resetAt = profile?.generations_reset_at ? new Date(profile.generations_reset_at) : new Date()
-    const now = new Date()
-    const needsReset = now.getMonth() !== resetAt.getMonth() || now.getFullYear() !== resetAt.getFullYear()
-
-    const currentUsed = needsReset ? 0 : used
-
-    // Dev mode: bypass generation limits if env var is set
-    const bypassLimit = process.env.BYPASS_GENERATION_LIMIT === 'true'
-
-    if (!bypassLimit && currentUsed >= limit) {
-      return NextResponse.json(
-        { error: 'Generation limit reached. Upgrade your plan for more generations.' },
-        { status: 429 }
-      )
-    }
-
     // Fetch campaign context (codex) for world consistency
     const campaignContext = await fetchCampaignContext(campaignId)
 
@@ -224,7 +190,7 @@ export async function POST(request: NextRequest) {
       }
     ]
 
-    // Track generation in database
+    // Track generation in database (for analytics)
     const { error: genError } = await supabase.from('generations').insert({
       user_id: user.id,
       campaign_id: campaignId,
@@ -238,23 +204,8 @@ export async function POST(request: NextRequest) {
       console.error('Failed to track generation:', genError)
     }
 
-    // Increment generations_used
-    if (needsReset) {
-      await supabase
-        .from('profiles')
-        .update({ generations_used: 1, generations_reset_at: now.toISOString() })
-        .eq('id', user.id)
-    } else {
-      await supabase
-        .from('profiles')
-        .update({ generations_used: currentUsed + 1 })
-        .eq('id', user.id)
-    }
-
     return NextResponse.json({
       item: generatedItem,
-      generationsUsed: currentUsed + 1,
-      generationsLimit: limit,
     })
   } catch (error) {
     console.error('Item generation error:', error)

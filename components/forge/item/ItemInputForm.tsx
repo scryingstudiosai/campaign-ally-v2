@@ -60,8 +60,6 @@ interface ItemInputFormProps {
   onProceedAnyway?: () => void
   onDismissValidation?: () => void
   campaignId: string
-  generationsRemaining?: number
-  generationsLimit?: number
   initialValues?: {
     name?: string
     dmSlug?: string
@@ -144,8 +142,6 @@ export function ItemInputForm({
   onProceedAnyway,
   onDismissValidation,
   campaignId,
-  generationsRemaining,
-  generationsLimit = 50,
   initialValues,
   lockedOwnerId,
 }: ItemInputFormProps): JSX.Element {
@@ -282,8 +278,6 @@ export function ItemInputForm({
     setDmSlug(randomSeed)
   }
 
-  const remainingGenerations =
-    generationsRemaining !== undefined ? generationsRemaining : generationsLimit
   const selectedRarity = RARITIES.find((r) => r.value === rarity)
 
   return (
@@ -298,13 +292,6 @@ export function ItemInputForm({
             onDismiss={onDismissValidation || (() => {})}
           />
         )}
-
-      {/* Generation count */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
-          {remainingGenerations} / {generationsLimit} generations remaining
-        </span>
-      </div>
 
       {/* DM Slug - Primary guidance for AI */}
       <div className="space-y-2">
@@ -791,7 +778,7 @@ export function ItemInputForm({
       {/* Submit */}
       <Button
         type="submit"
-        disabled={!dmSlug.trim() || isLocked || remainingGenerations <= 0}
+        disabled={!dmSlug.trim() || isLocked}
         className="w-full"
         size="lg"
       >
@@ -807,12 +794,6 @@ export function ItemInputForm({
           </>
         )}
       </Button>
-
-      {remainingGenerations <= 0 && (
-        <p className="text-sm text-destructive text-center">
-          You&apos;ve reached your generation limit for this month.
-        </p>
-      )}
     </form>
   )
 }
