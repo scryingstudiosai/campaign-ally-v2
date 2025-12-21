@@ -157,9 +157,9 @@ export function LocationOutputCard({
             <Eye className="w-4 h-4" />
             Read Aloud
           </div>
-          <p className="text-slate-200 italic leading-relaxed">
+          <div className="text-slate-200 italic leading-relaxed">
             {renderTextWithDiscoveries(data.read_aloud)}
-          </p>
+          </div>
         </div>
       )}
 
@@ -274,18 +274,18 @@ export function LocationOutputCard({
               {data.brain.purpose && (
                 <div>
                   <span className="text-xs text-slate-500 uppercase">Purpose</span>
-                  <p className="text-slate-200">
+                  <div className="text-slate-200">
                     {renderTextWithDiscoveries(data.brain.purpose)}
-                  </p>
+                  </div>
                 </div>
               )}
 
               {data.brain.history && (
                 <div>
                   <span className="text-xs text-slate-500 uppercase">History</span>
-                  <p className="text-slate-200">
+                  <div className="text-slate-200">
                     {renderTextWithDiscoveries(data.brain.history)}
-                  </p>
+                  </div>
                 </div>
               )}
 
@@ -305,9 +305,9 @@ export function LocationOutputCard({
                     <Swords className="w-4 h-4 text-orange-400 mt-0.5 shrink-0" />
                     <div>
                       <span className="text-xs text-orange-400 uppercase">Conflict</span>
-                      <p className="text-slate-200">
+                      <div className="text-slate-200">
                         {renderTextWithDiscoveries(data.brain.conflict)}
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -319,9 +319,9 @@ export function LocationOutputCard({
                     <Gift className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
                     <div>
                       <span className="text-xs text-green-400 uppercase">Opportunity</span>
-                      <p className="text-slate-200">
+                      <div className="text-slate-200">
                         {renderTextWithDiscoveries(data.brain.opportunity)}
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -333,9 +333,9 @@ export function LocationOutputCard({
                     <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
                     <div>
                       <span className="text-xs text-amber-400 uppercase">Secret (DM Only)</span>
-                      <p className="text-slate-200">
+                      <div className="text-slate-200">
                         {renderTextWithDiscoveries(data.brain.secret)}
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </div>

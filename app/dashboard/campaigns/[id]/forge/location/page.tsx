@@ -359,48 +359,78 @@ export default function LocationForgePage(): JSX.Element {
         }
         setGenerationReferencedEntities([])
 
-        // Create stubs for "contains" sub-locations
+        // Create stubs for "contains" sub-locations (with duplicate prevention)
         if (forge.output?.brain?.contains && forge.output.brain.contains.length > 0) {
-          const subLocationStubs = forge.output.brain.contains.map((name: string) => ({
-            campaign_id: campaignId,
-            entity_type: 'location',
-            sub_type: inferSubLocationType(locationSubType),
-            name: name,
-            summary: `Sub-location within ${forge.output?.name}`,
-            status: 'active',
-            importance_tier: 'minor',
-            visibility: 'dm_only',
-            attributes: {
-              is_stub: true,
-              needs_review: true,
-              parent_location_id: stubId,
-              source_entity_name: forge.output?.name,
-            },
-          }))
+          const containsNames = forge.output.brain.contains as string[]
 
-          const { data: createdStubs } = await supabase
+          // Check for existing entities with these names
+          const { data: existingStubs } = await supabase
             .from('entities')
-            .insert(subLocationStubs)
-            .select()
+            .select('name')
+            .eq('campaign_id', campaignId)
+            .in('name', containsNames)
+            .is('deleted_at', null)
 
-          if (createdStubs && createdStubs.length > 0) {
-            const containsRelationships = createdStubs.map((stub) => ({
+          const existingNames = new Set(
+            existingStubs?.map((e) => e.name.toLowerCase()) || []
+          )
+
+          // Filter out names that already exist
+          const newSubLocations = containsNames.filter(
+            (name) => !existingNames.has(name.toLowerCase())
+          )
+
+          if (newSubLocations.length > 0) {
+            const subLocationStubs = newSubLocations.map((name: string) => ({
               campaign_id: campaignId,
-              source_id: stubId,
-              target_id: stub.id,
-              relationship_type: 'contains',
-              surface_description: 'Sub-location',
-              intensity: 'high',
-              visibility: 'public',
-              is_active: true,
+              entity_type: 'location',
+              sub_type: inferSubLocationType(locationSubType),
+              name: name,
+              summary: `Sub-location within ${forge.output?.name}`,
+              status: 'active',
+              importance_tier: 'minor',
+              visibility: 'dm_only',
+              attributes: {
+                is_stub: true,
+                needs_review: true,
+                parent_location_id: stubId,
+                source_entity_name: forge.output?.name,
+              },
             }))
-            await supabase.from('relationships').insert(containsRelationships)
 
-            toast.success(
-              `Location fleshed out + ${createdStubs.length} sub-location stubs created!`
-            )
+            const { data: createdStubs } = await supabase
+              .from('entities')
+              .insert(subLocationStubs)
+              .select()
+
+            if (createdStubs && createdStubs.length > 0) {
+              const containsRelationships = createdStubs.map((stub) => ({
+                campaign_id: campaignId,
+                source_id: stubId,
+                target_id: stub.id,
+                relationship_type: 'contains',
+                surface_description: 'Sub-location',
+                intensity: 'high',
+                visibility: 'public',
+                is_active: true,
+              }))
+              await supabase.from('relationships').insert(containsRelationships)
+
+              const skippedCount = containsNames.length - createdStubs.length
+              if (skippedCount > 0) {
+                toast.success(
+                  `Location fleshed out! ${createdStubs.length} new stubs created (${skippedCount} already existed)`
+                )
+              } else {
+                toast.success(
+                  `Location fleshed out + ${createdStubs.length} sub-location stubs created!`
+                )
+              }
+            } else {
+              toast.success('Location fleshed out and saved!')
+            }
           } else {
-            toast.success('Location fleshed out and saved!')
+            toast.success('Location fleshed out! (all sub-locations already existed)')
           }
         } else {
           toast.success('Location fleshed out and saved!')
@@ -461,48 +491,78 @@ export default function LocationForgePage(): JSX.Element {
 
         setGenerationReferencedEntities([])
 
-        // Create stubs for "contains" sub-locations
+        // Create stubs for "contains" sub-locations (with duplicate prevention)
         if (forge.output?.brain?.contains && forge.output.brain.contains.length > 0) {
-          const subLocationStubs = forge.output.brain.contains.map((name: string) => ({
-            campaign_id: campaignId,
-            entity_type: 'location',
-            sub_type: inferSubLocationType(locationSubType),
-            name: name,
-            summary: `Sub-location within ${forge.output?.name}`,
-            status: 'active',
-            importance_tier: 'minor',
-            visibility: 'dm_only',
-            attributes: {
-              is_stub: true,
-              needs_review: true,
-              parent_location_id: entity.id,
-              source_entity_name: forge.output?.name,
-            },
-          }))
+          const containsNames = forge.output.brain.contains as string[]
 
-          const { data: createdStubs } = await supabase
+          // Check for existing entities with these names
+          const { data: existingStubs } = await supabase
             .from('entities')
-            .insert(subLocationStubs)
-            .select()
+            .select('name')
+            .eq('campaign_id', campaignId)
+            .in('name', containsNames)
+            .is('deleted_at', null)
 
-          if (createdStubs && createdStubs.length > 0) {
-            const containsRelationships = createdStubs.map((stub) => ({
+          const existingNames = new Set(
+            existingStubs?.map((e) => e.name.toLowerCase()) || []
+          )
+
+          // Filter out names that already exist
+          const newSubLocations = containsNames.filter(
+            (name) => !existingNames.has(name.toLowerCase())
+          )
+
+          if (newSubLocations.length > 0) {
+            const subLocationStubs = newSubLocations.map((name: string) => ({
               campaign_id: campaignId,
-              source_id: entity.id,
-              target_id: stub.id,
-              relationship_type: 'contains',
-              surface_description: 'Sub-location',
-              intensity: 'high',
-              visibility: 'public',
-              is_active: true,
+              entity_type: 'location',
+              sub_type: inferSubLocationType(locationSubType),
+              name: name,
+              summary: `Sub-location within ${forge.output?.name}`,
+              status: 'active',
+              importance_tier: 'minor',
+              visibility: 'dm_only',
+              attributes: {
+                is_stub: true,
+                needs_review: true,
+                parent_location_id: entity.id,
+                source_entity_name: forge.output?.name,
+              },
             }))
-            await supabase.from('relationships').insert(containsRelationships)
 
-            toast.success(
-              `Location saved + ${createdStubs.length} sub-location stubs created!`
-            )
+            const { data: createdStubs } = await supabase
+              .from('entities')
+              .insert(subLocationStubs)
+              .select()
+
+            if (createdStubs && createdStubs.length > 0) {
+              const containsRelationships = createdStubs.map((stub) => ({
+                campaign_id: campaignId,
+                source_id: entity.id,
+                target_id: stub.id,
+                relationship_type: 'contains',
+                surface_description: 'Sub-location',
+                intensity: 'high',
+                visibility: 'public',
+                is_active: true,
+              }))
+              await supabase.from('relationships').insert(containsRelationships)
+
+              const skippedCount = containsNames.length - createdStubs.length
+              if (skippedCount > 0) {
+                toast.success(
+                  `Location saved! ${createdStubs.length} new stubs created (${skippedCount} already existed)`
+                )
+              } else {
+                toast.success(
+                  `Location saved + ${createdStubs.length} sub-location stubs created!`
+                )
+              }
+            } else {
+              toast.success('Location saved to Memory!')
+            }
           } else {
-            toast.success('Location saved to Memory!')
+            toast.success('Location saved! (all sub-locations already existed)')
           }
         } else {
           toast.success('Location saved to Memory!')
