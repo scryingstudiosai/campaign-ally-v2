@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/openai'
-import { fetchEntityContext, formatEntityContextForPrompt } from '@/lib/forge/context-fetcher'
+import { fetchEntityContext, formatEntityContextForPrompt, fetchCampaignContext } from '@/lib/forge/context-fetcher'
 
 interface VillainInputs {
   scheme?: string
@@ -134,13 +134,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
     }
 
-    // Fetch codex for context
-    const { data: codex } = await supabase
-      .from('codex')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .single()
-
     // Check generation limits (free tier: 50/month)
     const { data: profile } = await supabase
       .from('profiles')
@@ -175,6 +168,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Fetch campaign context (codex) for world consistency
+    const campaignContext = await fetchCampaignContext(campaignId)
+
     // Fetch context for referenced entities
     let entityContext = ''
     if (inputs.referencedEntityIds && inputs.referencedEntityIds.length > 0) {
@@ -182,8 +178,11 @@ export async function POST(request: NextRequest) {
       entityContext = formatEntityContextForPrompt(contextEntities)
     }
 
-    // Build the prompt
-    const systemPrompt = buildSystemPrompt(codex, inputs.npcType || 'standard', entityContext)
+    // Build the prompt with proper context hierarchy:
+    // 1. Campaign Context (Global) - world rules, tone, themes
+    // 2. Entity Context (Local) - specific referenced entities
+    // 3. User Request (Specific) - role, concept, etc.
+    const systemPrompt = buildSystemPrompt(inputs.npcType || 'standard', campaignContext, entityContext)
     const userPrompt = buildUserPrompt(inputs)
 
     // Call OpenAI
@@ -252,8 +251,8 @@ export async function POST(request: NextRequest) {
 }
 
 function buildSystemPrompt(
-  codex: Record<string, unknown> | null,
   npcType: 'standard' | 'villain' | 'hero' = 'standard',
+  campaignContext: string = '',
   entityContext: string = ''
 ): string {
   let prompt = `You are a creative assistant for Dungeon Masters, specializing in generating memorable NPCs for tabletop RPG campaigns.
@@ -357,48 +356,12 @@ Generate 6-10 atomic facts including:
 `
   }
 
-  if (codex) {
-    prompt += `\n\nCAMPAIGN CONTEXT:\n`
-
-    if (codex.world_name) {
-      prompt += `World: ${codex.world_name}\n`
-    }
-    if (codex.premise) {
-      prompt += `Campaign Premise: ${codex.premise}\n`
-    }
-    if (Array.isArray(codex.tone) && codex.tone.length > 0) {
-      prompt += `Tone: ${codex.tone.join(', ')}\n`
-    }
-    if (codex.magic_level) {
-      prompt += `Magic Level: ${codex.magic_level}\n`
-    }
-    if (codex.tech_level) {
-      prompt += `Tech Level: ${codex.tech_level}\n`
-    }
-    if (Array.isArray(codex.themes) && codex.themes.length > 0) {
-      prompt += `Themes: ${codex.themes.join(', ')}\n`
-    }
-    if (Array.isArray(codex.pillars) && codex.pillars.length > 0) {
-      prompt += `Campaign Pillars: ${codex.pillars.join(', ')}\n`
-    }
-    if (codex.narrative_voice) {
-      prompt += `Narrative Voice: ${codex.narrative_voice}\n`
-    }
-    if (Array.isArray(codex.languages) && codex.languages.length > 0) {
-      prompt += `Common Languages: ${codex.languages.join(', ')}\n`
-    }
-    if (Array.isArray(codex.proper_nouns) && codex.proper_nouns.length > 0) {
-      prompt += `Established Names (use these when relevant): ${codex.proper_nouns.join(', ')}\n`
-    }
-    if (Array.isArray(codex.content_warnings) && codex.content_warnings.length > 0) {
-      prompt += `\nCONTENT TO AVOID: ${codex.content_warnings.join(', ')}\n`
-    }
-    if (Array.isArray(codex.open_questions) && codex.open_questions.length > 0) {
-      prompt += `\nOPEN QUESTIONS (do not commit to answers for these): ${codex.open_questions.join('; ')}\n`
-    }
+  // Inject campaign context first (global world rules, tone, themes)
+  if (campaignContext) {
+    prompt += `\n\n${campaignContext}`
   }
 
-  // Inject entity context if provided (from Quick Reference)
+  // Inject entity context second (local connections from Quick Reference)
   if (entityContext) {
     prompt += `\n\n${entityContext}`
   }

@@ -34,6 +34,69 @@ interface RelationshipRecord {
   target: { name: string } | null
 }
 
+interface Codex {
+  world_name?: string
+  premise?: string
+  tone?: string | string[]
+  themes?: string | string[]
+  magic_level?: string
+  tech_level?: string
+  pillars?: string[]
+  narrative_voice?: string
+  languages?: string[]
+  proper_nouns?: string[]
+  content_warnings?: string[]
+  open_questions?: string[]
+}
+
+/**
+ * Fetch campaign codex and format it as context for AI generation.
+ * This ensures generated NPCs align with the campaign's global tone, themes, and setting.
+ */
+export async function fetchCampaignContext(campaignId: string): Promise<string> {
+  const supabase = await createClient()
+
+  const { data: codex, error } = await supabase
+    .from('codex')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .single()
+
+  if (error || !codex) return ''
+
+  const c = codex as Codex
+
+  // Format tone (could be string or array)
+  const toneStr = Array.isArray(c.tone) ? c.tone.join(', ') : c.tone || ''
+  const themesStr = Array.isArray(c.themes) ? c.themes.join(', ') : c.themes || ''
+  const pillarsStr = Array.isArray(c.pillars) ? c.pillars.join(', ') : ''
+
+  const contextParts: string[] = []
+
+  if (c.world_name) contextParts.push(`World: ${c.world_name}`)
+  if (c.premise) contextParts.push(`Campaign Premise: ${c.premise}`)
+  if (toneStr) contextParts.push(`Tone: ${toneStr}`)
+  if (themesStr) contextParts.push(`Themes: ${themesStr}`)
+  if (pillarsStr) contextParts.push(`Campaign Pillars: ${pillarsStr}`)
+  if (c.magic_level) contextParts.push(`Magic Level: ${c.magic_level}`)
+  if (c.tech_level) contextParts.push(`Technology Level: ${c.tech_level}`)
+  if (c.narrative_voice) contextParts.push(`Narrative Voice: ${c.narrative_voice}`)
+  if (c.proper_nouns?.length) contextParts.push(`Established Names (use when relevant): ${c.proper_nouns.join(', ')}`)
+  if (c.content_warnings?.length) contextParts.push(`CONTENT TO AVOID: ${c.content_warnings.join(', ')}`)
+  if (c.open_questions?.length) contextParts.push(`OPEN QUESTIONS (do not commit to answers): ${c.open_questions.join('; ')}`)
+
+  if (contextParts.length === 0) return ''
+
+  return `
+## CAMPAIGN SETTING & TONE
+The following global settings apply to this campaign. Ensure the generated character fits this world naturally.
+
+${contextParts.join('\n')}
+
+## END CAMPAIGN CONTEXT
+`.trim()
+}
+
 export async function fetchEntityContext(entityIds: string[]): Promise<EntityContext[]> {
   if (!entityIds.length) return []
 
