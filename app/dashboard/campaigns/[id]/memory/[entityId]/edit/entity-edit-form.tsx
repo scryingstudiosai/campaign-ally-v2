@@ -746,14 +746,14 @@ export function EntityEditForm({
                   <div className="space-y-2">
                     <Label>Magic Bonus</Label>
                     <Select
-                      value={(itemMechanics.bonus as string) || ''}
-                      onValueChange={(v) => setItemMechanics({ ...itemMechanics, bonus: v || undefined })}
+                      value={(itemMechanics.bonus as string) || 'none'}
+                      onValueChange={(v) => setItemMechanics({ ...itemMechanics, bonus: v === 'none' ? undefined : v })}
                     >
                       <SelectTrigger className="bg-slate-900/50 border-slate-700">
                         <SelectValue placeholder="None" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         <SelectItem value="+1">+1</SelectItem>
                         <SelectItem value="+2">+2</SelectItem>
                         <SelectItem value="+3">+3</SelectItem>
@@ -789,17 +789,17 @@ export function EntityEditForm({
                   <div className="space-y-2">
                     <Label>Recharge</Label>
                     <Select
-                      value={((itemMechanics.charges as Record<string, unknown>)?.recharge as string) || ''}
+                      value={((itemMechanics.charges as Record<string, unknown>)?.recharge as string) || 'never'}
                       onValueChange={(v) => setItemMechanics({
                         ...itemMechanics,
-                        charges: { ...(itemMechanics.charges as Record<string, unknown> || {}), recharge: v || undefined }
+                        charges: { ...(itemMechanics.charges as Record<string, unknown> || {}), recharge: v === 'never' ? undefined : v }
                       })}
                     >
                       <SelectTrigger className="bg-slate-900/50 border-slate-700">
                         <SelectValue placeholder="Never" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Never</SelectItem>
+                        <SelectItem value="never">Never</SelectItem>
                         <SelectItem value="dawn">At Dawn</SelectItem>
                         <SelectItem value="dusk">At Dusk</SelectItem>
                         <SelectItem value="short rest">Short Rest</SelectItem>
