@@ -173,16 +173,21 @@ export const DEFAULT_LOCATION_BRAIN: LocationBrain = {
   law: 'neutral',
 };
 
-// Item Brain
+// Item Brain - the "soul" of the item
 export interface ItemBrain extends BaseBrain {
-  hunger?: string;
-  trigger?: string;
-  curse?: string;
-  history_weight: string;
+  origin?: string;           // Who made it and why
+  history?: string;          // Notable events, previous owners
+  secret?: string;           // Hidden properties or true purpose
+  trigger?: string;          // What activates special abilities
+  hunger?: string;           // If sentient, what does it crave?
+  cost?: string;             // The catch or drawback for using it
+  sentience_level?: 'none' | 'dormant' | 'awakened' | 'dominant';
+  // Legacy field for backward compatibility
+  history_weight?: string;
 }
 
 export const DEFAULT_ITEM_BRAIN: ItemBrain = {
-  history_weight: '',
+  sentience_level: 'none',
 };
 
 // Faction Brain
@@ -259,7 +264,7 @@ export function isLocationBrain(brain: BaseBrain): brain is LocationBrain {
 }
 
 export function isItemBrain(brain: BaseBrain): brain is ItemBrain {
-  return 'history_weight' in brain;
+  return 'sentience_level' in brain || 'origin' in brain || 'history_weight' in brain;
 }
 
 export function isFactionBrain(brain: BaseBrain): brain is FactionBrain {
@@ -311,6 +316,21 @@ export function getVoiceWithDefaults(voice?: Partial<Voice>): Voice {
     speech_patterns: voice?.speech_patterns || [],
     tells: voice?.tells || [],
   };
+}
+
+// Item Voice - ONLY for sentient items
+export interface ItemVoice {
+  personality?: string;           // How it presents itself
+  style?: string[];               // Communication style (whispers, booming, etc.)
+  desires?: string;               // What it pushes the wielder toward
+  communication?: 'telepathic' | 'verbal' | 'empathic' | 'visions';
+}
+
+export const DEFAULT_ITEM_VOICE: ItemVoice = {};
+
+// Type guard for sentient items
+export function isSentientItem(brain: ItemBrain | null | undefined): boolean {
+  return brain?.sentience_level !== undefined && brain.sentience_level !== 'none';
 }
 
 

@@ -79,6 +79,22 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     glowClass: '',
     hoverClass: 'hover:border-purple-500/50',
   },
+  // Item subtypes
+  item_standard: {
+    borderClass: 'border-emerald-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-emerald-500/50',
+  },
+  item_artifact: {
+    borderClass: 'border-amber-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(245,158,11,0.15)]',
+    hoverClass: 'hover:border-amber-500/60 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)]',
+  },
+  item_cursed: {
+    borderClass: 'border-red-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
+    hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
+  },
   faction_default: {
     borderClass: 'border-orange-500/30',
     glowClass: '',
