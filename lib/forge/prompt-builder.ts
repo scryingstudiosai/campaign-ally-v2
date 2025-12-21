@@ -334,7 +334,27 @@ function getForgeSpecificInstructions(forgeType: ForgeType): string {
 - Provide voice/mannerism notes for roleplay
 - Include plot hooks that connect to the world
 - Generate appropriate loot or possessions
-- Consider their relationships to other entities`,
+- Consider their relationships to other entities
+
+BRAIN GUIDELINES (The NPC's psychology):
+- **Desire**: Must be SPECIFIC and CURRENT. Not "wants power" but "wants to secure the mining contract before the Festival"
+- **Fear**: Must be VISCERAL. Not "fears failure" but "fears his children will discover he murdered their mother"
+- **Leverage**: Must be ACTIONABLE. How can the party pressure this NPC?
+- **Line**: Must be ABSOLUTE. The hard limit that defines their character.
+
+VOICE GUIDELINES (How they speak):
+- **Style**: 2-3 adjectives that capture how they SOUND (e.g., "Gravelly", "Slow", "Menacing")
+- **Speech patterns**: Specific verbal habits (third person, formal titles, curses frequently)
+- **Energy**: How animated are they in conversation? (subdued/measured/animated/manic)
+- **Vocabulary**: What kind of words do they use? (simple/educated/archaic/technical/street)
+- **Tells**: Physical behaviors that betray emotion (optional but valuable)
+
+FACTS GUIDELINES:
+Generate 5-10 atomic facts covering:
+- 2-3 appearance facts (visible to players - "public")
+- 2-3 personality facts (observable behavior - "public")
+- 1-2 secret facts (DM only - "dm_only")
+- 1-2 plot/lore facts (DM only until revealed - "dm_only")`,
 
     item: `FOR ITEM GENERATION:
 - Create items with history and personality
@@ -381,17 +401,52 @@ function getOutputFormatInstructions(forgeType: ForgeType): string {
   const formats: Record<ForgeType, string> = {
     npc: `OUTPUT FORMAT (JSON):
 {
-  "name": "Character name",
-  "summary": "One-line description",
-  "appearance": "Physical description with **bold** key features",
-  "personality": "Personality traits and demeanor",
-  "motivation": "What drives this character",
-  "secret": "DM-only secret information",
-  "voice_notes": "How they speak, mannerisms",
-  "plot_hooks": ["Hook 1", "Hook 2", "Hook 3"],
+  "name": "Character Name",
+  "sub_type": "standard",
+
+  "brain": {
+    "desire": "What they want RIGHT NOW - specific and actionable",
+    "fear": "What terrifies them - be specific",
+    "leverage": "How someone could manipulate or pressure them",
+    "line": "The one thing they will NEVER do, no matter what"
+  },
+
+  "voice": {
+    "style": ["Two", "Or Three", "Adjectives"],
+    "speech_patterns": ["How they talk"],
+    "catchphrase": "A memorable phrase they repeat (optional)",
+    "energy": "subdued|measured|animated|manic",
+    "vocabulary": "simple|educated|archaic|technical|street",
+    "tells": ["Physical tells when lying or nervous"]
+  },
+
+  "facts": [
+    {"content": "Fact about appearance", "category": "appearance", "visibility": "public"},
+    {"content": "Fact about personality", "category": "personality", "visibility": "public"},
+    {"content": "Secret only DM knows", "category": "secret", "visibility": "dm_only"},
+    {"content": "Plot-relevant information", "category": "plot", "visibility": "dm_only"},
+    {"content": "Background lore", "category": "lore", "visibility": "public"}
+  ],
+
+  "read_aloud": "A 40-60 word sensory description the DM can read aloud when players first meet this character. Focus on what players SEE, HEAR, SMELL. No game mechanics.",
+
+  "dm_slug": "One-line reference for DM's quick notes, e.g. 'Nervous blacksmith hiding a dark secret'",
+
+  "appearance": "Full appearance description with **bold** key features",
+  "personality": "Full personality description",
+  "motivation": "What drives them",
+  "secret": "Their hidden truth",
+  "plotHook": "How to involve players",
+  "voiceAndMannerisms": "How they speak and act",
+  "connectionHooks": ["Ways to connect to party"],
+  "combatStats": {
+    "armorClass": 12,
+    "hitPoints": 25,
+    "primaryWeapon": "Weapon name",
+    "combatStyle": "How they fight"
+  },
   "loot": ["Item 1", "Item 2"],
-  "relationships": ["Relationship to other entities"],
-  "combat_stats": { "ac": 12, "hp": "3d8+3", "challenge": "1/2" }
+  "tags": ["tag1", "tag2"]
 }`,
 
     item: `OUTPUT FORMAT (JSON):

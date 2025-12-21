@@ -3,18 +3,45 @@
 
 import { SupabaseClient } from '@supabase/supabase-js'
 import { extractProperNouns, guessEntityType } from './scanners'
+import { shouldIgnoreTerm } from './blocklist'
 import type { ScanResult, Discovery, EntityType } from '@/types/forge'
+
+export interface ScanOptions {
+  /** Name of the entity currently being created (to exclude from discoveries) */
+  currentEntityName?: string
+}
+
+// Helper function to get significant words (3+ chars, not common words)
+function getSignificantWords(text: string): Set<string> {
+  const commonWords = ['the', 'of', 'and', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'with', 'from']
+  return new Set(
+    text.toLowerCase()
+      .split(/\s+/)
+      .filter(word => word.length >= 3 && !commonWords.includes(word))
+  )
+}
 
 export async function scanGeneratedContent(
   supabase: SupabaseClient,
   campaignId: string,
-  textContent: string
+  textContent: string,
+  options: ScanOptions = {}
 ): Promise<ScanResult> {
+  const { currentEntityName } = options
   const discoveries: Discovery[] = []
   const existingEntityMentions: ScanResult['existingEntityMentions'] = []
 
-  // Extract potential entity names from text
-  const potentialEntities = extractProperNouns(textContent)
+  // DEBUG: Log scanner inputs
+  console.log('=== SCANNER DEBUG ===')
+  console.log('currentEntityName:', currentEntityName)
+  console.log('textContent length:', textContent.length)
+  console.log('textContent preview:', textContent.substring(0, 200))
+
+  // Extract potential entity names from text (excluding current entity name)
+  const potentialEntities = extractProperNouns(textContent, currentEntityName)
+
+  // DEBUG: Log extracted entities
+  console.log('potentialEntities found:', potentialEntities.map(e => e.text))
 
   // Fetch all entities for this campaign to check against
   const { data: allEntities } = await supabase
@@ -70,6 +97,13 @@ export async function scanGeneratedContent(
       }
 
       if (!isPartialMatch) {
+        // Skip blocklisted terms (D&D mechanics, common words, etc.)
+        const isBlocklisted = shouldIgnoreTerm(potential.text)
+        console.log(`Blocklist check: "${potential.text}" -> ${isBlocklisted ? 'BLOCKED' : 'ALLOWED'}`)
+        if (isBlocklisted) {
+          continue
+        }
+
         // New entity discovered - will be shown with gold underline
         discoveries.push({
           id: `discovery-${potential.startIndex}-${Date.now()}`,
@@ -82,14 +116,40 @@ export async function scanGeneratedContent(
     }
   }
 
+  // Filter out self-references using word overlap matching
+  const entityWords = currentEntityName ? getSignificantWords(currentEntityName) : new Set<string>()
+  console.log('entityWords for self-reference check:', Array.from(entityWords))
+
+  const filteredDiscoveries = discoveries.filter(d => {
+    if (!currentEntityName || entityWords.size === 0) return true
+
+    const discoveryWords = getSignificantWords(d.text)
+
+    // Check if any significant words overlap
+    const hasOverlap = Array.from(discoveryWords).some(word => entityWords.has(word))
+
+    if (hasOverlap) {
+      console.log(`Excluding self-reference (word overlap): "${d.text}" matches "${currentEntityName}"`)
+      return false
+    }
+    return true
+  })
+
   // Calculate canon score based on how well the content fits existing lore
   const canonScore = calculateCanonScore(
-    discoveries.length,
+    filteredDiscoveries.length,
     existingEntityMentions.length
   )
 
+  // DEBUG: Final results
+  console.log('=== SCANNER RESULTS ===')
+  console.log('discoveries before self-filter:', discoveries.map(d => ({ text: d.text, type: d.suggestedType })))
+  console.log('discoveries after self-filter:', filteredDiscoveries.map(d => ({ text: d.text, type: d.suggestedType })))
+  console.log('existingEntityMentions:', existingEntityMentions.map(e => e.name))
+  console.log('canonScore:', canonScore)
+
   return {
-    discoveries,
+    discoveries: filteredDiscoveries,
     conflicts: [], // Post-gen conflicts can be added later
     canonScore,
     existingEntityMentions,

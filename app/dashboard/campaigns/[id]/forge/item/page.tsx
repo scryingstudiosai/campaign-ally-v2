@@ -1,9 +1,11 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Sparkles, Backpack } from 'lucide-react'
 
 // Forge foundation imports
 import { useForge } from '@/hooks/useForge'
@@ -11,7 +13,7 @@ import { ForgeShell } from '@/components/forge/ForgeShell'
 import { CommitPanel } from '@/components/forge/CommitPanel'
 import { EmptyForgeState } from '@/components/forge/EmptyForgeState'
 import { extractTextForScanning } from '@/lib/forge/validation/post-gen'
-import type { Discovery, Conflict } from '@/types/forge'
+import type { Discovery, Conflict, EntityType } from '@/types/forge'
 
 // Item-specific components
 import {
@@ -20,6 +22,25 @@ import {
   type ItemInputData,
   type GeneratedItem,
 } from '@/components/forge/item'
+
+interface StubContext {
+  stubId: string
+  name: string
+  entityType: string
+  sourceEntityId?: string
+  sourceEntityName?: string
+  snippet?: string
+  suggestedTraits?: string[]
+}
+
+interface LootContext {
+  fromLoot: boolean
+  sourceEntityId: string
+  sourceEntityName: string
+  sourceEntityType: string
+  originalLootText: string
+  snippet?: string
+}
 
 interface Profile {
   generations_used: number
@@ -35,8 +56,26 @@ const GENERATION_LIMITS: Record<string, number> = {
 export default function ItemForgePage(): JSX.Element {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const campaignId = params.id as string
   const supabase = createClient()
+
+  // Parse URL params
+  const stubId = searchParams.get('stubId')
+  const stubName = searchParams.get('name')
+  const lootName = searchParams.get('lootName')
+  const lootOwnerId = searchParams.get('ownerId')
+  const contextRaw = searchParams.get('context')
+
+  // Parse context and determine type based on URL params
+  // stubId indicates stub context, lootName indicates loot context
+  const parsedContext = contextRaw ? JSON.parse(contextRaw) : null
+
+  const stubContext: StubContext | null =
+    stubId && parsedContext ? parsedContext : null
+
+  const lootContext: LootContext | null =
+    lootName && !stubId && parsedContext ? parsedContext : null
 
   // Campaign and profile state
   const [campaignName, setCampaignName] = useState<string>('')
@@ -48,10 +87,16 @@ export default function ItemForgePage(): JSX.Element {
   const [reviewDiscoveries, setReviewDiscoveries] = useState<Discovery[]>([])
   const [reviewConflicts, setReviewConflicts] = useState<Conflict[]>([])
 
+  // All entities for linking
+  const [allEntities, setAllEntities] = useState<
+    Array<{ id: string; name: string; type: string }>
+  >([])
+
   // The forge hook
   const forge = useForge<ItemInputData, GeneratedItem>({
     campaignId,
     forgeType: 'item',
+    stubId: stubId || undefined, // Skip duplicate check when fleshing out a stub
     generateFn: async (input) => {
       // Call existing API endpoint with existing format
       const response = await fetch('/api/generate/item', {
@@ -82,6 +127,7 @@ export default function ItemForgePage(): JSX.Element {
         secret: output.secret,
       })
     },
+    getEntityName: (output) => output.name, // Exclude item name from discoveries
   })
 
   // Sync scan results to local review state
@@ -139,6 +185,23 @@ export default function ItemForgePage(): JSX.Element {
     fetchData()
   }, [campaignId, supabase, router])
 
+  // Fetch all entities for linking
+  useEffect(() => {
+    async function fetchEntities(): Promise<void> {
+      const { data } = await supabase
+        .from('entities')
+        .select('id, name, entity_type')
+        .eq('campaign_id', campaignId)
+        .is('deleted_at', null)
+      if (data) {
+        setAllEntities(
+          data.map((e) => ({ id: e.id, name: e.name, type: e.entity_type }))
+        )
+      }
+    }
+    fetchEntities()
+  }, [campaignId, supabase])
+
   // Handle discovery actions
   const handleDiscoveryAction = (
     discoveryId: string,
@@ -148,6 +211,18 @@ export default function ItemForgePage(): JSX.Element {
     setReviewDiscoveries((prev) =>
       prev.map((d) =>
         d.id === discoveryId ? { ...d, status: action, linkedEntityId } : d
+      )
+    )
+  }
+
+  // Handle discovery type changes
+  const handleDiscoveryTypeChange = (
+    discoveryId: string,
+    newType: EntityType
+  ): void => {
+    setReviewDiscoveries((prev) =>
+      prev.map((d) =>
+        d.id === discoveryId ? { ...d, suggestedType: newType } : d
       )
     )
   }
@@ -162,32 +237,146 @@ export default function ItemForgePage(): JSX.Element {
     )
   }
 
+  // Handle manual discovery creation from text selection
+  const handleManualDiscovery = (text: string, type: string): void => {
+    const newDiscovery: Discovery = {
+      id: `manual-${Date.now()}`,
+      text,
+      suggestedType: type as EntityType,
+      context: 'Manually selected by user',
+      status: 'pending',
+    }
+    setReviewDiscoveries((prev) => [...prev, newDiscovery])
+  }
+
+  // Handle linking to existing entity from text selection
+  const handleLinkExisting = (entityId: string): void => {
+    const entity = allEntities.find((e) => e.id === entityId)
+    if (entity) {
+      const newDiscovery: Discovery = {
+        id: `link-${Date.now()}`,
+        text: entity.name,
+        suggestedType: entity.type as EntityType,
+        context: 'Manually linked by user',
+        status: 'link_existing',
+        linkedEntityId: entityId,
+      }
+      setReviewDiscoveries((prev) => [...prev, newDiscovery])
+    }
+  }
+
   // Handle commit
   const handleCommit = async (): Promise<void> => {
     if (!forge.output) return
 
-    const result = await forge.handleCommit({
-      discoveries: reviewDiscoveries,
-      conflicts: reviewConflicts,
-    })
+    // If fleshing out a stub, update the existing entity instead of creating new
+    if (stubId) {
+      try {
+        // Fetch existing stub to get its history
+        const { data: existingStub } = await supabase
+          .from('entities')
+          .select('attributes')
+          .eq('id', stubId)
+          .single()
 
-    if (result.success && result.entity) {
-      toast.success('Item saved to Memory!')
-      // Navigate to the new entity
-      const entity = result.entity as { id: string }
-      router.push(
-        `/dashboard/campaigns/${campaignId}/memory/${entity.id}`
-      )
-    } else if (result.error) {
-      toast.error(result.error)
+        const existingHistory =
+          (existingStub?.attributes as Record<string, unknown>)?.history || []
+
+        // Update the stub with the generated content
+        const { error } = await supabase
+          .from('entities')
+          .update({
+            name: forge.output.name,
+            subtype: forge.output.item_type,
+            summary: forge.output.public_description.substring(0, 200),
+            description: `**Public Description:** ${forge.output.public_description}\n\n**Secret Description:** ${forge.output.secret_description}`,
+            attributes: {
+              item_type: forge.output.item_type,
+              rarity: forge.output.rarity,
+              magical_aura: forge.output.magical_aura,
+              public_description: forge.output.public_description,
+              secret_description: forge.output.secret_description,
+              origin_history: forge.output.origin_history,
+              secret: forge.output.secret,
+              mechanical_properties: forge.output.mechanical_properties,
+              value_gp: forge.output.value_gp,
+              weight: forge.output.weight,
+              is_stub: false,
+              needs_review: false,
+              history: [
+                ...(existingHistory as Array<Record<string, unknown>>),
+                {
+                  event: 'fleshed_out',
+                  timestamp: new Date().toISOString(),
+                  note: 'Completed via Item forge',
+                },
+              ],
+            },
+          })
+          .eq('id', stubId)
+
+        if (error) {
+          toast.error('Failed to update entity')
+          return
+        }
+
+        // Create relationship to source entity if exists
+        if (stubContext?.sourceEntityId) {
+          await supabase.from('relationships').insert({
+            campaign_id: campaignId,
+            source_id: stubId,
+            target_id: stubContext.sourceEntityId,
+            relationship_type: 'mentioned_in',
+            description: `First mentioned in ${stubContext.sourceEntityName}`,
+          })
+        }
+
+        toast.success('Item fleshed out and saved!')
+        router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`)
+      } catch {
+        toast.error('Failed to update stub')
+      }
+    } else {
+      // Normal create flow
+      const result = await forge.handleCommit({
+        discoveries: reviewDiscoveries,
+        conflicts: reviewConflicts,
+      })
+
+      if (result.success && result.entity) {
+        const entity = result.entity as { id: string }
+
+        // If forging from loot, create owned_by relationship
+        if (lootContext && lootOwnerId) {
+          await supabase.from('relationships').insert({
+            campaign_id: campaignId,
+            source_id: entity.id,
+            target_id: lootOwnerId,
+            relationship_type: 'owned_by',
+            description: `Carried by ${lootContext.sourceEntityName}`,
+          })
+        }
+
+        toast.success('Item saved to Memory!')
+        // Navigate to the new entity
+        router.push(
+          `/dashboard/campaigns/${campaignId}/memory/${entity.id}`
+        )
+      } else if (result.error) {
+        toast.error(result.error)
+      }
     }
   }
 
   // Handle generation with toast
   const handleGenerate = async (input: ItemInputData): Promise<void> => {
     try {
-      await forge.handleGenerate(input)
-      toast.success('Item generated successfully!')
+      const result = await forge.handleGenerate(input)
+      // Only show success toast if generation actually completed
+      if (result.success) {
+        toast.success('Item generated successfully!')
+      }
+      // Don't show error toast for validation_failed - the UI shows the warnings
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Failed to generate Item'
@@ -210,23 +399,111 @@ export default function ItemForgePage(): JSX.Element {
 
   const generationsRemaining = generationsLimit - generationsUsed
 
+  // Determine title and description based on context
+  const forgeTitle = stubContext
+    ? `Flesh Out: ${stubName}`
+    : lootContext
+      ? `Forge from Loot`
+      : 'Item Forge'
+
+  const forgeDescription = stubContext
+    ? 'Complete this stub entity with full details'
+    : lootContext
+      ? `Create a detailed item from ${lootContext.sourceEntityName}'s loot`
+      : 'Generate unique items with dual player/DM descriptions'
+
   return (
     <ForgeShell
-      title="Item Forge"
-      description="Generate unique items with dual player/DM descriptions"
+      title={forgeTitle}
+      description={forgeDescription}
       status={forge.status}
       backHref={`/dashboard/campaigns/${campaignId}`}
       backLabel={`Back to ${campaignName}`}
       inputSection={
-        <ItemInputForm
-          onSubmit={handleGenerate}
-          isLocked={forge.status !== 'idle' && forge.status !== 'error'}
-          preValidation={forge.preValidation}
-          onProceedAnyway={forge.proceedAnyway}
-          campaignId={campaignId}
-          generationsRemaining={generationsRemaining}
-          generationsLimit={generationsLimit}
-        />
+        <>
+          {/* Stub Context Banner */}
+          {stubContext && (
+            <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <div className="flex items-center gap-2 text-amber-400 font-medium mb-2">
+                <Sparkles className="w-4 h-4" />
+                Fleshing out: {stubName}
+              </div>
+              {stubContext.sourceEntityName && (
+                <p className="text-sm text-slate-300">
+                  Origin:{' '}
+                  <span className="text-teal-400">
+                    {stubContext.sourceEntityName}
+                  </span>
+                </p>
+              )}
+              {stubContext.snippet && (
+                <p className="text-sm text-slate-400 mt-1 italic">
+                  &quot;{stubContext.snippet.substring(0, 150)}
+                  {stubContext.snippet.length > 150 ? '...' : ''}&quot;
+                </p>
+              )}
+              {stubContext.suggestedTraits &&
+                stubContext.suggestedTraits.length > 0 && (
+                  <div className="flex gap-1 mt-2 flex-wrap">
+                    {stubContext.suggestedTraits.map((trait: string) => (
+                      <Badge key={trait} variant="outline" className="text-xs">
+                        {trait}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+            </div>
+          )}
+
+          {/* Loot Context Banner */}
+          {lootContext && (
+            <div className="mb-4 p-4 bg-teal-500/10 border border-teal-500/30 rounded-lg">
+              <div className="flex items-center gap-2 text-teal-400 font-medium mb-2">
+                <Backpack className="w-4 h-4" />
+                Forging from loot: {lootName}
+              </div>
+              <p className="text-sm text-slate-300">
+                Owner:{' '}
+                <span className="text-amber-400">
+                  {lootContext.sourceEntityName}
+                </span>
+              </p>
+              {lootContext.originalLootText && (
+                <p className="text-sm text-slate-400 mt-1 italic">
+                  Original: &quot;{lootContext.originalLootText}&quot;
+                </p>
+              )}
+            </div>
+          )}
+
+          <ItemInputForm
+            onSubmit={handleGenerate}
+            isLocked={forge.status !== 'idle' && forge.status !== 'error'}
+            preValidation={forge.preValidation}
+            onProceedAnyway={forge.proceedAnyway}
+            campaignId={campaignId}
+            generationsRemaining={generationsRemaining}
+            generationsLimit={generationsLimit}
+            initialValues={
+              stubContext
+                ? {
+                    name: stubName || '',
+                    dmSlug: `Flesh out ${stubName}. ${stubContext.snippet || ''}`,
+                  }
+                : lootContext
+                  ? {
+                      name: lootName || '',
+                      dmSlug: lootName
+                        ? `${lootName} - carried by ${lootContext.sourceEntityName}`
+                        : `Item carried by ${lootContext.sourceEntityName}`,
+                      ownerId: lootOwnerId || undefined,
+                      ownerName: lootContext.sourceEntityName,
+                    }
+                  : undefined
+            }
+            lockedOwnerId={lootOwnerId || undefined}
+          />
+        </>
       }
       outputSection={
         forge.output ? (
@@ -235,6 +512,9 @@ export default function ItemForgePage(): JSX.Element {
             scanResult={forge.scanResult}
             campaignId={campaignId}
             onDiscoveryAction={handleDiscoveryAction}
+            onManualDiscovery={handleManualDiscovery}
+            onLinkExisting={handleLinkExisting}
+            existingEntities={allEntities}
           />
         ) : (
           <EmptyForgeState
@@ -252,6 +532,7 @@ export default function ItemForgePage(): JSX.Element {
               conflicts: reviewConflicts,
             }}
             onDiscoveryAction={handleDiscoveryAction}
+            onDiscoveryTypeChange={handleDiscoveryTypeChange}
             onConflictResolution={handleConflictResolution}
             onCommit={handleCommit}
             onDiscard={forge.reset}

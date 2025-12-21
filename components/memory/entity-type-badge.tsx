@@ -9,24 +9,48 @@ import {
   Users,
   Scroll,
   HelpCircle,
+  Skull,
+  Shield,
 } from 'lucide-react'
 
 export type EntityType = 'npc' | 'location' | 'item' | 'faction' | 'quest' | 'other'
+export type EntitySubType = 'standard' | 'villain' | 'hero' | string
 
 interface EntityTypeBadgeProps {
   type: EntityType
+  subtype?: EntitySubType
   showIcon?: boolean
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }
 
-const TYPE_CONFIG: Record<EntityType, {
+interface TypeConfig {
   label: string
   color: string
   bgColor: string
   borderColor: string
   icon: typeof User
-}> = {
+}
+
+// Subtype-specific config for NPCs
+const NPC_SUBTYPE_CONFIG: Record<string, TypeConfig> = {
+  villain: {
+    label: 'Villain',
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/10',
+    borderColor: 'border-red-500/30',
+    icon: Skull,
+  },
+  hero: {
+    label: 'Hero',
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/30',
+    icon: Shield,
+  },
+}
+
+const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
   npc: {
     label: 'NPC',
     color: 'text-teal-400',
@@ -73,11 +97,15 @@ const TYPE_CONFIG: Record<EntityType, {
 
 export function EntityTypeBadge({
   type,
+  subtype,
   showIcon = true,
   size = 'md',
   className,
 }: EntityTypeBadgeProps): JSX.Element {
-  const config = TYPE_CONFIG[type] || TYPE_CONFIG.other
+  // For NPCs, check if there's a subtype-specific config
+  const config = type === 'npc' && subtype && NPC_SUBTYPE_CONFIG[subtype]
+    ? NPC_SUBTYPE_CONFIG[subtype]
+    : TYPE_CONFIG[type] || TYPE_CONFIG.other
   const Icon = config.icon
 
   const sizeClasses = {

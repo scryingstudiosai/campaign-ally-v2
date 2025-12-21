@@ -2,8 +2,8 @@
 
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { validatePreGeneration } from '@/lib/forge/validation/pre-gen'
-import { scanGeneratedContent } from '@/lib/forge/validation/post-gen'
+import { validatePreGeneration, type PreValidationOptions } from '@/lib/forge/validation/pre-gen'
+import { scanGeneratedContent, ScanOptions } from '@/lib/forge/validation/post-gen'
 import { saveForgedEntity, createStubEntities } from '@/lib/forge/entity-minter'
 import type {
   ForgeType,
@@ -18,6 +18,8 @@ interface UseForgeOptions<TInput extends BaseForgeInput, TOutput> {
   forgeType: ForgeType
   generateFn: (input: TInput) => Promise<TOutput>
   getTextContent: (output: TOutput) => string // Extracts text for scanning
+  getEntityName?: (output: TOutput) => string // Extracts entity name to exclude from discoveries
+  stubId?: string // When fleshing out a stub, skip duplicate name check for this entity
 }
 
 interface GenerateResult {
@@ -35,7 +37,7 @@ interface CommitResult {
 export function useForge<TInput extends BaseForgeInput, TOutput>(
   options: UseForgeOptions<TInput, TOutput>
 ) {
-  const { campaignId, forgeType, generateFn, getTextContent } = options
+  const { campaignId, forgeType, generateFn, getTextContent, getEntityName, stubId } = options
   const supabase = createClient()
 
   const [state, setState] = useState<ForgeState<TInput, TOutput>>({
@@ -47,9 +49,19 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
     error: null,
   })
 
+  // Guard to prevent multiple simultaneous generations
+  const [isGenerating, setIsGenerating] = useState(false)
+
   // Step 1: Validate before generating
   const handleGenerate = useCallback(
     async (input: TInput): Promise<GenerateResult> => {
+      // Prevent multiple clicks
+      if (isGenerating) {
+        console.log('Generation already in progress, ignoring')
+        return { success: false, reason: 'error' }
+      }
+
+      setIsGenerating(true)
       setState((prev) => ({ ...prev, status: 'validating', input, error: null }))
 
       try {
@@ -58,20 +70,26 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
           supabase,
           campaignId,
           forgeType,
-          input
+          input,
+          { stubId }
         )
 
-        if (!preValidation.canProceed) {
-          // Has blocking errors - stop and show them
+        // Check if there are any issues to show the user
+        const hasIssues = preValidation.conflicts.length > 0 || preValidation.warnings.length > 0
+
+        if (!preValidation.canProceed || hasIssues) {
+          // Has blocking errors OR warnings to review - stop and show them
           setState((prev) => ({
             ...prev,
             status: 'idle',
             preValidation,
           }))
+          // Reset the guard so "Generate Anyway" can be clicked
+          setIsGenerating(false)
           return { success: false, reason: 'validation_failed' }
         }
 
-        // Validation passed (or only warnings) - proceed to generate
+        // No issues - proceed to generate
         setState((prev) => ({ ...prev, status: 'generating', preValidation }))
 
         const output = await generateFn(input)
@@ -80,10 +98,12 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
 
         // Post-generation scanning
         const textContent = getTextContent(output)
+        const currentEntityName = getEntityName ? getEntityName(output) : undefined
         const scanResult = await scanGeneratedContent(
           supabase,
           campaignId,
-          textContent
+          textContent,
+          { currentEntityName }
         )
 
         setState((prev) => ({
@@ -100,9 +120,11 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
           error: error instanceof Error ? error.message : 'Generation failed',
         }))
         return { success: false, reason: 'error' }
+      } finally {
+        setIsGenerating(false)
       }
     },
-    [campaignId, forgeType, generateFn, getTextContent, supabase]
+    [campaignId, forgeType, generateFn, getTextContent, getEntityName, supabase, isGenerating, stubId]
   )
 
   // Step 2: User reviews and commits
@@ -182,22 +204,50 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
 
   // Override validation and proceed anyway
   const proceedAnyway = useCallback(async () => {
-    if (state.input) {
-      setState((prev) => ({ ...prev, status: 'generating' }))
-      // Re-run generation skipping validation
-      const output = await generateFn(state.input)
-      setState((prev) => ({ ...prev, status: 'scanning', output }))
-
-      const textContent = getTextContent(output)
-      const scanResult = await scanGeneratedContent(
-        supabase,
-        campaignId,
-        textContent
-      )
-
-      setState((prev) => ({ ...prev, status: 'review', scanResult }))
+    // Prevent multiple clicks
+    if (isGenerating) {
+      console.log('Generation already in progress, ignoring')
+      return
     }
-  }, [state.input, generateFn, getTextContent, supabase, campaignId])
+
+    console.log('proceedAnyway called with input:', state.input)
+
+    if (state.input) {
+      setIsGenerating(true)
+      try {
+        setState((prev) => ({ ...prev, status: 'generating' }))
+
+        console.log('Starting generation...')
+        const output = await generateFn(state.input)
+        console.log('Generation complete, output:', output)
+
+        setState((prev) => ({ ...prev, status: 'scanning', output }))
+
+        const textContent = getTextContent(output)
+        const currentEntityName = getEntityName ? getEntityName(output) : undefined
+        console.log('Scanning content for entity:', currentEntityName)
+
+        const scanResult = await scanGeneratedContent(
+          supabase,
+          campaignId,
+          textContent,
+          { currentEntityName }
+        )
+        console.log('Scan complete:', scanResult)
+
+        setState((prev) => ({ ...prev, status: 'review', scanResult }))
+      } catch (error) {
+        console.error('proceedAnyway error:', error)
+        setState((prev) => ({
+          ...prev,
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Generation failed',
+        }))
+      } finally {
+        setIsGenerating(false)
+      }
+    }
+  }, [state.input, generateFn, getTextContent, getEntityName, supabase, campaignId, isGenerating])
 
   // Update a specific discovery's status
   const updateDiscovery = useCallback(

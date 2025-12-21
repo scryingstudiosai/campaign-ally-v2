@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useMemo } from 'react'
 import Link from 'next/link'
 import {
   Tooltip,
@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Plus, Link2, X } from 'lucide-react'
+import { EntityPreviewModal } from './EntityPreviewModal'
 import type { ScanResult, Discovery } from '@/types/forge'
 
 interface InteractiveTextProps {
@@ -26,8 +27,17 @@ export function InteractiveText({
   onDiscoveryAction,
   renderBold = true,
 }: InteractiveTextProps): JSX.Element {
-  // Build a map of all text ranges that need special rendering
-  const segments = buildSegments(text, scanResult)
+  // State for entity preview modal
+  const [previewEntity, setPreviewEntity] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+
+  // Memoize segments to prevent infinite re-renders from Tooltip refs
+  const segments = useMemo(
+    () => buildSegments(text, scanResult),
+    [text, scanResult]
+  )
 
   return (
     <TooltipProvider>
@@ -42,21 +52,26 @@ export function InteractiveText({
             )
           }
 
-          // Existing entity - blue/teal link
+          // Existing entity - clickable to open preview modal
           if (segment.type === 'existing') {
             return (
               <Tooltip key={index}>
                 <TooltipTrigger asChild>
-                  <Link
-                    href={`/dashboard/campaigns/${campaignId}/memory/${segment.entityId}`}
-                    className="text-primary hover:text-primary/80 underline decoration-primary/50 hover:decoration-primary transition-colors"
+                  <button
+                    onClick={() =>
+                      setPreviewEntity({
+                        id: segment.entityId!,
+                        name: segment.text,
+                      })
+                    }
+                    className="text-primary hover:text-primary/80 underline decoration-primary/50 hover:decoration-primary transition-colors cursor-pointer"
                   >
                     {segment.text}
-                  </Link>
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="text-xs">
-                    View {segment.entityType}: {segment.text}
+                    Click to preview {segment.entityType}: {segment.text}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -110,6 +125,14 @@ export function InteractiveText({
           return <span key={index}>{segment.text}</span>
         })}
       </p>
+
+      {/* Entity Preview Modal */}
+      <EntityPreviewModal
+        entityId={previewEntity?.id || ''}
+        campaignId={campaignId}
+        isOpen={!!previewEntity}
+        onClose={() => setPreviewEntity(null)}
+      />
     </TooltipProvider>
   )
 }
@@ -153,13 +176,19 @@ function buildSegments(text: string, scanResult: ScanResult): Segment[] {
     data: ScanResult['existingEntityMentions'][0] | Discovery
   }> = []
 
+  // For existing entities, search for their name in this specific text
+  // (startIndex/endIndex are from combined text, not this field)
   for (const entity of scanResult.existingEntityMentions) {
-    markers.push({
-      start: entity.startIndex,
-      end: entity.endIndex,
-      type: 'existing',
-      data: entity,
-    })
+    const index = text.indexOf(entity.name)
+    if (index !== -1) {
+      markers.push({
+        start: index,
+        end: index + entity.name.length,
+        type: 'existing',
+        data: entity,
+      })
+      console.log(`Found existing entity "${entity.name}" at index ${index}`)
+    }
   }
 
   for (const discovery of scanResult.discoveries) {

@@ -1,9 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import React, { useState, useRef } from 'react'
+import { SelectionPopover } from '@/components/forge/SelectionPopover'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { InteractiveText } from '@/components/forge/InteractiveText'
 import { renderWithBold } from '@/lib/text-utils'
@@ -58,6 +56,9 @@ interface ItemOutputCardProps {
     discoveryId: string,
     action: Discovery['status']
   ) => void
+  onManualDiscovery?: (text: string, type: string) => void
+  onLinkExisting?: (entityId: string) => void
+  existingEntities?: Array<{ id: string; name: string; type: string }>
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -97,8 +98,12 @@ export function ItemOutputCard({
   scanResult,
   campaignId,
   onDiscoveryAction,
+  onManualDiscovery,
+  onLinkExisting,
+  existingEntities,
 }: ItemOutputCardProps): JSX.Element {
   const [viewMode, setViewMode] = useState<'player' | 'dm'>('dm')
+  const contentRef = useRef<HTMLDivElement>(null)
 
   // Render text with interactive links if scan result available, otherwise bold
   const renderText = (text: string | undefined): React.ReactNode => {
@@ -124,27 +129,24 @@ export function ItemOutputCard({
   const vendorPrice = Math.floor(data.value_gp * 0.5)
 
   return (
-    <div className="space-y-4">
+    <div ref={contentRef} className="ca-card ca-card--item p-6 space-y-4">
       {/* Header - Name and badges */}
       <div className="flex items-start justify-between">
         <div className="text-center flex-1">
           <h2 className="text-2xl font-bold text-primary">{data.name}</h2>
           <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-            <Badge className={rarityColor}>{rarityLabel}</Badge>
-            <Badge variant="secondary">{typeLabel}</Badge>
+            <span className="ca-inset px-3 py-1 text-sm text-slate-300">{rarityLabel}</span>
+            <span className="ca-inset px-3 py-1 text-sm text-slate-300">{typeLabel}</span>
             {data.magical_aura && data.magical_aura !== 'none' && (
-              <Badge variant="outline" className="gap-1">
+              <span className="ca-inset px-3 py-1 text-sm text-slate-300 flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
                 {data.magical_aura}
-              </Badge>
+              </span>
             )}
             {!data.is_identified && (
-              <Badge
-                variant="outline"
-                className="text-amber-500 border-amber-500"
-              >
+              <span className="ca-inset px-3 py-1 text-sm text-amber-400">
                 Unidentified
-              </Badge>
+              </span>
             )}
           </div>
         </div>
@@ -152,7 +154,7 @@ export function ItemOutputCard({
         {/* View Toggle */}
         <button
           onClick={() => setViewMode(viewMode === 'dm' ? 'player' : 'dm')}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+          className="ca-btn ca-btn-ghost flex items-center gap-2 px-3 py-1.5"
         >
           {viewMode === 'dm' ? (
             <>
@@ -180,101 +182,91 @@ export function ItemOutputCard({
 
         {/* Appearance Tab */}
         <TabsContent value="appearance" className="space-y-4">
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader className="pb-2 pt-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Eye className="w-4 h-4 text-primary" />
-                {viewMode === 'player' ? 'Description' : 'Public Description'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3">
-              <div className="text-sm text-muted-foreground leading-relaxed">
-                {renderText(data.public_description)}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="ca-panel p-4">
+            <div className="ca-section-header">
+              <Eye className="w-4 h-4 text-primary" />
+              <span>{viewMode === 'player' ? 'Description' : 'Public Description'}</span>
+            </div>
+            <div className="text-sm text-slate-300 leading-relaxed">
+              {renderText(data.public_description)}
+            </div>
+          </div>
 
           {viewMode === 'dm' && data.secret_description && (
-            <Card className="border-amber-500/30 bg-amber-500/5">
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <EyeOff className="w-4 h-4 text-amber-500" />
-                  <span className="text-amber-500">True Nature</span>
-                  <Badge
-                    variant="outline"
-                    className="ml-auto text-xs text-amber-500"
-                  >
-                    DM Only
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-3">
-                <div className="text-sm text-muted-foreground leading-relaxed">
-                  {renderText(data.secret_description)}
+            <div className="ca-panel p-4 border-l-2 border-amber-500/50">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-amber-400">
+                  <EyeOff className="w-4 h-4" />
+                  True Nature
                 </div>
-              </CardContent>
-            </Card>
+                <span className="flex items-center gap-1 text-xs text-slate-500">
+                  <EyeOff className="w-3 h-3" />
+                  DM Only
+                </span>
+              </div>
+              <div className="text-sm text-slate-300 leading-relaxed">
+                {renderText(data.secret_description)}
+              </div>
+            </div>
           )}
 
           {/* Value & Weight */}
-          <Card className="bg-muted/30">
-            <CardContent className="py-4">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Coins className="w-4 h-4 text-amber-500" />
-                  <span className="text-sm">
-                    <strong>{data.value_gp} gp</strong>
-                    <span className="text-muted-foreground ml-2">
-                      (Vendor: {vendorPrice} gp)
-                    </span>
+          <div className="ca-panel p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Coins className="w-4 h-4 text-amber-500" />
+                <span className="text-sm">
+                  <strong className="text-slate-200">{data.value_gp} gp</strong>
+                  <span className="text-slate-400 ml-2">
+                    (Vendor: {vendorPrice} gp)
                   </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Scale className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {data.weight}
-                  </span>
-                </div>
+                </span>
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex items-center gap-2">
+                <Scale className="w-4 h-4 text-slate-400" />
+                <span className="text-sm text-slate-400">
+                  {data.weight}
+                </span>
+              </div>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Mechanics Tab */}
         <TabsContent value="mechanics" className="space-y-4">
           {/* Combat/Effect Stats */}
-          <Card className="border-slate-500/30 bg-slate-500/5">
-            <CardContent className="py-4">
-              <div className="flex flex-wrap items-center gap-3">
-                {data.item_type === 'weapon' &&
-                  data.mechanical_properties?.damage && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Sword className="w-5 h-5 text-slate-400" />
-                        <span className="text-sm font-medium text-slate-400">
-                          Damage:
-                        </span>
-                      </div>
-                      <Badge className="bg-red-600 hover:bg-red-600 text-white text-base px-3 py-1 font-bold">
-                        {data.mechanical_properties.damage}
-                      </Badge>
-                    </>
-                  )}
-                {data.item_type === 'armor' &&
-                  data.mechanical_properties?.ac_bonus && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-slate-400" />
-                        <span className="text-sm font-medium text-slate-400">
-                          AC:
-                        </span>
-                      </div>
-                      <Badge className="bg-blue-600 hover:bg-blue-600 text-white text-base px-3 py-1 font-bold">
-                        +{data.mechanical_properties.ac_bonus}
-                      </Badge>
-                    </>
-                  )}
-                {data.mechanical_properties?.charges !== undefined && (
+          <div className="ca-panel p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              {data.item_type === 'weapon' &&
+                data.mechanical_properties?.damage && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Sword className="w-5 h-5 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-400">
+                        Damage:
+                      </span>
+                    </div>
+                    <span className="ca-stat-pill ca-stat-pill--hp">
+                      {data.mechanical_properties.damage}
+                    </span>
+                  </>
+                )}
+              {data.item_type === 'armor' &&
+                data.mechanical_properties?.ac_bonus && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-400">
+                        AC:
+                      </span>
+                    </div>
+                    <span className="ca-stat-pill ca-stat-pill--ac">
+                      +{data.mechanical_properties.ac_bonus}
+                    </span>
+                  </>
+                )}
+              {data.mechanical_properties?.charges !== undefined &&
+                data.mechanical_properties.charges > 0 && (
                   <>
                     <div className="flex items-center gap-2">
                       <Zap className="w-5 h-5 text-slate-400" />
@@ -282,130 +274,121 @@ export function ItemOutputCard({
                         Charges:
                       </span>
                     </div>
-                    <Badge className="bg-purple-600 hover:bg-purple-600 text-white text-base px-3 py-1 font-bold">
+                    <span className="ca-stat-pill ca-stat-pill--dc">
                       {data.mechanical_properties.charges}/
                       {data.mechanical_properties.max_charges ||
                         data.mechanical_properties.charges}
-                    </Badge>
+                    </span>
                   </>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Properties */}
           {data.mechanical_properties?.properties &&
             data.mechanical_properties.properties.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2 pt-3">
-                  <CardTitle className="text-sm">Properties</CardTitle>
-                </CardHeader>
-                <CardContent className="pb-3">
-                  <div className="flex flex-wrap gap-2">
-                    {data.mechanical_properties.properties.map((prop, idx) => (
-                      <Badge key={idx} variant="secondary">
-                        {prop}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="ca-panel p-4">
+                <div className="ca-section-header mb-2">
+                  <span>Properties</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {data.mechanical_properties.properties.map((prop, idx) => (
+                    <span key={idx} className="ca-inset">
+                      {prop}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
 
           {/* Attunement */}
-          <Card>
-            <CardHeader className="pb-2 pt-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ScrollText className="w-4 h-4" />
-                Attunement
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3">
-              <p className="text-sm text-muted-foreground">
-                {data.mechanical_properties?.attunement === 'none'
-                  ? 'No attunement required'
-                  : data.mechanical_properties?.attunement === 'required'
-                    ? 'Requires attunement'
-                    : data.mechanical_properties?.attunement}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="ca-panel p-4">
+            <div className="ca-section-header">
+              <ScrollText className="w-4 h-4" />
+              <span>Attunement</span>
+            </div>
+            <p className="text-sm text-slate-400">
+              {data.mechanical_properties?.attunement === 'none'
+                ? 'No attunement required'
+                : data.mechanical_properties?.attunement === 'required'
+                  ? 'Requires attunement'
+                  : data.mechanical_properties?.attunement}
+            </p>
+          </div>
         </TabsContent>
 
         {/* Secrets Tab (DM only) */}
         <TabsContent value="secrets" className="space-y-4">
           {data.origin_history && (
-            <Card>
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <History className="w-4 h-4 text-primary" />
-                  Origin & History
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-3">
-                <div className="text-sm text-muted-foreground">
-                  {renderText(data.origin_history)}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="ca-panel p-4">
+              <div className="ca-section-header">
+                <History className="w-4 h-4 text-primary" />
+                <span>Origin & History</span>
+              </div>
+              <div className="text-sm text-slate-300">
+                {renderText(data.origin_history)}
+              </div>
+            </div>
           )}
 
           {data.secret && (
-            <Card className="border-red-500/30 bg-red-500/5">
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-red-500" />
-                  <span className="text-red-500">Secret</span>
-                  <Badge
-                    variant="outline"
-                    className="ml-auto text-xs text-red-500"
-                  >
-                    DM Only
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-3">
-                <div className="text-sm text-muted-foreground">
-                  {renderText(data.secret)}
+            <div className="ca-panel p-4 border-l-2 border-red-500/50">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-red-400">
+                  <Lock className="w-4 h-4" />
+                  Secret
                 </div>
-              </CardContent>
-            </Card>
+                <span className="flex items-center gap-1 text-xs text-slate-500">
+                  <EyeOff className="w-3 h-3" />
+                  DM Only
+                </span>
+              </div>
+              <div className="text-sm text-slate-300">
+                {renderText(data.secret)}
+              </div>
+            </div>
           )}
 
           {/* History Log */}
           {data.history && data.history.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <ScrollText className="w-4 h-4" />
-                  History Log
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-3">
-                <ul className="space-y-2">
-                  {data.history.map((entry, idx) => (
-                    <li
-                      key={idx}
-                      className="text-sm text-muted-foreground flex items-start gap-2"
-                    >
-                      <span className="text-primary">•</span>
-                      <span>
-                        <strong className="capitalize">
-                          {entry.event.replace(/_/g, ' ')}
-                        </strong>
-                        {entry.session && (
-                          <span className="text-xs ml-2">({entry.session})</span>
-                        )}
-                        {entry.note && <span className="ml-1">- {entry.note}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+            <div className="ca-panel p-4">
+              <div className="ca-section-header">
+                <ScrollText className="w-4 h-4" />
+                <span>History Log</span>
+              </div>
+              <ul className="space-y-2">
+                {data.history.map((entry, idx) => (
+                  <li
+                    key={idx}
+                    className="text-sm text-slate-400 flex items-start gap-2"
+                  >
+                    <span className="text-primary">•</span>
+                    <span>
+                      <strong className="capitalize text-slate-300">
+                        {entry.event.replace(/_/g, ' ')}
+                      </strong>
+                      {entry.session && (
+                        <span className="text-xs ml-2">({entry.session})</span>
+                      )}
+                      {entry.note && <span className="ml-1">- {entry.note}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Selection Popover for manual discovery creation */}
+      {onManualDiscovery && (
+        <SelectionPopover
+          containerRef={contentRef}
+          onCreateDiscovery={onManualDiscovery}
+          onSearchExisting={onLinkExisting || (() => {})}
+          existingEntities={existingEntities}
+        />
+      )}
     </div>
   )
 }

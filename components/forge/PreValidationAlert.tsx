@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react'
 import { AlertTriangle, X, ChevronDown, ChevronUp } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import type { PreValidationResult } from '@/types/forge'
 
 interface PreValidationAlertProps {
@@ -26,10 +25,10 @@ export function PreValidationAlert({
 
   return (
     <div
-      className={`rounded-lg border p-4 mb-4 ${
+      className={`mb-4 ${
         hasErrors
-          ? 'bg-red-500/10 border-red-500/30'
-          : 'bg-amber-500/10 border-amber-500/30'
+          ? 'ca-alert ca-alert--error'
+          : 'ca-alert ca-alert--warning'
       }`}
     >
       <div className="flex items-start justify-between">
@@ -40,10 +39,10 @@ export function PreValidationAlert({
             }`}
           />
           <div>
-            <p className="font-medium text-foreground">
+            <p className="font-medium text-slate-200">
               {hasErrors ? 'Issues Found' : 'Heads Up'}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-slate-400">
               {result.conflicts.length} issue(s), {result.warnings.length}{' '}
               warning(s)
             </p>
@@ -52,7 +51,7 @@ export function PreValidationAlert({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-slate-500 hover:text-slate-300 transition-colors"
           >
             {expanded ? (
               <ChevronUp className="w-4 h-4" />
@@ -62,7 +61,7 @@ export function PreValidationAlert({
           </button>
           <button
             onClick={onDismiss}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-slate-500 hover:text-slate-300 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -72,10 +71,10 @@ export function PreValidationAlert({
       {expanded && (
         <div className="mt-4 space-y-2">
           {result.conflicts.map((conflict) => (
-            <div key={conflict.id} className="text-sm p-2 rounded bg-muted/50">
-              <p className="text-foreground">{conflict.description}</p>
+            <div key={conflict.id} className="ca-panel p-2 text-sm">
+              <p className="text-slate-200">{conflict.description}</p>
               {conflict.existingEntityName && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Related to: {conflict.existingEntityName}
                 </p>
               )}
@@ -83,15 +82,23 @@ export function PreValidationAlert({
           ))}
 
           {result.warnings.map((warning, i) => (
-            <p key={i} className="text-sm text-muted-foreground">
+            <p key={i} className="text-sm text-slate-400">
               {warning}
             </p>
           ))}
 
           <div className="flex gap-2 mt-4">
-            <Button onClick={onProceedAnyway} variant="outline" size="sm">
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onProceedAnyway()
+              }}
+              className="ca-btn ca-btn-sm relative z-10"
+              type="button"
+            >
               Generate Anyway
-            </Button>
+            </button>
           </div>
         </div>
       )}

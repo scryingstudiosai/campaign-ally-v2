@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Material System Design Tokens & Components */
+@import '../styles/tokens.css';
+@import '../styles/materials.css';
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -55,6 +59,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    background-color: var(--ca-bg-base);
+    @apply text-foreground antialiased;
   }
 }
