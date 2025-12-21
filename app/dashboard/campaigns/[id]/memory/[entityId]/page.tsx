@@ -16,7 +16,8 @@ import { ReadAloudCard } from '@/components/entity/ReadAloudCard'
 import { FactsWidget } from '@/components/entity/FactsWidget'
 import { ItemBrainCard } from '@/components/entity/ItemBrainCard'
 import { ItemVoiceCard } from '@/components/entity/ItemVoiceCard'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, isNpcBrain } from '@/types/living-entity'
+import { ItemMechanicsCard } from '@/components/entity/ItemMechanicsCard'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -140,6 +141,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
   // Item-specific helpers
   const isItem = entity.entity_type === 'item'
   const itemBrain = entity.brain as ItemBrain | null
+  const itemMechanics = entity.mechanics as ItemMechanics | null
+  const itemCategory = (entity.attributes?.category || entity.attributes?.item_type || entity.subtype) as string | undefined
   const isSentientItem = isItem && itemBrain?.sentience_level && itemBrain.sentience_level !== 'none'
 
   return (
@@ -360,7 +363,12 @@ export default async function EntityDetailPage({ params }: PageProps) {
               <BrainCard brain={entity.brain as NpcBrain} viewMode="dm" />
             )}
 
-            {/* Item Brain - Origin, secrets, mechanics */}
+            {/* Item Mechanics - The usable game stats */}
+            {isItem && itemMechanics && Object.keys(itemMechanics).length > 0 && (
+              <ItemMechanicsCard mechanics={itemMechanics} category={itemCategory} />
+            )}
+
+            {/* Item Brain - Origin, secrets, lore */}
             {isItem && itemBrain && Object.keys(itemBrain).length > 0 && (
               <ItemBrainCard brain={itemBrain} subType={entity.sub_type} />
             )}

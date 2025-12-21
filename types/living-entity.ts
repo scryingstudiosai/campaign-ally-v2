@@ -173,7 +173,38 @@ export const DEFAULT_LOCATION_BRAIN: LocationBrain = {
   law: 'neutral',
 };
 
-// Item Brain - the "soul" of the item
+// Item Mechanics - the "body" of the item (separable from lore for reskinning)
+export interface ItemMechanics {
+  base_item?: string;              // "longsword", "dagger", "plate armor"
+  damage?: string;                 // "1d8 slashing"
+  damage_type?: string;            // "slashing", "piercing", "radiant"
+  bonus?: string;                  // "+1", "+2", "+3"
+  properties?: string[];           // ["finesse", "light", "versatile (1d10)"]
+  range?: string;                  // "20/60" for thrown/ranged
+  ac_bonus?: number;               // For armor/shields
+  charges?: {
+    current?: number;
+    max: number;
+    recharge?: string;             // "dawn", "long rest", "never"
+  };
+  abilities?: Array<{
+    name: string;
+    description: string;
+    cost?: string;                 // "1 charge", "bonus action", "1/day"
+    duration?: string;             // "1 minute", "until dispelled"
+  }>;
+  attunement?: boolean;
+  attunement_requirements?: string; // "a creature of good alignment"
+  spell_save_dc?: number;          // For items that force saves
+  spell_attack_bonus?: number;     // For wands/staves
+}
+
+export const DEFAULT_ITEM_MECHANICS: ItemMechanics = {
+  properties: [],
+  attunement: false,
+};
+
+// Item Brain - the "soul" of the item (lore, separate from mechanics)
 export interface ItemBrain extends BaseBrain {
   origin?: string;           // Who made it and why
   history?: string;          // Notable events, previous owners
@@ -184,6 +215,7 @@ export interface ItemBrain extends BaseBrain {
   sentience_level?: 'none' | 'dormant' | 'awakened' | 'dominant';
   // Legacy field for backward compatibility
   history_weight?: string;
+  // NOTE: mechanics is NOT here - it's a sibling field on the entity
 }
 
 export const DEFAULT_ITEM_BRAIN: ItemBrain = {

@@ -303,7 +303,7 @@ export default function ItemForgePage(): JSX.Element {
         const existingHistory =
           (existingStub?.attributes as Record<string, unknown>)?.history || []
 
-        // Update the stub with the generated content (including brain/voice)
+        // Update the stub with the generated content (including brain/voice/mechanics)
         const itemSubType = forge.output.sub_type || 'standard'
         const { error } = await supabase
           .from('entities')
@@ -312,6 +312,7 @@ export default function ItemForgePage(): JSX.Element {
             sub_type: itemSubType,
             brain: forge.output.brain || {},
             voice: forge.output.voice || null,
+            mechanics: forge.output.mechanics || {},  // Item mechanics
             read_aloud: forge.output.read_aloud,
             dm_slug: forge.output.dm_slug || forge.output.dmSlug,
             subtype: forge.output.item_type || forge.output.category,
@@ -319,6 +320,7 @@ export default function ItemForgePage(): JSX.Element {
             description: `**Public Description:** ${forge.output.public_description}\n\n**Secret Description:** ${forge.output.secret_description}`,
             attributes: {
               item_type: forge.output.item_type || forge.output.category,
+              category: forge.output.category,
               rarity: forge.output.rarity,
               magical_aura: forge.output.magical_aura,
               public_description: forge.output.public_description,

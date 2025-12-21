@@ -23,6 +23,32 @@ import {
   Volume2,
 } from 'lucide-react'
 
+// Mechanics type for the new architecture
+interface ItemMechanicsType {
+  base_item?: string
+  damage?: string
+  damage_type?: string
+  bonus?: string
+  properties?: string[]
+  range?: string
+  ac_bonus?: number
+  charges?: {
+    current?: number
+    max: number
+    recharge?: string
+  }
+  abilities?: Array<{
+    name: string
+    description: string
+    cost?: string
+    duration?: string
+  }>
+  attunement?: boolean
+  attunement_requirements?: string
+  spell_save_dc?: number
+  spell_attack_bonus?: number
+}
+
 export interface GeneratedItem {
   name: string
   item_type?: string
@@ -50,7 +76,7 @@ export interface GeneratedItem {
     session: string | null
     note?: string
   }>
-  // New Brain/Voice architecture fields
+  // New Brain/Voice/Mechanics architecture fields
   sub_type?: 'standard' | 'artifact' | 'cursed'
   brain?: {
     origin?: string
@@ -67,6 +93,7 @@ export interface GeneratedItem {
     desires?: string
     communication?: 'telepathic' | 'verbal' | 'empathic' | 'visions'
   } | null
+  mechanics?: ItemMechanicsType
   read_aloud?: string
   dm_slug?: string
   dmSlug?: string  // Alias for backward compatibility
@@ -264,87 +291,196 @@ export function ItemOutputCard({
 
         {/* Mechanics Tab */}
         <TabsContent value="mechanics" className="space-y-4">
-          {/* Combat/Effect Stats */}
-          <div className="ca-panel p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {data.item_type === 'weapon' &&
-                data.mechanical_properties?.damage && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Sword className="w-5 h-5 text-slate-400" />
-                      <span className="text-sm font-medium text-slate-400">
-                        Damage:
-                      </span>
-                    </div>
-                    <span className="ca-stat-pill ca-stat-pill--hp">
-                      {data.mechanical_properties.damage}
-                    </span>
-                  </>
-                )}
-              {data.item_type === 'armor' &&
-                data.mechanical_properties?.ac_bonus && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-5 h-5 text-slate-400" />
-                      <span className="text-sm font-medium text-slate-400">
-                        AC:
-                      </span>
-                    </div>
-                    <span className="ca-stat-pill ca-stat-pill--ac">
-                      +{data.mechanical_properties.ac_bonus}
-                    </span>
-                  </>
-                )}
-              {data.mechanical_properties?.charges !== undefined &&
-                data.mechanical_properties.charges > 0 && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-slate-400" />
-                      <span className="text-sm font-medium text-slate-400">
-                        Charges:
-                      </span>
-                    </div>
-                    <span className="ca-stat-pill ca-stat-pill--dc">
-                      {data.mechanical_properties.charges}/
-                      {data.mechanical_properties.max_charges ||
-                        data.mechanical_properties.charges}
-                    </span>
-                  </>
-                )}
-            </div>
-          </div>
+          {/* === NEW MECHANICS (The Body) === */}
+          {data.mechanics && (
+            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
+              <h4 className="text-sm font-semibold text-blue-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <Sword className="w-4 h-4" />
+                Mechanics
+              </h4>
 
-          {/* Properties */}
-          {data.mechanical_properties?.properties &&
-            data.mechanical_properties.properties.length > 0 && (
-              <div className="ca-panel p-4">
-                <div className="ca-section-header mb-2">
-                  <span>Properties</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {data.mechanical_properties.properties.map((prop, idx) => (
-                    <span key={idx} className="ca-inset">
-                      {prop}
+              {/* Base Stats Row */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mb-3">
+                {data.mechanics.base_item && (
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase block">Base Item</span>
+                    <span className="text-slate-200 capitalize">{data.mechanics.base_item}</span>
+                  </div>
+                )}
+
+                {data.mechanics.damage && (
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase block">Damage</span>
+                    <span className="text-slate-200">
+                      {data.mechanics.bonus && <span className="text-green-400">{data.mechanics.bonus} </span>}
+                      {data.mechanics.damage}
                     </span>
+                  </div>
+                )}
+
+                {data.mechanics.ac_bonus !== undefined && (
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase block">AC Bonus</span>
+                    <span className="text-slate-200">+{data.mechanics.ac_bonus}</span>
+                  </div>
+                )}
+
+                {data.mechanics.charges && (
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase block">Charges</span>
+                    <span className="text-slate-200">
+                      {data.mechanics.charges.max}
+                      {data.mechanics.charges.recharge && (
+                        <span className="text-slate-400 text-xs ml-1">(recharges at {data.mechanics.charges.recharge})</span>
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                {data.mechanics.spell_save_dc && (
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase block">Spell Save DC</span>
+                    <span className="text-slate-200">{data.mechanics.spell_save_dc}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Properties */}
+              {data.mechanics.properties && data.mechanics.properties.length > 0 && (
+                <div className="mb-3">
+                  <span className="text-slate-500 text-xs uppercase block mb-1">Properties</span>
+                  <div className="flex flex-wrap gap-1">
+                    {data.mechanics.properties.map((p: string, i: number) => (
+                      <span key={i} className="px-2 py-0.5 bg-slate-700 rounded text-xs text-slate-300">
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Abilities */}
+              {data.mechanics.abilities && data.mechanics.abilities.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-slate-500 text-xs uppercase block">Abilities</span>
+                  {data.mechanics.abilities.map((ability, i: number) => (
+                    <div key={i} className="p-2 bg-slate-900/50 rounded border border-slate-700">
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-amber-400">{ability.name}</span>
+                        {ability.cost && (
+                          <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded">
+                            {ability.cost}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-300 mt-1">{ability.description}</p>
+                      {ability.duration && (
+                        <span className="text-xs text-slate-500">Duration: {ability.duration}</span>
+                      )}
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
 
-          {/* Attunement */}
-          <div className="ca-panel p-4">
-            <div className="ca-section-header">
-              <ScrollText className="w-4 h-4" />
-              <span>Attunement</span>
+              {/* Attunement */}
+              {data.mechanics.attunement && (
+                <div className="mt-3 pt-3 border-t border-slate-700">
+                  <span className="text-purple-400 text-sm">
+                    ⚡ Requires Attunement
+                    {data.mechanics.attunement_requirements && (
+                      <span className="text-purple-300"> by {data.mechanics.attunement_requirements}</span>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
-            <p className="text-sm text-slate-400">
-              {data.mechanical_properties?.attunement === 'none'
-                ? 'No attunement required'
-                : data.mechanical_properties?.attunement === 'required'
-                  ? 'Requires attunement'
-                  : data.mechanical_properties?.attunement}
-            </p>
-          </div>
+          )}
+
+          {/* Legacy Combat/Effect Stats (fallback) */}
+          {!data.mechanics && (
+            <>
+              <div className="ca-panel p-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  {itemType === 'weapon' &&
+                    data.mechanical_properties?.damage && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Sword className="w-5 h-5 text-slate-400" />
+                          <span className="text-sm font-medium text-slate-400">
+                            Damage:
+                          </span>
+                        </div>
+                        <span className="ca-stat-pill ca-stat-pill--hp">
+                          {data.mechanical_properties.damage}
+                        </span>
+                      </>
+                    )}
+                  {itemType === 'armor' &&
+                    data.mechanical_properties?.ac_bonus && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-5 h-5 text-slate-400" />
+                          <span className="text-sm font-medium text-slate-400">
+                            AC:
+                          </span>
+                        </div>
+                        <span className="ca-stat-pill ca-stat-pill--ac">
+                          +{data.mechanical_properties.ac_bonus}
+                        </span>
+                      </>
+                    )}
+                  {data.mechanical_properties?.charges !== undefined &&
+                    data.mechanical_properties.charges > 0 && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-5 h-5 text-slate-400" />
+                          <span className="text-sm font-medium text-slate-400">
+                            Charges:
+                          </span>
+                        </div>
+                        <span className="ca-stat-pill ca-stat-pill--dc">
+                          {data.mechanical_properties.charges}/
+                          {data.mechanical_properties.max_charges ||
+                            data.mechanical_properties.charges}
+                        </span>
+                      </>
+                    )}
+                </div>
+              </div>
+
+              {/* Properties */}
+              {data.mechanical_properties?.properties &&
+                data.mechanical_properties.properties.length > 0 && (
+                  <div className="ca-panel p-4">
+                    <div className="ca-section-header mb-2">
+                      <span>Properties</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {data.mechanical_properties.properties.map((prop, idx) => (
+                        <span key={idx} className="ca-inset">
+                          {prop}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {/* Attunement */}
+              <div className="ca-panel p-4">
+                <div className="ca-section-header">
+                  <ScrollText className="w-4 h-4" />
+                  <span>Attunement</span>
+                </div>
+                <p className="text-sm text-slate-400">
+                  {data.mechanical_properties?.attunement === 'none'
+                    ? 'No attunement required'
+                    : data.mechanical_properties?.attunement === 'required'
+                      ? 'Requires attunement'
+                      : data.mechanical_properties?.attunement}
+                </p>
+              </div>
+            </>
+          )}
         </TabsContent>
 
         {/* Secrets Tab (DM only) */}

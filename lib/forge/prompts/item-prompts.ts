@@ -10,6 +10,7 @@ You must return a JSON object with this EXACT structure:
   "name": "Item Name",
   "sub_type": "standard|artifact|cursed",
   "category": "weapon|armor|wondrous|consumable|tool|treasure|relic|regalia|jewelry",
+  "rarity": "common|uncommon|rare|very_rare|legendary|artifact",
 
   "brain": {
     "origin": "Who made it and why - be SPECIFIC with names and places",
@@ -22,6 +23,26 @@ You must return a JSON object with this EXACT structure:
   },
 
   "voice": null,
+
+  "mechanics": {
+    "base_item": "longsword",
+    "damage": "1d8 slashing",
+    "bonus": "+1",
+    "properties": ["versatile (1d10)"],
+    "charges": {
+      "max": 3,
+      "recharge": "dawn"
+    },
+    "abilities": [
+      {
+        "name": "Ability Name",
+        "description": "Clear mechanical description with numbers, ranges, DCs",
+        "cost": "1 charge"
+      }
+    ],
+    "attunement": true,
+    "attunement_requirements": "a creature of good alignment"
+  },
 
   "facts": [
     {"content": "Visual appearance detail", "category": "appearance", "visibility": "public"},
@@ -36,18 +57,6 @@ You must return a JSON object with this EXACT structure:
   "description": "Full description paragraph",
   "public_description": "What players see BEFORE identifying - physical appearance only",
   "secret_description": "True nature revealed on Identify - magical properties, hidden features",
-  "properties": ["List of magical properties or abilities"],
-  "rarity": "common|uncommon|rare|very_rare|legendary|artifact",
-  "attunement": true or false,
-  "attunementRequirements": "Class, alignment, or other requirements (if any)",
-  "mechanical_properties": {
-    "damage": "1d8 slashing (only for weapons)",
-    "ac_bonus": 2,
-    "properties": ["versatile", "finesse"],
-    "attunement": "none|required|optional|Requires attunement by a spellcaster",
-    "charges": 3,
-    "max_charges": 3
-  },
   "value_gp": 500,
   "weight": "2 lb"
 }
@@ -90,6 +99,63 @@ CORRECT (sentient):
     "style": ["Whispers excitedly", "Urges violence"],
     "desires": "To be used in combat constantly",
     "communication": "telepathic"
+  }
+}
+
+## MECHANICS GUIDELINES - CRITICAL
+
+Every item MUST have concrete mechanical effects. Lore without mechanics is useless at the table.
+
+### FOR WEAPONS:
+- base_item: The mundane weapon type (longsword, dagger, greataxe)
+- damage: Dice and damage type (1d8 slashing, 2d6 piercing)
+- bonus: Magic bonus if any (+1, +2, +3)
+- properties: Standard weapon properties (finesse, light, heavy, two-handed, versatile, thrown, reach)
+- At least ONE special ability with clear trigger, effect, and cost
+
+### FOR ARMOR/SHIELDS:
+- base_item: The mundane armor type (chain mail, plate, shield)
+- ac_bonus: The AC provided or bonus
+- properties: Any special properties (disadvantage on stealth, etc.)
+
+### FOR WONDROUS ITEMS:
+- charges: If applicable, include max and recharge condition
+- abilities: Each needs name, description, cost, duration
+
+### ABILITY FORMAT:
+Each ability MUST have:
+- name: Evocative but clear
+- description: SPECIFIC mechanical effect with numbers
+- cost: What it takes to use (charges, action type, uses per day)
+
+BAD: "The sword grants power against evil"
+GOOD: "When you hit a creature of evil alignment, deal an extra 2d6 radiant damage. You can use this ability 3 times per day."
+
+BAD: "The amulet protects the wearer"
+GOOD: "As a reaction when you take damage, reduce that damage by 1d10 + your proficiency bonus. (3 charges, recharges at dawn)"
+
+### EXAMPLE WEAPON (Rare):
+{
+  "mechanics": {
+    "base_item": "longsword",
+    "damage": "1d8 slashing",
+    "bonus": "+1",
+    "properties": ["versatile (1d10)"],
+    "charges": { "max": 3, "recharge": "dawn" },
+    "abilities": [
+      {
+        "name": "Tyrant's Bane",
+        "description": "When you hit a creature that has dealt damage to an ally this turn, deal an extra 2d6 radiant damage.",
+        "cost": "1 charge"
+      },
+      {
+        "name": "Shield the Innocent",
+        "description": "As a reaction when a creature within 30 feet takes damage, reduce that damage by 2d8.",
+        "cost": "1 charge"
+      }
+    ],
+    "attunement": true,
+    "attunement_requirements": "a creature of non-evil alignment"
   }
 }
 

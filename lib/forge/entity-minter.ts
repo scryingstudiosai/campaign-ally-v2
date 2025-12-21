@@ -273,10 +273,11 @@ function buildEntityData(
     case 'item':
       return {
         ...baseData,
-        // New Brain/Voice architecture columns
+        // New Brain/Voice/Mechanics architecture columns
         sub_type: (output.sub_type as string) || 'standard',
         brain: output.brain || {},
         voice: output.voice || null,  // null for non-sentient items
+        mechanics: output.mechanics || {},  // Item mechanics (stats, abilities)
         read_aloud: output.read_aloud as string,
         dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
         // Legacy fields
@@ -286,6 +287,7 @@ function buildEntityData(
         attributes: {
           ...additionalAttributes,
           item_type: output.item_type || output.category,
+          category: output.category,
           rarity: output.rarity,
           magical_aura: output.magical_aura,
           is_identified: output.is_identified,

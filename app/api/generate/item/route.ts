@@ -50,6 +50,31 @@ interface ItemFact {
   visibility: 'public' | 'dm_only'
 }
 
+interface ItemMechanics {
+  base_item?: string
+  damage?: string
+  damage_type?: string
+  bonus?: string
+  properties?: string[]
+  range?: string
+  ac_bonus?: number
+  charges?: {
+    current?: number
+    max: number
+    recharge?: string
+  }
+  abilities?: Array<{
+    name: string
+    description: string
+    cost?: string
+    duration?: string
+  }>
+  attunement?: boolean
+  attunement_requirements?: string
+  spell_save_dc?: number
+  spell_attack_bonus?: number
+}
+
 interface GeneratedItem {
   name: string
   sub_type: string
@@ -61,6 +86,7 @@ interface GeneratedItem {
   // Brain/Voice/Facts architecture
   brain: ItemBrain
   voice: ItemVoice | null
+  mechanics: ItemMechanics
   facts: ItemFact[]
   read_aloud: string
   dm_slug: string
@@ -178,6 +204,15 @@ export async function POST(request: NextRequest) {
     }
     if (!generatedItem.facts) {
       generatedItem.facts = []
+    }
+
+    // Ensure mechanics exists (provide defaults if AI forgot)
+    if (!generatedItem.mechanics) {
+      generatedItem.mechanics = {
+        base_item: generatedItem.category === 'weapon' ? 'unknown weapon' : undefined,
+        properties: [],
+        attunement: false
+      }
     }
 
     // Add initial history entry
