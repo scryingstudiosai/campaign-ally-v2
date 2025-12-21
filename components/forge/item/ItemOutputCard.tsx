@@ -18,6 +18,9 @@ import {
   Zap,
   ScrollText,
   History,
+  Key,
+  AlertTriangle,
+  Volume2,
 } from 'lucide-react'
 
 export interface GeneratedItem {
@@ -149,6 +152,11 @@ export function ItemOutputCard({
   const itemType = data.item_type || data.category || 'item'
   const typeLabel = ITEM_TYPE_LABELS[itemType] || itemType
   const vendorPrice = Math.floor(data.value_gp * 0.5)
+
+  // Brain/Voice helpers
+  const hasBrain = data.brain && Object.keys(data.brain).length > 0
+  const hasVoice = data.voice && Object.keys(data.voice).length > 0
+  const isSentient = data.brain?.sentience_level && data.brain.sentience_level !== 'none'
 
   return (
     <div ref={contentRef} className="ca-card ca-card--item p-6 space-y-4">
@@ -341,6 +349,139 @@ export function ItemOutputCard({
 
         {/* Secrets Tab (DM only) */}
         <TabsContent value="secrets" className="space-y-4">
+          {/* === ITEM SOUL (The Brain) === */}
+          {hasBrain && (
+            <div className="space-y-3 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+              <div className="flex items-center gap-2 text-emerald-400 font-medium border-b border-emerald-500/20 pb-2">
+                <Sparkles className="w-4 h-4" />
+                <span>Item Soul</span>
+                {data.sub_type && (
+                  <span className="ml-auto text-[10px] px-2 py-0.5 bg-slate-800 rounded text-slate-400 uppercase tracking-wider">
+                    {data.sub_type}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {/* Origin */}
+                {data.brain?.origin && (
+                  <div className="flex gap-2">
+                    <History className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-slate-500 uppercase text-[10px] block">Origin</span>
+                      <div className="text-slate-300">
+                        {renderText(data.brain.origin)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* History */}
+                {data.brain?.history && (
+                  <div className="flex gap-2">
+                    <History className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-slate-500 uppercase text-[10px] block">History</span>
+                      <div className="text-slate-300">
+                        {renderText(data.brain.history)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Trigger */}
+                {data.brain?.trigger && (
+                  <div className="flex gap-2">
+                    <Zap className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-amber-500 uppercase text-[10px] block">Trigger Condition</span>
+                      <span className="text-slate-300">{data.brain.trigger}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Secret */}
+                {data.brain?.secret && (
+                  <div className="flex gap-2 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                    <Key className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-amber-500 uppercase text-[10px] block">Hidden Property (DM Only)</span>
+                      <div className="text-slate-300">
+                        {renderText(data.brain.secret)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cost/Drawback */}
+                {data.brain?.cost && (
+                  <div className="flex gap-2 p-2 bg-red-500/10 rounded border border-red-500/20">
+                    <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-red-500 uppercase text-[10px] block">Cost / Drawback</span>
+                      <span className="text-slate-300">{data.brain.cost}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sentience Hunger */}
+                {data.brain?.hunger && (
+                  <div className="flex gap-2 pt-2 border-t border-slate-700/50">
+                    <Volume2 className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-purple-400 uppercase text-[10px] block">Sentience Hunger</span>
+                      <span className="text-slate-300">{data.brain.hunger}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* === ITEM VOICE (Sentient Only) === */}
+          {hasVoice && isSentient && (
+            <div className="space-y-3 p-4 bg-purple-500/5 rounded-lg border border-purple-500/20">
+              <div className="flex items-center gap-2 text-purple-400 font-medium">
+                <Volume2 className="w-4 h-4" />
+                <span>Sentient Personality</span>
+                {data.brain?.sentience_level && (
+                  <span className="ml-auto text-[10px] px-2 py-0.5 bg-purple-500/20 rounded text-purple-300 capitalize">
+                    {data.brain.sentience_level}
+                  </span>
+                )}
+              </div>
+
+              {data.voice?.personality && (
+                <p className="text-sm text-slate-300 italic">&quot;{data.voice.personality}&quot;</p>
+              )}
+
+              {data.voice?.style && data.voice.style.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {data.voice.style.map((s: string, i: number) => (
+                    <span key={i} className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded border border-purple-500/30">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {data.voice?.communication && (
+                  <div>
+                    <span className="text-slate-500 uppercase text-[10px] block mb-1">Communication</span>
+                    <span className="text-slate-300 capitalize">{data.voice.communication}</span>
+                  </div>
+                )}
+                {data.voice?.desires && (
+                  <div>
+                    <span className="text-slate-500 uppercase text-[10px] block mb-1">Desires</span>
+                    <span className="text-slate-300">{data.voice.desires}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {data.origin_history && (
             <div className="ca-panel p-4">
               <div className="ca-section-header">
