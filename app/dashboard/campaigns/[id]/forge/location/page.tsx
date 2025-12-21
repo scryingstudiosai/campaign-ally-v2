@@ -181,6 +181,20 @@ export default function LocationForgePage(): JSX.Element {
     }
   }, [forge.output, forge.status, forge.input, allEntities])
 
+  // Helper function to infer sub-location type based on parent type
+  const inferSubLocationType = (parentType: string): string => {
+    const hierarchy: Record<string, string> = {
+      region: 'settlement',
+      settlement: 'district',
+      district: 'building',
+      building: 'room',
+      dungeon: 'room',
+      landmark: 'room',
+      room: 'room',
+    }
+    return hierarchy[parentType] || 'landmark'
+  }
+
   // Helper function to infer relationship type for locations
   const inferLocationRelationshipType = (
     locationSubType: string,
@@ -345,8 +359,56 @@ export default function LocationForgePage(): JSX.Element {
         }
         setGenerationReferencedEntities([])
 
-        toast.success('Location fleshed out and saved!')
+        // Create stubs for "contains" sub-locations
+        if (forge.output?.brain?.contains && forge.output.brain.contains.length > 0) {
+          const subLocationStubs = forge.output.brain.contains.map((name: string) => ({
+            campaign_id: campaignId,
+            entity_type: 'location',
+            sub_type: inferSubLocationType(locationSubType),
+            name: name,
+            summary: `Sub-location within ${forge.output?.name}`,
+            status: 'active',
+            importance_tier: 'minor',
+            visibility: 'dm_only',
+            attributes: {
+              is_stub: true,
+              needs_review: true,
+              parent_location_id: stubId,
+              source_entity_name: forge.output?.name,
+            },
+          }))
+
+          const { data: createdStubs } = await supabase
+            .from('entities')
+            .insert(subLocationStubs)
+            .select()
+
+          if (createdStubs && createdStubs.length > 0) {
+            const containsRelationships = createdStubs.map((stub) => ({
+              campaign_id: campaignId,
+              source_id: stubId,
+              target_id: stub.id,
+              relationship_type: 'contains',
+              surface_description: 'Sub-location',
+              intensity: 'high',
+              visibility: 'public',
+              is_active: true,
+            }))
+            await supabase.from('relationships').insert(containsRelationships)
+
+            toast.success(
+              `Location fleshed out + ${createdStubs.length} sub-location stubs created!`
+            )
+          } else {
+            toast.success('Location fleshed out and saved!')
+          }
+        } else {
+          toast.success('Location fleshed out and saved!')
+        }
+
+        forge.reset()
         router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`)
+        router.refresh()
       } catch {
         toast.error('Failed to update stub')
       }
@@ -399,8 +461,56 @@ export default function LocationForgePage(): JSX.Element {
 
         setGenerationReferencedEntities([])
 
-        toast.success('Location saved to Memory!')
+        // Create stubs for "contains" sub-locations
+        if (forge.output?.brain?.contains && forge.output.brain.contains.length > 0) {
+          const subLocationStubs = forge.output.brain.contains.map((name: string) => ({
+            campaign_id: campaignId,
+            entity_type: 'location',
+            sub_type: inferSubLocationType(locationSubType),
+            name: name,
+            summary: `Sub-location within ${forge.output?.name}`,
+            status: 'active',
+            importance_tier: 'minor',
+            visibility: 'dm_only',
+            attributes: {
+              is_stub: true,
+              needs_review: true,
+              parent_location_id: entity.id,
+              source_entity_name: forge.output?.name,
+            },
+          }))
+
+          const { data: createdStubs } = await supabase
+            .from('entities')
+            .insert(subLocationStubs)
+            .select()
+
+          if (createdStubs && createdStubs.length > 0) {
+            const containsRelationships = createdStubs.map((stub) => ({
+              campaign_id: campaignId,
+              source_id: entity.id,
+              target_id: stub.id,
+              relationship_type: 'contains',
+              surface_description: 'Sub-location',
+              intensity: 'high',
+              visibility: 'public',
+              is_active: true,
+            }))
+            await supabase.from('relationships').insert(containsRelationships)
+
+            toast.success(
+              `Location saved + ${createdStubs.length} sub-location stubs created!`
+            )
+          } else {
+            toast.success('Location saved to Memory!')
+          }
+        } else {
+          toast.success('Location saved to Memory!')
+        }
+
+        forge.reset()
         router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`)
+        router.refresh()
       } else if (result.error) {
         toast.error(result.error)
       }

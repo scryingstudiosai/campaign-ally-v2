@@ -305,7 +305,9 @@ export function LocationOutputCard({
                     <Swords className="w-4 h-4 text-orange-400 mt-0.5 shrink-0" />
                     <div>
                       <span className="text-xs text-orange-400 uppercase">Conflict</span>
-                      <p className="text-slate-200">{data.brain.conflict}</p>
+                      <p className="text-slate-200">
+                        {renderTextWithDiscoveries(data.brain.conflict)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -317,7 +319,9 @@ export function LocationOutputCard({
                     <Gift className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
                     <div>
                       <span className="text-xs text-green-400 uppercase">Opportunity</span>
-                      <p className="text-slate-200">{data.brain.opportunity}</p>
+                      <p className="text-slate-200">
+                        {renderTextWithDiscoveries(data.brain.opportunity)}
+                      </p>
                     </div>
                   </div>
                 </div>
