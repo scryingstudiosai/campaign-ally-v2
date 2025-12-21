@@ -14,9 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Sparkles, Dices, MapPin, User, X } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Loader2, Sparkles, Dices, MapPin, User, X, Package, Skull } from 'lucide-react'
 import type { PreValidationResult } from '@/types/forge'
 import { PreValidationAlert } from '@/components/forge/PreValidationAlert'
+import { QuickReference } from '@/components/forge/QuickReference'
 
 interface Entity {
   id: string
@@ -27,7 +29,8 @@ interface Entity {
 export interface ItemInputData {
   name?: string
   dmSlug: string
-  itemType: string
+  itemType: 'standard' | 'artifact' | 'cursed'
+  category: string
   rarity: string
   magicalAura: string
   state: string
@@ -35,6 +38,18 @@ export interface ItemInputData {
   ownerId?: string
   locationId?: string
   additionalRequirements?: string
+  // Sentience
+  isSentient: boolean
+  sentienceLevel: 'none' | 'dormant' | 'awakened' | 'dominant'
+  // Artifact fields
+  legendaryPower?: string
+  creatorLore?: string
+  // Cursed fields
+  curseType?: string
+  curseTrigger?: string
+  curseEscape?: string
+  // Context injection
+  referencedEntityIds?: string[]
   [key: string]: unknown
 }
 
@@ -136,7 +151,7 @@ export function ItemInputForm({
 }: ItemInputFormProps): JSX.Element {
   const [name, setName] = useState(initialValues?.name || '')
   const [dmSlug, setDmSlug] = useState(initialValues?.dmSlug || '')
-  const [itemType, setItemType] = useState('let_ai_decide')
+  const [category, setCategory] = useState('let_ai_decide')
   const [rarity, setRarity] = useState('let_ai_decide')
   const [magicalAura, setMagicalAura] = useState('let_ai_decide')
   const [state, setState] = useState('carried')
@@ -144,6 +159,25 @@ export function ItemInputForm({
   const [ownerId, setOwnerId] = useState<string>(initialValues?.ownerId || lockedOwnerId || '')
   const [locationId, setLocationId] = useState<string>('')
   const [additionalRequirements, setAdditionalRequirements] = useState('')
+
+  // Item Sub-Type (Standard/Artifact/Cursed)
+  const [itemSubType, setItemSubType] = useState<'standard' | 'artifact' | 'cursed'>('standard')
+
+  // Sentience
+  const [isSentient, setIsSentient] = useState(false)
+  const [sentienceLevel, setSentienceLevel] = useState<'dormant' | 'awakened' | 'dominant'>('dormant')
+
+  // Artifact fields
+  const [legendaryPower, setLegendaryPower] = useState('')
+  const [creatorLore, setCreatorLore] = useState('')
+
+  // Cursed fields
+  const [curseType, setCurseType] = useState('corruption')
+  const [curseTrigger, setCurseTrigger] = useState('')
+  const [curseEscape, setCurseEscape] = useState('')
+
+  // Context tracking (for Quick Reference)
+  const [referencedEntities, setReferencedEntities] = useState<{id: string, name: string}[]>([])
 
   // Entity lists for search boxes
   const [locations, setLocations] = useState<Entity[]>([])
@@ -191,10 +225,17 @@ export function ItemInputForm({
     e.preventDefault()
     if (!dmSlug.trim()) return
 
+    // Determine effective sentience (haunted items are always sentient)
+    const effectivelySentient = isSentient || (itemSubType === 'cursed' && curseType === 'haunted')
+    const effectiveSentienceLevel = effectivelySentient
+      ? (curseType === 'haunted' && !isSentient ? 'awakened' : sentienceLevel)
+      : 'none'
+
     onSubmit({
       name: name.trim() || undefined,
       dmSlug: dmSlug.trim(),
-      itemType,
+      itemType: itemSubType,
+      category,
       rarity,
       magicalAura,
       state,
@@ -202,13 +243,29 @@ export function ItemInputForm({
       ownerId: ownerId || undefined,
       locationId: locationId || undefined,
       additionalRequirements: additionalRequirements.trim() || undefined,
+      // Sentience
+      isSentient: effectivelySentient,
+      sentienceLevel: effectiveSentienceLevel,
+      // Artifact fields (only if artifact)
+      ...(itemSubType === 'artifact' ? {
+        legendaryPower: legendaryPower.trim() || undefined,
+        creatorLore: creatorLore.trim() || undefined,
+      } : {}),
+      // Cursed fields (only if cursed)
+      ...(itemSubType === 'cursed' ? {
+        curseType,
+        curseTrigger: curseTrigger.trim() || undefined,
+        curseEscape: curseEscape.trim() || undefined,
+      } : {}),
+      // Context injection
+      referencedEntityIds: referencedEntities.map(e => e.id),
     })
   }
 
-  const randomizeType = (): void => {
+  const randomizeCategory = (): void => {
     const randomType =
       RANDOMIZABLE_TYPES[Math.floor(Math.random() * RANDOMIZABLE_TYPES.length)]
-    setItemType(randomType.value)
+    setCategory(randomType.value)
   }
 
   const randomizeRarity = (): void => {
@@ -278,6 +335,39 @@ export function ItemInputForm({
         <p className="text-xs text-muted-foreground">
           Describe the item&apos;s essence - this guides the AI generation
         </p>
+
+        {/* Quick Reference */}
+        <QuickReference
+          campaignId={campaignId}
+          onSelect={(name, entityId) => {
+            setDmSlug(prev => prev + (prev.endsWith(' ') || prev === '' ? '' : ' ') + name)
+            setReferencedEntities(prev =>
+              prev.some(e => e.id === entityId) ? prev : [...prev, { id: entityId, name }]
+            )
+          }}
+        />
+
+        {/* Show referenced entities */}
+        {referencedEntities.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 p-2 bg-slate-800/30 rounded-lg border border-slate-700 mt-2">
+            <span className="text-xs text-slate-500">Context from:</span>
+            {referencedEntities.map(entity => (
+              <span
+                key={entity.id}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-700/50 rounded text-xs text-slate-300"
+              >
+                {entity.name}
+                <button
+                  type="button"
+                  onClick={() => setReferencedEntities(prev => prev.filter(e => e.id !== entity.id))}
+                  className="text-slate-500 hover:text-red-400"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -293,24 +383,24 @@ export function ItemInputForm({
           />
         </div>
 
-        {/* Item Type */}
+        {/* Item Category */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="item-type">Item Type</Label>
+            <Label htmlFor="category">Category</Label>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={randomizeType}
+              onClick={randomizeCategory}
               disabled={isLocked}
               className="h-6 px-2 text-xs"
             >
               <Dices className="w-3 h-3" />
             </Button>
           </div>
-          <Select value={itemType} onValueChange={setItemType} disabled={isLocked}>
-            <SelectTrigger id="item-type">
-              <SelectValue placeholder="Select type" />
+          <Select value={category} onValueChange={setCategory} disabled={isLocked}>
+            <SelectTrigger id="category">
+              <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
               {ITEM_TYPES.map((t) => (
@@ -530,6 +620,139 @@ export function ItemInputForm({
             </>
           )}
         </div>
+      </div>
+
+      {/* Item Sub-Type Tabs */}
+      <div className="space-y-4">
+        <Label>Item Configuration</Label>
+
+        <Tabs value={itemSubType} onValueChange={(v) => setItemSubType(v as typeof itemSubType)} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="standard" className="flex items-center gap-2" disabled={isLocked}>
+              <Package className="w-4 h-4" /> Standard
+            </TabsTrigger>
+            <TabsTrigger value="artifact" className="flex items-center gap-2" disabled={isLocked}>
+              <Sparkles className="w-4 h-4" /> Artifact
+            </TabsTrigger>
+            <TabsTrigger value="cursed" className="flex items-center gap-2" disabled={isLocked}>
+              <Skull className="w-4 h-4" /> Cursed
+            </TabsTrigger>
+          </TabsList>
+
+          {/* STANDARD TAB */}
+          <TabsContent value="standard">
+            <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+              <p className="text-sm text-slate-400">
+                Standard items have origin, history, and secrets but no special curse or legendary power.
+              </p>
+            </div>
+          </TabsContent>
+
+          {/* ARTIFACT TAB */}
+          <TabsContent value="artifact">
+            <div className="space-y-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+              <p className="text-sm text-amber-400 mb-2">
+                Artifacts are legendary items of immense power with world-shaping abilities.
+              </p>
+              <div className="space-y-2">
+                <Label>Legendary Power</Label>
+                <Textarea
+                  placeholder="What world-shaping power does it hold? What can it do that no other item can?"
+                  value={legendaryPower}
+                  onChange={e => setLegendaryPower(e.target.value)}
+                  className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                  disabled={isLocked}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Creator / Origin (optional)</Label>
+                <Input
+                  placeholder="Who forged this? A god, an ancient mage, a forgotten civilization?"
+                  value={creatorLore}
+                  onChange={e => setCreatorLore(e.target.value)}
+                  className="bg-slate-900/50 border-slate-700"
+                  disabled={isLocked}
+                />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* CURSED TAB */}
+          <TabsContent value="cursed">
+            <div className="space-y-4 p-4 bg-red-500/5 border border-red-500/20 rounded-lg">
+              <p className="text-sm text-red-400 mb-2">
+                Cursed items appear beneficial but carry hidden dangers. The curse should feel earned, not arbitrary.
+              </p>
+              <div className="space-y-2">
+                <Label>Curse Type</Label>
+                <Select value={curseType} onValueChange={setCurseType} disabled={isLocked}>
+                  <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="corruption">Corruption - Slowly changes the wielder</SelectItem>
+                    <SelectItem value="addiction">Addiction - Can&apos;t let go of the item</SelectItem>
+                    <SelectItem value="betrayal">Betrayal - Fails at critical moments</SelectItem>
+                    <SelectItem value="hunger">Hunger - Demands sacrifices</SelectItem>
+                    <SelectItem value="haunted">Haunted - Contains a malevolent spirit</SelectItem>
+                    <SelectItem value="monkey_paw">Monkey&apos;s Paw - Grants wishes with twists</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Curse Trigger (optional)</Label>
+                <Input
+                  placeholder="When does the curse activate? Using it in combat, at midnight..."
+                  value={curseTrigger}
+                  onChange={e => setCurseTrigger(e.target.value)}
+                  className="bg-slate-900/50 border-slate-700"
+                  disabled={isLocked}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Escape Method (optional)</Label>
+                <Input
+                  placeholder="How can it be cleansed or broken? Leave blank for AI to decide."
+                  value={curseEscape}
+                  onChange={e => setCurseEscape(e.target.value)}
+                  className="bg-slate-900/50 border-slate-700"
+                  disabled={isLocked}
+                />
+              </div>
+              {curseType === 'haunted' && (
+                <p className="text-xs text-purple-400 mt-2">
+                  Haunted items are automatically sentient. A voice profile will be generated.
+                </p>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Sentience Toggle */}
+      <div className="flex items-center gap-4 p-4 border border-slate-700 rounded-lg bg-slate-900/50">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Switch checked={isSentient} onCheckedChange={setIsSentient} disabled={isLocked} />
+            <Label>Sentient Item</Label>
+          </div>
+          <p className="text-xs text-slate-500 pl-10">Does this item have a personality and can communicate?</p>
+        </div>
+
+        {isSentient && (
+          <div className="w-[200px]">
+            <Select value={sentienceLevel} onValueChange={(v) => setSentienceLevel(v as typeof sentienceLevel)} disabled={isLocked}>
+              <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dormant">Dormant - Occasional whispers</SelectItem>
+                <SelectItem value="awakened">Awakened - Active personality</SelectItem>
+                <SelectItem value="dominant">Dominant - Tries to control wielder</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Is Identified Toggle */}
