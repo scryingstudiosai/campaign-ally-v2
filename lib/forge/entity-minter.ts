@@ -103,6 +103,15 @@ export async function saveForgedEntity(
   output: Record<string, unknown> | null,
   context: CommitContext
 ): Promise<unknown> {
+  // DEBUG: Log what saveForgedEntity receives
+  console.log('=== saveForgedEntity DEBUG ===')
+  console.log('forgeType:', forgeType)
+  console.log('output:', output)
+  console.log('output keys:', output ? Object.keys(output) : 'null')
+  console.log('output.brain:', output?.brain)
+  console.log('output.soul:', output?.soul)
+  console.log('output.mechanics:', output?.mechanics)
+
   if (!output) {
     throw new Error('No output to save')
   }
@@ -225,6 +234,14 @@ function buildEntityData(
   output: Record<string, unknown>,
   additionalAttributes: Record<string, unknown>
 ): Record<string, unknown> {
+  // DEBUG: Log what buildEntityData receives
+  console.log('=== buildEntityData DEBUG ===')
+  console.log('forgeType:', forgeType)
+  console.log('output keys:', Object.keys(output))
+  console.log('output.brain:', JSON.stringify(output.brain, null, 2))
+  console.log('output.soul:', JSON.stringify(output.soul, null, 2))
+  console.log('output.mechanics:', JSON.stringify(output.mechanics, null, 2))
+
   const entityType = FORGE_TO_ENTITY_TYPE[forgeType]
 
   // Base entity fields
@@ -301,8 +318,9 @@ function buildEntityData(
         },
       }
 
-    case 'location':
-      return {
+    case 'location': {
+      // DEBUG: Log location-specific data
+      const locationData = {
         ...baseData,
         // New Brain/Soul/Mechanics architecture columns (matching NPC/Item pattern)
         sub_type: (output.sub_type as string) || 'building',
@@ -324,6 +342,12 @@ function buildEntityData(
           encounters: output.encounters,
         },
       }
+      console.log('=== LOCATION ENTITY DATA ===')
+      console.log('brain being saved:', JSON.stringify(locationData.brain, null, 2))
+      console.log('soul being saved:', JSON.stringify(locationData.soul, null, 2))
+      console.log('mechanics being saved:', JSON.stringify(locationData.mechanics, null, 2))
+      return locationData
+    }
 
     case 'faction':
       return {
