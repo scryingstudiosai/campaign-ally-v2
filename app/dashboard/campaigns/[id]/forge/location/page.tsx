@@ -385,15 +385,29 @@ export default function LocationForgePage(): JSX.Element {
           return
         }
 
-        // Create relationship to source entity if exists
-        if (stubContext?.sourceEntityId) {
-          await supabase.from('relationships').insert({
+        // NOTE: Do NOT create a relationship to source entity here.
+        // The relationship was already created when the stub was first created
+        // from Contains/Discoveries. Creating another would cause duplicates.
+
+        // Save facts for the fleshed-out stub
+        const locationData = forge.output
+        if (locationData?.facts && locationData.facts.length > 0) {
+          const factsToInsert = locationData.facts.map((fact: { content: string; category?: string; visibility?: string }) => ({
             campaign_id: campaignId,
-            source_id: stubId,
-            target_id: stubContext.sourceEntityId,
-            relationship_type: 'mentioned_in',
-            description: `First mentioned in ${stubContext.sourceEntityName}`,
-          })
+            entity_id: stubId,
+            content: fact.content,
+            category: fact.category || 'general',
+            visibility: fact.visibility || 'public',
+            source: 'generated',
+          }))
+
+          const { error: factsError } = await supabase
+            .from('facts')
+            .insert(factsToInsert)
+
+          if (factsError) {
+            console.error('Error saving facts:', factsError)
+          }
         }
 
         // Auto-create relationships with referenced entities

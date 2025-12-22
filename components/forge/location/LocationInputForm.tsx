@@ -346,7 +346,7 @@ export function LocationInputForm({
       {/* SECTION 1: Location Type Grid */}
       <div className="space-y-2">
         <Label>What are you creating?</Label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {Object.entries(LOCATION_CONFIG).map(([key, config]) => {
             const Icon = config.icon
             const isSelected = locationType === key
@@ -357,7 +357,7 @@ export function LocationInputForm({
                 onClick={() => setLocationType(key as LocationInputData['locationType'])}
                 disabled={isLocked}
                 className={`
-                  p-3 rounded-lg border text-left transition-all
+                  p-2 sm:p-3 rounded-lg border text-left transition-all min-w-0 overflow-hidden
                   ${isSelected
                     ? 'border-teal-500 bg-teal-500/10 text-teal-400'
                     : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:border-slate-600'
@@ -365,9 +365,9 @@ export function LocationInputForm({
                   ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}
                 `}
               >
-                <Icon className={`w-5 h-5 mb-1 ${isSelected ? 'text-teal-400' : 'text-slate-500'}`} />
-                <div className="font-medium text-sm">{config.label}</div>
-                <div className="text-xs text-slate-500 truncate">{config.description}</div>
+                <Icon className={`w-4 h-4 sm:w-5 sm:h-5 mb-1 flex-shrink-0 ${isSelected ? 'text-teal-400' : 'text-slate-500'}`} />
+                <div className="font-medium text-xs sm:text-sm truncate">{config.label}</div>
+                <div className="text-xs text-slate-500 truncate hidden sm:block">{config.description}</div>
               </button>
             )
           })}
