@@ -346,24 +346,29 @@ export function LocationOutputCard({
                 </div>
               )}
 
-              {/* Sub-locations - will be created as stubs */}
+              {/* Sub-locations - Added to Discoveries for user review */}
               {data.brain.contains && data.brain.contains.length > 0 && (
                 <div className="pt-3 border-t border-slate-700">
-                  <span className="text-xs text-amber-400 uppercase">
-                    Sub-Locations (will be created as stubs)
-                  </span>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {data.brain.contains.map((loc, i) => (
-                      <span
-                        key={i}
-                        className="px-2 py-1 bg-amber-500/10 border border-dashed border-amber-500/30 rounded text-sm text-amber-300"
-                      >
-                        {loc}
-                      </span>
-                    ))}
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-slate-500 uppercase">Sub-Locations</span>
+                    <span className="text-xs text-amber-400">Added to Discoveries ↗</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {data.brain.contains.map((loc, i) => {
+                      // Clean the name: remove " - description" suffix if present
+                      const cleanName = loc.includes(' - ') ? loc.split(' - ')[0] : loc
+                      return (
+                        <span
+                          key={i}
+                          className="px-2 py-1 bg-amber-500/10 border border-dashed border-amber-500/30 rounded text-sm text-amber-300"
+                        >
+                          📍 {cleanName}
+                        </span>
+                      )
+                    })}
                   </div>
                   <p className="text-xs text-slate-500 mt-2">
-                    These appear in Discoveries below. Click to ignore any you don&apos;t want.
+                    These appear in the Review panel. Accept or ignore them there.
                   </p>
                 </div>
               )}

@@ -122,18 +122,27 @@ export default function LocationForgePage(): JSX.Element {
 
         const newContainsDiscoveries: Discovery[] = []
 
-        containsNames.forEach((name) => {
-          const nameLower = name.toLowerCase()
+        containsNames.forEach((rawName) => {
+          // Clean the name: remove " - description" suffix if present
+          const cleanName = rawName.includes(' - ')
+            ? rawName.split(' - ')[0].trim()
+            : rawName.trim()
+
+          if (!cleanName) return
+
+          const nameLower = cleanName.toLowerCase()
           const isDuplicate = existingDiscoveryTexts.has(nameLower) || existingEntityNames.has(nameLower)
 
           if (!isDuplicate) {
             newContainsDiscoveries.push({
-              id: `contains-${name}-${Date.now()}`,
-              text: name,
+              id: `contains-${cleanName}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              text: cleanName,
               suggestedType: 'location' as EntityType,
               context: `Sub-location within ${forge.output?.name}`,
               status: 'pending',
             })
+            // Add to set to prevent duplicates within the same contains array
+            existingDiscoveryTexts.add(nameLower)
           }
         })
 
@@ -431,99 +440,9 @@ export default function LocationForgePage(): JSX.Element {
         }
         setGenerationReferencedEntities([])
 
-        // Create stubs for "contains" sub-locations (respecting user discovery choices)
-        if (forge.output?.brain?.contains && forge.output.brain.contains.length > 0) {
-          const containsNames = forge.output.brain.contains as string[]
-
-          // Filter by discovery status - only create stubs for items user didn't ignore
-          const approvedContains = containsNames.filter((name) => {
-            const discovery = reviewDiscoveries.find(
-              (d) => d.text.toLowerCase() === name.toLowerCase()
-            )
-            // Create stub if: no discovery entry (wasn't in system) OR status is pending/approved
-            return !discovery || (discovery.status !== 'ignore' && discovery.status !== 'link_existing')
-          })
-
-          if (approvedContains.length > 0) {
-            // Check for existing entities with these names
-            const { data: existingStubs } = await supabase
-              .from('entities')
-              .select('name')
-              .eq('campaign_id', campaignId)
-              .in('name', approvedContains)
-              .is('deleted_at', null)
-
-            const existingNames = new Set(
-              existingStubs?.map((e) => e.name.toLowerCase()) || []
-            )
-
-            // Filter out names that already exist
-            const newSubLocations = approvedContains.filter(
-              (name) => !existingNames.has(name.toLowerCase())
-            )
-
-            if (newSubLocations.length > 0) {
-              const subLocationStubs = newSubLocations.map((name: string) => ({
-                campaign_id: campaignId,
-                entity_type: 'location',
-                sub_type: inferSubLocationType(locationSubType),
-                name: name,
-                summary: `Sub-location within ${forge.output?.name}`,
-                status: 'active',
-                importance_tier: 'minor',
-                visibility: 'dm_only',
-                attributes: {
-                  is_stub: true,
-                  needs_review: true,
-                  parent_location_id: stubId,
-                  source_entity_name: forge.output?.name,
-                },
-              }))
-
-              const { data: createdStubs } = await supabase
-                .from('entities')
-                .insert(subLocationStubs)
-                .select()
-
-              if (createdStubs && createdStubs.length > 0) {
-                const containsRelationships = createdStubs.map((stub) => ({
-                  campaign_id: campaignId,
-                  source_id: stubId,
-                  target_id: stub.id,
-                  relationship_type: 'contains',
-                  surface_description: 'Sub-location',
-                  intensity: 'high',
-                  visibility: 'public',
-                  is_active: true,
-                }))
-                await supabase.from('relationships').insert(containsRelationships)
-
-                const ignoredCount = containsNames.length - approvedContains.length
-                const existedCount = approvedContains.length - createdStubs.length
-                if (ignoredCount > 0 || existedCount > 0) {
-                  toast.success(
-                    `Location fleshed out! ${createdStubs.length} stubs created` +
-                    (ignoredCount > 0 ? `, ${ignoredCount} ignored` : '') +
-                    (existedCount > 0 ? `, ${existedCount} existed` : '')
-                  )
-                } else {
-                  toast.success(
-                    `Location fleshed out + ${createdStubs.length} sub-location stubs created!`
-                  )
-                }
-              } else {
-                toast.success('Location fleshed out and saved!')
-              }
-            } else {
-              toast.success('Location fleshed out! (all sub-locations already existed)')
-            }
-          } else {
-            const ignoredCount = containsNames.length
-            toast.success(`Location fleshed out! (${ignoredCount} sub-locations ignored)`)
-          }
-        } else {
-          toast.success('Location fleshed out and saved!')
-        }
+        // Contains sub-locations are now handled by the Discoveries system
+        // The user reviews them in the CommitPanel and decides which to create as stubs
+        toast.success('Location fleshed out and saved!')
 
         forge.reset()
         router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`)
@@ -586,96 +505,31 @@ export default function LocationForgePage(): JSX.Element {
 
         setGenerationReferencedEntities([])
 
-        // Create stubs for "contains" sub-locations (respecting user discovery choices)
-        if (forge.output?.brain?.contains && forge.output.brain.contains.length > 0) {
-          const containsNames = forge.output.brain.contains as string[]
+        // Create 'contains' relationships for any sub-location stubs created from discoveries
+        // The discovery system (via createStubEntities) already created the stubs
+        // We just need to link them with 'contains' relationships
+        if (result.stubs && result.stubs.length > 0) {
+          // Find stubs that came from "contains" discoveries (IDs start with "contains-")
+          const containsStubs = result.stubs.filter((stub) =>
+            stub.discoveryId.startsWith('contains-')
+          )
 
-          // Filter by discovery status - only create stubs for items user didn't ignore
-          const approvedContains = containsNames.filter((name) => {
-            const discovery = reviewDiscoveries.find(
-              (d) => d.text.toLowerCase() === name.toLowerCase()
-            )
-            // Create stub if: no discovery entry (wasn't in system) OR status is pending/approved
-            return !discovery || (discovery.status !== 'ignore' && discovery.status !== 'link_existing')
-          })
-
-          if (approvedContains.length > 0) {
-            // Check for existing entities with these names
-            const { data: existingStubs } = await supabase
-              .from('entities')
-              .select('name')
-              .eq('campaign_id', campaignId)
-              .in('name', approvedContains)
-              .is('deleted_at', null)
-
-            const existingNames = new Set(
-              existingStubs?.map((e) => e.name.toLowerCase()) || []
-            )
-
-            // Filter out names that already exist
-            const newSubLocations = approvedContains.filter(
-              (name) => !existingNames.has(name.toLowerCase())
-            )
-
-            if (newSubLocations.length > 0) {
-              const subLocationStubs = newSubLocations.map((name: string) => ({
-                campaign_id: campaignId,
-                entity_type: 'location',
-                sub_type: inferSubLocationType(locationSubType),
-                name: name,
-                summary: `Sub-location within ${forge.output?.name}`,
-                status: 'active',
-                importance_tier: 'minor',
-                visibility: 'dm_only',
-                attributes: {
-                  is_stub: true,
-                  needs_review: true,
-                  parent_location_id: entity.id,
-                  source_entity_name: forge.output?.name,
-                },
-              }))
-
-              const { data: createdStubs } = await supabase
-                .from('entities')
-                .insert(subLocationStubs)
-                .select()
-
-              if (createdStubs && createdStubs.length > 0) {
-                const containsRelationships = createdStubs.map((stub) => ({
-                  campaign_id: campaignId,
-                  source_id: entity.id,
-                  target_id: stub.id,
-                  relationship_type: 'contains',
-                  surface_description: 'Sub-location',
-                  intensity: 'high',
-                  visibility: 'public',
-                  is_active: true,
-                }))
-                await supabase.from('relationships').insert(containsRelationships)
-
-                const ignoredCount = containsNames.length - approvedContains.length
-                const existedCount = approvedContains.length - createdStubs.length
-                if (ignoredCount > 0 || existedCount > 0) {
-                  toast.success(
-                    `Location saved! ${createdStubs.length} stubs created` +
-                    (ignoredCount > 0 ? `, ${ignoredCount} ignored` : '') +
-                    (existedCount > 0 ? `, ${existedCount} existed` : '')
-                  )
-                } else {
-                  toast.success(
-                    `Location saved + ${createdStubs.length} sub-location stubs created!`
-                  )
-                }
-              } else {
-                toast.success('Location saved to Memory!')
-              }
-            } else {
-              toast.success('Location saved! (all sub-locations already existed)')
-            }
-          } else {
-            const ignoredCount = containsNames.length
-            toast.success(`Location saved! (${ignoredCount} sub-locations ignored)`)
+          if (containsStubs.length > 0) {
+            const containsRelationships = containsStubs.map((stub) => ({
+              campaign_id: campaignId,
+              source_id: entity.id,
+              target_id: stub.entityId,
+              relationship_type: 'contains',
+              surface_description: 'Sub-location',
+              intensity: 'high',
+              visibility: 'public',
+              is_active: true,
+            }))
+            await supabase.from('relationships').insert(containsRelationships)
           }
+
+          const stubCount = result.stubs.length
+          toast.success(`Location saved! ${stubCount} stub${stubCount > 1 ? 's' : ''} created.`)
         } else {
           toast.success('Location saved to Memory!')
         }

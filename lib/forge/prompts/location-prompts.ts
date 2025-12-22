@@ -19,7 +19,7 @@ You must return a JSON object with this EXACT structure:
     "current_state": "What's happening here RIGHT NOW",
     "conflict": "The tension or problem that exists here",
     "opportunity": "What players can gain (allies, treasure, info, quests)",
-    "contains": ["Sub-location 1", "Sub-location 2"]
+    "contains": ["The Gilded Spire", "Shadowmarket", "Temple of Stars"]
   },
 
   "soul": {
@@ -108,6 +108,12 @@ Locations without conflict are boring. What tension exists?
 - Corruption or decay
 - A mystery to solve
 
+### CONTAINS (Sub-Locations)
+List 3-5 evocative sub-location NAMES ONLY. No descriptions, no dashes.
+- Good: ["The Gilded Spire", "Shadowmarket", "Temple of Stars"]
+- Bad: ["The Gilded Spire - a tall tower", "Shadowmarket - underground bazaar"]
+These become stub entities the DM can flesh out later.
+
 ## LOCATION SOUL GUIDELINES
 
 The Soul makes locations MEMORABLE. Focus on sensory details that stick.
@@ -160,7 +166,7 @@ Focus on:
 - Threats (monsters, enemy nations, natural disasters)
 - Notable settlements and landmarks within
 
-Contains: List 3-5 notable settlements or landmarks within this region.
+Contains: List 3-5 notable settlement or landmark NAMES within this region. Names only, no descriptions.
 `;
 
 export const SETTLEMENT_PROMPT = `
@@ -182,7 +188,7 @@ Size guidelines:
 - City: 8,000-25,000 people
 - Metropolis: 25,000+ people
 
-Contains: List 3-5 notable districts, buildings, or landmarks.
+Contains: List 3-5 district, building, or landmark NAMES. Names only, no descriptions.
 `;
 
 export const DISTRICT_PROMPT = `
@@ -197,7 +203,7 @@ Focus on:
 - Who lives/works here
 - Day vs night atmosphere
 
-Contains: List 2-4 notable buildings or locations within the district.
+Contains: List 2-4 building or location NAMES within the district. Names only, no descriptions.
 `;
 
 export const BUILDING_PROMPT = `
@@ -213,7 +219,7 @@ Focus on:
 - Services/Goods (what can players get here)
 - Secrets (what's hidden in the back room, basement, attic)
 
-Contains: List notable rooms or areas within (for larger buildings).
+Contains: List room or area NAMES within (for larger buildings). Names only, no descriptions.
 `;
 
 export const ROOM_PROMPT = `
@@ -261,7 +267,7 @@ Focus on:
 
 CRITICAL: Include multiple hazards and encounters.
 
-Contains: List 3-5 key areas/rooms within the dungeon.
+Contains: List 3-5 key area or room NAMES within the dungeon. Names only, no descriptions.
 
 ### DUNGEON PACING
 A good dungeon has rhythm:
