@@ -41,7 +41,7 @@ export function InteractiveText({
 
   return (
     <TooltipProvider>
-      <p className="leading-relaxed text-muted-foreground">
+      <span className="leading-relaxed">
         {segments.map((segment, index) => {
           // Plain text
           if (segment.type === 'plain') {
@@ -124,7 +124,7 @@ export function InteractiveText({
 
           return <span key={index}>{segment.text}</span>
         })}
-      </p>
+      </span>
 
       {/* Entity Preview Modal */}
       <EntityPreviewModal

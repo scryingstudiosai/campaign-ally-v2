@@ -172,13 +172,17 @@ export async function saveForgedEntity(
   }
 
   // Create relationships to newly created stubs
+  // Use 'contains' for sub-locations from "contains" discoveries, otherwise 'related_to'
   for (const stub of context.createdStubs) {
+    const isContainsDiscovery = stub.discoveryId.startsWith('contains-')
     await supabase.from('relationships').insert({
       campaign_id: campaignId,
       source_id: savedEntity.id,
       target_id: stub.entityId,
-      relationship_type: 'related_to',
-      description: `Discovered via ${forgeType} forge`,
+      relationship_type: isContainsDiscovery ? 'contains' : 'related_to',
+      description: isContainsDiscovery
+        ? 'Sub-location'
+        : `Discovered via ${forgeType} forge`,
     })
   }
 
@@ -273,12 +277,21 @@ function buildEntityData(
     case 'item':
       return {
         ...baseData,
-        subtype: output.item_type as string,
+        // New Brain/Voice/Mechanics architecture columns
+        sub_type: (output.sub_type as string) || 'standard',
+        brain: output.brain || {},
+        voice: output.voice || null,  // null for non-sentient items
+        mechanics: output.mechanics || {},  // Item mechanics (stats, abilities)
+        read_aloud: output.read_aloud as string,
+        dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
+        // Legacy fields
+        subtype: output.item_type as string || output.category as string,
         summary: output.public_description as string,
         description: output.secret_description as string,
         attributes: {
           ...additionalAttributes,
-          item_type: output.item_type,
+          item_type: output.item_type || output.category,
+          category: output.category,
           rarity: output.rarity,
           magical_aura: output.magical_aura,
           is_identified: output.is_identified,
@@ -295,12 +308,20 @@ function buildEntityData(
     case 'location':
       return {
         ...baseData,
-        subtype: output.location_type as string,
-        summary: output.summary as string,
+        // Brain/Soul/Mechanics architecture columns
+        sub_type: (output.sub_type as string) || 'building',
+        brain: output.brain || {},
+        soul: output.soul || {},
+        mechanics: output.mechanics || {},
+        read_aloud: output.read_aloud as string,
+        dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
+        // Legacy fields
+        subtype: (output.sub_type as string) || (output.location_type as string),
+        summary: (output.dm_slug as string) || (output.summary as string),
         description: output.description as string,
         attributes: {
           ...additionalAttributes,
-          location_type: output.location_type,
+          location_type: output.location_type || output.sub_type,
           atmosphere: output.atmosphere,
           notable_features: output.notable_features,
           secrets: output.secrets,

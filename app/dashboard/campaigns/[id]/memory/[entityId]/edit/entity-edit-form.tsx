@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Save, Loader2, X, Plus, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Save, Loader2, X, Plus, AlertTriangle, Sparkles, Volume2, Sword, Map, Swords } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { Entity } from '@/components/memory/entity-card'
 
@@ -70,10 +71,40 @@ export function EntityEditForm({
   const [voice, setVoice] = useState<Record<string, unknown>>(entity.voice || {})
   const [readAloud, setReadAloud] = useState(entity.read_aloud || '')
 
+  // Item-specific state
+  const [itemBrain, setItemBrain] = useState<Record<string, unknown>>(
+    entityType === 'item' ? (entity.brain || {}) : {}
+  )
+  const [itemVoice, setItemVoice] = useState<Record<string, unknown>>(
+    entityType === 'item' ? (entity.voice || {}) : {}
+  )
+  const [itemMechanics, setItemMechanics] = useState<Record<string, unknown>>(
+    ((entity as unknown) as Record<string, unknown>).mechanics as Record<string, unknown> || {}
+  )
+
   // Detect NPC types
   const isNpc = entityType === 'npc'
   const isVillain = subType === 'villain'
   const isHero = subType === 'hero'
+
+  // Detect Item types
+  const isItem = entityType === 'item'
+  const sentienceLevel = itemBrain.sentience_level as string | undefined
+  const isSentientItem = isItem && sentienceLevel && sentienceLevel !== 'none'
+
+  // Location-specific state
+  const [locationBrain, setLocationBrain] = useState<Record<string, unknown>>(
+    entityType === 'location' ? (entity.brain || {}) : {}
+  )
+  const [locationSoul, setLocationSoul] = useState<Record<string, unknown>>(
+    ((entity as unknown) as Record<string, unknown>).soul as Record<string, unknown> || {}
+  )
+  const [locationMechanics, setLocationMechanics] = useState<Record<string, unknown>>(
+    ((entity as unknown) as Record<string, unknown>).mechanics as Record<string, unknown> || {}
+  )
+
+  // Detect Location types
+  const isLocation = entityType === 'location'
 
   // Track if entity type changed
   const typeChanged = entityType !== entity.entity_type
@@ -119,6 +150,22 @@ export function EntityEditForm({
         updates.brain = brain
         updates.voice = voice
         updates.read_aloud = readAloud.trim() || null
+      }
+
+      // Include Item-specific fields
+      if (isItem) {
+        updates.sub_type = subType // standard, artifact, cursed
+        updates.brain = itemBrain
+        updates.voice = isSentientItem ? itemVoice : null
+        updates.mechanics = itemMechanics
+      }
+
+      // Include Location-specific fields
+      if (isLocation) {
+        updates.sub_type = subType // region, settlement, district, building, room, landmark, dungeon
+        updates.brain = locationBrain
+        updates.soul = locationSoul
+        updates.mechanics = locationMechanics
       }
 
       const { error } = await supabase
@@ -503,6 +550,688 @@ export function EntityEditForm({
                 <p className="text-xs text-muted-foreground">
                   Use **bold** for emphasis on key details.
                 </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Item Type Selector */}
+          {isItem && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Item Type</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Item Sub-Type</Label>
+                  <Select value={subType} onValueChange={setSubType}>
+                    <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Standard Item</SelectItem>
+                      <SelectItem value="artifact">Artifact</SelectItem>
+                      <SelectItem value="cursed">Cursed Item</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Item Brain Section */}
+          {isItem && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-emerald-400" />
+                  Item Soul
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Origin</Label>
+                    <Textarea
+                      value={(itemBrain.origin as string) || ''}
+                      onChange={(e) => setItemBrain({ ...itemBrain, origin: e.target.value })}
+                      placeholder="Who made it and why?"
+                      className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>History</Label>
+                    <Textarea
+                      value={(itemBrain.history as string) || ''}
+                      onChange={(e) => setItemBrain({ ...itemBrain, history: e.target.value })}
+                      placeholder="Notable events, previous owners..."
+                      className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Trigger Condition</Label>
+                    <Input
+                      value={(itemBrain.trigger as string) || ''}
+                      onChange={(e) => setItemBrain({ ...itemBrain, trigger: e.target.value })}
+                      placeholder="What activates special abilities?"
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Sentience Level</Label>
+                    <Select
+                      value={(itemBrain.sentience_level as string) || 'none'}
+                      onValueChange={(v) => setItemBrain({ ...itemBrain, sentience_level: v })}
+                    >
+                      <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Not Sentient</SelectItem>
+                        <SelectItem value="dormant">Dormant - Occasional whispers</SelectItem>
+                        <SelectItem value="awakened">Awakened - Active personality</SelectItem>
+                        <SelectItem value="dominant">Dominant - Tries to control wielder</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-amber-500">Secret (DM Only)</Label>
+                    <Textarea
+                      value={(itemBrain.secret as string) || ''}
+                      onChange={(e) => setItemBrain({ ...itemBrain, secret: e.target.value })}
+                      placeholder="Hidden properties or true purpose..."
+                      className="min-h-[60px] bg-amber-500/5 border-amber-500/30"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-red-500">Cost / Drawback</Label>
+                    <Textarea
+                      value={(itemBrain.cost as string) || ''}
+                      onChange={(e) => setItemBrain({ ...itemBrain, cost: e.target.value })}
+                      placeholder="What's the catch for using it?"
+                      className="min-h-[60px] bg-red-500/5 border-red-500/30"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Item Voice Section (Sentient Only) */}
+          {isItem && isSentientItem && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Volume2 className="w-5 h-5 text-purple-400" />
+                  Sentient Personality
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Personality</Label>
+                    <Textarea
+                      value={(itemVoice.personality as string) || ''}
+                      onChange={(e) => setItemVoice({ ...itemVoice, personality: e.target.value })}
+                      placeholder="How does it present itself?"
+                      className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Communication Style (comma separated)</Label>
+                    <Input
+                      value={formatArrayOutput(itemVoice.style)}
+                      onChange={(e) => setItemVoice({ ...itemVoice, style: parseArrayInput(e.target.value) })}
+                      placeholder="Whispers, Echoing voice, Telepathic..."
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Communication Method</Label>
+                    <Select
+                      value={(itemVoice.communication as string) || 'telepathic'}
+                      onValueChange={(v) => setItemVoice({ ...itemVoice, communication: v })}
+                    >
+                      <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="telepathic">Telepathic</SelectItem>
+                        <SelectItem value="verbal">Verbal (speaks aloud)</SelectItem>
+                        <SelectItem value="empathic">Empathic (emotions only)</SelectItem>
+                        <SelectItem value="visions">Visions/Dreams</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Desires</Label>
+                    <Textarea
+                      value={(itemVoice.desires as string) || ''}
+                      onChange={(e) => setItemVoice({ ...itemVoice, desires: e.target.value })}
+                      placeholder="What does it want the wielder to do?"
+                      className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Hunger (What it craves)</Label>
+                    <Input
+                      value={(itemBrain.hunger as string) || ''}
+                      onChange={(e) => setItemBrain({ ...itemBrain, hunger: e.target.value })}
+                      placeholder="Battle, souls, secrets, blood..."
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Item Mechanics Section */}
+          {isItem && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sword className="w-5 h-5 text-blue-400" />
+                  Mechanics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Base Item</Label>
+                    <Input
+                      value={(itemMechanics.base_item as string) || ''}
+                      onChange={(e) => setItemMechanics({ ...itemMechanics, base_item: e.target.value })}
+                      placeholder="longsword, plate armor..."
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Damage</Label>
+                    <Input
+                      value={(itemMechanics.damage as string) || ''}
+                      onChange={(e) => setItemMechanics({ ...itemMechanics, damage: e.target.value })}
+                      placeholder="1d8 slashing"
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Magic Bonus</Label>
+                    <Select
+                      value={(itemMechanics.bonus as string) || 'none'}
+                      onValueChange={(v) => setItemMechanics({ ...itemMechanics, bonus: v === 'none' ? undefined : v })}
+                    >
+                      <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="+1">+1</SelectItem>
+                        <SelectItem value="+2">+2</SelectItem>
+                        <SelectItem value="+3">+3</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>AC Bonus (armor/shields)</Label>
+                    <Input
+                      type="number"
+                      value={(itemMechanics.ac_bonus as number) || ''}
+                      onChange={(e) => setItemMechanics({ ...itemMechanics, ac_bonus: e.target.value ? parseInt(e.target.value) : undefined })}
+                      placeholder="0"
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Charges (Max)</Label>
+                    <Input
+                      type="number"
+                      value={((itemMechanics.charges as Record<string, unknown>)?.max as number) || ''}
+                      onChange={(e) => setItemMechanics({
+                        ...itemMechanics,
+                        charges: { ...(itemMechanics.charges as Record<string, unknown> || {}), max: e.target.value ? parseInt(e.target.value) : 0 }
+                      })}
+                      placeholder="0"
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Recharge</Label>
+                    <Select
+                      value={((itemMechanics.charges as Record<string, unknown>)?.recharge as string) || 'never'}
+                      onValueChange={(v) => setItemMechanics({
+                        ...itemMechanics,
+                        charges: { ...(itemMechanics.charges as Record<string, unknown> || {}), recharge: v === 'never' ? undefined : v }
+                      })}
+                    >
+                      <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                        <SelectValue placeholder="Never" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="never">Never</SelectItem>
+                        <SelectItem value="dawn">At Dawn</SelectItem>
+                        <SelectItem value="dusk">At Dusk</SelectItem>
+                        <SelectItem value="short rest">Short Rest</SelectItem>
+                        <SelectItem value="long rest">Long Rest</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Properties (comma separated)</Label>
+                    <Input
+                      value={formatArrayOutput(itemMechanics.properties)}
+                      onChange={(e) => setItemMechanics({ ...itemMechanics, properties: parseArrayInput(e.target.value) })}
+                      placeholder="finesse, light, versatile (1d10), thrown (20/60)..."
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-3">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Switch
+                        checked={(itemMechanics.attunement as boolean) || false}
+                        onCheckedChange={(v) => setItemMechanics({ ...itemMechanics, attunement: v })}
+                      />
+                      <Label>Requires Attunement</Label>
+                    </div>
+                    {(itemMechanics.attunement as boolean) && (
+                      <Input
+                        value={(itemMechanics.attunement_requirements as string) || ''}
+                        onChange={(e) => setItemMechanics({ ...itemMechanics, attunement_requirements: e.target.value })}
+                        placeholder="by a creature of good alignment, by a spellcaster..."
+                        className="bg-slate-900/50 border-slate-700"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Abilities Editor */}
+                <div className="space-y-2 border-t border-slate-700 pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Abilities</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setItemMechanics({
+                        ...itemMechanics,
+                        abilities: [...((itemMechanics.abilities as Array<Record<string, unknown>>) || []), { name: '', description: '', cost: '' }]
+                      })}
+                    >
+                      <Plus className="w-3 h-3 mr-1" /> Add Ability
+                    </Button>
+                  </div>
+
+                  {((itemMechanics.abilities as Array<Record<string, unknown>>) || []).map((ability, index) => (
+                    <div key={index} className="p-3 bg-slate-800/50 rounded border border-slate-700 space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          value={(ability.name as string) || ''}
+                          onChange={(e) => {
+                            const newAbilities = [...(itemMechanics.abilities as Array<Record<string, unknown>>)]
+                            newAbilities[index] = { ...ability, name: e.target.value }
+                            setItemMechanics({ ...itemMechanics, abilities: newAbilities })
+                          }}
+                          placeholder="Ability Name"
+                          className="flex-1 bg-slate-900/50 border-slate-700"
+                        />
+                        <Input
+                          value={(ability.cost as string) || ''}
+                          onChange={(e) => {
+                            const newAbilities = [...(itemMechanics.abilities as Array<Record<string, unknown>>)]
+                            newAbilities[index] = { ...ability, cost: e.target.value }
+                            setItemMechanics({ ...itemMechanics, abilities: newAbilities })
+                          }}
+                          placeholder="Cost (1 charge, 1/day)"
+                          className="w-[150px] bg-slate-900/50 border-slate-700"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-400 hover:text-red-300"
+                          onClick={() => {
+                            const newAbilities = (itemMechanics.abilities as Array<Record<string, unknown>>).filter((_, i) => i !== index)
+                            setItemMechanics({ ...itemMechanics, abilities: newAbilities })
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <Textarea
+                        value={(ability.description as string) || ''}
+                        onChange={(e) => {
+                          const newAbilities = [...(itemMechanics.abilities as Array<Record<string, unknown>>)]
+                          newAbilities[index] = { ...ability, description: e.target.value }
+                          setItemMechanics({ ...itemMechanics, abilities: newAbilities })
+                        }}
+                        placeholder="Clear mechanical description with numbers, ranges, DCs..."
+                        className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Location Type Selector */}
+          {isLocation && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Map className="w-5 h-5 text-indigo-400" />
+                  Location Type
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Select value={subType} onValueChange={setSubType}>
+                  <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                    <SelectValue placeholder="Select location type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="region">Region</SelectItem>
+                    <SelectItem value="settlement">Settlement</SelectItem>
+                    <SelectItem value="district">District</SelectItem>
+                    <SelectItem value="building">Building</SelectItem>
+                    <SelectItem value="room">Room</SelectItem>
+                    <SelectItem value="landmark">Landmark</SelectItem>
+                    <SelectItem value="dungeon">Dungeon</SelectItem>
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Location Brain Section */}
+          {isLocation && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-emerald-400">
+                  <Map className="w-5 h-5" />
+                  Location Brain
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Purpose</Label>
+                    <Textarea
+                      value={(locationBrain.purpose as string) || ''}
+                      onChange={(e) => setLocationBrain({ ...locationBrain, purpose: e.target.value })}
+                      placeholder="Why does this place exist? What function does it serve?"
+                      className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Atmosphere</Label>
+                    <Input
+                      value={(locationBrain.atmosphere as string) || ''}
+                      onChange={(e) => setLocationBrain({ ...locationBrain, atmosphere: e.target.value })}
+                      placeholder="Eerie, welcoming, oppressive, bustling..."
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Danger Level</Label>
+                    <Select
+                      value={(locationBrain.danger_level as string) || 'moderate'}
+                      onValueChange={(v) => setLocationBrain({ ...locationBrain, danger_level: v })}
+                    >
+                      <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="safe">Safe</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="moderate">Moderate</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="deadly">Deadly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Current State</Label>
+                    <Input
+                      value={(locationBrain.current_state as string) || ''}
+                      onChange={(e) => setLocationBrain({ ...locationBrain, current_state: e.target.value })}
+                      placeholder="What's happening here now?"
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>History</Label>
+                    <Textarea
+                      value={(locationBrain.history as string) || ''}
+                      onChange={(e) => setLocationBrain({ ...locationBrain, history: e.target.value })}
+                      placeholder="Key events that shaped this place..."
+                      className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-orange-400">Conflict</Label>
+                    <Textarea
+                      value={(locationBrain.conflict as string) || ''}
+                      onChange={(e) => setLocationBrain({ ...locationBrain, conflict: e.target.value })}
+                      placeholder="What tension or problem exists here?"
+                      className="min-h-[60px] bg-orange-500/5 border-orange-500/30"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-green-400">Opportunity</Label>
+                    <Textarea
+                      value={(locationBrain.opportunity as string) || ''}
+                      onChange={(e) => setLocationBrain({ ...locationBrain, opportunity: e.target.value })}
+                      placeholder="What can players gain here?"
+                      className="min-h-[60px] bg-green-500/5 border-green-500/30"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-amber-400">Secret (DM Only)</Label>
+                    <Textarea
+                      value={(locationBrain.secret as string) || ''}
+                      onChange={(e) => setLocationBrain({ ...locationBrain, secret: e.target.value })}
+                      placeholder="What's hidden here that players might discover?"
+                      className="min-h-[60px] bg-amber-500/5 border-amber-500/30"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Contains (comma separated)</Label>
+                    <Input
+                      value={formatArrayOutput(locationBrain.contains)}
+                      onChange={(e) => setLocationBrain({ ...locationBrain, contains: parseArrayInput(e.target.value) })}
+                      placeholder="Sub-locations within: The Rusty Anchor Tavern, Town Hall, Market Square..."
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Location Soul Section */}
+          {isLocation && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-purple-400">
+                  <Sparkles className="w-5 h-5" />
+                  Location Soul
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Distinctive Feature</Label>
+                    <Input
+                      value={(locationSoul.distinctive_feature as string) || ''}
+                      onChange={(e) => setLocationSoul({ ...locationSoul, distinctive_feature: e.target.value })}
+                      placeholder="The ONE memorable thing about this place"
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Sights (comma separated)</Label>
+                    <Textarea
+                      value={formatArrayOutput(locationSoul.sights)}
+                      onChange={(e) => setLocationSoul({ ...locationSoul, sights: parseArrayInput(e.target.value) })}
+                      placeholder="Crumbling walls, flickering torches, cobblestone streets..."
+                      className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Sounds (comma separated)</Label>
+                    <Textarea
+                      value={formatArrayOutput(locationSoul.sounds)}
+                      onChange={(e) => setLocationSoul({ ...locationSoul, sounds: parseArrayInput(e.target.value) })}
+                      placeholder="Dripping water, distant echoes, cheerful music..."
+                      className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Smells (comma separated)</Label>
+                    <Textarea
+                      value={formatArrayOutput(locationSoul.smells)}
+                      onChange={(e) => setLocationSoul({ ...locationSoul, smells: parseArrayInput(e.target.value) })}
+                      placeholder="Smoke, rot, fresh bread, sea salt..."
+                      className="min-h-[60px] bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Temperature & Lighting</Label>
+                    <Input
+                      value={(locationSoul.temperature as string) || ''}
+                      onChange={(e) => setLocationSoul({ ...locationSoul, temperature: e.target.value })}
+                      placeholder="Cold and damp, sweltering heat..."
+                      className="bg-slate-900/50 border-slate-700 mb-2"
+                    />
+                    <Input
+                      value={(locationSoul.lighting as string) || ''}
+                      onChange={(e) => setLocationSoul({ ...locationSoul, lighting: e.target.value })}
+                      placeholder="Dim torchlight, bright sunlight, magical glow..."
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Mood</Label>
+                    <Input
+                      value={(locationSoul.mood as string) || ''}
+                      onChange={(e) => setLocationSoul({ ...locationSoul, mood: e.target.value })}
+                      placeholder="The emotional tone players should feel"
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Location Mechanics Section */}
+          {isLocation && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-400">
+                  <Swords className="w-5 h-5" />
+                  Location Mechanics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Size</Label>
+                    <Input
+                      value={(locationMechanics.size as string) || ''}
+                      onChange={(e) => setLocationMechanics({ ...locationMechanics, size: e.target.value })}
+                      placeholder="Sprawling city, cramped chamber, 60ft radius..."
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Terrain (comma separated)</Label>
+                    <Input
+                      value={formatArrayOutput(locationMechanics.terrain)}
+                      onChange={(e) => setLocationMechanics({ ...locationMechanics, terrain: parseArrayInput(e.target.value) })}
+                      placeholder="Difficult terrain, heavily obscured, underwater..."
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Resources (comma separated)</Label>
+                    <Input
+                      value={formatArrayOutput(locationMechanics.resources)}
+                      onChange={(e) => setLocationMechanics({ ...locationMechanics, resources: parseArrayInput(e.target.value) })}
+                      placeholder="Fresh water, iron ore, medicinal herbs..."
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Resting</Label>
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 text-sm text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={((locationMechanics.resting as Record<string, unknown>)?.safe_rest as boolean) || false}
+                          onChange={(e) => setLocationMechanics({
+                            ...locationMechanics,
+                            resting: { ...(locationMechanics.resting as Record<string, unknown> || {}), safe_rest: e.target.checked }
+                          })}
+                          className="rounded border-slate-700"
+                        />
+                        Safe Rest
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={((locationMechanics.resting as Record<string, unknown>)?.long_rest_available as boolean) || false}
+                          onChange={(e) => setLocationMechanics({
+                            ...locationMechanics,
+                            resting: { ...(locationMechanics.resting as Record<string, unknown> || {}), long_rest_available: e.target.checked }
+                          })}
+                          className="rounded border-slate-700"
+                        />
+                        Long Rest OK
+                      </label>
+                    </div>
+                    <Input
+                      value={((locationMechanics.resting as Record<string, unknown>)?.cost as string) || ''}
+                      onChange={(e) => setLocationMechanics({
+                        ...locationMechanics,
+                        resting: { ...(locationMechanics.resting as Record<string, unknown> || {}), cost: e.target.value }
+                      })}
+                      placeholder="Cost (for inns): 5 sp/night"
+                      className="bg-slate-900/50 border-slate-700"
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}

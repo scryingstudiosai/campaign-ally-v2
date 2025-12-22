@@ -14,7 +14,14 @@ import { BrainCard } from '@/components/entity/BrainCard'
 import { VoiceCard } from '@/components/entity/VoiceCard'
 import { ReadAloudCard } from '@/components/entity/ReadAloudCard'
 import { FactsWidget } from '@/components/entity/FactsWidget'
-import { NpcBrain, Voice, isNpcBrain } from '@/types/living-entity'
+import { ItemBrainCard } from '@/components/entity/ItemBrainCard'
+import { ItemVoiceCard } from '@/components/entity/ItemVoiceCard'
+import { ItemMechanicsCard } from '@/components/entity/ItemMechanicsCard'
+import { LocationBrainCard } from '@/components/entity/LocationBrainCard'
+import { LocationSoulCard } from '@/components/entity/LocationSoulCard'
+import { LocationMechanicsCard } from '@/components/entity/LocationMechanicsCard'
+import { EmptyStageState } from '@/components/entity/EmptyStageState'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -135,6 +142,43 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const attributes = entity.attributes || {}
   const isStub = attributes.is_stub || attributes.needs_review
 
+  // Item-specific helpers
+  const isItem = entity.entity_type === 'item'
+  const itemBrain = entity.brain as ItemBrain | null
+  const itemMechanics = entity.mechanics as ItemMechanics | null
+  const itemCategory = (entity.attributes?.category || entity.attributes?.item_type || entity.subtype) as string | undefined
+  const isSentientItem = isItem && itemBrain?.sentience_level && itemBrain.sentience_level !== 'none'
+
+  // Location-specific helpers
+  const isLocation = entity.entity_type === 'location'
+  const locationBrain = entity.brain as LocationBrain | null
+  const locationSoul = entity.soul as LocationSoul | null
+  const locationMechanics = entity.mechanics as LocationMechanics | null
+
+  // Check if Stage column has content for this entity type
+  const hasNpcStageContent =
+    (entity.voice && (entity.voice as Voice).style?.length > 0) ||
+    attributes.appearance ||
+    attributes.combatStats ||
+    attributes.loot ||
+    attributes.voiceAndMannerisms ||
+    entity.description
+
+  const hasItemStageContent =
+    (itemMechanics && Object.keys(itemMechanics).length > 0) ||
+    (isSentientItem && entity.voice)
+
+  const hasLocationStageContent =
+    (locationSoul && Object.keys(locationSoul).length > 0) ||
+    (locationMechanics && Object.keys(locationMechanics).length > 0)
+
+  const hasStageContent =
+    (entity.entity_type === 'npc' && hasNpcStageContent) ||
+    (isItem && hasItemStageContent) ||
+    (isLocation && hasLocationStageContent) ||
+    entity.public_notes ||
+    entity.dm_notes
+
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
       <div className="max-w-4xl mx-auto">
@@ -224,84 +268,133 @@ export default async function EntityDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Main Dashboard Grid */}
+        {/* === MASTER DASHBOARD LAYOUT === */}
+        {/* Left (2/3): "The Stage" - Player-facing content */}
+        {/* Right (1/3): "The Script" - DM-facing content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
 
-          {/* === LEFT COLUMN (2/3) - The Actor === */}
+          {/* === LEFT COLUMN (The Stage) - What players see/experience === */}
           <div className="lg:col-span-2 space-y-4">
 
-            {/* Voice Profile - How to speak this character */}
-            {entity.entity_type === 'npc' && entity.voice && Object.keys(entity.voice as object).length > 0 && (entity.voice as Voice).style?.length > 0 && (
-              <VoiceCard voice={entity.voice as Voice} />
-            )}
-
-            {/* Appearance - What players see */}
-            {attributes.appearance && (
-              <div className="ca-panel p-4">
-                <div className="ca-section-header mb-2">
-                  <User className="w-4 h-4" />
-                  <span>Appearance</span>
-                </div>
-                <p className="text-sm text-slate-300">{renderWithBold(attributes.appearance)}</p>
-              </div>
-            )}
-
-            {/* Combat Stats */}
-            {attributes.combatStats && (
-              <div className="ca-panel p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Shield className="w-4 h-4 text-slate-400" />
-                  <span className="text-sm font-medium text-slate-400">Combat</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="ca-stat-pill ca-stat-pill--ac">AC {attributes.combatStats.armorClass}</span>
-                  <span className="ca-stat-pill ca-stat-pill--hp">HP {attributes.combatStats.hitPoints}</span>
-                  {attributes.combatStats.primaryWeapon && (
-                    <span className="text-sm text-slate-400">
-                      <Swords className="w-4 h-4 inline mr-1" />
-                      {attributes.combatStats.primaryWeapon}
-                    </span>
-                  )}
-                </div>
-                {attributes.combatStats.combatStyle && (
-                  <p className="text-xs text-slate-500 mt-2 italic">{attributes.combatStats.combatStyle}</p>
-                )}
-              </div>
-            )}
-
-            {/* Loot */}
-            {attributes.loot && (
-              <LootDisplay
-                loot={attributes.loot}
+            {/* Empty State for Stage */}
+            {!hasStageContent && (
+              <EmptyStageState
+                entityType={entity.entity_type}
                 entityId={entity.id}
                 entityName={entity.name}
-                entityType={entity.entity_type}
                 campaignId={params.id}
+                isStub={isStub}
               />
             )}
 
-            {/* Legacy Voice/Mannerisms - Only if no Voice profile */}
-            {!(entity.voice && (entity.voice as Voice).style?.length > 0) && attributes.voiceAndMannerisms && (
-              <div className="ca-panel p-4">
-                <div className="ca-section-header mb-2">
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Voice & Mannerisms</span>
-                </div>
-                <p className="text-sm text-slate-300">{renderWithBold(attributes.voiceAndMannerisms)}</p>
-              </div>
+            {/* --- NPC STAGE CONTENT --- */}
+            {entity.entity_type === 'npc' && (
+              <>
+                {/* Voice Profile - How to speak this character */}
+                {entity.voice && Object.keys(entity.voice as object).length > 0 && (entity.voice as Voice).style?.length > 0 && (
+                  <VoiceCard voice={entity.voice as Voice} />
+                )}
+
+                {/* Appearance - What players see */}
+                {attributes.appearance && (
+                  <div className="ca-panel p-4">
+                    <div className="ca-section-header mb-2">
+                      <User className="w-4 h-4" />
+                      <span>Appearance</span>
+                    </div>
+                    <p className="text-sm text-slate-300">{renderWithBold(attributes.appearance)}</p>
+                  </div>
+                )}
+
+                {/* Combat Stats */}
+                {attributes.combatStats && (
+                  <div className="ca-panel p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Shield className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-400">Combat</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="ca-stat-pill ca-stat-pill--ac">AC {attributes.combatStats.armorClass}</span>
+                      <span className="ca-stat-pill ca-stat-pill--hp">HP {attributes.combatStats.hitPoints}</span>
+                      {attributes.combatStats.primaryWeapon && (
+                        <span className="text-sm text-slate-400">
+                          <Swords className="w-4 h-4 inline mr-1" />
+                          {attributes.combatStats.primaryWeapon}
+                        </span>
+                      )}
+                    </div>
+                    {attributes.combatStats.combatStyle && (
+                      <p className="text-xs text-slate-500 mt-2 italic">{attributes.combatStats.combatStyle}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Loot */}
+                {attributes.loot && (
+                  <LootDisplay
+                    loot={attributes.loot}
+                    entityId={entity.id}
+                    entityName={entity.name}
+                    entityType={entity.entity_type}
+                    campaignId={params.id}
+                  />
+                )}
+
+                {/* Legacy Voice/Mannerisms - Only if no Voice profile */}
+                {!(entity.voice && (entity.voice as Voice).style?.length > 0) && attributes.voiceAndMannerisms && (
+                  <div className="ca-panel p-4">
+                    <div className="ca-section-header mb-2">
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Voice & Mannerisms</span>
+                    </div>
+                    <p className="text-sm text-slate-300">{renderWithBold(attributes.voiceAndMannerisms)}</p>
+                  </div>
+                )}
+
+                {/* Legacy Description - Only show if NO brain AND NO voice (old entities) */}
+                {!isNpcBrain(entity.brain as NpcBrain) && !(entity.voice && (entity.voice as Voice).style?.length > 0) && entity.description && (
+                  <div className="ca-panel p-4">
+                    <div className="ca-section-header mb-2">
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Description</span>
+                    </div>
+                    <p className="text-sm text-slate-300 whitespace-pre-wrap">{renderWithBold(entity.description)}</p>
+                  </div>
+                )}
+              </>
             )}
 
-            {/* Legacy Description - Only show if NO brain AND NO voice (old entities) */}
-            {!isNpcBrain(entity.brain as NpcBrain) && !(entity.voice && (entity.voice as Voice).style?.length > 0) && entity.description && (
-              <div className="ca-panel p-4">
-                <div className="ca-section-header mb-2">
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Description</span>
-                </div>
-                <p className="text-sm text-slate-300 whitespace-pre-wrap">{renderWithBold(entity.description)}</p>
-              </div>
+            {/* --- ITEM STAGE CONTENT --- */}
+            {isItem && (
+              <>
+                {/* Item Mechanics - The usable game stats (player-facing) */}
+                {itemMechanics && Object.keys(itemMechanics).length > 0 && (
+                  <ItemMechanicsCard mechanics={itemMechanics} category={itemCategory} />
+                )}
+
+                {/* Item Voice - For sentient items */}
+                {isSentientItem && entity.voice && (
+                  <ItemVoiceCard voice={entity.voice as ItemVoice} />
+                )}
+              </>
             )}
 
+            {/* --- LOCATION STAGE CONTENT --- */}
+            {isLocation && (
+              <>
+                {/* Location Soul - Sensory details (player-facing) */}
+                {locationSoul && Object.keys(locationSoul).length > 0 && (
+                  <LocationSoulCard soul={locationSoul} />
+                )}
+
+                {/* Location Mechanics - Hazards, encounters (player-facing) */}
+                {locationMechanics && Object.keys(locationMechanics).length > 0 && (
+                  <LocationMechanicsCard mechanics={locationMechanics} />
+                )}
+              </>
+            )}
+
+            {/* --- SHARED STAGE CONTENT --- */}
             {/* Public Notes */}
             {entity.public_notes && (
               <Card className="border-green-500/30">
@@ -340,14 +433,25 @@ export default async function EntityDetailPage({ params }: PageProps) {
           </div>
 
 
-          {/* === RIGHT COLUMN (1/3) - The Logic === */}
+          {/* === RIGHT COLUMN (The Script) - DM reference === */}
           <div className="space-y-4">
 
-            {/* NPC Brain - The psychology */}
+            {/* --- NPC SCRIPT CONTENT --- */}
             {entity.entity_type === 'npc' && entity.brain && isNpcBrain(entity.brain as NpcBrain) && (
               <BrainCard brain={entity.brain as NpcBrain} viewMode="dm" />
             )}
 
+            {/* --- ITEM SCRIPT CONTENT --- */}
+            {isItem && itemBrain && Object.keys(itemBrain).length > 0 && (
+              <ItemBrainCard brain={itemBrain} subType={entity.sub_type} />
+            )}
+
+            {/* --- LOCATION SCRIPT CONTENT --- */}
+            {isLocation && locationBrain && Object.keys(locationBrain).length > 0 && (
+              <LocationBrainCard brain={locationBrain} subType={entity.sub_type} />
+            )}
+
+            {/* --- SHARED SCRIPT CONTENT --- */}
             {/* Secret - DM Only */}
             {attributes.secret && (
               <div className="ca-panel p-4 border-l-2 border-amber-500/50">

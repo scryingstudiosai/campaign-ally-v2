@@ -25,8 +25,6 @@ interface NpcInputFormProps {
   onDismissValidation?: () => void
   existingLocations?: Array<{ id: string; name: string }>
   existingFactions?: Array<{ id: string; name: string }>
-  generationsRemaining?: number
-  generationsLimit?: number
   initialValues?: {
     name?: string
     slug?: string
@@ -139,8 +137,6 @@ export function NpcInputForm({
   onDismissValidation,
   existingLocations = [],
   existingFactions = [],
-  generationsRemaining,
-  generationsLimit = 50,
   initialValues,
   conceptProvided = false,
 }: NpcInputFormProps): JSX.Element {
@@ -199,10 +195,6 @@ export function NpcInputForm({
     setRole(randomRole)
   }
 
-  const remainingGenerations =
-    generationsRemaining !== undefined
-      ? generationsRemaining
-      : generationsLimit
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -216,13 +208,6 @@ export function NpcInputForm({
             onDismiss={onDismissValidation || (() => {})}
           />
         )}
-
-      {/* Generation count */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
-          {remainingGenerations} / {generationsLimit} generations remaining
-        </span>
-      </div>
 
       {/* Role - Optional if concept is provided */}
       <div className="space-y-2">
@@ -441,7 +426,7 @@ export function NpcInputForm({
       {/* Submit */}
       <Button
         type="submit"
-        disabled={(!role.trim() && !conceptProvided) || isLocked || remainingGenerations <= 0}
+        disabled={(!role.trim() && !conceptProvided) || isLocked}
         className="w-full"
         size="lg"
       >
@@ -457,12 +442,6 @@ export function NpcInputForm({
           </>
         )}
       </Button>
-
-      {remainingGenerations <= 0 && (
-        <p className="text-sm text-destructive text-center">
-          You&apos;ve reached your generation limit for this month.
-        </p>
-      )}
     </form>
   )
 }

@@ -159,30 +159,131 @@ export const DEFAULT_HERO_BRAIN: HeroBrain = {
   availability: '',
 };
 
-// Location Brain
+// Location Sub-Types
+export type LocationSubType =
+  | 'region'      // Kingdoms, territories, wilderness areas
+  | 'settlement'  // Cities, towns, villages
+  | 'district'    // Neighborhoods, wards, quarters
+  | 'building'    // Taverns, temples, shops, dungeons
+  | 'room'        // Specific rooms, chambers, areas within buildings
+  | 'landmark'    // Natural features, monuments, points of interest
+  | 'dungeon';    // Adventure sites, ruins, lairs
+
+// Location Brain - The "Purpose" of the place
 export interface LocationBrain extends BaseBrain {
-  mood: string;
-  danger_level: 'safe' | 'cautious' | 'dangerous' | 'deadly';
-  law: 'lawful' | 'neutral' | 'lawless';
+  purpose?: string;           // Why does this place exist? What function does it serve?
+  atmosphere?: string;        // The overall mood/feeling (oppressive, welcoming, mysterious)
+  danger_level?: 'safe' | 'low' | 'moderate' | 'high' | 'deadly';
+  secret?: string;            // What's hidden here that players might discover?
+  history?: string;           // Key historical events that shaped this place
+  current_state?: string;     // What's happening here NOW? (under siege, thriving, abandoned)
+  conflict?: string;          // What tension or problem exists here?
+  opportunity?: string;       // What can players gain here? (allies, treasure, information)
+  // Hierarchy
+  parent_location_id?: string; // UUID of containing location
+  contains?: string[];         // Names/types of sub-locations
+  // Legacy fields
+  mood?: string;
+  law?: 'lawful' | 'neutral' | 'lawless';
   hidden_purpose?: string;
 }
 
 export const DEFAULT_LOCATION_BRAIN: LocationBrain = {
-  mood: '',
-  danger_level: 'safe',
-  law: 'neutral',
+  danger_level: 'moderate',
 };
 
-// Item Brain
+// Location Soul - The "Texture" that makes it memorable
+export interface LocationSoul {
+  sights?: string[];          // Visual details players notice
+  sounds?: string[];          // Ambient audio
+  smells?: string[];          // Distinctive scents
+  textures?: string[];        // What things feel like
+  temperature?: string;       // Hot, cold, humid, etc.
+  lighting?: string;          // Bright, dim, flickering, magical
+  distinctive_feature?: string; // The ONE thing that makes this place unique
+  mood?: string;              // Emotional tone (dread, wonder, melancholy)
+}
+
+export const DEFAULT_LOCATION_SOUL: LocationSoul = {};
+
+// Location Mechanics - Game-relevant details
+export interface LocationMechanics {
+  size?: string;              // Rough dimensions or area
+  terrain?: string[];         // Terrain types (difficult, obscured, etc.)
+  hazards?: Array<{
+    name: string;
+    description: string;
+    dc?: number;
+    damage?: string;
+    effect?: string;
+  }>;
+  resources?: string[];       // What can be found/harvested here
+  travel_time?: {
+    from?: string;            // From where
+    duration?: string;        // How long
+    method?: string;          // On foot, by horse, by ship
+  };
+  encounters?: Array<{
+    name: string;
+    likelihood: 'common' | 'uncommon' | 'rare';
+    cr_range?: string;
+  }>;
+  resting?: {
+    safe_rest?: boolean;
+    long_rest_available?: boolean;
+    cost?: string;            // For inns
+  };
+}
+
+export const DEFAULT_LOCATION_MECHANICS: LocationMechanics = {};
+
+// Item Mechanics - the "body" of the item (separable from lore for reskinning)
+export interface ItemMechanics {
+  base_item?: string;              // "longsword", "dagger", "plate armor"
+  damage?: string;                 // "1d8 slashing"
+  damage_type?: string;            // "slashing", "piercing", "radiant"
+  bonus?: string;                  // "+1", "+2", "+3"
+  properties?: string[];           // ["finesse", "light", "versatile (1d10)"]
+  range?: string;                  // "20/60" for thrown/ranged
+  ac_bonus?: number;               // For armor/shields
+  charges?: {
+    current?: number;
+    max: number;
+    recharge?: string;             // "dawn", "long rest", "never"
+  };
+  abilities?: Array<{
+    name: string;
+    description: string;
+    cost?: string;                 // "1 charge", "bonus action", "1/day"
+    duration?: string;             // "1 minute", "until dispelled"
+  }>;
+  attunement?: boolean;
+  attunement_requirements?: string; // "a creature of good alignment"
+  spell_save_dc?: number;          // For items that force saves
+  spell_attack_bonus?: number;     // For wands/staves
+}
+
+export const DEFAULT_ITEM_MECHANICS: ItemMechanics = {
+  properties: [],
+  attunement: false,
+};
+
+// Item Brain - the "soul" of the item (lore, separate from mechanics)
 export interface ItemBrain extends BaseBrain {
-  hunger?: string;
-  trigger?: string;
-  curse?: string;
-  history_weight: string;
+  origin?: string;           // Who made it and why
+  history?: string;          // Notable events, previous owners
+  secret?: string;           // Hidden properties or true purpose
+  trigger?: string;          // What activates special abilities
+  hunger?: string;           // If sentient, what does it crave?
+  cost?: string;             // The catch or drawback for using it
+  sentience_level?: 'none' | 'dormant' | 'awakened' | 'dominant';
+  // Legacy field for backward compatibility
+  history_weight?: string;
+  // NOTE: mechanics is NOT here - it's a sibling field on the entity
 }
 
 export const DEFAULT_ITEM_BRAIN: ItemBrain = {
-  history_weight: '',
+  sentience_level: 'none',
 };
 
 // Faction Brain
@@ -255,11 +356,11 @@ export function isHeroBrain(brain: BaseBrain): brain is HeroBrain {
 }
 
 export function isLocationBrain(brain: BaseBrain): brain is LocationBrain {
-  return 'mood' in brain && 'danger_level' in brain;
+  return 'purpose' in brain || 'atmosphere' in brain || 'danger_level' in brain || 'contains' in brain;
 }
 
 export function isItemBrain(brain: BaseBrain): brain is ItemBrain {
-  return 'history_weight' in brain;
+  return 'sentience_level' in brain || 'origin' in brain || 'history_weight' in brain;
 }
 
 export function isFactionBrain(brain: BaseBrain): brain is FactionBrain {
@@ -311,6 +412,21 @@ export function getVoiceWithDefaults(voice?: Partial<Voice>): Voice {
     speech_patterns: voice?.speech_patterns || [],
     tells: voice?.tells || [],
   };
+}
+
+// Item Voice - ONLY for sentient items
+export interface ItemVoice {
+  personality?: string;           // How it presents itself
+  style?: string[];               // Communication style (whispers, booming, etc.)
+  desires?: string;               // What it pushes the wielder toward
+  communication?: 'telepathic' | 'verbal' | 'empathic' | 'visions';
+}
+
+export const DEFAULT_ITEM_VOICE: ItemVoice = {};
+
+// Type guard for sentient items
+export function isSentientItem(brain: ItemBrain | null | undefined): boolean {
+  return brain?.sentience_level !== undefined && brain.sentience_level !== 'none';
 }
 
 

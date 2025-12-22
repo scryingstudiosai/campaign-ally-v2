@@ -18,11 +18,41 @@ import {
   Zap,
   ScrollText,
   History,
+  Key,
+  AlertTriangle,
+  Volume2,
 } from 'lucide-react'
+
+// Mechanics type for the new architecture
+interface ItemMechanicsType {
+  base_item?: string
+  damage?: string
+  damage_type?: string
+  bonus?: string
+  properties?: string[]
+  range?: string
+  ac_bonus?: number
+  charges?: {
+    current?: number
+    max: number
+    recharge?: string
+  }
+  abilities?: Array<{
+    name: string
+    description: string
+    cost?: string
+    duration?: string
+  }>
+  attunement?: boolean
+  attunement_requirements?: string
+  spell_save_dc?: number
+  spell_attack_bonus?: number
+}
 
 export interface GeneratedItem {
   name: string
-  item_type: string
+  item_type?: string
+  category?: string  // Alias for item_type in new architecture
   rarity: string
   magical_aura: string
   is_identified: boolean
@@ -46,6 +76,27 @@ export interface GeneratedItem {
     session: string | null
     note?: string
   }>
+  // New Brain/Voice/Mechanics architecture fields
+  sub_type?: 'standard' | 'artifact' | 'cursed'
+  brain?: {
+    origin?: string
+    history?: string
+    secret?: string
+    trigger?: string
+    hunger?: string
+    cost?: string
+    sentience_level?: 'none' | 'dormant' | 'awakened' | 'dominant'
+  }
+  voice?: {
+    personality?: string
+    style?: string[]
+    desires?: string
+    communication?: 'telepathic' | 'verbal' | 'empathic' | 'visions'
+  } | null
+  mechanics?: ItemMechanicsType
+  read_aloud?: string
+  dm_slug?: string
+  dmSlug?: string  // Alias for backward compatibility
 }
 
 interface ItemOutputCardProps {
@@ -125,8 +176,14 @@ export function ItemOutputCard({
 
   const rarityColor = RARITY_COLORS[data.rarity] || 'bg-slate-500 text-white'
   const rarityLabel = RARITY_LABELS[data.rarity] || data.rarity
-  const typeLabel = ITEM_TYPE_LABELS[data.item_type] || data.item_type
+  const itemType = data.item_type || data.category || 'item'
+  const typeLabel = ITEM_TYPE_LABELS[itemType] || itemType
   const vendorPrice = Math.floor(data.value_gp * 0.5)
+
+  // Brain/Voice helpers
+  const hasBrain = data.brain && Object.keys(data.brain).length > 0
+  const hasVoice = data.voice && Object.keys(data.voice).length > 0
+  const isSentient = data.brain?.sentience_level && data.brain.sentience_level !== 'none'
 
   return (
     <div ref={contentRef} className="ca-card ca-card--item p-6 space-y-4">
@@ -234,91 +291,333 @@ export function ItemOutputCard({
 
         {/* Mechanics Tab */}
         <TabsContent value="mechanics" className="space-y-4">
-          {/* Combat/Effect Stats */}
-          <div className="ca-panel p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {data.item_type === 'weapon' &&
-                data.mechanical_properties?.damage && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Sword className="w-5 h-5 text-slate-400" />
-                      <span className="text-sm font-medium text-slate-400">
-                        Damage:
-                      </span>
-                    </div>
-                    <span className="ca-stat-pill ca-stat-pill--hp">
-                      {data.mechanical_properties.damage}
-                    </span>
-                  </>
-                )}
-              {data.item_type === 'armor' &&
-                data.mechanical_properties?.ac_bonus && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-5 h-5 text-slate-400" />
-                      <span className="text-sm font-medium text-slate-400">
-                        AC:
-                      </span>
-                    </div>
-                    <span className="ca-stat-pill ca-stat-pill--ac">
-                      +{data.mechanical_properties.ac_bonus}
-                    </span>
-                  </>
-                )}
-              {data.mechanical_properties?.charges !== undefined &&
-                data.mechanical_properties.charges > 0 && (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-slate-400" />
-                      <span className="text-sm font-medium text-slate-400">
-                        Charges:
-                      </span>
-                    </div>
-                    <span className="ca-stat-pill ca-stat-pill--dc">
-                      {data.mechanical_properties.charges}/
-                      {data.mechanical_properties.max_charges ||
-                        data.mechanical_properties.charges}
-                    </span>
-                  </>
-                )}
-            </div>
-          </div>
+          {/* === NEW MECHANICS (The Body) === */}
+          {data.mechanics && (
+            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
+              <h4 className="text-sm font-semibold text-blue-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <Sword className="w-4 h-4" />
+                Mechanics
+              </h4>
 
-          {/* Properties */}
-          {data.mechanical_properties?.properties &&
-            data.mechanical_properties.properties.length > 0 && (
-              <div className="ca-panel p-4">
-                <div className="ca-section-header mb-2">
-                  <span>Properties</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {data.mechanical_properties.properties.map((prop, idx) => (
-                    <span key={idx} className="ca-inset">
-                      {prop}
+              {/* Base Stats Row */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mb-3">
+                {data.mechanics.base_item && (
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase block">Base Item</span>
+                    <span className="text-slate-200 capitalize">{data.mechanics.base_item}</span>
+                  </div>
+                )}
+
+                {data.mechanics.damage && (
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase block">Damage</span>
+                    <span className="text-slate-200">
+                      {data.mechanics.bonus && <span className="text-green-400">{data.mechanics.bonus} </span>}
+                      {data.mechanics.damage}
                     </span>
+                  </div>
+                )}
+
+                {data.mechanics.ac_bonus !== undefined && (
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase block">AC Bonus</span>
+                    <span className="text-slate-200">+{data.mechanics.ac_bonus}</span>
+                  </div>
+                )}
+
+                {data.mechanics.charges && (
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase block">Charges</span>
+                    <span className="text-slate-200">
+                      {data.mechanics.charges.max}
+                      {data.mechanics.charges.recharge && (
+                        <span className="text-slate-400 text-xs ml-1">(recharges at {data.mechanics.charges.recharge})</span>
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                {data.mechanics.spell_save_dc && (
+                  <div>
+                    <span className="text-slate-500 text-xs uppercase block">Spell Save DC</span>
+                    <span className="text-slate-200">{data.mechanics.spell_save_dc}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Properties */}
+              {data.mechanics.properties && data.mechanics.properties.length > 0 && (
+                <div className="mb-3">
+                  <span className="text-slate-500 text-xs uppercase block mb-1">Properties</span>
+                  <div className="flex flex-wrap gap-1">
+                    {data.mechanics.properties.map((p: string, i: number) => (
+                      <span key={i} className="px-2 py-0.5 bg-slate-700 rounded text-xs text-slate-300">
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Abilities */}
+              {data.mechanics.abilities && data.mechanics.abilities.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-slate-500 text-xs uppercase block">Abilities</span>
+                  {data.mechanics.abilities.map((ability, i: number) => (
+                    <div key={i} className="p-2 bg-slate-900/50 rounded border border-slate-700">
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-amber-400">{ability.name}</span>
+                        {ability.cost && (
+                          <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded">
+                            {ability.cost}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-300 mt-1">{ability.description}</p>
+                      {ability.duration && (
+                        <span className="text-xs text-slate-500">Duration: {ability.duration}</span>
+                      )}
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
 
-          {/* Attunement */}
-          <div className="ca-panel p-4">
-            <div className="ca-section-header">
-              <ScrollText className="w-4 h-4" />
-              <span>Attunement</span>
+              {/* Attunement */}
+              {data.mechanics.attunement && (
+                <div className="mt-3 pt-3 border-t border-slate-700">
+                  <span className="text-purple-400 text-sm">
+                    ⚡ Requires Attunement
+                    {data.mechanics.attunement_requirements && (
+                      <span className="text-purple-300"> by {data.mechanics.attunement_requirements}</span>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
-            <p className="text-sm text-slate-400">
-              {data.mechanical_properties?.attunement === 'none'
-                ? 'No attunement required'
-                : data.mechanical_properties?.attunement === 'required'
-                  ? 'Requires attunement'
-                  : data.mechanical_properties?.attunement}
-            </p>
-          </div>
+          )}
+
+          {/* Legacy Combat/Effect Stats (fallback) */}
+          {!data.mechanics && (
+            <>
+              <div className="ca-panel p-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  {itemType === 'weapon' &&
+                    data.mechanical_properties?.damage && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Sword className="w-5 h-5 text-slate-400" />
+                          <span className="text-sm font-medium text-slate-400">
+                            Damage:
+                          </span>
+                        </div>
+                        <span className="ca-stat-pill ca-stat-pill--hp">
+                          {data.mechanical_properties.damage}
+                        </span>
+                      </>
+                    )}
+                  {itemType === 'armor' &&
+                    data.mechanical_properties?.ac_bonus && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-5 h-5 text-slate-400" />
+                          <span className="text-sm font-medium text-slate-400">
+                            AC:
+                          </span>
+                        </div>
+                        <span className="ca-stat-pill ca-stat-pill--ac">
+                          +{data.mechanical_properties.ac_bonus}
+                        </span>
+                      </>
+                    )}
+                  {data.mechanical_properties?.charges !== undefined &&
+                    data.mechanical_properties.charges > 0 && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-5 h-5 text-slate-400" />
+                          <span className="text-sm font-medium text-slate-400">
+                            Charges:
+                          </span>
+                        </div>
+                        <span className="ca-stat-pill ca-stat-pill--dc">
+                          {data.mechanical_properties.charges}/
+                          {data.mechanical_properties.max_charges ||
+                            data.mechanical_properties.charges}
+                        </span>
+                      </>
+                    )}
+                </div>
+              </div>
+
+              {/* Properties */}
+              {data.mechanical_properties?.properties &&
+                data.mechanical_properties.properties.length > 0 && (
+                  <div className="ca-panel p-4">
+                    <div className="ca-section-header mb-2">
+                      <span>Properties</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {data.mechanical_properties.properties.map((prop, idx) => (
+                        <span key={idx} className="ca-inset">
+                          {prop}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {/* Attunement */}
+              <div className="ca-panel p-4">
+                <div className="ca-section-header">
+                  <ScrollText className="w-4 h-4" />
+                  <span>Attunement</span>
+                </div>
+                <p className="text-sm text-slate-400">
+                  {data.mechanical_properties?.attunement === 'none'
+                    ? 'No attunement required'
+                    : data.mechanical_properties?.attunement === 'required'
+                      ? 'Requires attunement'
+                      : data.mechanical_properties?.attunement}
+                </p>
+              </div>
+            </>
+          )}
         </TabsContent>
 
         {/* Secrets Tab (DM only) */}
         <TabsContent value="secrets" className="space-y-4">
+          {/* === ITEM SOUL (The Brain) === */}
+          {hasBrain && (
+            <div className="space-y-3 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+              <div className="flex items-center gap-2 text-emerald-400 font-medium border-b border-emerald-500/20 pb-2">
+                <Sparkles className="w-4 h-4" />
+                <span>Item Soul</span>
+                {data.sub_type && (
+                  <span className="ml-auto text-[10px] px-2 py-0.5 bg-slate-800 rounded text-slate-400 uppercase tracking-wider">
+                    {data.sub_type}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {/* Origin */}
+                {data.brain?.origin && (
+                  <div className="flex gap-2">
+                    <History className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-slate-500 uppercase text-[10px] block">Origin</span>
+                      <div className="text-slate-300">
+                        {renderText(data.brain.origin)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* History */}
+                {data.brain?.history && (
+                  <div className="flex gap-2">
+                    <History className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-slate-500 uppercase text-[10px] block">History</span>
+                      <div className="text-slate-300">
+                        {renderText(data.brain.history)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Trigger */}
+                {data.brain?.trigger && (
+                  <div className="flex gap-2">
+                    <Zap className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-amber-500 uppercase text-[10px] block">Trigger Condition</span>
+                      <span className="text-slate-300">{data.brain.trigger}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Secret */}
+                {data.brain?.secret && (
+                  <div className="flex gap-2 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                    <Key className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-amber-500 uppercase text-[10px] block">Hidden Property (DM Only)</span>
+                      <div className="text-slate-300">
+                        {renderText(data.brain.secret)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cost/Drawback */}
+                {data.brain?.cost && (
+                  <div className="flex gap-2 p-2 bg-red-500/10 rounded border border-red-500/20">
+                    <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-red-500 uppercase text-[10px] block">Cost / Drawback</span>
+                      <span className="text-slate-300">{data.brain.cost}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sentience Hunger */}
+                {data.brain?.hunger && (
+                  <div className="flex gap-2 pt-2 border-t border-slate-700/50">
+                    <Volume2 className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="text-purple-400 uppercase text-[10px] block">Sentience Hunger</span>
+                      <span className="text-slate-300">{data.brain.hunger}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* === ITEM VOICE (Sentient Only) === */}
+          {hasVoice && isSentient && (
+            <div className="space-y-3 p-4 bg-purple-500/5 rounded-lg border border-purple-500/20">
+              <div className="flex items-center gap-2 text-purple-400 font-medium">
+                <Volume2 className="w-4 h-4" />
+                <span>Sentient Personality</span>
+                {data.brain?.sentience_level && (
+                  <span className="ml-auto text-[10px] px-2 py-0.5 bg-purple-500/20 rounded text-purple-300 capitalize">
+                    {data.brain.sentience_level}
+                  </span>
+                )}
+              </div>
+
+              {data.voice?.personality && (
+                <p className="text-sm text-slate-300 italic">&quot;{data.voice.personality}&quot;</p>
+              )}
+
+              {data.voice?.style && data.voice.style.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {data.voice.style.map((s: string, i: number) => (
+                    <span key={i} className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded border border-purple-500/30">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {data.voice?.communication && (
+                  <div>
+                    <span className="text-slate-500 uppercase text-[10px] block mb-1">Communication</span>
+                    <span className="text-slate-300 capitalize">{data.voice.communication}</span>
+                  </div>
+                )}
+                {data.voice?.desires && (
+                  <div>
+                    <span className="text-slate-500 uppercase text-[10px] block mb-1">Desires</span>
+                    <span className="text-slate-300">{data.voice.desires}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {data.origin_history && (
             <div className="ca-panel p-4">
               <div className="ca-section-header">
