@@ -417,9 +417,86 @@ export default function LocationForgePage(): JSX.Element {
         }
         setGenerationReferencedEntities([])
 
-        // Contains sub-locations are now handled by the Discoveries system
-        // The user reviews them in the CommitPanel and decides which to create as stubs
-        toast.success('Location fleshed out and saved!')
+        // Create stubs from approved discoveries (for stub flesh-out path)
+        // Filter for discoveries that should become stubs
+        const stubDiscoveries = reviewDiscoveries.filter(
+          (d) => d.status === 'create_stub' || d.status === 'pending'
+        )
+
+        let createdStubCount = 0
+        if (stubDiscoveries.length > 0) {
+          // Check for existing entities with these names
+          const discoveryNames = stubDiscoveries.map((d) => d.text)
+          const { data: existingEntities } = await supabase
+            .from('entities')
+            .select('name')
+            .eq('campaign_id', campaignId)
+            .in('name', discoveryNames)
+            .is('deleted_at', null)
+
+          const existingNames = new Set(
+            existingEntities?.map((e) => e.name.toLowerCase()) || []
+          )
+
+          // Filter out discoveries that already exist as entities
+          const newDiscoveries = stubDiscoveries.filter(
+            (d) => !existingNames.has(d.text.toLowerCase())
+          )
+
+          if (newDiscoveries.length > 0) {
+            const stubEntities = newDiscoveries.map((d) => ({
+              campaign_id: campaignId,
+              entity_type: d.suggestedType || 'location',
+              sub_type: d.suggestedType === 'location' ? 'building' : undefined,
+              name: d.text,
+              summary: d.context || `Referenced in ${forge.output?.name}`,
+              status: 'active',
+              importance_tier: 'minor',
+              visibility: 'dm_only',
+              attributes: {
+                is_stub: true,
+                needs_review: true,
+                source_entity_id: stubId,
+                source_entity_name: forge.output?.name,
+              },
+            }))
+
+            const { data: createdStubs } = await supabase
+              .from('entities')
+              .insert(stubEntities)
+              .select()
+
+            if (createdStubs && createdStubs.length > 0) {
+              createdStubCount = createdStubs.length
+
+              // Create relationships for each stub
+              const relationshipPromises = createdStubs.map((stub) => {
+                // Check if this discovery came from "contains"
+                const discovery = newDiscoveries.find(
+                  (d) => d.text.toLowerCase() === stub.name.toLowerCase()
+                )
+                const isContains = discovery?.id?.startsWith('contains-')
+
+                return supabase.from('relationships').insert({
+                  campaign_id: campaignId,
+                  source_id: stubId,
+                  target_id: stub.id,
+                  relationship_type: isContains ? 'contains' : 'related_to',
+                  description: isContains ? 'Sub-location' : 'Discovered via Location Forge',
+                  is_active: true,
+                })
+              })
+
+              await Promise.allSettled(relationshipPromises)
+            }
+          }
+        }
+
+        if (createdStubCount > 0) {
+          toast.success(`Location fleshed out! ${createdStubCount} stub${createdStubCount > 1 ? 's' : ''} created.`)
+        } else {
+          toast.success('Location fleshed out and saved!')
+        }
 
         forge.reset()
         router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`)

@@ -12,7 +12,7 @@ You must return a JSON object with this EXACT structure:
 
   "brain": {
     "purpose": "Why this place exists - its function in the world",
-    "atmosphere": "The dominant mood (oppressive, welcoming, eerie, bustling)",
+    "atmosphere": "Oppressive, Foreboding",
     "danger_level": "safe|low|moderate|high|deadly",
     "secret": "What's hidden here that players might discover",
     "history": "1-2 key events that shaped this place",
@@ -80,11 +80,11 @@ Every location needs a reason to exist. Ask: "Why would someone come here?"
 - A city district has its own economy and social structure
 
 ### ATMOSPHERE
-This is the FEELING of the place. Use evocative single words:
-- Oppressive, claustrophobic, foreboding (dungeons, prisons)
-- Bustling, chaotic, vibrant (markets, cities)
-- Serene, sacred, timeless (temples, ancient groves)
-- Decaying, melancholic, haunted (ruins, graveyards)
+Return 1-3 SHORT KEYWORDS only. NO sentences. Examples:
+- "Oppressive, Foreboding" (dungeons, prisons)
+- "Bustling, Chaotic" (markets, cities)
+- "Serene, Sacred" (temples, ancient groves)
+- "Decaying, Haunted" (ruins, graveyards)
 
 ### DANGER LEVEL
 - Safe: No combat expected (friendly settlements)

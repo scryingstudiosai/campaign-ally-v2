@@ -112,6 +112,21 @@ export function LocationOutputCard({
   const dangerLevel = data.brain?.danger_level || 'moderate'
   const dangerClass = DANGER_COLORS[dangerLevel] || DANGER_COLORS.moderate
 
+  // Format atmosphere to be short keywords only
+  const formatAtmosphere = (atmo: string | undefined): string => {
+    if (!atmo) return ''
+    // If already short keywords, use as-is
+    if (atmo.length < 35 && !atmo.includes('.')) return atmo
+    // Extract keywords from longer text
+    const keywords = atmo
+      .replace(/[.!?]/g, ',')
+      .split(/[,;]/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && s.length < 20)
+      .slice(0, 3)
+    return keywords.join(', ') || atmo.slice(0, 30)
+  }
+
   // Render text with interactive links if scan result available, otherwise bold
   const renderTextWithDiscoveries = (text: string | undefined): React.ReactNode => {
     if (!text) return null
@@ -142,7 +157,7 @@ export function LocationOutputCard({
               <Badge className={dangerClass}>{dangerLevel}</Badge>
               {data.brain?.atmosphere && (
                 <Badge variant="outline" className="text-slate-400 capitalize">
-                  {data.brain.atmosphere}
+                  {formatAtmosphere(data.brain.atmosphere)}
                 </Badge>
               )}
             </div>
