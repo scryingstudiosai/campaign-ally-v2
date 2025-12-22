@@ -382,54 +382,16 @@ export default async function EntityDetailPage({ params }: PageProps) {
               <ItemBrainCard brain={itemBrain} subType={entity.sub_type} />
             )}
 
-            {/* === LOCATION DIAGNOSTIC BLOCK === */}
-            {isLocation && (
-              <div className="bg-blue-900/30 border border-blue-500 p-3 rounded text-sm text-blue-200">
-                DIAGNOSTIC: Location Entity Detected
-                <br/>
-                <span className="text-xs">
-                  Subtype: {entity.sub_type || 'none'} |
-                  Has Brain: {locationBrain && Object.keys(locationBrain).length > 0 ? 'YES' : 'NO'} |
-                  Has Soul: {locationSoul && Object.keys(locationSoul).length > 0 ? 'YES' : 'NO'} |
-                  Has Mechanics: {locationMechanics && Object.keys(locationMechanics).length > 0 ? 'YES' : 'NO'}
-                </span>
-                {(!locationBrain || Object.keys(locationBrain).length === 0) && (
-                  <details className="mt-2">
-                    <summary className="text-xs text-red-400 cursor-pointer">No brain data - click to see raw entity</summary>
-                    <pre className="text-xs mt-2 max-h-32 overflow-auto bg-slate-900 p-2 rounded">
-                      {JSON.stringify({ brain: entity.brain, soul: entity.soul, mechanics: entity.mechanics }, null, 2)}
-                    </pre>
-                  </details>
-                )}
-              </div>
-            )}
-
-            {/* Location Brain - Purpose, secrets, conflict */}
-            {isLocation && locationBrain && Object.keys(locationBrain).length > 0 ? (
+            {/* Location Cards */}
+            {isLocation && locationBrain && Object.keys(locationBrain).length > 0 && (
               <LocationBrainCard brain={locationBrain} subType={entity.sub_type} />
-            ) : isLocation ? (
-              <div className="p-3 border border-red-500/50 rounded text-red-400 text-sm">
-                No brain data available for this location.
-              </div>
-            ) : null}
-
-            {/* Location Soul - Sensory details, atmosphere */}
-            {isLocation && locationSoul && Object.keys(locationSoul).length > 0 ? (
+            )}
+            {isLocation && locationSoul && Object.keys(locationSoul).length > 0 && (
               <LocationSoulCard soul={locationSoul} />
-            ) : isLocation ? (
-              <div className="text-slate-500 italic text-xs p-2">
-                No Soul data found.
-              </div>
-            ) : null}
-
-            {/* Location Mechanics - Hazards, encounters, resting */}
-            {isLocation && locationMechanics && Object.keys(locationMechanics).length > 0 ? (
+            )}
+            {isLocation && locationMechanics && Object.keys(locationMechanics).length > 0 && (
               <LocationMechanicsCard mechanics={locationMechanics} />
-            ) : isLocation ? (
-              <div className="text-slate-500 italic text-xs p-2">
-                No Mechanics data found.
-              </div>
-            ) : null}
+            )}
 
             {/* Secret - DM Only */}
             {attributes.secret && (

@@ -121,12 +121,8 @@ export default function LocationForgePage(): JSX.Element {
 
   // Sync "contains" sub-locations to discoveries so users can review/ignore them
   useEffect(() => {
-    console.log('=== CONTAINS SYNC USEEFFECT ===')
-    console.log('forge.output?.brain?.contains:', forge.output?.brain?.contains)
-
     if (forge.output?.brain?.contains && forge.output.brain.contains.length > 0) {
       const containsNames = forge.output.brain.contains as string[]
-      console.log('Syncing contains to discoveries:', containsNames)
 
       setReviewDiscoveries((prev) => {
         // Avoid duplicates - check both existing discoveries and existing entities
@@ -159,15 +155,11 @@ export default function LocationForgePage(): JSX.Element {
           }
         })
 
-        console.log('New contains discoveries:', newContainsDiscoveries)
-
         if (newContainsDiscoveries.length > 0) {
           return [...prev, ...newContainsDiscoveries]
         }
         return prev
       })
-    } else {
-      console.log('No contains to sync')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forge.output?.brain?.contains, forge.output?.name])
@@ -343,30 +335,10 @@ export default function LocationForgePage(): JSX.Element {
 
   // Handle commit
   const handleCommit = async (): Promise<void> => {
-    // CRITICAL DEBUG: This should ALWAYS fire when Save to Memory is clicked
-    console.log('=== LOCATION PAGE handleCommit CALLED ===')
-    console.log('stubId:', stubId)
-    console.log('forge.output exists:', !!forge.output)
-
-    if (!forge.output) {
-      console.log('ERROR: forge.output is null/undefined!')
-      return
-    }
-
-    // Debug logging for location save - log the FULL output object
-    console.log('=== LOCATION SAVE DEBUG ===')
-    console.log('FULL forge.output:', JSON.stringify(forge.output, null, 2))
-    console.log('forge.output.brain:', forge.output.brain)
-    console.log('forge.output.soul:', forge.output.soul)
-    console.log('forge.output.mechanics:', forge.output.mechanics)
-    console.log('typeof brain:', typeof forge.output.brain)
-    console.log('typeof soul:', typeof forge.output.soul)
-    console.log('typeof mechanics:', typeof forge.output.mechanics)
+    if (!forge.output) return
 
     // If fleshing out a stub, update the existing entity instead of creating new
     if (stubId) {
-      console.log('=== STUB UPDATE PATH ===')
-      console.log('Updating existing stub:', stubId)
       try {
         const { data: existingStub } = await supabase
           .from('entities')
@@ -403,24 +375,12 @@ export default function LocationForgePage(): JSX.Element {
           },
         }
 
-        console.log('=== SUPABASE UPDATE DATA ===')
-        console.log('updateData.brain:', JSON.stringify(updateData.brain, null, 2))
-        console.log('updateData.soul:', JSON.stringify(updateData.soul, null, 2))
-        console.log('updateData.mechanics:', JSON.stringify(updateData.mechanics, null, 2))
-        console.log('FULL updateData:', JSON.stringify(updateData, null, 2))
-
-        const { data: updatedEntity, error } = await supabase
+        const { error } = await supabase
           .from('entities')
           .update(updateData)
           .eq('id', stubId)
-          .select()  // Return the updated entity
-
-        console.log('=== SUPABASE UPDATE RESULT ===')
-        console.log('error:', error)
-        console.log('updatedEntity:', JSON.stringify(updatedEntity, null, 2))
 
         if (error) {
-          console.log('SUPABASE ERROR:', error.message, error.details, error.hint)
           toast.error('Failed to update entity')
           return
         }
@@ -468,17 +428,11 @@ export default function LocationForgePage(): JSX.Element {
         toast.error('Failed to update stub')
       }
     } else {
-      // Normal create flow - this path uses useForge.handleCommit → entity-minter.ts
-      console.log('=== NORMAL CREATE PATH (no stubId) ===')
-      console.log('This should trigger useForge.handleCommit and entity-minter logs')
-      console.log('=== CALLING forge.handleCommit ===')
+      // Normal create flow - uses useForge.handleCommit → entity-minter.ts
       const result = await forge.handleCommit({
         discoveries: reviewDiscoveries,
         conflicts: reviewConflicts,
       })
-      console.log('handleCommit result:', result)
-      console.log('Created entity:', result.entity)
-      console.log('Error (if any):', result.error)
 
       if (result.success && result.entity) {
         const entity = result.entity as { id: string }
@@ -522,29 +476,9 @@ export default function LocationForgePage(): JSX.Element {
 
         setGenerationReferencedEntities([])
 
-        // Create 'contains' relationships for any sub-location stubs created from discoveries
-        // The discovery system (via createStubEntities) already created the stubs
-        // We just need to link them with 'contains' relationships
+        // Stubs and their relationships are now created by entity-minter.ts
+        // Contains stubs get 'contains' relationship, others get 'related_to'
         if (result.stubs && result.stubs.length > 0) {
-          // Find stubs that came from "contains" discoveries (IDs start with "contains-")
-          const containsStubs = result.stubs.filter((stub) =>
-            stub.discoveryId.startsWith('contains-')
-          )
-
-          if (containsStubs.length > 0) {
-            const containsRelationships = containsStubs.map((stub) => ({
-              campaign_id: campaignId,
-              source_id: entity.id,
-              target_id: stub.entityId,
-              relationship_type: 'contains',
-              surface_description: 'Sub-location',
-              intensity: 'high',
-              visibility: 'public',
-              is_active: true,
-            }))
-            await supabase.from('relationships').insert(containsRelationships)
-          }
-
           const stubCount = result.stubs.length
           toast.success(`Location saved! ${stubCount} stub${stubCount > 1 ? 's' : ''} created.`)
         } else {

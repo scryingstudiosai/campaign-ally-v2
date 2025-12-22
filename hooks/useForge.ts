@@ -138,16 +138,6 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
         factionId?: string
       }
     }): Promise<CommitResult> => {
-      // DEBUG: Log what handleCommit has access to
-      console.log('=== useForge handleCommit DEBUG ===')
-      console.log('forgeType:', forgeType)
-      console.log('state.output:', state.output)
-      console.log('state.output keys:', state.output ? Object.keys(state.output as object) : 'null')
-      const typedOutput = state.output as Record<string, unknown> | null
-      console.log('state.output.brain:', typedOutput?.brain)
-      console.log('state.output.soul:', typedOutput?.soul)
-      console.log('state.output.mechanics:', typedOutput?.mechanics)
-
       setState((prev) => ({ ...prev, status: 'saving' }))
 
       try {
