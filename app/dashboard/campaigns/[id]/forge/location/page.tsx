@@ -103,17 +103,30 @@ export default function LocationForgePage(): JSX.Element {
   })
 
   // Sync scan results to local review state
+  // IMPORTANT: This must MERGE with contains discoveries, not replace them
   useEffect(() => {
     if (forge.scanResult) {
-      setReviewDiscoveries(forge.scanResult.discoveries)
+      setReviewDiscoveries((prev) => {
+        // Keep any contains discoveries that were already added
+        const containsDiscoveries = prev.filter((d) => d.id.startsWith('contains-'))
+        // Merge scan discoveries with contains discoveries, avoiding duplicates
+        const scanDiscoveries = forge.scanResult!.discoveries.filter((scanD) =>
+          !containsDiscoveries.some((cd) => cd.text.toLowerCase() === scanD.text.toLowerCase())
+        )
+        return [...scanDiscoveries, ...containsDiscoveries]
+      })
       setReviewConflicts(forge.scanResult.conflicts)
     }
   }, [forge.scanResult])
 
   // Sync "contains" sub-locations to discoveries so users can review/ignore them
   useEffect(() => {
+    console.log('=== CONTAINS SYNC USEEFFECT ===')
+    console.log('forge.output?.brain?.contains:', forge.output?.brain?.contains)
+
     if (forge.output?.brain?.contains && forge.output.brain.contains.length > 0) {
       const containsNames = forge.output.brain.contains as string[]
+      console.log('Syncing contains to discoveries:', containsNames)
 
       setReviewDiscoveries((prev) => {
         // Avoid duplicates - check both existing discoveries and existing entities
@@ -146,11 +159,15 @@ export default function LocationForgePage(): JSX.Element {
           }
         })
 
+        console.log('New contains discoveries:', newContainsDiscoveries)
+
         if (newContainsDiscoveries.length > 0) {
           return [...prev, ...newContainsDiscoveries]
         }
         return prev
       })
+    } else {
+      console.log('No contains to sync')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forge.output?.brain?.contains, forge.output?.name])
