@@ -317,18 +317,30 @@ export default function LocationForgePage(): JSX.Element {
 
   // Handle commit
   const handleCommit = async (): Promise<void> => {
-    if (!forge.output) return
+    // CRITICAL DEBUG: This should ALWAYS fire when Save to Memory is clicked
+    console.log('=== LOCATION PAGE handleCommit CALLED ===')
+    console.log('stubId:', stubId)
+    console.log('forge.output exists:', !!forge.output)
 
-    // Debug logging for location save
+    if (!forge.output) {
+      console.log('ERROR: forge.output is null/undefined!')
+      return
+    }
+
+    // Debug logging for location save - log the FULL output object
     console.log('=== LOCATION SAVE DEBUG ===')
-    console.log('Brain data:', JSON.stringify(forge.output.brain, null, 2))
-    console.log('Soul data:', JSON.stringify(forge.output.soul, null, 2))
-    console.log('Mechanics data:', JSON.stringify(forge.output.mechanics, null, 2))
-    console.log('Read aloud:', forge.output.read_aloud)
-    console.log('DM slug:', forge.output.dm_slug)
+    console.log('FULL forge.output:', JSON.stringify(forge.output, null, 2))
+    console.log('forge.output.brain:', forge.output.brain)
+    console.log('forge.output.soul:', forge.output.soul)
+    console.log('forge.output.mechanics:', forge.output.mechanics)
+    console.log('typeof brain:', typeof forge.output.brain)
+    console.log('typeof soul:', typeof forge.output.soul)
+    console.log('typeof mechanics:', typeof forge.output.mechanics)
 
     // If fleshing out a stub, update the existing entity instead of creating new
     if (stubId) {
+      console.log('=== STUB UPDATE PATH ===')
+      console.log('Updating existing stub:', stubId)
       try {
         const { data: existingStub } = await supabase
           .from('entities')
@@ -340,33 +352,49 @@ export default function LocationForgePage(): JSX.Element {
           (existingStub?.attributes as Record<string, unknown>)?.history || []
 
         const locationSubType = forge.output.sub_type || 'building'
-        const { error } = await supabase
+
+        // Build the update object for logging
+        const updateData = {
+          name: forge.output.name,
+          sub_type: locationSubType,
+          brain: forge.output.brain || {},
+          soul: forge.output.soul || {},
+          mechanics: forge.output.mechanics || {},
+          read_aloud: forge.output.read_aloud,
+          dm_slug: forge.output.dm_slug,
+          summary: forge.output.dm_slug || forge.output.read_aloud?.substring(0, 200),
+          attributes: {
+            is_stub: false,
+            needs_review: false,
+            history: [
+              ...(existingHistory as Array<Record<string, unknown>>),
+              {
+                event: 'fleshed_out',
+                timestamp: new Date().toISOString(),
+                note: 'Completed via Location Forge',
+              },
+            ],
+          },
+        }
+
+        console.log('=== SUPABASE UPDATE DATA ===')
+        console.log('updateData.brain:', JSON.stringify(updateData.brain, null, 2))
+        console.log('updateData.soul:', JSON.stringify(updateData.soul, null, 2))
+        console.log('updateData.mechanics:', JSON.stringify(updateData.mechanics, null, 2))
+        console.log('FULL updateData:', JSON.stringify(updateData, null, 2))
+
+        const { data: updatedEntity, error } = await supabase
           .from('entities')
-          .update({
-            name: forge.output.name,
-            sub_type: locationSubType,
-            brain: forge.output.brain || {},
-            soul: forge.output.soul || {},
-            mechanics: forge.output.mechanics || {},
-            read_aloud: forge.output.read_aloud,
-            dm_slug: forge.output.dm_slug,
-            summary: forge.output.dm_slug || forge.output.read_aloud?.substring(0, 200),
-            attributes: {
-              is_stub: false,
-              needs_review: false,
-              history: [
-                ...(existingHistory as Array<Record<string, unknown>>),
-                {
-                  event: 'fleshed_out',
-                  timestamp: new Date().toISOString(),
-                  note: 'Completed via Location Forge',
-                },
-              ],
-            },
-          })
+          .update(updateData)
           .eq('id', stubId)
+          .select()  // Return the updated entity
+
+        console.log('=== SUPABASE UPDATE RESULT ===')
+        console.log('error:', error)
+        console.log('updatedEntity:', JSON.stringify(updatedEntity, null, 2))
 
         if (error) {
+          console.log('SUPABASE ERROR:', error.message, error.details, error.hint)
           toast.error('Failed to update entity')
           return
         }
@@ -504,7 +532,9 @@ export default function LocationForgePage(): JSX.Element {
         toast.error('Failed to update stub')
       }
     } else {
-      // Normal create flow
+      // Normal create flow - this path uses useForge.handleCommit → entity-minter.ts
+      console.log('=== NORMAL CREATE PATH (no stubId) ===')
+      console.log('This should trigger useForge.handleCommit and entity-minter logs')
       console.log('=== CALLING forge.handleCommit ===')
       const result = await forge.handleCommit({
         discoveries: reviewDiscoveries,
