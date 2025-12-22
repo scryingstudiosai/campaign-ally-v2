@@ -346,17 +346,25 @@ export function LocationOutputCard({
                 </div>
               )}
 
-              {/* Sub-locations */}
+              {/* Sub-locations - will be created as stubs */}
               {data.brain.contains && data.brain.contains.length > 0 && (
-                <div className="pt-2 border-t border-slate-700">
-                  <span className="text-xs text-slate-500 uppercase">Contains</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
+                <div className="pt-3 border-t border-slate-700">
+                  <span className="text-xs text-amber-400 uppercase">
+                    Sub-Locations (will be created as stubs)
+                  </span>
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {data.brain.contains.map((loc, i) => (
-                      <Badge key={i} variant="outline" className="text-slate-300">
+                      <span
+                        key={i}
+                        className="px-2 py-1 bg-amber-500/10 border border-dashed border-amber-500/30 rounded text-sm text-amber-300"
+                      >
                         {loc}
-                      </Badge>
+                      </span>
                     ))}
                   </div>
+                  <p className="text-xs text-slate-500 mt-2">
+                    These appear in Discoveries below. Click to ignore any you don&apos;t want.
+                  </p>
                 </div>
               )}
             </div>
