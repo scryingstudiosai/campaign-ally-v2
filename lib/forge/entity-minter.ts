@@ -304,12 +304,20 @@ function buildEntityData(
     case 'location':
       return {
         ...baseData,
-        subtype: output.location_type as string,
-        summary: output.summary as string,
+        // New Brain/Soul/Mechanics architecture columns (matching NPC/Item pattern)
+        sub_type: (output.sub_type as string) || 'building',
+        brain: output.brain || {},
+        soul: output.soul || {},
+        mechanics: output.mechanics || {},
+        read_aloud: output.read_aloud as string,
+        dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
+        // Legacy fields
+        subtype: (output.sub_type as string) || (output.location_type as string),
+        summary: (output.dm_slug as string) || (output.summary as string),
         description: output.description as string,
         attributes: {
           ...additionalAttributes,
-          location_type: output.location_type,
+          location_type: output.location_type || output.sub_type,
           atmosphere: output.atmosphere,
           notable_features: output.notable_features,
           secrets: output.secrets,
