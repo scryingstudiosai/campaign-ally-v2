@@ -391,6 +391,12 @@ export default function LocationForgePage(): JSX.Element {
 
         // Save facts for the fleshed-out stub
         const locationData = forge.output
+        console.log('=== STUB FLESH-OUT: FACTS DEBUG ===')
+        console.log('stubId:', stubId)
+        console.log('locationData:', locationData)
+        console.log('locationData?.facts:', locationData?.facts)
+        console.log('facts count:', locationData?.facts?.length || 0)
+
         if (locationData?.facts && locationData.facts.length > 0) {
           const factsToInsert = locationData.facts.map((fact: { content: string; category?: string; visibility?: string }) => ({
             campaign_id: campaignId,
@@ -401,13 +407,20 @@ export default function LocationForgePage(): JSX.Element {
             source: 'generated',
           }))
 
-          const { error: factsError } = await supabase
+          console.log('factsToInsert:', factsToInsert)
+
+          const { data: savedFacts, error: factsError } = await supabase
             .from('facts')
             .insert(factsToInsert)
+            .select()
 
           if (factsError) {
             console.error('Error saving facts:', factsError)
+          } else {
+            console.log(`Successfully saved ${savedFacts?.length || 0} facts for stub ${stubId}`)
           }
+        } else {
+          console.log('No facts to save - locationData.facts is empty or undefined')
         }
 
         // Auto-create relationships with referenced entities
