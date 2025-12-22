@@ -402,9 +402,9 @@ export default function LocationForgePage(): JSX.Element {
             campaign_id: campaignId,
             entity_id: stubId,
             content: fact.content,
-            category: fact.category || 'general',
+            category: fact.category || 'lore',
             visibility: fact.visibility || 'public',
-            source: 'generated',
+            source_type: 'generated',
           }))
 
           console.log('factsToInsert:', factsToInsert)
