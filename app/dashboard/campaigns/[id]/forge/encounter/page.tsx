@@ -442,10 +442,10 @@ export default function EncounterForgePage({ params }: PageProps) {
           {/* Location Selector */}
           <div className="space-y-2">
             <Label>Location (optional)</Label>
-            <Select value={locationId} onValueChange={setLocationId} disabled={isLocked}>
+            <Select value={locationId || 'none'} onValueChange={(val) => setLocationId(val === 'none' ? '' : val)} disabled={isLocked}>
               <SelectTrigger className="bg-slate-900/50 border-slate-700">
                 <SelectValue placeholder="Select location for context...">
-                  {locationId && (
+                  {locationId && locationId !== 'none' && (
                     <span className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-teal-400" />
                       {locations.find((l) => l.id === locationId)?.name || 'Unknown'}
@@ -454,7 +454,7 @@ export default function EncounterForgePage({ params }: PageProps) {
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No location</SelectItem>
+                <SelectItem value="none">No location</SelectItem>
                 {locations.map((loc) => (
                   <SelectItem key={loc.id} value={loc.id}>
                     <span className="flex items-center gap-2">

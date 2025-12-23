@@ -189,15 +189,17 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
-            <div className="ca-card ca-card--encounter p-4 opacity-50">
-              <div className="flex items-center gap-2 mb-2">
-                <Swords className="w-4 h-4 text-primary" />
-                <h3 className="text-base font-semibold text-slate-100">Encounter Forge</h3>
+            <Link href={`/dashboard/campaigns/${params.id}/forge/encounter`} className="block">
+              <div className="ca-card ca-card--encounter ca-card-interactive p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Swords className="w-4 h-4 text-primary" />
+                  <h3 className="text-base font-semibold text-slate-100">Encounter Forge</h3>
+                </div>
+                <p className="text-sm text-slate-400">
+                  Create dynamic combat, social, and exploration encounters
+                </p>
               </div>
-              <p className="text-sm text-slate-500">
-                Coming soon...
-              </p>
-            </div>
+            </Link>
 
             <Link href={`/dashboard/campaigns/${params.id}/forge/item`} className="block">
               <div className="ca-card ca-card--item ca-card-interactive p-4">
