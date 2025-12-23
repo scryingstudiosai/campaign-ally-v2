@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   Sparkles,
   Menu,
+  Swords,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -57,6 +58,7 @@ function SidebarContent({
     { label: 'Location', href: `${baseUrl}/forge/location`, icon: MapPin },
     { label: 'Item', href: `${baseUrl}/forge/item`, icon: Package },
     { label: 'Faction', href: `${baseUrl}/forge/faction`, icon: Users },
+    { label: 'Encounter', href: `${baseUrl}/forge/encounter`, icon: Swords },
   ]
 
   const handleClick = () => {

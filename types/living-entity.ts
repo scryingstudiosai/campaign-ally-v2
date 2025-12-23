@@ -339,19 +339,87 @@ export interface FactionMechanics {
 
 export const DEFAULT_FACTION_MECHANICS: FactionMechanics = {};
 
-// Encounter Brain
+// Encounter Sub-Types
+export type EncounterSubType =
+  | 'combat'
+  | 'boss'
+  | 'ambush'
+  | 'defense'
+  | 'chase'
+  | 'stealth'
+  | 'puzzle'
+  | 'social'
+  | 'exploration'
+  | 'trap'
+  | 'complex_trap'
+  | 'skill_challenge';
+
+// Encounter Brain - DM-facing logic
 export interface EncounterBrain extends BaseBrain {
-  objective: string;
-  twist?: string;
-  flee_condition: string;
-  failure_consequence: string;
+  purpose?: string;            // Why this encounter exists (story beat)
+  objective?: string;          // What players need to accomplish
+  tactics?: string;            // How enemies behave/fight
+  trigger?: string;            // What initiates the encounter
+  secret?: string;             // Hidden twist (DM only)
+  scaling?: string;            // How to adjust difficulty
+  failure_consequence?: string; // What happens if players lose/flee
+  resolution?: string;         // Possible outcomes
 }
 
-export const DEFAULT_ENCOUNTER_BRAIN: EncounterBrain = {
-  objective: '',
-  flee_condition: '',
-  failure_consequence: '',
-};
+export const DEFAULT_ENCOUNTER_BRAIN: EncounterBrain = {};
+
+// Encounter Soul - Player-facing atmosphere
+export interface EncounterSoul {
+  read_aloud?: string;         // Atmospheric description to read aloud
+  sights?: string[];           // Visual details
+  sounds?: string[];           // Audio atmosphere
+  tension?: string;            // The mood/stakes
+  environmental_features?: string[]; // Interactive terrain elements
+}
+
+export const DEFAULT_ENCOUNTER_SOUL: EncounterSoul = {};
+
+// Encounter Phase - Dynamic combat stages
+export interface EncounterPhase {
+  trigger: string;             // "Round 3" or "Boss at 50% HP"
+  description: string;         // What changes
+}
+
+// Encounter Creature Reference
+export interface EncounterCreature {
+  name: string;                // Creature name (prefer SRD names)
+  count: number;               // How many
+  role?: string;               // minion, brute, controller, boss, etc.
+  notes?: string;              // Special behavior or modifications
+}
+
+// Encounter Reward Item
+export interface EncounterRewardItem {
+  name: string;
+  type?: string;               // weapon, armor, consumable, treasure, etc.
+}
+
+// Encounter Rewards
+export interface EncounterRewards {
+  xp?: number;
+  gold?: number;
+  items?: EncounterRewardItem[];
+  story?: string;              // Narrative rewards (info, allies, reputation)
+}
+
+// Encounter Mechanics - Game stats
+export interface EncounterMechanics {
+  difficulty?: 'trivial' | 'easy' | 'medium' | 'hard' | 'deadly';
+  party_size?: number;
+  party_level?: string;        // "3-5" range or single number
+  creatures?: EncounterCreature[];
+  terrain?: string[];          // Terrain features
+  hazards?: string[];          // Environmental dangers
+  duration?: string;           // Expected real-time length
+  phases?: EncounterPhase[];   // Dynamic combat stages
+}
+
+export const DEFAULT_ENCOUNTER_MECHANICS: EncounterMechanics = {};
 
 // Quest Brain
 export interface QuestBrain extends BaseBrain {
@@ -483,7 +551,7 @@ export interface Session {
 
 
 // === ENTITY TYPES ===
-export type EntityType = 'npc' | 'item' | 'location' | 'faction' | 'encounter' | 'quest';
+export type EntityType = 'npc' | 'item' | 'location' | 'faction' | 'encounter' | 'quest' | 'creature';
 export type EntitySubType = 'standard' | 'villain' | 'hero' | 'shop' | 'tavern' | 'temple' | 'dungeon' | 'nation' | 'city' | 'building' | string;
 export type EntityStatus = 'active' | 'inactive' | 'dead' | 'destroyed' | 'archived' | 'stub';
 

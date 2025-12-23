@@ -94,6 +94,7 @@ const FORGE_TO_ENTITY_TYPE: Record<ForgeType, string> = {
   monster: 'npc', // Monsters are stored as NPCs with a subtype
   faction: 'faction',
   quest: 'quest',
+  encounter: 'encounter',
 }
 
 export async function saveForgedEntity(
@@ -345,6 +346,23 @@ function buildEntityData(
         description: output.description as string,
         attributes: {
           ...additionalAttributes,
+        },
+      }
+
+    case 'encounter':
+      return {
+        ...baseData,
+        // Brain/Soul/Mechanics architecture columns
+        sub_type: (output.sub_type as string) || 'combat',
+        brain: output.brain || {},
+        soul: output.soul || {},
+        mechanics: output.mechanics || {},
+        read_aloud: output.read_aloud as string,
+        dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
+        summary: (output.dm_slug as string) || (output.summary as string),
+        attributes: {
+          ...additionalAttributes,
+          rewards: output.rewards,
         },
       }
 

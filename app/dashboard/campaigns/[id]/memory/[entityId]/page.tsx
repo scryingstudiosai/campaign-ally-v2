@@ -23,8 +23,12 @@ import { LocationMechanicsCard } from '@/components/entity/LocationMechanicsCard
 import { FactionBrainCard } from '@/components/entity/FactionBrainCard'
 import { FactionSoulCard } from '@/components/entity/FactionSoulCard'
 import { FactionMechanicsCard } from '@/components/entity/FactionMechanicsCard'
+import { EncounterBrainCard } from '@/components/entity/EncounterBrainCard'
+import { EncounterSoulCard } from '@/components/entity/EncounterSoulCard'
+import { EncounterMechanicsCard } from '@/components/entity/EncounterMechanicsCard'
+import { EncounterRewardsCard } from '@/components/entity/EncounterRewardsCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, isNpcBrain } from '@/types/living-entity'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -164,6 +168,13 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const factionSoul = entity.soul as FactionSoul | null
   const factionMechanics = entity.mechanics as FactionMechanics | null
 
+  // Encounter-specific helpers
+  const isEncounter = entity.entity_type === 'encounter'
+  const encounterBrain = entity.brain as EncounterBrain | null
+  const encounterSoul = entity.soul as EncounterSoul | null
+  const encounterMechanics = entity.mechanics as EncounterMechanics | null
+  const encounterRewards = entity.attributes?.rewards as EncounterRewards | null
+
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
     (entity.voice && (entity.voice as Voice).style?.length > 0) ||
@@ -185,11 +196,17 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (factionSoul && Object.keys(factionSoul).length > 0) ||
     (factionMechanics && Object.keys(factionMechanics).length > 0)
 
+  const hasEncounterStageContent =
+    (encounterSoul && Object.keys(encounterSoul).length > 0) ||
+    (encounterMechanics && Object.keys(encounterMechanics).length > 0) ||
+    (encounterRewards && Object.keys(encounterRewards).length > 0)
+
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
     (isItem && hasItemStageContent) ||
     (isLocation && hasLocationStageContent) ||
     (isFaction && hasFactionStageContent) ||
+    (isEncounter && hasEncounterStageContent) ||
     entity.public_notes ||
     entity.dm_notes
 
@@ -423,6 +440,26 @@ export default async function EntityDetailPage({ params }: PageProps) {
               </>
             )}
 
+            {/* --- ENCOUNTER STAGE CONTENT --- */}
+            {isEncounter && (
+              <>
+                {/* Encounter Soul - Atmosphere, sensory details (player-facing) */}
+                {encounterSoul && Object.keys(encounterSoul).length > 0 && (
+                  <EncounterSoulCard soul={encounterSoul} />
+                )}
+
+                {/* Encounter Mechanics - Creatures, phases, hazards */}
+                {encounterMechanics && Object.keys(encounterMechanics).length > 0 && (
+                  <EncounterMechanicsCard mechanics={encounterMechanics} />
+                )}
+
+                {/* Encounter Rewards - XP, gold, loot */}
+                {encounterRewards && Object.keys(encounterRewards).length > 0 && (
+                  <EncounterRewardsCard rewards={encounterRewards} />
+                )}
+              </>
+            )}
+
             {/* --- SHARED STAGE CONTENT --- */}
             {/* Public Notes */}
             {entity.public_notes && (
@@ -483,6 +520,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* --- FACTION SCRIPT CONTENT --- */}
             {isFaction && factionBrain && Object.keys(factionBrain).length > 0 && (
               <FactionBrainCard brain={factionBrain} subType={entity.sub_type} />
+            )}
+
+            {/* --- ENCOUNTER SCRIPT CONTENT --- */}
+            {isEncounter && encounterBrain && Object.keys(encounterBrain).length > 0 && (
+              <EncounterBrainCard brain={encounterBrain} subType={entity.sub_type} />
             )}
 
             {/* --- SHARED SCRIPT CONTENT --- */}

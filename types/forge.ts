@@ -1,9 +1,9 @@
 // Forge Foundation Types
 // Shared TypeScript interfaces for all forge systems
 
-export type EntityType = 'npc' | 'location' | 'item' | 'faction' | 'quest' | 'other'
+export type EntityType = 'npc' | 'location' | 'item' | 'faction' | 'quest' | 'encounter' | 'creature' | 'other'
 
-export type ForgeType = 'npc' | 'item' | 'location' | 'monster' | 'faction' | 'quest'
+export type ForgeType = 'npc' | 'item' | 'location' | 'monster' | 'faction' | 'quest' | 'encounter'
 
 export type ForgeStatus =
   | 'idle'
