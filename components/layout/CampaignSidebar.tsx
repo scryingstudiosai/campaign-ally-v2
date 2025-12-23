@@ -9,6 +9,7 @@ import {
   Book,
   History,
   User,
+  Users,
   Package,
   MapPin,
   ChevronLeft,
@@ -55,6 +56,7 @@ function SidebarContent({
     { label: 'NPC', href: `${baseUrl}/forge/npc`, icon: User },
     { label: 'Location', href: `${baseUrl}/forge/location`, icon: MapPin },
     { label: 'Item', href: `${baseUrl}/forge/item`, icon: Package },
+    { label: 'Faction', href: `${baseUrl}/forge/faction`, icon: Users },
   ]
 
   const handleClick = () => {

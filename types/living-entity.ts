@@ -286,22 +286,58 @@ export const DEFAULT_ITEM_BRAIN: ItemBrain = {
   sentience_level: 'none',
 };
 
-// Faction Brain
+// Faction Sub-Types
+export type FactionSubType =
+  | 'guild'
+  | 'military'
+  | 'religious'
+  | 'criminal'
+  | 'political'
+  | 'merchant'
+  | 'cult'
+  | 'noble_house'
+  | 'secret_society';
+
+// Faction Brain - DM-facing logic
 export interface FactionBrain extends BaseBrain {
-  goal: string;
-  methods: string;
-  obstacle: string;
-  party_hook: string;
-  public_face: string;
+  purpose?: string;        // Why this faction exists
+  goals?: string;          // Long-term ambitions
+  current_agenda?: string; // What they're doing RIGHT NOW
+  methods?: string;        // How they operate (subtle, violent, bureaucratic)
+  secret?: string;         // DM Only - hidden truth
+  weakness?: string;       // How they can be undermined
+  hierarchy?: string;      // Leadership structure description
+  key_members?: string[];  // Names of leaders (become NPC stubs)
 }
 
-export const DEFAULT_FACTION_BRAIN: FactionBrain = {
-  goal: '',
-  methods: '',
-  obstacle: '',
-  party_hook: '',
-  public_face: '',
-};
+export const DEFAULT_FACTION_BRAIN: FactionBrain = {};
+
+// Faction Soul - Player-facing identity
+export interface FactionSoul {
+  motto?: string;          // Their slogan or creed
+  symbol?: string;         // Visual description of crest/emblem
+  reputation?: string;     // How the public perceives them
+  colors?: string[];       // Faction colors (e.g., "Crimson", "Gold")
+  culture?: string;        // Values, traditions, rituals, vibe
+  greeting?: string;       // How members greet each other
+}
+
+export const DEFAULT_FACTION_SOUL: FactionSoul = {};
+
+// Faction Mechanics - Game stats and benefits
+export interface FactionMechanics {
+  influence?: 'negligible' | 'low' | 'moderate' | 'high' | 'dominant';
+  wealth?: 'destitute' | 'poor' | 'moderate' | 'wealthy' | 'vast';
+  military?: 'none' | 'militia' | 'guards' | 'army' | 'elite_forces';
+  reach?: 'local' | 'regional' | 'national' | 'continental' | 'global';
+  stability?: 'crumbling' | 'unstable' | 'stable' | 'thriving' | 'unshakeable';
+  territory?: string[];    // Locations they control (become Location stubs)
+  resources?: string[];    // Assets they control (ships, castles, artifacts)
+  benefits?: string[];     // What players get for joining (renown rewards)
+  requirements?: string;   // How to join / requirements for membership
+}
+
+export const DEFAULT_FACTION_MECHANICS: FactionMechanics = {};
 
 // Encounter Brain
 export interface EncounterBrain extends BaseBrain {
@@ -364,7 +400,7 @@ export function isItemBrain(brain: BaseBrain): brain is ItemBrain {
 }
 
 export function isFactionBrain(brain: BaseBrain): brain is FactionBrain {
-  return 'goal' in brain && 'methods' in brain && 'party_hook' in brain;
+  return 'purpose' in brain || 'goals' in brain || 'hierarchy' in brain || 'key_members' in brain;
 }
 
 // Get default brain for entity type

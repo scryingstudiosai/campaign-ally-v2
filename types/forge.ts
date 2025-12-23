@@ -124,3 +124,9 @@ export interface LocationForgeInput extends BaseForgeInput {
   locationType?: string
   parentLocation?: string
 }
+
+export interface FactionForgeInput extends BaseForgeInput {
+  factionType?: string
+  influence?: string
+  wealth?: string
+}

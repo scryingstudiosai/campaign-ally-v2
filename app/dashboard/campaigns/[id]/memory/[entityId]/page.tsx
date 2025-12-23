@@ -20,8 +20,11 @@ import { ItemMechanicsCard } from '@/components/entity/ItemMechanicsCard'
 import { LocationBrainCard } from '@/components/entity/LocationBrainCard'
 import { LocationSoulCard } from '@/components/entity/LocationSoulCard'
 import { LocationMechanicsCard } from '@/components/entity/LocationMechanicsCard'
+import { FactionBrainCard } from '@/components/entity/FactionBrainCard'
+import { FactionSoulCard } from '@/components/entity/FactionSoulCard'
+import { FactionMechanicsCard } from '@/components/entity/FactionMechanicsCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, isNpcBrain } from '@/types/living-entity'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -155,6 +158,12 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const locationSoul = entity.soul as LocationSoul | null
   const locationMechanics = entity.mechanics as LocationMechanics | null
 
+  // Faction-specific helpers
+  const isFaction = entity.entity_type === 'faction'
+  const factionBrain = entity.brain as FactionBrain | null
+  const factionSoul = entity.soul as FactionSoul | null
+  const factionMechanics = entity.mechanics as FactionMechanics | null
+
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
     (entity.voice && (entity.voice as Voice).style?.length > 0) ||
@@ -172,10 +181,15 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (locationSoul && Object.keys(locationSoul).length > 0) ||
     (locationMechanics && Object.keys(locationMechanics).length > 0)
 
+  const hasFactionStageContent =
+    (factionSoul && Object.keys(factionSoul).length > 0) ||
+    (factionMechanics && Object.keys(factionMechanics).length > 0)
+
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
     (isItem && hasItemStageContent) ||
     (isLocation && hasLocationStageContent) ||
+    (isFaction && hasFactionStageContent) ||
     entity.public_notes ||
     entity.dm_notes
 
@@ -394,6 +408,21 @@ export default async function EntityDetailPage({ params }: PageProps) {
               </>
             )}
 
+            {/* --- FACTION STAGE CONTENT --- */}
+            {isFaction && (
+              <>
+                {/* Faction Soul - Identity, culture (player-facing) */}
+                {factionSoul && Object.keys(factionSoul).length > 0 && (
+                  <FactionSoulCard soul={factionSoul} />
+                )}
+
+                {/* Faction Mechanics - Power, resources (player-facing) */}
+                {factionMechanics && Object.keys(factionMechanics).length > 0 && (
+                  <FactionMechanicsCard mechanics={factionMechanics} />
+                )}
+              </>
+            )}
+
             {/* --- SHARED STAGE CONTENT --- */}
             {/* Public Notes */}
             {entity.public_notes && (
@@ -449,6 +478,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* --- LOCATION SCRIPT CONTENT --- */}
             {isLocation && locationBrain && Object.keys(locationBrain).length > 0 && (
               <LocationBrainCard brain={locationBrain} subType={entity.sub_type} />
+            )}
+
+            {/* --- FACTION SCRIPT CONTENT --- */}
+            {isFaction && factionBrain && Object.keys(factionBrain).length > 0 && (
+              <FactionBrainCard brain={factionBrain} subType={entity.sub_type} />
             )}
 
             {/* --- SHARED SCRIPT CONTENT --- */}
