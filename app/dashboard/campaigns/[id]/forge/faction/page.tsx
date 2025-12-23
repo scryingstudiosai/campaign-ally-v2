@@ -141,9 +141,23 @@ export default function FactionForgePage({ params }: PageProps) {
   const [reviewConflicts, setReviewConflicts] = useState<Conflict[]>([])
 
   // Sync scan results to local review state
+  // IMPORTANT: This must MERGE with member/territory discoveries, not replace them
   useEffect(() => {
     if (forge.scanResult) {
-      setReviewDiscoveries(forge.scanResult.discoveries)
+      setReviewDiscoveries((prev) => {
+        // Keep any member/territory discoveries that were already added
+        const memberTerritoryDiscoveries = prev.filter(
+          (d) => d.id.startsWith('member-') || d.id.startsWith('territory-')
+        )
+        // Merge scan discoveries with member/territory discoveries, avoiding duplicates
+        const scanDiscoveries = forge.scanResult!.discoveries.filter(
+          (scanD) =>
+            !memberTerritoryDiscoveries.some(
+              (mtd) => mtd.text.toLowerCase() === scanD.text.toLowerCase()
+            )
+        )
+        return [...scanDiscoveries, ...memberTerritoryDiscoveries]
+      })
       setReviewConflicts(forge.scanResult.conflicts)
     }
   }, [forge.scanResult])
