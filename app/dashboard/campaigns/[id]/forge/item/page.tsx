@@ -448,6 +448,10 @@ export default function ItemForgePage(): JSX.Element {
 
   // Handle generation with toast
   const handleGenerate = async (input: ItemInputData): Promise<void> => {
+    // Clear previous discoveries before generating new content
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+
     try {
       const result = await forge.handleGenerate(input)
       // Only show success toast if generation actually completed
@@ -460,6 +464,13 @@ export default function ItemForgePage(): JSX.Element {
         error instanceof Error ? error.message : 'Failed to generate Item'
       )
     }
+  }
+
+  // Handle discard - clear discoveries and reset forge
+  const handleDiscard = (): void => {
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+    forge.reset()
   }
 
   if (loading) {
@@ -609,7 +620,7 @@ export default function ItemForgePage(): JSX.Element {
             onDiscoveryTypeChange={handleDiscoveryTypeChange}
             onConflictResolution={handleConflictResolution}
             onCommit={handleCommit}
-            onDiscard={forge.reset}
+            onDiscard={handleDiscard}
             isCommitting={forge.status === 'saving'}
           />
         ) : undefined

@@ -534,6 +534,10 @@ export default function NpcForgePage(): JSX.Element {
 
   // Handle generation with toast
   const handleGenerate = async (input: NpcInputData): Promise<void> => {
+    // Clear previous discoveries before generating new content
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+
     try {
       // Include concept and referenced entity IDs for context injection
       const referencedIds = referencedEntities.map((e) => e.id)
@@ -561,6 +565,10 @@ export default function NpcForgePage(): JSX.Element {
       toast.error('Please enter a villain concept')
       return
     }
+
+    // Clear previous discoveries before generating new content
+    setReviewDiscoveries([])
+    setReviewConflicts([])
 
     const referencedIds = referencedEntities.map((e) => e.id)
 
@@ -594,6 +602,10 @@ export default function NpcForgePage(): JSX.Element {
       return
     }
 
+    // Clear previous discoveries before generating new content
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+
     const limitation = heroLimitation === 'other' ? heroLimitationCustom : heroLimitation
     const referencedIds = referencedEntities.map((e) => e.id)
 
@@ -618,6 +630,13 @@ export default function NpcForgePage(): JSX.Element {
         error instanceof Error ? error.message : 'Failed to forge hero'
       )
     }
+  }
+
+  // Handle discard - clear discoveries and reset forge
+  const handleDiscard = (): void => {
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+    forge.reset()
   }
 
   if (loading) {
@@ -1081,7 +1100,7 @@ export default function NpcForgePage(): JSX.Element {
             onDiscoveryTypeChange={handleDiscoveryTypeChange}
             onConflictResolution={handleConflictResolution}
             onCommit={handleCommit}
-            onDiscard={forge.reset}
+            onDiscard={handleDiscard}
             isCommitting={forge.status === 'saving'}
           />
         ) : undefined

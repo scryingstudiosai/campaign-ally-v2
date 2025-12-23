@@ -148,7 +148,7 @@ export default function LocationForgePage(): JSX.Element {
               text: cleanName,
               suggestedType: 'location' as EntityType,
               context: `Sub-location within ${forge.output?.name}`,
-              status: 'pending',
+              status: 'pending', // Neutral/undecided - user chooses action
             })
             // Add to set to prevent duplicates within the same contains array
             existingDiscoveryTexts.add(nameLower)
@@ -385,15 +385,42 @@ export default function LocationForgePage(): JSX.Element {
           return
         }
 
-        // Create relationship to source entity if exists
-        if (stubContext?.sourceEntityId) {
-          await supabase.from('relationships').insert({
+        // NOTE: Do NOT create a relationship to source entity here.
+        // The relationship was already created when the stub was first created
+        // from Contains/Discoveries. Creating another would cause duplicates.
+
+        // Save facts for the fleshed-out stub
+        const locationData = forge.output
+        console.log('=== STUB FLESH-OUT: FACTS DEBUG ===')
+        console.log('stubId:', stubId)
+        console.log('locationData:', locationData)
+        console.log('locationData?.facts:', locationData?.facts)
+        console.log('facts count:', locationData?.facts?.length || 0)
+
+        if (locationData?.facts && locationData.facts.length > 0) {
+          const factsToInsert = locationData.facts.map((fact: { content: string; category?: string; visibility?: string }) => ({
             campaign_id: campaignId,
-            source_id: stubId,
-            target_id: stubContext.sourceEntityId,
-            relationship_type: 'mentioned_in',
-            description: `First mentioned in ${stubContext.sourceEntityName}`,
-          })
+            entity_id: stubId,
+            content: fact.content,
+            category: fact.category || 'lore',
+            visibility: fact.visibility || 'public',
+            source_type: 'generated',
+          }))
+
+          console.log('factsToInsert:', factsToInsert)
+
+          const { data: savedFacts, error: factsError } = await supabase
+            .from('facts')
+            .insert(factsToInsert)
+            .select()
+
+          if (factsError) {
+            console.error('Error saving facts:', factsError)
+          } else {
+            console.log(`Successfully saved ${savedFacts?.length || 0} facts for stub ${stubId}`)
+          }
+        } else {
+          console.log('No facts to save - locationData.facts is empty or undefined')
         }
 
         // Auto-create relationships with referenced entities
@@ -573,6 +600,10 @@ export default function LocationForgePage(): JSX.Element {
 
   // Handle generation with toast
   const handleGenerate = async (input: LocationInputData): Promise<void> => {
+    // Clear previous discoveries before generating new content
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+
     try {
       const result = await forge.handleGenerate(input)
       if (result.success) {
@@ -583,6 +614,13 @@ export default function LocationForgePage(): JSX.Element {
         error instanceof Error ? error.message : 'Failed to generate Location'
       )
     }
+  }
+
+  // Handle discard - clear discoveries and reset forge
+  const handleDiscard = (): void => {
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+    forge.reset()
   }
 
   if (loading) {
@@ -690,7 +728,7 @@ export default function LocationForgePage(): JSX.Element {
             onDiscoveryTypeChange={handleDiscoveryTypeChange}
             onConflictResolution={handleConflictResolution}
             onCommit={handleCommit}
-            onDiscard={forge.reset}
+            onDiscard={handleDiscard}
             isCommitting={forge.status === 'saving'}
           />
         ) : undefined

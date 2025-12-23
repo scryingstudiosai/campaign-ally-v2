@@ -332,17 +332,19 @@ function buildEntityData(
     case 'faction':
       return {
         ...baseData,
-        subtype: output.faction_type as string,
-        summary: output.summary as string,
+        // Brain/Soul/Mechanics architecture columns
+        sub_type: (output.sub_type as string) || 'guild',
+        brain: output.brain || {},
+        soul: output.soul || {},
+        mechanics: output.mechanics || {},
+        read_aloud: output.read_aloud as string,
+        dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
+        // Legacy fields
+        subtype: (output.sub_type as string) || (output.faction_type as string),
+        summary: (output.dm_slug as string) || (output.summary as string),
         description: output.description as string,
         attributes: {
           ...additionalAttributes,
-          faction_type: output.faction_type,
-          goals: output.goals,
-          resources: output.resources,
-          leadership: output.leadership,
-          membership: output.membership,
-          secrets: output.secrets,
         },
       }
 

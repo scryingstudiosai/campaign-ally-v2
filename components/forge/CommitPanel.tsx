@@ -283,24 +283,31 @@ function DiscoveryCard({
   onAction: (action: Discovery['status'], linkedEntityId?: string) => void
   onTypeChange?: (newType: EntityType) => void
 }): JSX.Element {
-  const isHandled = discovery.status !== 'pending'
+  const isPending = discovery.status === 'pending'
+  const isCreateStub = discovery.status === 'create_stub'
+  const isIgnored = discovery.status === 'ignore'
+  const isLinked = discovery.status === 'link_existing'
 
   return (
     <div
       className={`ca-panel p-3 ${
-        isHandled
-          ? ''
-          : 'border-l-2 border-amber-500/50'
+        isCreateStub
+          ? 'border-l-2 border-green-500/50'
+          : isIgnored
+          ? 'border-l-2 border-slate-600/50 opacity-60'
+          : isPending
+          ? 'border-l-2 border-amber-500/50'
+          : ''
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-200 truncate">
+          <p className={`text-sm font-medium truncate ${isIgnored ? 'text-slate-400' : 'text-slate-200'}`}>
             &quot;{discovery.text}&quot;
           </p>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-slate-500">Type:</span>
-            {onTypeChange && !isHandled ? (
+            {onTypeChange && (isPending || isIgnored) ? (
               <Select
                 value={discovery.suggestedType}
                 onValueChange={(value) => onTypeChange(value as EntityType)}
@@ -325,7 +332,8 @@ function DiscoveryCard({
         </div>
       </div>
 
-      {!isHandled && (
+      {/* Pending: show all 3 buttons */}
+      {isPending && (
         <div className="mt-3 flex gap-1">
           <button
             onClick={() => onAction('create_stub')}
@@ -348,9 +356,40 @@ function DiscoveryCard({
         </div>
       )}
 
-      {isHandled && (
-        <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
-          <Check className="w-3 h-3" /> {formatStatus(discovery.status)}
+      {/* Ignored: show Create Stub button to opt-in */}
+      {isIgnored && (
+        <div className="mt-3 flex items-center gap-2">
+          <p className="text-xs text-slate-500 flex items-center gap-1">
+            <X className="w-3 h-3" /> Ignored
+          </p>
+          <button
+            onClick={() => onAction('create_stub')}
+            className="ca-btn ca-btn-sm flex items-center gap-1 text-xs"
+          >
+            <Plus className="w-3 h-3" /> Create Stub
+          </button>
+        </div>
+      )}
+
+      {/* Create Stub: show confirmation with option to ignore */}
+      {isCreateStub && (
+        <div className="mt-3 flex items-center gap-2">
+          <p className="text-xs text-green-400 flex items-center gap-1">
+            <Check className="w-3 h-3" /> Will create stub
+          </p>
+          <button
+            onClick={() => onAction('ignore')}
+            className="ca-btn ca-btn-ghost ca-btn-sm flex items-center gap-1 text-xs"
+          >
+            <X className="w-3 h-3" /> Ignore
+          </button>
+        </div>
+      )}
+
+      {/* Linked: show confirmation */}
+      {isLinked && (
+        <p className="text-xs text-blue-400 mt-2 flex items-center gap-1">
+          <Link2 className="w-3 h-3" /> {formatStatus(discovery.status)}
         </p>
       )}
     </div>
