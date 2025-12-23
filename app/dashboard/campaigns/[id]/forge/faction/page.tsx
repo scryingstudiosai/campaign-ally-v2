@@ -214,40 +214,66 @@ export default function FactionForgePage({ params }: PageProps) {
   useEffect(() => {
     if (!forge.output) return
 
+    const output = forge.output
     const newDiscoveries: Discovery[] = []
 
     // Key members become NPC stubs
-    forge.output.brain?.key_members?.forEach((memberName: string, idx: number) => {
-      const cleanName = memberName.trim()
-      if (cleanName && !reviewDiscoveries.some((d) => d.text.toLowerCase() === cleanName.toLowerCase())) {
+    output.brain?.key_members?.forEach((memberName: string, idx: number) => {
+      // Clean name (remove titles/descriptions if AI added them)
+      const cleanName = memberName.split(/[:(-]/)[0].trim()
+      if (!cleanName) return
+
+      // Check for duplicates in existing discoveries
+      const isDuplicate = reviewDiscoveries.some(
+        (d) => d.text.toLowerCase() === cleanName.toLowerCase()
+      )
+      // Check if entity already exists in campaign
+      const isExisting = existingEntities.some(
+        (e) => e.name.toLowerCase() === cleanName.toLowerCase()
+      )
+
+      if (!isDuplicate && !isExisting) {
         newDiscoveries.push({
           id: `member-${idx}-${Date.now()}`,
           text: cleanName,
           suggestedType: 'npc',
-          context: `Key member of ${forge.output?.name || 'faction'}`,
+          context: `Key member of ${output.name || 'faction'}`,
           status: 'create_stub' as const,
         })
       }
     })
 
     // Territory becomes Location stubs
-    forge.output.mechanics?.territory?.forEach((locName: string, idx: number) => {
-      const cleanName = locName.trim()
-      if (cleanName && !reviewDiscoveries.some((d) => d.text.toLowerCase() === cleanName.toLowerCase())) {
+    output.mechanics?.territory?.forEach((locName: string, idx: number) => {
+      // Clean name (remove descriptions if AI added them)
+      const cleanName = locName.split(/[:(-]/)[0].trim()
+      if (!cleanName) return
+
+      // Check for duplicates
+      const isDuplicate = reviewDiscoveries.some(
+        (d) => d.text.toLowerCase() === cleanName.toLowerCase()
+      )
+      const isExisting = existingEntities.some(
+        (e) => e.name.toLowerCase() === cleanName.toLowerCase()
+      )
+
+      if (!isDuplicate && !isExisting) {
         newDiscoveries.push({
           id: `territory-${idx}-${Date.now()}`,
           text: cleanName,
           suggestedType: 'location',
-          context: `Territory controlled by ${forge.output?.name || 'faction'}`,
+          context: `Territory controlled by ${output.name || 'faction'}`,
           status: 'create_stub' as const,
         })
       }
     })
 
     if (newDiscoveries.length > 0) {
+      console.log('Syncing Faction Assets to Discoveries:', newDiscoveries)
       setReviewDiscoveries((prev) => [...prev, ...newDiscoveries])
     }
-  }, [forge.output?.brain?.key_members, forge.output?.mechanics?.territory])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forge.output?.brain?.key_members, forge.output?.mechanics?.territory, existingEntities])
 
   // Handle quick reference entity selection
   const handleQuickRefSelect = (entityName: string, entityId: string) => {

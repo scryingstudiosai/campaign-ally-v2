@@ -12,6 +12,7 @@ import {
   Eye,
   Coins,
   Users,
+  User,
   MapPin,
   Scroll,
   Crown,
@@ -318,19 +319,22 @@ export function FactionOutputCard({
 
               {/* Key Members */}
               {brain.key_members && brain.key_members.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Users className="w-4 h-4 text-purple-400" />
-                    <span className="text-xs font-medium text-slate-400 uppercase">Key Members</span>
-                    <span className="text-xs text-teal-400 ml-auto">Added to Discoveries ↗</span>
+                <div className="pt-3 border-t border-slate-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-slate-500 uppercase flex items-center gap-1.5">
+                      <Users className="w-3 h-3" /> Key Members
+                    </span>
+                    <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                      Added to Discoveries ↗
+                    </span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {brain.key_members.map((member, i) => (
                       <span
                         key={i}
-                        className="px-2 py-1 bg-purple-500/10 border border-purple-500/30 rounded text-xs text-purple-300"
+                        className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-dashed border-amber-500/30 rounded text-sm text-amber-300"
                       >
-                        {member}
+                        <User className="w-3 h-3" /> {member}
                       </span>
                     ))}
                   </div>
@@ -416,19 +420,22 @@ export function FactionOutputCard({
 
               {/* Territory */}
               {mechanics.territory && mechanics.territory.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <MapPin className="w-4 h-4 text-green-400" />
-                    <span className="text-xs font-medium text-slate-400 uppercase">Territory</span>
-                    <span className="text-xs text-teal-400 ml-auto">Added to Discoveries ↗</span>
+                <div className="pt-3 border-t border-slate-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-slate-500 uppercase flex items-center gap-1.5">
+                      <MapPin className="w-3 h-3" /> Territory
+                    </span>
+                    <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                      Added to Discoveries ↗
+                    </span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {mechanics.territory.map((loc, i) => (
                       <span
                         key={i}
-                        className="px-2 py-1 bg-green-500/10 border border-green-500/30 rounded text-xs text-green-300"
+                        className="flex items-center gap-1.5 px-2 py-1 bg-teal-500/10 border border-dashed border-teal-500/30 rounded text-sm text-teal-300"
                       >
-                        {loc}
+                        <MapPin className="w-3 h-3" /> {loc}
                       </span>
                     ))}
                   </div>
