@@ -165,6 +165,16 @@ export function MemoryPageClient({
                 {typeCounts.quest} Quests
               </span>
             )}
+            {typeCounts.encounter && (
+              <span className="px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/30">
+                {typeCounts.encounter} Encounters
+              </span>
+            )}
+            {typeCounts.creature && (
+              <span className="px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                {typeCounts.creature} Creatures
+              </span>
+            )}
           </div>
         )}
 

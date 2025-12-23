@@ -11,9 +11,11 @@ import {
   HelpCircle,
   Skull,
   Shield,
+  Swords,
+  Bug,
 } from 'lucide-react'
 
-export type EntityType = 'npc' | 'location' | 'item' | 'faction' | 'quest' | 'other'
+export type EntityType = 'npc' | 'location' | 'item' | 'faction' | 'quest' | 'encounter' | 'creature' | 'other'
 export type EntitySubType = 'standard' | 'villain' | 'hero' | string
 
 interface EntityTypeBadgeProps {
@@ -85,6 +87,20 @@ const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
     bgColor: 'bg-yellow-500/10',
     borderColor: 'border-yellow-500/30',
     icon: Scroll,
+  },
+  encounter: {
+    label: 'Encounter',
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/10',
+    borderColor: 'border-red-500/30',
+    icon: Swords,
+  },
+  creature: {
+    label: 'Creature',
+    color: 'text-rose-400',
+    bgColor: 'bg-rose-500/10',
+    borderColor: 'border-rose-500/30',
+    icon: Bug,
   },
   other: {
     label: 'Other',
