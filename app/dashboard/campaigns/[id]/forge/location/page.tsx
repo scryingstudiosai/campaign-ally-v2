@@ -148,7 +148,7 @@ export default function LocationForgePage(): JSX.Element {
               text: cleanName,
               suggestedType: 'location' as EntityType,
               context: `Sub-location within ${forge.output?.name}`,
-              status: 'pending',
+              status: 'ignore', // Default to opt-in (user must click to create)
             })
             // Add to set to prevent duplicates within the same contains array
             existingDiscoveryTexts.add(nameLower)
