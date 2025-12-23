@@ -23,6 +23,7 @@ import {
   Coins,
   Package,
   Scroll,
+  Key,
 } from 'lucide-react'
 import type { ScanResult, Discovery } from '@/types/forge'
 import type {
@@ -281,6 +282,18 @@ export function EncounterOutputCard({
         <TabsContent value="brain" className="space-y-3 mt-3">
           {brain && Object.keys(brain).length > 0 ? (
             <div className="ca-card p-4 space-y-4">
+              {/* Solution - Answer Key (at top for puzzles/traps/skill challenges) */}
+              {brain.solution && (
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                  <div className="flex items-center gap-2 text-emerald-400 text-sm font-bold uppercase mb-2">
+                    <Key className="w-4 h-4" /> Solution / Answer Key
+                  </div>
+                  <p className="text-slate-200 whitespace-pre-wrap leading-relaxed">
+                    {brain.solution}
+                  </p>
+                </div>
+              )}
+
               {/* Purpose */}
               {brain.purpose && (
                 <div>

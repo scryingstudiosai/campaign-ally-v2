@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Target, Swords, Lock, AlertTriangle, Zap, Scale } from 'lucide-react'
+import { Target, Swords, Lock, AlertTriangle, Zap, Scale, Key } from 'lucide-react'
 import type { EncounterBrain } from '@/types/living-entity'
 
 interface EncounterBrainCardProps {
@@ -28,6 +28,18 @@ export function EncounterBrainCard({ brain, subType }: EncounterBrainCardProps):
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Solution - Answer Key (at top for puzzles/traps/skill challenges) */}
+        {brain.solution && (
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase mb-1">
+              <Key className="w-3 h-3" /> Solution / Answer Key
+            </div>
+            <p className="text-sm text-slate-300 whitespace-pre-wrap font-medium">
+              {brain.solution}
+            </p>
+          </div>
+        )}
+
         {/* Purpose */}
         {brain.purpose && (
           <div>

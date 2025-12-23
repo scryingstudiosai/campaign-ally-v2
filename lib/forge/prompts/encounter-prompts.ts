@@ -19,7 +19,8 @@ Generate an encounter with interconnected tactical and narrative elements. Retur
     "secret": "DM ONLY: A hidden twist, complication, or revelation",
     "scaling": "How to make easier (-) or harder (+) for different parties",
     "failure_consequence": "What happens if players lose, flee, or fail",
-    "resolution": "Possible outcomes and their narrative impacts"
+    "resolution": "Possible outcomes and their narrative impacts",
+    "solution": "FOR PUZZLES/TRAPS/SKILL CHALLENGES: The complete answer key with specific DCs"
   },
 
   "soul": {
@@ -180,105 +181,81 @@ Focus on:
 - Dynamic phases that change the battle`,
 
   boss: `This is a BOSS ENCOUNTER - a major enemy confrontation.
-Focus on:
-- Multi-phase combat (at least 2-3 phases)
-- Legendary action concepts (extra actions between turns)
-- Lair effects (environmental changes during combat)
-- Minion management (fodder to protect the boss)
-- Memorable moments and dramatic shifts
-- Make it feel EPIC and challenging`,
+REQUIRED in phases:
+- HP thresholds for phase changes (e.g., "Phase 2 at 50% HP")
+- Lair effects with SAVE DCs (e.g., "DC 14 Dex save or 2d6 damage")
+- Legendary action concepts with specific counts
+Focus on multi-phase combat with memorable dramatic shifts.`,
 
   ambush: `This is an AMBUSH encounter where enemies have surprise.
-Focus on:
-- Enemy hiding spots and concealment
-- The trigger that springs the ambush
-- How perceptive players might detect it early
-- Initial devastating attack
-- Escape routes if things go wrong
-- Include Perception/Stealth DCs`,
+REQUIRED in brain.solution:
+- Enemy Stealth results (e.g., "Goblins rolled Stealth 16")
+- Passive Perception DC to notice early (e.g., "DC 14 Perception to spot movement")
+- Surprise round positioning details`,
 
   defense: `This is a DEFENSE encounter where players must protect something.
-Focus on:
-- What they're defending (NPC, object, location)
-- Wave-based enemy arrival timing
-- Multiple approach routes enemies use
-- Time pressure (hold for X rounds)
-- Escalating difficulty with each wave
-- Alternative win conditions (seal the entrance, activate defenses)`,
+REQUIRED in brain.solution:
+- Number of waves and enemies per wave
+- Rounds between waves (e.g., "Wave 2 arrives on round 3")
+- Failure threshold (e.g., "Fail if 3+ enemies reach the altar")`,
 
   chase: `This is a CHASE encounter - pursuit or escape.
-Focus on:
-- Skill challenge framework (successes before failures)
-- Obstacles to overcome (crowds, walls, rivers)
-- Shortcuts and risky maneuvers
-- Complications (reinforcements, innocent bystanders)
-- Both hunter and prey tactics
-- Clear end conditions (escape distance, capture, confrontation)`,
+REQUIRED in brain.solution:
+- List 4-6 obstacles with SPECIFIC DCs (e.g., "Barrel stack: DC 12 Acrobatics to vault")
+- Successes needed to escape/catch (e.g., "5 successes before 3 failures")
+- Distance tracking rules`,
 
   stealth: `This is a STEALTH encounter - infiltration or avoidance.
-Focus on:
-- Guard patrol patterns and detection zones
-- Detection conditions (light, sound, smell)
-- Consequences of being spotted (alarm, combat, failure)
-- Multiple infiltration routes
-- Optional objectives (disable alarms, gather intel)
-- Stealth and Perception DCs throughout`,
+REQUIRED in brain.solution:
+- Guard Passive Perception scores (e.g., "Guards have PP 12, captain has PP 15")
+- Patrol timing (e.g., "Guards pass every 2 rounds")
+- Stealth DC to move unseen in each area`,
 
   puzzle: `This is a PUZZLE encounter - mental/logic challenge.
-Focus on:
-- Clear puzzle setup and mechanics
-- Multiple hints at different difficulty levels
-- Partial success possibilities
-- Consequences of wrong answers
-- Time pressure (optional)
-- How the puzzle connects to the story
+REQUIRED in brain.solution:
+- THE EXACT ANSWER/SOLUTION (e.g., "Sequence: Water → Earth → Fire → Air")
+- Investigation DC for each clue (e.g., "DC 14 Investigation reveals seasonal pattern")
+- Wrong answer consequences (e.g., "Wrong symbol: 2d6 lightning damage")
 Note: No combat unless triggered by puzzle failure`,
 
   social: `This is a SOCIAL encounter - negotiation, persuasion, or conflict.
-Focus on:
-- NPC motivations and goals
-- What they want from the players
-- Dealbreakers that end negotiation
-- Information they have to offer
-- Multiple possible outcomes
-- Social skill DCs and roleplay opportunities
-Note: May escalate to combat if negotiation fails`,
+REQUIRED in brain.solution:
+- Starting attitude (hostile/unfriendly/indifferent/friendly)
+- DC thresholds for each attitude shift (e.g., "DC 15 Persuasion to move from indifferent to friendly")
+- Dealbreakers that auto-fail negotiation
+- What information they'll reveal at each attitude level`,
 
   exploration: `This is an EXPLORATION encounter - discovery and investigation.
-Focus on:
-- Clues to find and interpret
-- Environmental storytelling details
-- Optional dangers for the incautious
-- Skill checks for investigation
-- Rewards for thorough exploration
-- Connection to larger plot threads`,
+REQUIRED in brain.solution:
+- List specific clues with EXACT DCs (e.g., "DC 12 Perception: bloodstain near bookshelf")
+- What each clue reveals
+- Secret/hidden elements with their check requirements`,
 
   trap: `This is a TRAP encounter - a simple hazard.
-Focus on:
-- Trigger mechanism (pressure plate, tripwire, proximity)
-- Detection DC (Perception/Investigation)
-- Disable DC (Thieves' tools, Arcana, etc.)
-- Effect and damage
-- Whether it resets or is one-time
-Keep it simple - quick to resolve`,
+REQUIRED in brain.solution:
+- Detection DC (e.g., "DC 15 Perception to spot pressure plate")
+- Disable DC (e.g., "DC 13 Thieves' Tools to jam mechanism")
+- Save DC OR Attack bonus (e.g., "DC 14 Dex save" or "+7 to hit")
+- Damage dice (e.g., "2d6 poison damage")
+- Reset conditions (e.g., "Resets after 1 minute")`,
 
   complex_trap: `This is a COMPLEX TRAP encounter - multi-phase hazard with initiative.
-Focus on:
-- Initiative count for trap effects
-- Multiple components to disable
-- Escalating effects each round
-- Active elements (arrow turrets, closing walls)
-- Dynamic elements (fire spreads, room fills with water)
-- Treat like a creature with turns and actions`,
+REQUIRED in brain.solution:
+- Initiative count (e.g., "Acts on initiative 10")
+- Each component's disable DC (e.g., "Blade pillar: DC 14 Thieves' Tools each")
+- Attack/save per round for each element
+- Shutdown requirements (e.g., "Disable 3 of 4 components to stop")
+- Total rounds until complete (e.g., "Room fully floods in 5 rounds")`,
 
   skill_challenge: `This is a SKILL CHALLENGE encounter - extended group check.
-Focus on:
-- Situation requiring multiple approaches
-- Relevant skills (list 4-6 options)
-- DCs for each skill
-- Required successes before failures
-- Narrative consequence for each check
-- Make each check feel meaningful and unique`,
+REQUIRED in brain.solution:
+- Successes needed before 3 failures (e.g., "5 successes before 3 failures")
+- Valid skills with SPECIFIC DCs:
+  * "Athletics DC 15 (hold rigging in storm)"
+  * "Acrobatics DC 14 (balance on slick deck)"
+  * "Nature DC 16 (read the waves)"
+- Narrative meaning of each success/failure
+- Consequences of overall success/failure`,
 };
 
 export const ENCOUNTER_LOCATION_CONTEXT = `

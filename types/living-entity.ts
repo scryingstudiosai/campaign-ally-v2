@@ -364,6 +364,7 @@ export interface EncounterBrain extends BaseBrain {
   scaling?: string;            // How to adjust difficulty
   failure_consequence?: string; // What happens if players lose/flee
   resolution?: string;         // Possible outcomes
+  solution?: string;           // Answer key for puzzles/traps/skill challenges (DM only)
 }
 
 export const DEFAULT_ENCOUNTER_BRAIN: EncounterBrain = {};
