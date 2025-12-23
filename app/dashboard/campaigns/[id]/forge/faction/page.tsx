@@ -313,6 +313,10 @@ export default function FactionForgePage({ params }: PageProps) {
       return
     }
 
+    // Clear previous discoveries before generating new content
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+
     const input: FactionInputData = {
       name: name.trim() || undefined,
       concept: concept.trim() || `A ${factionType} faction`,
@@ -326,6 +330,13 @@ export default function FactionForgePage({ params }: PageProps) {
     if (!result.success && result.reason === 'error') {
       toast.error('Failed to generate faction')
     }
+  }
+
+  // Handle discard - clear discoveries and reset forge
+  const handleDiscard = () => {
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+    forge.reset()
   }
 
   // Handle commit
@@ -667,7 +678,7 @@ export default function FactionForgePage({ params }: PageProps) {
             onDiscoveryTypeChange={handleDiscoveryTypeChange}
             onConflictResolution={handleConflictResolution}
             onCommit={handleCommit}
-            onDiscard={forge.reset}
+            onDiscard={handleDiscard}
             isCommitting={forge.status === 'saving'}
           />
         ) : undefined

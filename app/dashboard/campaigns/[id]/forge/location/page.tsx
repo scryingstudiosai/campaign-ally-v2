@@ -600,6 +600,10 @@ export default function LocationForgePage(): JSX.Element {
 
   // Handle generation with toast
   const handleGenerate = async (input: LocationInputData): Promise<void> => {
+    // Clear previous discoveries before generating new content
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+
     try {
       const result = await forge.handleGenerate(input)
       if (result.success) {
@@ -610,6 +614,13 @@ export default function LocationForgePage(): JSX.Element {
         error instanceof Error ? error.message : 'Failed to generate Location'
       )
     }
+  }
+
+  // Handle discard - clear discoveries and reset forge
+  const handleDiscard = (): void => {
+    setReviewDiscoveries([])
+    setReviewConflicts([])
+    forge.reset()
   }
 
   if (loading) {
@@ -717,7 +728,7 @@ export default function LocationForgePage(): JSX.Element {
             onDiscoveryTypeChange={handleDiscoveryTypeChange}
             onConflictResolution={handleConflictResolution}
             onCommit={handleCommit}
-            onDiscard={forge.reset}
+            onDiscard={handleDiscard}
             isCommitting={forge.status === 'saving'}
           />
         ) : undefined
