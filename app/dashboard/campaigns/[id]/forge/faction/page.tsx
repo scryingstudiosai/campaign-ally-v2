@@ -252,7 +252,7 @@ export default function FactionForgePage({ params }: PageProps) {
           text: cleanName,
           suggestedType: 'npc',
           context: `Key member of ${output.name || 'faction'}`,
-          status: 'ignore' as const, // Default to opt-in (user must click to create)
+          status: 'create_stub' as const, // Default to visible/active, user can ignore
         })
       }
     })
@@ -277,7 +277,7 @@ export default function FactionForgePage({ params }: PageProps) {
           text: cleanName,
           suggestedType: 'location',
           context: `Territory controlled by ${output.name || 'faction'}`,
-          status: 'ignore' as const, // Default to opt-in (user must click to create)
+          status: 'create_stub' as const, // Default to visible/active, user can ignore
         })
       }
     })
