@@ -168,37 +168,55 @@ function transformItemToEntity(
   item: SrdItem,
   historyEntry: HistoryEntry
 ): Record<string, unknown> {
-  // Build a read-aloud description
-  const readAloud = item.description
-    ? item.description.substring(0, 500)
-    : `A ${item.rarity || 'common'} ${item.item_type || 'item'}`
+  // Clean description - remove table formatting artifacts and @tags
+  const cleanDescription = item.description
+    ?.replace(/\|/g, ' ')
+    ?.replace(/\s+/g, ' ')
+    ?.replace(/\{@\w+\s+([^}]+)\}/g, '$1') // Remove @tags like {@damage 2d4+2}
+    ?.trim() || ''
 
-  // Build the brain (item's narrative essence)
-  const brain = {
-    origin: `Standard ${item.item_type || 'item'} from the SRD`,
-    purpose: item.mechanics?.effect || `A ${item.rarity || 'standard'} ${item.item_type}`,
+  // Determine item category
+  const isWeapon = item.item_type === 'weapon' || !!item.mechanics?.damage
+  const isArmor = item.item_type === 'armor' || item.mechanics?.ac !== undefined || item.mechanics?.ac_bonus !== undefined
+
+  // Build the soul (item's lore/flavor)
+  const soul = {
+    origin: `Official ${item.item_type || 'item'} from the D&D 5e SRD`,
+    rarity: item.rarity,
   }
 
-  // Build mechanics from item data
+  // Build mechanics from item data - include cleaned effect text
   const mechanics = {
     item_type: item.item_type,
     subtype: item.subtype,
     rarity: item.rarity,
-    requires_attunement: item.requires_attunement,
+    requires_attunement: item.requires_attunement || false,
     attunement_requirements: item.attunement_requirements,
     value_gp: item.value_gp,
     weight: item.weight,
-    damage: item.mechanics?.damage,
-    damage_type: item.mechanics?.damage_type,
-    properties: item.mechanics?.properties,
-    ac: item.mechanics?.ac,
-    ac_bonus: item.mechanics?.ac_bonus,
-    stealth_disadvantage: item.mechanics?.stealth_disadvantage,
-    str_minimum: item.mechanics?.str_minimum,
-    effect: item.mechanics?.effect,
+    // Only include weapon stats for weapons
+    ...(isWeapon && {
+      damage: item.mechanics?.damage,
+      damage_type: item.mechanics?.damage_type,
+      properties: item.mechanics?.properties,
+    }),
+    // Only include armor stats for armor
+    ...(isArmor && {
+      ac: item.mechanics?.ac,
+      ac_bonus: item.mechanics?.ac_bonus,
+      stealth_disadvantage: item.mechanics?.stealth_disadvantage,
+      str_minimum: item.mechanics?.str_minimum,
+    }),
+    // Effect text - the actual description of what the item does
+    effect: cleanDescription || item.mechanics?.effect,
     charges: item.mechanics?.charges,
     recharge: item.mechanics?.recharge,
   }
+
+  // Generate a short summary for list views
+  const shortSummary = item.rarity
+    ? `${item.rarity} ${item.item_type || 'item'}`
+    : item.item_type || 'item'
 
   return {
     name: item.name,
@@ -208,11 +226,16 @@ function transformItemToEntity(
     importance_tier: 'minor',
     visibility: 'dm_only',
     source_forge: 'srd_import',
-    brain,
+    soul,
     mechanics,
-    read_aloud: readAloud,
-    dm_slug: `${item.rarity || 'Common'} ${item.item_type || 'item'}`,
-    summary: item.description?.substring(0, 200) || `A ${item.rarity || 'common'} ${item.item_type || 'item'}`,
+    // NO read_aloud for SRD items - can be added later by user
+    read_aloud: null,
+    // DM description gets the full mechanical details
+    dm_description: cleanDescription,
+    // Player description - clean summary
+    description: `A ${item.rarity || 'common'} ${item.item_type || 'item'}.`,
+    dm_slug: shortSummary,
+    summary: shortSummary,
     subtype: item.item_type,
     attributes: {
       history: [historyEntry],
@@ -222,8 +245,11 @@ function transformItemToEntity(
         license: item.license,
         game_system: item.game_system,
       },
+      is_srd: true,
       is_identified: true,
       rarity: item.rarity,
+      value_gp: item.value_gp,
+      weight: item.weight,
     },
   }
 }

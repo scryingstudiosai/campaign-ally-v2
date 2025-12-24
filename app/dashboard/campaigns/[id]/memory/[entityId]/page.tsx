@@ -17,6 +17,7 @@ import { FactsWidget } from '@/components/entity/FactsWidget'
 import { ItemBrainCard } from '@/components/entity/ItemBrainCard'
 import { ItemVoiceCard } from '@/components/entity/ItemVoiceCard'
 import { ItemMechanicsCard } from '@/components/entity/ItemMechanicsCard'
+import { SrdItemDetailCard } from '@/components/entity/SrdItemDetailCard'
 import { LocationBrainCard } from '@/components/entity/LocationBrainCard'
 import { LocationSoulCard } from '@/components/entity/LocationSoulCard'
 import { LocationMechanicsCard } from '@/components/entity/LocationMechanicsCard'
@@ -155,6 +156,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const itemMechanics = entity.mechanics as ItemMechanics | null
   const itemCategory = (entity.attributes?.category || entity.attributes?.item_type || entity.subtype) as string | undefined
   const isSentientItem = isItem && itemBrain?.sentience_level && itemBrain.sentience_level !== 'none'
+  const isSrdItem = isItem && (entity.attributes?.is_srd || entity.source_forge === 'srd_import')
 
   // Location-specific helpers
   const isLocation = entity.entity_type === 'location'
@@ -398,9 +400,40 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* --- ITEM STAGE CONTENT --- */}
             {isItem && (
               <>
-                {/* Item Mechanics - The usable game stats (player-facing) */}
-                {itemMechanics && Object.keys(itemMechanics).length > 0 && (
-                  <ItemMechanicsCard mechanics={itemMechanics} category={itemCategory} />
+                {/* SRD Items get special display - use raw mechanics from entity */}
+                {isSrdItem ? (
+                  <SrdItemDetailCard
+                    item={{
+                      name: entity.name,
+                      sub_type: entity.sub_type,
+                      mechanics: entity.mechanics as {
+                        rarity?: string
+                        requires_attunement?: boolean
+                        attunement_requirements?: string
+                        value_gp?: number
+                        weight?: number
+                        damage?: string
+                        damage_type?: string
+                        properties?: string[]
+                        ac?: number
+                        ac_bonus?: number
+                        stealth_disadvantage?: boolean
+                        str_minimum?: number
+                        effect?: string
+                        charges?: number
+                        recharge?: string
+                      } | undefined,
+                      dm_description: entity.dm_description as string | undefined,
+                      attributes: entity.attributes,
+                    }}
+                  />
+                ) : (
+                  <>
+                    {/* Item Mechanics - The usable game stats (player-facing) */}
+                    {itemMechanics && Object.keys(itemMechanics).length > 0 && (
+                      <ItemMechanicsCard mechanics={itemMechanics} category={itemCategory} />
+                    )}
+                  </>
                 )}
 
                 {/* Item Voice - For sentient items */}
