@@ -2,7 +2,7 @@
 
 import { useState, useCallback, type ReactNode } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Shield, Heart, Gauge, Footprints, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { SrdBadge } from './SrdBadge'
 import type { SrdCreature } from '@/types/srd'
 
@@ -49,14 +49,6 @@ export function SrdCreaturePopover({
     onOpenChange?.(open)
   }
 
-  // Format speed for display
-  const formatSpeeds = (speeds: Record<string, number> | undefined): string => {
-    if (!speeds) return ''
-    return Object.entries(speeds)
-      .map(([type, speed]) => `${type} ${speed} ft.`)
-      .join(', ')
-  }
-
   // Calculate ability modifier
   const getModifier = (score: number | undefined): string => {
     if (score === undefined) return '+0'
@@ -64,12 +56,59 @@ export function SrdCreaturePopover({
     return mod >= 0 ? `+${mod}` : `${mod}`
   }
 
+  // Format saving throws
+  const formatSaves = (saves: Record<string, number> | undefined): string => {
+    if (!saves || Object.keys(saves).length === 0) return ''
+    const statNames: Record<string, string> = {
+      str: 'Str', dex: 'Dex', con: 'Con', int: 'Int', wis: 'Wis', cha: 'Cha'
+    }
+    return Object.entries(saves)
+      .map(([stat, bonus]) => `${statNames[stat] || stat} ${bonus >= 0 ? '+' : ''}${bonus}`)
+      .join(', ')
+  }
+
+  // Format skills
+  const formatSkills = (skills: Record<string, number> | undefined): string => {
+    if (!skills || Object.keys(skills).length === 0) return ''
+    return Object.entries(skills)
+      .map(([skill, bonus]) => `${skill} ${bonus >= 0 ? '+' : ''}${bonus}`)
+      .join(', ')
+  }
+
+  // Format senses
+  const formatSenses = (senses: Record<string, number | string> | undefined): string => {
+    if (!senses || Object.keys(senses).length === 0) return ''
+    return Object.entries(senses)
+      .map(([sense, value]) => {
+        if (typeof value === 'number') {
+          return `${sense} ${value} ft.`
+        }
+        return `${sense} ${value}`
+      })
+      .join(', ')
+  }
+
+  // Format speeds
+  const formatSpeeds = (speeds: Record<string, number> | undefined): string => {
+    if (!speeds) return '30 ft.'
+    return Object.entries(speeds)
+      .map(([type, speed]) => {
+        if (type === 'walk') return `${speed} ft.`
+        return `${type} ${speed} ft.`
+      })
+      .join(', ')
+  }
+
   return (
     <Popover onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         {trigger}
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0 bg-slate-900 border-slate-700" align="end">
+      <PopoverContent
+        className="w-96 p-0 bg-slate-900 border-slate-700"
+        align="end"
+        side="left"
+      >
         {loading ? (
           <div className="p-6 text-center text-slate-400 flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -80,73 +119,214 @@ export function SrdCreaturePopover({
             {error}
           </div>
         ) : creature ? (
-          <div className="p-4 space-y-3">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 className="font-bold text-slate-100">{creature.name}</h3>
-                <p className="text-xs text-slate-400">
+          <div className="max-h-[500px] overflow-y-auto">
+            <div className="p-4 space-y-3">
+              {/* ===== HEADER ===== */}
+              <div className="border-b-2 border-red-800 pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-bold text-lg text-red-400">{creature.name}</h3>
+                  <SrdBadge license={creature.license} />
+                </div>
+                <p className="text-xs text-slate-400 italic">
                   {creature.size} {creature.creature_type}
                   {creature.subtype && ` (${creature.subtype})`}
                   {creature.alignment && `, ${creature.alignment}`}
                 </p>
               </div>
-              <SrdBadge license={creature.license} />
-            </div>
 
-            {/* Quick Stats - AC, HP, CR */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-slate-800 p-2 rounded text-center">
-                <Shield className="w-4 h-4 mx-auto text-blue-400 mb-1" />
-                <span className="text-lg font-bold text-slate-100">{creature.ac || '?'}</span>
-                <p className="text-[10px] text-slate-500">AC</p>
+              {/* ===== CORE STATS: AC, HP, Speed ===== */}
+              <div className="space-y-1 text-sm border-b border-red-800/50 pb-3">
+                <p>
+                  <span className="font-bold text-red-400">Armor Class</span>{' '}
+                  <span className="text-slate-200">
+                    {creature.ac || '10'}
+                    {creature.ac_type && ` (${creature.ac_type})`}
+                  </span>
+                </p>
+                <p>
+                  <span className="font-bold text-red-400">Hit Points</span>{' '}
+                  <span className="text-slate-200">
+                    {creature.hp || '0'}
+                    {creature.hp_formula && ` (${creature.hp_formula})`}
+                  </span>
+                </p>
+                <p>
+                  <span className="font-bold text-red-400">Speed</span>{' '}
+                  <span className="text-slate-200">{formatSpeeds(creature.speeds)}</span>
+                </p>
               </div>
-              <div className="bg-slate-800 p-2 rounded text-center">
-                <Heart className="w-4 h-4 mx-auto text-red-400 mb-1" />
-                <span className="text-lg font-bold text-slate-100">{creature.hp || '?'}</span>
-                <p className="text-[10px] text-slate-500">HP</p>
-              </div>
-              <div className="bg-slate-800 p-2 rounded text-center">
-                <Gauge className="w-4 h-4 mx-auto text-amber-400 mb-1" />
-                <span className="text-lg font-bold text-slate-100">{creature.cr || '?'}</span>
-                <p className="text-[10px] text-slate-500">CR</p>
-              </div>
-            </div>
 
-            {/* Speed */}
-            {creature.speeds && Object.keys(creature.speeds).length > 0 && (
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Footprints className="w-3 h-3 shrink-0" />
-                <span className="truncate">{formatSpeeds(creature.speeds)}</span>
-              </div>
-            )}
-
-            {/* Ability Scores */}
-            {creature.stats && (
-              <div className="grid grid-cols-6 gap-1 text-center text-xs">
-                {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map(stat => (
-                  <div key={stat} className="bg-slate-800/50 p-1.5 rounded">
-                    <span className="text-slate-500 uppercase text-[10px]">{stat}</span>
-                    <p className="font-bold text-slate-200">{creature.stats?.[stat] || 10}</p>
-                    <p className="text-[10px] text-slate-500">{getModifier(creature.stats?.[stat])}</p>
+              {/* ===== ABILITY SCORES ===== */}
+              {creature.stats && (
+                <div className="border-b border-red-800/50 pb-3">
+                  <div className="grid grid-cols-6 gap-1 text-center text-xs">
+                    {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map(stat => (
+                      <div key={stat} className="bg-slate-800/50 p-1.5 rounded">
+                        <span className="text-red-400 uppercase font-bold text-[10px]">{stat}</span>
+                        <p className="font-bold text-slate-200">
+                          {creature.stats?.[stat] || 10} ({getModifier(creature.stats?.[stat])})
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              )}
+
+              {/* ===== PROFICIENCIES & TRAITS ===== */}
+              <div className="space-y-1 text-sm border-b border-red-800/50 pb-3">
+                {/* Saving Throws */}
+                {creature.saves && Object.keys(creature.saves).length > 0 && (
+                  <p>
+                    <span className="font-bold text-red-400">Saving Throws</span>{' '}
+                    <span className="text-slate-200">{formatSaves(creature.saves)}</span>
+                  </p>
+                )}
+
+                {/* Skills */}
+                {creature.skills && Object.keys(creature.skills).length > 0 && (
+                  <p>
+                    <span className="font-bold text-red-400">Skills</span>{' '}
+                    <span className="text-slate-200">{formatSkills(creature.skills)}</span>
+                  </p>
+                )}
+
+                {/* Damage Vulnerabilities */}
+                {creature.damage_vulnerabilities && creature.damage_vulnerabilities.length > 0 && (
+                  <p>
+                    <span className="font-bold text-red-400">Damage Vulnerabilities</span>{' '}
+                    <span className="text-slate-200">{creature.damage_vulnerabilities.join(', ')}</span>
+                  </p>
+                )}
+
+                {/* Damage Resistances */}
+                {creature.damage_resistances && creature.damage_resistances.length > 0 && (
+                  <p>
+                    <span className="font-bold text-red-400">Damage Resistances</span>{' '}
+                    <span className="text-slate-200">{creature.damage_resistances.join(', ')}</span>
+                  </p>
+                )}
+
+                {/* Damage Immunities */}
+                {creature.damage_immunities && creature.damage_immunities.length > 0 && (
+                  <p>
+                    <span className="font-bold text-red-400">Damage Immunities</span>{' '}
+                    <span className="text-slate-200">{creature.damage_immunities.join(', ')}</span>
+                  </p>
+                )}
+
+                {/* Condition Immunities */}
+                {creature.condition_immunities && creature.condition_immunities.length > 0 && (
+                  <p>
+                    <span className="font-bold text-red-400">Condition Immunities</span>{' '}
+                    <span className="text-slate-200">{creature.condition_immunities.join(', ')}</span>
+                  </p>
+                )}
+
+                {/* Senses */}
+                {creature.senses && Object.keys(creature.senses).length > 0 && (
+                  <p>
+                    <span className="font-bold text-red-400">Senses</span>{' '}
+                    <span className="text-slate-200">{formatSenses(creature.senses)}</span>
+                  </p>
+                )}
+
+                {/* Languages */}
+                <p>
+                  <span className="font-bold text-red-400">Languages</span>{' '}
+                  <span className="text-slate-200">
+                    {creature.languages && creature.languages.length > 0
+                      ? creature.languages.join(', ')
+                      : '—'}
+                  </span>
+                </p>
+
+                {/* Challenge */}
+                <p>
+                  <span className="font-bold text-red-400">Challenge</span>{' '}
+                  <span className="text-slate-200">
+                    {creature.cr || '0'}
+                    {creature.xp_value && ` (${creature.xp_value.toLocaleString()} XP)`}
+                  </span>
+                </p>
               </div>
-            )}
 
-            {/* HP Formula */}
-            {creature.hp_formula && (
-              <p className="text-[10px] text-slate-500 text-center">
-                Hit Dice: {creature.hp_formula}
-              </p>
-            )}
+              {/* ===== SPECIAL TRAITS ===== */}
+              {creature.traits && creature.traits.length > 0 && (
+                <div className="space-y-2 border-b border-red-800/50 pb-3">
+                  {creature.traits.map((trait, i) => (
+                    <div key={i} className="text-sm">
+                      <p>
+                        <span className="font-bold text-slate-100 italic">{trait.name}.</span>{' '}
+                        <span className="text-slate-300">{trait.description}</span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            {/* XP */}
-            {creature.xp_value && (
-              <p className="text-xs text-purple-400 text-center">
-                {creature.xp_value.toLocaleString()} XP
-              </p>
-            )}
+              {/* ===== ACTIONS ===== */}
+              {creature.actions && creature.actions.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-bold text-red-400 border-b border-red-800 pb-1">Actions</h4>
+                  {creature.actions.map((action, i) => (
+                    <div key={i} className="text-sm">
+                      <p>
+                        <span className="font-bold text-slate-100 italic">{action.name}.</span>{' '}
+                        <span className="text-slate-300">{action.description}</span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ===== BONUS ACTIONS ===== */}
+              {creature.bonus_actions && creature.bonus_actions.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-bold text-red-400 border-b border-red-800 pb-1">Bonus Actions</h4>
+                  {creature.bonus_actions.map((action, i) => (
+                    <div key={i} className="text-sm">
+                      <p>
+                        <span className="font-bold text-slate-100 italic">{action.name}.</span>{' '}
+                        <span className="text-slate-300">{action.description}</span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ===== REACTIONS ===== */}
+              {creature.reactions && creature.reactions.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-bold text-red-400 border-b border-red-800 pb-1">Reactions</h4>
+                  {creature.reactions.map((reaction, i) => (
+                    <div key={i} className="text-sm">
+                      <p>
+                        <span className="font-bold text-slate-100 italic">{reaction.name}.</span>{' '}
+                        <span className="text-slate-300">{reaction.description}</span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ===== LEGENDARY ACTIONS ===== */}
+              {creature.legendary_actions && creature.legendary_actions.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-bold text-red-400 border-b border-red-800 pb-1">Legendary Actions</h4>
+                  {creature.legendary_description && (
+                    <p className="text-sm text-slate-300 italic">{creature.legendary_description}</p>
+                  )}
+                  {creature.legendary_actions.map((action, i) => (
+                    <div key={i} className="text-sm">
+                      <p>
+                        <span className="font-bold text-slate-100 italic">{action.name}.</span>{' '}
+                        <span className="text-slate-300">{action.description}</span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="p-6 text-center text-slate-400 text-sm">

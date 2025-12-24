@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient() // MUST await in App Router
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
