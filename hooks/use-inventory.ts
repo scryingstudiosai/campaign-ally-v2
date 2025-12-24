@@ -97,7 +97,7 @@ export function useInventory(campaignId: string, ownerType?: OwnerType, ownerId?
     return res.json();
   };
 
-  const useConsumable = async (id: string) => {
+  const consumeItem = async (id: string) => {
     const item = items.find((i) => i.id === id);
     if (!item) return;
 
@@ -108,7 +108,7 @@ export function useInventory(campaignId: string, ownerType?: OwnerType, ownerId?
     }
   };
 
-  const useCharge = async (id: string) => {
+  const spendCharge = async (id: string) => {
     const item = items.find((i) => i.id === id);
     if (!item || item.charges === null || item.charges <= 0) return;
 
@@ -152,8 +152,8 @@ export function useInventory(campaignId: string, ownerType?: OwnerType, ownerId?
     updateItem,
     removeItem,
     transferItem,
-    useConsumable,
-    useCharge,
+    consumeItem,
+    spendCharge,
     reorderItems,
     totalWeight,
     totalValue,
