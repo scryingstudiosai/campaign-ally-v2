@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useSrdSearch, SrdSearchType } from '@/hooks/useSrdSearch'
 import { SrdCreatureCard } from './SrdCreatureCard'
-import { SrdItemCard } from './SrdItemCard'
+import { SrdItemDisplay } from './SrdItemDisplay'
 import { toast } from 'sonner'
 import type { GameSystem, SrdCreature, SrdItem, SrdSpell } from '@/types/srd'
 
@@ -255,7 +255,7 @@ export function SrdLookupPopover({
               >
                 ← Back to results
               </button>
-              <SrdItemCard item={selectedItem} />
+              <SrdItemDisplay item={selectedItem} />
               <div className="flex gap-2">
                 {onSelectItem && (
                   <Button onClick={handleConfirmItem} className="flex-1" disabled={isSavingToMemory}>
@@ -327,7 +327,7 @@ export function SrdLookupPopover({
                   </div>
                   <div className="space-y-2">
                     {results.items.map((item) => (
-                      <SrdItemCard
+                      <SrdItemDisplay
                         key={item.id}
                         item={item}
                         compact
