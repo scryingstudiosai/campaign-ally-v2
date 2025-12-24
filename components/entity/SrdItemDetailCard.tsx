@@ -1,5 +1,7 @@
 'use client'
 
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Coins, Weight, Sparkles, Shield, Swords } from 'lucide-react'
 import { SrdBadge } from '@/components/srd/SrdBadge'
 
@@ -26,6 +28,7 @@ interface SrdItemDetailCardProps {
     name: string
     sub_type?: string
     mechanics?: SrdItemMechanics
+    description?: string
     dm_description?: string
     attributes?: {
       srd_source?: {
@@ -45,14 +48,17 @@ const RARITY_COLORS: Record<string, string> = {
 }
 
 export function SrdItemDetailCard({ item }: SrdItemDetailCardProps): JSX.Element {
-  const { mechanics = {}, dm_description, sub_type, attributes } = item
+  const { mechanics = {}, description, dm_description, sub_type, attributes } = item
+  // Use description (new format) or dm_description (legacy format)
+  const itemDescription = description || dm_description
   const rarity = mechanics.rarity?.toLowerCase() || 'common'
   const rarityClass = RARITY_COLORS[rarity] || RARITY_COLORS.common
   const license = attributes?.srd_source?.license || 'ogl_1.0a'
 
-  // Determine item category for display
+  // Determine item category for display - use != null to catch both null and undefined
   const isWeapon = sub_type === 'weapon' || !!mechanics.damage
-  const isArmor = sub_type === 'armor' || mechanics.ac !== undefined || mechanics.ac_bonus !== undefined
+  const hasArmor = mechanics.ac != null || mechanics.ac_bonus != null
+  const isArmor = sub_type === 'armor' || hasArmor
   const isPotion = sub_type?.includes('potion') || item.name.toLowerCase().includes('potion')
   const isScroll = sub_type?.includes('scroll') || item.name.toLowerCase().includes('scroll')
 
@@ -82,16 +88,18 @@ export function SrdItemDetailCard({ item }: SrdItemDetailCardProps): JSX.Element
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Effect/Description - Primary Content */}
-        {(mechanics.effect || dm_description) && (
+        {/* Effect/Description - Primary Content with Markdown support */}
+        {(mechanics.effect || itemDescription) && (
           <div className="p-4 bg-teal-500/5 rounded-lg border border-teal-500/20">
             <h4 className="text-sm font-semibold text-teal-400 mb-2 flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
               {isPotion ? 'Effect' : isScroll ? 'Spell' : 'Description'}
             </h4>
-            <p className="text-slate-200 leading-relaxed">
-              {mechanics.effect || dm_description}
-            </p>
+            <div className="prose prose-sm prose-invert max-w-none prose-p:text-slate-200 prose-p:my-2 prose-p:leading-relaxed prose-headings:text-slate-200 prose-strong:text-slate-100 prose-em:text-slate-300 prose-table:text-sm prose-th:text-slate-300 prose-th:bg-slate-800/50 prose-th:px-2 prose-th:py-1 prose-td:px-2 prose-td:py-1 prose-td:border-slate-700 prose-tr:border-slate-700">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {mechanics.effect || itemDescription || ''}
+              </ReactMarkdown>
+            </div>
           </div>
         )}
 
@@ -120,17 +128,17 @@ export function SrdItemDetailCard({ item }: SrdItemDetailCardProps): JSX.Element
           </div>
         )}
 
-        {/* Armor Stats */}
-        {isArmor && (mechanics.ac !== undefined || mechanics.ac_bonus !== undefined) && (
+        {/* Armor Stats - Only show if we actually have AC data */}
+        {hasArmor && (
           <div className="p-4 bg-blue-500/5 rounded-lg border border-blue-500/20">
             <h4 className="text-sm font-semibold text-blue-400 mb-3 flex items-center gap-2">
               <Shield className="w-4 h-4" /> Armor Stats
             </h4>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold text-slate-100">
-                {mechanics.ac !== undefined ? `AC ${mechanics.ac}` : `+${mechanics.ac_bonus}`}
+                {mechanics.ac != null ? `AC ${mechanics.ac}` : `+${mechanics.ac_bonus}`}
               </span>
-              {mechanics.ac_bonus !== undefined && mechanics.ac === undefined && (
+              {mechanics.ac_bonus != null && mechanics.ac == null && (
                 <span className="text-slate-400">bonus to AC</span>
               )}
             </div>

@@ -423,6 +423,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
                         charges?: number
                         recharge?: string
                       } | undefined,
+                      description: entity.description as string | undefined,
                       dm_description: entity.dm_description as string | undefined,
                       attributes: entity.attributes,
                     }}

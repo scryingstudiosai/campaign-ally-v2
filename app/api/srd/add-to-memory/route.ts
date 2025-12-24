@@ -30,31 +30,47 @@ export async function POST(request: NextRequest) {
 
     // --- ITEM MAPPING ---
     if (srdType === 'item') {
-      const cleanDescription = srdEntity.description
-        ?.replace(/\|/g, ' ')
-        ?.replace(/\s+/g, ' ')
-        ?.trim() || '';
+      // Keep the FULL description with markdown intact (tables, etc.)
+      const fullDescription = srdEntity.description || '';
 
       entityData = {
         ...entityData,
         entity_type: 'item',
-        sub_type: srdEntity.item_type || 'wondrous item',
-        description: cleanDescription,
-        public_notes: `A ${srdEntity.rarity || 'common'} ${srdEntity.item_type || 'item'}.`,
+        sub_type: srdEntity.item_type || srdEntity.category || 'item',
+
+        // Store the full description WITH markdown
+        description: fullDescription,
+        summary: `${srdEntity.rarity || 'Common'} ${srdEntity.item_type || 'item'}`,
         dm_slug: srdEntity.slug,
+
+        // Soul - narrative/flavor
         soul: {
-          origin: `Standard ${srdEntity.item_type || 'item'} from the D&D 5e SRD`,
-          rarity: srdEntity.rarity,
-          description: cleanDescription,
+          origin: 'D&D 5e SRD',
+          appearance: srdEntity.appearance || null,
         },
+
+        // Mechanics - ALL the game stats, conditionally included
         mechanics: {
           item_type: srdEntity.item_type,
+          category: srdEntity.category,
           rarity: srdEntity.rarity,
-          requires_attunement: srdEntity.requires_attunement,
-          attunement_requirements: srdEntity.attunement_requirements,
+          requires_attunement: srdEntity.requires_attunement || false,
+          attunement_requirements: srdEntity.attunement_requirements || null,
           value_gp: srdEntity.value_gp,
           weight: srdEntity.weight,
-          ...(srdEntity.mechanics || {}),
+          // Only include damage for weapons (when present)
+          ...(srdEntity.mechanics?.damage && { damage: srdEntity.mechanics.damage }),
+          ...(srdEntity.mechanics?.damage_type && { damage_type: srdEntity.mechanics.damage_type }),
+          ...(srdEntity.mechanics?.properties && { properties: srdEntity.mechanics.properties }),
+          // Only include AC for armor (when present and not null)
+          ...(srdEntity.mechanics?.ac != null && { ac: srdEntity.mechanics.ac }),
+          ...(srdEntity.mechanics?.ac_bonus != null && { ac_bonus: srdEntity.mechanics.ac_bonus }),
+          ...(srdEntity.mechanics?.stealth_disadvantage && { stealth_disadvantage: srdEntity.mechanics.stealth_disadvantage }),
+          ...(srdEntity.mechanics?.str_minimum != null && { str_minimum: srdEntity.mechanics.str_minimum }),
+          // Other mechanics (charges, effect, recharge)
+          ...(srdEntity.mechanics?.charges != null && { charges: srdEntity.mechanics.charges }),
+          ...(srdEntity.mechanics?.recharge && { recharge: srdEntity.mechanics.recharge }),
+          ...(srdEntity.mechanics?.effect && { effect: srdEntity.mechanics.effect }),
         },
       };
     }
