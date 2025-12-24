@@ -8,6 +8,8 @@ import { ForgeShell } from '@/components/forge/ForgeShell'
 import { CommitPanel } from '@/components/forge/CommitPanel'
 import { EncounterOutputCard, GeneratedEncounter } from '@/components/forge/encounter'
 import { QuickReference } from '@/components/forge/QuickReference'
+import { SrdLookupPopover } from '@/components/srd'
+import type { SrdCreature } from '@/types/srd'
 import { extractTextForScanning } from '@/lib/forge/validation/post-gen'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -268,6 +270,13 @@ export default function EncounterForgePage({ params }: PageProps) {
     }
   }
 
+  // Handle SRD creature selection
+  const handleSrdCreatureSelect = (creature: SrdCreature) => {
+    const creatureInfo = `${creature.name} (CR ${creature.cr || '?'}, ${creature.creature_type || 'creature'})`
+    setConcept((prev) => (prev ? `${prev}\n\nInclude: ${creatureInfo}` : `Include: ${creatureInfo}`))
+    toast.success(`Added ${creature.name} to encounter concept`)
+  }
+
   // Remove referenced entity
   const handleRemoveRef = (entityId: string, entityName: string) => {
     setReferencedEntityIds((prev) => prev.filter((id) => id !== entityId))
@@ -437,6 +446,20 @@ export default function EncounterForgePage({ params }: PageProps) {
               disabled={isLocked}
               className="bg-slate-900/50 border-slate-700 min-h-[80px]"
             />
+          </div>
+
+          {/* SRD Creature Lookup */}
+          <div className="space-y-2">
+            <Label>Add SRD Creature</Label>
+            <SrdLookupPopover
+              types={['creatures']}
+              onSelectCreature={handleSrdCreatureSelect}
+              triggerLabel="Search Creatures"
+              placeholder="Search for creatures by name..."
+            />
+            <p className="text-xs text-slate-500">
+              Search official D&D 5e SRD creatures to add to your encounter
+            </p>
           </div>
 
           {/* Location Selector */}

@@ -19,6 +19,9 @@ import { Loader2, Sparkles, Dices, MapPin, User, X, Package, Skull } from 'lucid
 import type { PreValidationResult } from '@/types/forge'
 import { PreValidationAlert } from '@/components/forge/PreValidationAlert'
 import { QuickReference } from '@/components/forge/QuickReference'
+import { SrdLookupPopover } from '@/components/srd'
+import type { SrdItem } from '@/types/srd'
+import { toast } from 'sonner'
 
 interface Entity {
   id: string
@@ -278,6 +281,28 @@ export function ItemInputForm({
     setDmSlug(randomSeed)
   }
 
+  // Handle SRD item selection
+  const handleSrdItemSelect = (item: SrdItem): void => {
+    const itemInfo = `${item.name}${item.rarity ? ` (${item.rarity})` : ''}${item.item_type ? ` - ${item.item_type}` : ''}`
+    setDmSlug((prev) => (prev ? `${prev}\n\nBase on: ${itemInfo}` : `Base on: ${itemInfo}`))
+
+    // Auto-set category and rarity if available
+    if (item.item_type && item.item_type !== 'magic_item') {
+      const matchingCategory = ITEM_TYPES.find(t => t.value === item.item_type)
+      if (matchingCategory) {
+        setCategory(matchingCategory.value)
+      }
+    }
+    if (item.rarity) {
+      const normalizedRarity = item.rarity.toLowerCase().replace(' ', '_')
+      const matchingRarity = RARITIES.find(r => r.value === normalizedRarity)
+      if (matchingRarity) {
+        setRarity(matchingRarity.value)
+      }
+    }
+    toast.success(`Added ${item.name} as base reference`)
+  }
+
   const selectedRarity = RARITIES.find((r) => r.value === rarity)
 
   return (
@@ -333,6 +358,19 @@ export function ItemInputForm({
             )
           }}
         />
+
+        {/* SRD Item Lookup */}
+        <div className="mt-2">
+          <SrdLookupPopover
+            types={['items']}
+            onSelectItem={handleSrdItemSelect}
+            triggerLabel="Search SRD Items"
+            placeholder="Search for items by name..."
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Search official D&D 5e SRD items to use as a base
+          </p>
+        </div>
 
         {/* Show referenced entities */}
         {referencedEntities.length > 0 && (
