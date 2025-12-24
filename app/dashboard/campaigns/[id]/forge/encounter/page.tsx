@@ -40,7 +40,8 @@ import {
   MapPin,
 } from 'lucide-react'
 import type { Discovery, Conflict, EntityType } from '@/types/forge'
-import type { EncounterSubType, EncounterCreature, EncounterRewardItem } from '@/types/living-entity'
+import type { EncounterSubType, EncounterCreature, EncounterRewardItem, EncounterCreatureWithSrd } from '@/types/living-entity'
+import { matchCreaturesToSrd } from '@/lib/srd/creature-matcher'
 
 // Input data type for encounter forge
 interface EncounterInputData {
@@ -130,6 +131,9 @@ export default function EncounterForgePage({ params }: PageProps) {
   const [reviewDiscoveries, setReviewDiscoveries] = useState<Discovery[]>([])
   const [reviewConflicts, setReviewConflicts] = useState<Conflict[]>([])
 
+  // SRD-linked creatures (for display with stats)
+  const [srdLinkedCreatures, setSrdLinkedCreatures] = useState<EncounterCreatureWithSrd[]>([])
+
   // Sync scan results to local review state
   // IMPORTANT: This must MERGE with creature/item discoveries, not replace them
   useEffect(() => {
@@ -197,44 +201,84 @@ export default function EncounterForgePage({ params }: PageProps) {
     fetchEntities()
   }, [campaignId, supabase])
 
-  // Sync creatures and reward items to discoveries
+  // Sync creatures and reward items to discoveries + SRD auto-linking
   useEffect(() => {
     if (!forge.output) return
 
     const output = forge.output
-    const newDiscoveries: Discovery[] = []
+    const creatures = output.mechanics?.creatures || []
 
-    // Creatures become Creature stubs
-    output.mechanics?.creatures?.forEach((creature: EncounterCreature, idx: number) => {
-      const cleanName = creature.name.split(/[:(-]/)[0].trim()
-      if (!cleanName) return
-
-      // Check for duplicates in existing discoveries
-      const isDuplicate = reviewDiscoveries.some(
-        (d) => d.text.toLowerCase() === cleanName.toLowerCase()
-      )
-      // Check if entity already exists in campaign
-      const isExisting = existingEntities.some(
-        (e) => e.name.toLowerCase() === cleanName.toLowerCase()
-      )
-
-      if (!isDuplicate && !isExisting) {
-        newDiscoveries.push({
-          id: `creature-${idx}-${Date.now()}`,
-          text: cleanName,
-          suggestedType: 'creature' as EntityType,
-          context: `Creature in ${output.name || 'encounter'}${creature.role ? ` (${creature.role})` : ''}`,
-          status: 'pending' as const,
-        })
+    // Process creatures with SRD matching
+    const processCreatures = async () => {
+      if (creatures.length === 0) {
+        setSrdLinkedCreatures([])
+        return
       }
-    })
 
-    // Reward items become Item stubs
+      // Get creature names for SRD matching
+      const creatureNames = creatures.map((c: EncounterCreature) =>
+        c.name.split(/[:(-]/)[0].trim()
+      ).filter(Boolean)
+
+      // Match against SRD
+      const srdMatches = await matchCreaturesToSrd(creatureNames)
+
+      // Build SRD-linked creatures list and discoveries
+      const linkedCreatures: EncounterCreatureWithSrd[] = []
+      const newDiscoveries: Discovery[] = []
+
+      creatures.forEach((creature: EncounterCreature, idx: number) => {
+        const cleanName = creature.name.split(/[:(-]/)[0].trim()
+        if (!cleanName) return
+
+        const srdMatch = srdMatches.get(cleanName)
+
+        // Add to SRD-linked creatures for display
+        linkedCreatures.push({
+          ...creature,
+          srd_match: srdMatch || null,
+          srd_status: srdMatch ? 'srd_linked' : 'custom',
+        })
+
+        // Only create discovery for NON-SRD creatures
+        if (!srdMatch) {
+          // Check for duplicates in existing discoveries
+          const isDuplicate = reviewDiscoveries.some(
+            (d) => d.text.toLowerCase() === cleanName.toLowerCase()
+          )
+          // Check if entity already exists in campaign
+          const isExisting = existingEntities.some(
+            (e) => e.name.toLowerCase() === cleanName.toLowerCase()
+          )
+
+          if (!isDuplicate && !isExisting) {
+            newDiscoveries.push({
+              id: `creature-${idx}-${Date.now()}`,
+              text: cleanName,
+              suggestedType: 'creature' as EntityType,
+              context: `Custom creature in ${output.name || 'encounter'}${creature.role ? ` (${creature.role})` : ''}`,
+              status: 'pending' as const,
+            })
+          }
+        }
+      })
+
+      setSrdLinkedCreatures(linkedCreatures)
+
+      if (newDiscoveries.length > 0) {
+        console.log('Custom creatures added to Discoveries:', newDiscoveries)
+        setReviewDiscoveries((prev) => [...prev, ...newDiscoveries])
+      }
+    }
+
+    processCreatures()
+
+    // Process reward items (unchanged - items don't get SRD auto-linking yet)
+    const newItemDiscoveries: Discovery[] = []
     output.rewards?.items?.forEach((item: EncounterRewardItem, idx: number) => {
       const cleanName = item.name.split(/[:(-]/)[0].trim()
       if (!cleanName) return
 
-      // Check for duplicates
       const isDuplicate = reviewDiscoveries.some(
         (d) => d.text.toLowerCase() === cleanName.toLowerCase()
       )
@@ -243,7 +287,7 @@ export default function EncounterForgePage({ params }: PageProps) {
       )
 
       if (!isDuplicate && !isExisting) {
-        newDiscoveries.push({
+        newItemDiscoveries.push({
           id: `reward-item-${idx}-${Date.now()}`,
           text: cleanName,
           suggestedType: 'item' as EntityType,
@@ -253,9 +297,9 @@ export default function EncounterForgePage({ params }: PageProps) {
       }
     })
 
-    if (newDiscoveries.length > 0) {
-      console.log('Syncing Encounter Assets to Discoveries:', newDiscoveries)
-      setReviewDiscoveries((prev) => [...prev, ...newDiscoveries])
+    if (newItemDiscoveries.length > 0) {
+      console.log('Reward items added to Discoveries:', newItemDiscoveries)
+      setReviewDiscoveries((prev) => [...prev, ...newItemDiscoveries])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forge.output?.mechanics?.creatures, forge.output?.rewards?.items, existingEntities])
@@ -316,6 +360,7 @@ export default function EncounterForgePage({ params }: PageProps) {
   const handleDiscard = () => {
     setReviewDiscoveries([])
     setReviewConflicts([])
+    setSrdLinkedCreatures([])
     forge.reset()
   }
 
@@ -602,6 +647,7 @@ export default function EncounterForgePage({ params }: PageProps) {
             data={forge.output}
             scanResult={forge.scanResult}
             campaignId={campaignId}
+            srdLinkedCreatures={srdLinkedCreatures}
             onDiscoveryAction={handleDiscoveryAction}
             onManualDiscovery={handleManualDiscovery}
             onLinkExisting={(entityId) => {

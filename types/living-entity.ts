@@ -394,6 +394,23 @@ export interface EncounterCreature {
   notes?: string;              // Special behavior or modifications
 }
 
+// SRD Match info for auto-linking
+export interface SrdCreatureMatch {
+  id: string;
+  name: string;
+  cr: string;
+  hp: number;
+  ac: number;
+  creature_type: string;
+  confidence: number;
+}
+
+// Extended creature with SRD match info (for UI display)
+export interface EncounterCreatureWithSrd extends EncounterCreature {
+  srd_match?: SrdCreatureMatch | null;
+  srd_status: 'srd_linked' | 'custom' | 'pending';
+}
+
 // Encounter Reward Item
 export interface EncounterRewardItem {
   name: string;

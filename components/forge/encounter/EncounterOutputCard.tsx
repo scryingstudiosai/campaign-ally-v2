@@ -34,7 +34,10 @@ import type {
   EncounterCreature,
   EncounterPhase,
   EncounterRewardItem,
+  EncounterCreatureWithSrd,
 } from '@/types/living-entity'
+import { SrdCreaturePopover } from '@/components/srd'
+import { Button } from '@/components/ui/button'
 
 interface EncounterFact {
   content: string
@@ -58,6 +61,7 @@ interface EncounterOutputCardProps {
   data: GeneratedEncounter
   scanResult?: ScanResult | null
   campaignId: string
+  srdLinkedCreatures?: EncounterCreatureWithSrd[]
   onDiscoveryAction?: (discoveryId: string, action: Discovery['status'], linkedEntityId?: string) => void
   onManualDiscovery?: (text: string, type: string) => void
   onLinkExisting?: (entityId: string) => void
@@ -101,6 +105,7 @@ export function EncounterOutputCard({
   data,
   scanResult,
   campaignId,
+  srdLinkedCreatures,
   onDiscoveryAction,
   onManualDiscovery,
   onLinkExisting,
@@ -405,41 +410,96 @@ export function EncounterOutputCard({
                 )}
               </div>
 
-              {/* Creatures */}
-              {mechanics.creatures && mechanics.creatures.length > 0 && (
+              {/* Creatures - with SRD auto-linking */}
+              {(srdLinkedCreatures?.length || mechanics.creatures?.length) ? (
                 <div className="pt-3 border-t border-slate-700">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-slate-500 uppercase flex items-center gap-1.5">
                       <Skull className="w-3 h-3" /> Creatures
                     </span>
-                    <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                      Added to Discoveries
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {srdLinkedCreatures?.some(c => c.srd_status === 'srd_linked') && (
+                        <span className="text-[10px] text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">
+                          SRD Linked
+                        </span>
+                      )}
+                      {srdLinkedCreatures?.some(c => c.srd_status === 'custom') && (
+                        <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                          Custom Stubs
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    {mechanics.creatures.map((creature: EncounterCreature, i: number) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between p-2 bg-amber-500/10 border border-dashed border-amber-500/30 rounded"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Skull className="w-4 h-4 text-amber-400" />
-                          <span className="text-sm font-medium text-amber-300">{creature.name}</span>
+                    {(srdLinkedCreatures || mechanics.creatures)?.map((creature, i: number) => {
+                      const srdCreature = creature as EncounterCreatureWithSrd
+                      const isSrdLinked = srdCreature.srd_status === 'srd_linked' && srdCreature.srd_match
+
+                      return (
+                        <div
+                          key={i}
+                          className={`p-3 rounded-lg border ${
+                            isSrdLinked
+                              ? 'bg-green-500/10 border-green-500/30'
+                              : 'bg-amber-500/10 border-dashed border-amber-500/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Skull className={`w-4 h-4 shrink-0 ${isSrdLinked ? 'text-green-400' : 'text-amber-400'}`} />
+                              <span className={`text-sm font-medium truncate ${isSrdLinked ? 'text-green-300' : 'text-amber-300'}`}>
+                                {creature.name}
+                              </span>
+                              {creature.count > 1 && (
+                                <span className="text-xs text-slate-400 shrink-0">x{creature.count}</span>
+                              )}
+                              {isSrdLinked ? (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded border border-green-500/30 shrink-0">
+                                  SRD
+                                </span>
+                              ) : (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded border border-amber-500/30 shrink-0">
+                                  Custom
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {/* SRD Quick Stats */}
+                              {isSrdLinked && srdCreature.srd_match && (
+                                <>
+                                  <span className="text-xs text-slate-400 hidden sm:inline">
+                                    CR {srdCreature.srd_match.cr} • HP {srdCreature.srd_match.hp} • AC {srdCreature.srd_match.ac}
+                                  </span>
+                                  <SrdCreaturePopover
+                                    creatureId={srdCreature.srd_match.id}
+                                    trigger={
+                                      <Button size="sm" variant="ghost" className="text-xs h-7 px-2 text-green-400 hover:text-green-300">
+                                        View Stats
+                                      </Button>
+                                    }
+                                  />
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Role badge */}
                           {creature.role && (
-                            <span className={`text-xs ${ROLE_COLORS[creature.role] || 'text-slate-400'}`}>
-                              ({creature.role})
+                            <span className={`text-xs mt-1 inline-block ${ROLE_COLORS[creature.role] || 'text-slate-400'}`}>
+                              {creature.role}
                             </span>
                           )}
                         </div>
-                        <span className="text-sm text-slate-400">x{creature.count}</span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
-                  {mechanics.creatures.some((c: EncounterCreature) => c.notes) && (
+                  {/* Notes section */}
+                  {(srdLinkedCreatures || mechanics.creatures)?.some((c) => c.notes) && (
                     <div className="mt-2 text-xs text-slate-500">
-                      {mechanics.creatures
-                        .filter((c: EncounterCreature) => c.notes)
-                        .map((c: EncounterCreature, i: number) => (
+                      {(srdLinkedCreatures || mechanics.creatures)
+                        ?.filter((c) => c.notes)
+                        .map((c, i: number) => (
                           <div key={i}>
                             <strong>{c.name}:</strong> {c.notes}
                           </div>
@@ -447,7 +507,7 @@ export function EncounterOutputCard({
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
 
               {/* Terrain & Hazards */}
               <div className="grid grid-cols-2 gap-3">
