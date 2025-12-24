@@ -56,29 +56,69 @@ export function SrdCreaturePopover({
     return mod >= 0 ? `+${mod}` : `${mod}`
   }
 
-  // Format saving throws
-  const formatSaves = (saves: Record<string, number> | undefined): string => {
-    if (!saves || Object.keys(saves).length === 0) return ''
-    const statNames: Record<string, string> = {
-      str: 'Str', dex: 'Dex', con: 'Con', int: 'Int', wis: 'Wis', cha: 'Cha'
+  // Build saving throws from individual fields, filtering out nulls
+  const getSavingThrows = (c: SrdCreature): string => {
+    const saves: { name: string; value: number }[] = []
+
+    // Check individual save fields first (Open5e format)
+    if (c.strength_save != null) saves.push({ name: 'Str', value: c.strength_save })
+    if (c.dexterity_save != null) saves.push({ name: 'Dex', value: c.dexterity_save })
+    if (c.constitution_save != null) saves.push({ name: 'Con', value: c.constitution_save })
+    if (c.intelligence_save != null) saves.push({ name: 'Int', value: c.intelligence_save })
+    if (c.wisdom_save != null) saves.push({ name: 'Wis', value: c.wisdom_save })
+    if (c.charisma_save != null) saves.push({ name: 'Cha', value: c.charisma_save })
+
+    // Also check saves object if no individual fields found
+    if (saves.length === 0 && c.saves && typeof c.saves === 'object') {
+      const statNames: Record<string, string> = {
+        str: 'Str', dex: 'Dex', con: 'Con', int: 'Int', wis: 'Wis', cha: 'Cha'
+      }
+      Object.entries(c.saves).forEach(([stat, bonus]) => {
+        if (bonus != null && typeof bonus === 'number') {
+          saves.push({ name: statNames[stat] || stat, value: bonus })
+        }
+      })
     }
-    return Object.entries(saves)
-      .map(([stat, bonus]) => `${statNames[stat] || stat} ${bonus >= 0 ? '+' : ''}${bonus}`)
-      .join(', ')
+
+    if (saves.length === 0) return ''
+    return saves.map(s => `${s.name} ${s.value >= 0 ? '+' : ''}${s.value}`).join(', ')
   }
 
-  // Format skills
-  const formatSkills = (skills: Record<string, number> | undefined): string => {
-    if (!skills || Object.keys(skills).length === 0) return ''
-    return Object.entries(skills)
-      .map(([skill, bonus]) => `${skill} ${bonus >= 0 ? '+' : ''}${bonus}`)
-      .join(', ')
+  // Format skills - handle string or object, filter nulls
+  const getSkills = (c: SrdCreature): string => {
+    if (!c.skills) return ''
+
+    // If skills is a string, return it directly
+    if (typeof c.skills === 'string') {
+      return c.skills
+    }
+
+    // If skills is an object, format it
+    const skillList: string[] = []
+    Object.entries(c.skills).forEach(([skill, bonus]) => {
+      if (bonus != null && typeof bonus === 'number') {
+        skillList.push(`${skill} ${bonus >= 0 ? '+' : ''}${bonus}`)
+      }
+    })
+    return skillList.join(', ')
   }
 
-  // Format senses
-  const formatSenses = (senses: Record<string, number | string> | undefined): string => {
-    if (!senses || Object.keys(senses).length === 0) return ''
-    return Object.entries(senses)
+  // Format array or string fields
+  const formatListField = (field: string[] | string | undefined): string => {
+    if (!field) return ''
+    if (typeof field === 'string') return field
+    return field.join(', ')
+  }
+
+  // Format senses - handle string or object
+  const getSenses = (c: SrdCreature): string => {
+    if (!c.senses) return ''
+
+    if (typeof c.senses === 'string') {
+      return c.senses
+    }
+
+    return Object.entries(c.senses)
       .map(([sense, value]) => {
         if (typeof value === 'number') {
           return `${sense} ${value} ft.`
@@ -86,6 +126,15 @@ export function SrdCreaturePopover({
         return `${sense} ${value}`
       })
       .join(', ')
+  }
+
+  // Format languages - handle string or array
+  const getLanguages = (c: SrdCreature): string => {
+    if (!c.languages) return '—'
+    if (typeof c.languages === 'string') {
+      return c.languages || '—'
+    }
+    return c.languages.length > 0 ? c.languages.join(', ') : '—'
   }
 
   // Format speeds
@@ -97,6 +146,19 @@ export function SrdCreaturePopover({
         return `${type} ${speed} ft.`
       })
       .join(', ')
+  }
+
+  // Get action/trait description (supports both desc and description fields)
+  const getDesc = (item: { desc?: string; description?: string }): string => {
+    return item.desc || item.description || ''
+  }
+
+  // Combine special_abilities and traits
+  const getTraits = (c: SrdCreature): Array<{ name: string; desc?: string; description?: string }> => {
+    const allTraits: Array<{ name: string; desc?: string; description?: string }> = []
+    if (c.special_abilities) allTraits.push(...c.special_abilities)
+    if (c.traits) allTraits.push(...c.traits)
+    return allTraits
   }
 
   return (
@@ -175,69 +237,65 @@ export function SrdCreaturePopover({
               {/* ===== PROFICIENCIES & TRAITS ===== */}
               <div className="space-y-1 text-sm border-b border-red-800/50 pb-3">
                 {/* Saving Throws */}
-                {creature.saves && Object.keys(creature.saves).length > 0 && (
+                {getSavingThrows(creature) && (
                   <p>
                     <span className="font-bold text-red-400">Saving Throws</span>{' '}
-                    <span className="text-slate-200">{formatSaves(creature.saves)}</span>
+                    <span className="text-slate-200">{getSavingThrows(creature)}</span>
                   </p>
                 )}
 
                 {/* Skills */}
-                {creature.skills && Object.keys(creature.skills).length > 0 && (
+                {getSkills(creature) && (
                   <p>
                     <span className="font-bold text-red-400">Skills</span>{' '}
-                    <span className="text-slate-200">{formatSkills(creature.skills)}</span>
+                    <span className="text-slate-200">{getSkills(creature)}</span>
                   </p>
                 )}
 
                 {/* Damage Vulnerabilities */}
-                {creature.damage_vulnerabilities && creature.damage_vulnerabilities.length > 0 && (
+                {formatListField(creature.damage_vulnerabilities) && (
                   <p>
                     <span className="font-bold text-red-400">Damage Vulnerabilities</span>{' '}
-                    <span className="text-slate-200">{creature.damage_vulnerabilities.join(', ')}</span>
+                    <span className="text-slate-200">{formatListField(creature.damage_vulnerabilities)}</span>
                   </p>
                 )}
 
                 {/* Damage Resistances */}
-                {creature.damage_resistances && creature.damage_resistances.length > 0 && (
+                {formatListField(creature.damage_resistances) && (
                   <p>
                     <span className="font-bold text-red-400">Damage Resistances</span>{' '}
-                    <span className="text-slate-200">{creature.damage_resistances.join(', ')}</span>
+                    <span className="text-slate-200">{formatListField(creature.damage_resistances)}</span>
                   </p>
                 )}
 
                 {/* Damage Immunities */}
-                {creature.damage_immunities && creature.damage_immunities.length > 0 && (
+                {formatListField(creature.damage_immunities) && (
                   <p>
                     <span className="font-bold text-red-400">Damage Immunities</span>{' '}
-                    <span className="text-slate-200">{creature.damage_immunities.join(', ')}</span>
+                    <span className="text-slate-200">{formatListField(creature.damage_immunities)}</span>
                   </p>
                 )}
 
                 {/* Condition Immunities */}
-                {creature.condition_immunities && creature.condition_immunities.length > 0 && (
+                {formatListField(creature.condition_immunities) && (
                   <p>
                     <span className="font-bold text-red-400">Condition Immunities</span>{' '}
-                    <span className="text-slate-200">{creature.condition_immunities.join(', ')}</span>
+                    <span className="text-slate-200">{formatListField(creature.condition_immunities)}</span>
                   </p>
                 )}
 
                 {/* Senses */}
-                {creature.senses && Object.keys(creature.senses).length > 0 && (
+                {getSenses(creature) && (
                   <p>
                     <span className="font-bold text-red-400">Senses</span>{' '}
-                    <span className="text-slate-200">{formatSenses(creature.senses)}</span>
+                    <span className="text-slate-200">{getSenses(creature)}</span>
                   </p>
                 )}
 
                 {/* Languages */}
                 <p>
                   <span className="font-bold text-red-400">Languages</span>{' '}
-                  <span className="text-slate-200">
-                    {creature.languages && creature.languages.length > 0
-                      ? creature.languages.join(', ')
-                      : '—'}
-                  </span>
+                  <span className="text-slate-200">{getLanguages(creature)}</span>
                 </p>
 
                 {/* Challenge */}
@@ -250,14 +308,14 @@ export function SrdCreaturePopover({
                 </p>
               </div>
 
-              {/* ===== SPECIAL TRAITS ===== */}
-              {creature.traits && creature.traits.length > 0 && (
+              {/* ===== SPECIAL TRAITS (includes special_abilities) ===== */}
+              {getTraits(creature).length > 0 && (
                 <div className="space-y-2 border-b border-red-800/50 pb-3">
-                  {creature.traits.map((trait, i) => (
+                  {getTraits(creature).map((trait, i) => (
                     <div key={i} className="text-sm">
                       <p>
                         <span className="font-bold text-slate-100 italic">{trait.name}.</span>{' '}
-                        <span className="text-slate-300">{trait.description}</span>
+                        <span className="text-slate-300">{getDesc(trait)}</span>
                       </p>
                     </div>
                   ))}
@@ -269,10 +327,10 @@ export function SrdCreaturePopover({
                 <div className="space-y-2">
                   <h4 className="font-bold text-red-400 border-b border-red-800 pb-1">Actions</h4>
                   {creature.actions.map((action, i) => (
-                    <div key={i} className="text-sm">
+                    <div key={i} className="text-sm mb-2">
                       <p>
                         <span className="font-bold text-slate-100 italic">{action.name}.</span>{' '}
-                        <span className="text-slate-300">{action.description}</span>
+                        <span className="text-slate-300">{getDesc(action)}</span>
                       </p>
                     </div>
                   ))}
@@ -284,10 +342,10 @@ export function SrdCreaturePopover({
                 <div className="space-y-2">
                   <h4 className="font-bold text-red-400 border-b border-red-800 pb-1">Bonus Actions</h4>
                   {creature.bonus_actions.map((action, i) => (
-                    <div key={i} className="text-sm">
+                    <div key={i} className="text-sm mb-2">
                       <p>
                         <span className="font-bold text-slate-100 italic">{action.name}.</span>{' '}
-                        <span className="text-slate-300">{action.description}</span>
+                        <span className="text-slate-300">{getDesc(action)}</span>
                       </p>
                     </div>
                   ))}
@@ -299,10 +357,10 @@ export function SrdCreaturePopover({
                 <div className="space-y-2">
                   <h4 className="font-bold text-red-400 border-b border-red-800 pb-1">Reactions</h4>
                   {creature.reactions.map((reaction, i) => (
-                    <div key={i} className="text-sm">
+                    <div key={i} className="text-sm mb-2">
                       <p>
                         <span className="font-bold text-slate-100 italic">{reaction.name}.</span>{' '}
-                        <span className="text-slate-300">{reaction.description}</span>
+                        <span className="text-slate-300">{getDesc(reaction)}</span>
                       </p>
                     </div>
                   ))}
@@ -313,14 +371,16 @@ export function SrdCreaturePopover({
               {creature.legendary_actions && creature.legendary_actions.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-bold text-red-400 border-b border-red-800 pb-1">Legendary Actions</h4>
-                  {creature.legendary_description && (
-                    <p className="text-sm text-slate-300 italic">{creature.legendary_description}</p>
+                  {(creature.legendary_desc || creature.legendary_description) && (
+                    <p className="text-sm text-slate-300 italic">
+                      {creature.legendary_desc || creature.legendary_description}
+                    </p>
                   )}
                   {creature.legendary_actions.map((action, i) => (
-                    <div key={i} className="text-sm">
+                    <div key={i} className="text-sm mb-2">
                       <p>
                         <span className="font-bold text-slate-100 italic">{action.name}.</span>{' '}
-                        <span className="text-slate-300">{action.description}</span>
+                        <span className="text-slate-300">{getDesc(action)}</span>
                       </p>
                     </div>
                   ))}

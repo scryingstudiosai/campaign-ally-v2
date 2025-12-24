@@ -40,23 +40,36 @@ export interface SrdCreature {
     cha?: number;
   };
   speeds?: Record<string, number>;
-  saves?: Record<string, number>;
-  skills?: Record<string, number>;
 
-  damage_resistances?: string[];
-  damage_immunities?: string[];
-  damage_vulnerabilities?: string[];
-  condition_immunities?: string[];
+  // Saving throws - can be object or individual fields from Open5e
+  saves?: Record<string, number | null>;
+  strength_save?: number | null;
+  dexterity_save?: number | null;
+  constitution_save?: number | null;
+  intelligence_save?: number | null;
+  wisdom_save?: number | null;
+  charisma_save?: number | null;
 
-  senses?: Record<string, number | string>;
-  languages?: string[];
+  // Skills - can be object or string from Open5e
+  skills?: Record<string, number | null> | string;
 
-  traits?: Array<{ name: string; description: string }>;
-  actions?: Array<{ name: string; description: string }>;
-  bonus_actions?: Array<{ name: string; description: string }>;
-  reactions?: Array<{ name: string; description: string }>;
-  legendary_actions?: Array<{ name: string; description: string }>;
+  damage_resistances?: string[] | string;
+  damage_immunities?: string[] | string;
+  damage_vulnerabilities?: string[] | string;
+  condition_immunities?: string[] | string;
+
+  senses?: Record<string, number | string> | string;
+  languages?: string[] | string;
+
+  // Open5e uses "desc", our type uses "description" - support both
+  special_abilities?: Array<{ name: string; desc?: string; description?: string }>;
+  traits?: Array<{ name: string; desc?: string; description?: string }>;
+  actions?: Array<{ name: string; desc?: string; description?: string }>;
+  bonus_actions?: Array<{ name: string; desc?: string; description?: string }>;
+  reactions?: Array<{ name: string; desc?: string; description?: string }>;
+  legendary_actions?: Array<{ name: string; desc?: string; description?: string }>;
   legendary_description?: string;
+  legendary_desc?: string;
 
   description?: string;
   created_at?: string;

@@ -10,6 +10,20 @@ interface SrdCreatureCardProps {
   onSelect?: (creature: SrdCreature) => void
 }
 
+// Helper to format array or string fields
+const formatListField = (field: string[] | string | undefined): string => {
+  if (!field) return ''
+  if (typeof field === 'string') return field
+  return field.join(', ')
+}
+
+// Helper to check if field has content
+const hasListContent = (field: string[] | string | undefined): boolean => {
+  if (!field) return false
+  if (typeof field === 'string') return field.length > 0
+  return field.length > 0
+}
+
 export function SrdCreatureCard({ creature, compact = false, onSelect }: SrdCreatureCardProps): JSX.Element {
   const handleClick = () => {
     if (onSelect) {
@@ -120,24 +134,24 @@ export function SrdCreatureCard({ creature, compact = false, onSelect }: SrdCrea
       )}
 
       {/* Defenses */}
-      {(creature.damage_resistances?.length || creature.damage_immunities?.length || creature.condition_immunities?.length) && (
+      {(hasListContent(creature.damage_resistances) || hasListContent(creature.damage_immunities) || hasListContent(creature.condition_immunities)) && (
         <div className="space-y-1 text-sm">
-          {creature.damage_resistances && creature.damage_resistances.length > 0 && (
+          {hasListContent(creature.damage_resistances) && (
             <div>
               <span className="text-slate-500">Damage Resistances: </span>
-              <span className="text-slate-300">{creature.damage_resistances.join(', ')}</span>
+              <span className="text-slate-300">{formatListField(creature.damage_resistances)}</span>
             </div>
           )}
-          {creature.damage_immunities && creature.damage_immunities.length > 0 && (
+          {hasListContent(creature.damage_immunities) && (
             <div>
               <span className="text-slate-500">Damage Immunities: </span>
-              <span className="text-slate-300">{creature.damage_immunities.join(', ')}</span>
+              <span className="text-slate-300">{formatListField(creature.damage_immunities)}</span>
             </div>
           )}
-          {creature.condition_immunities && creature.condition_immunities.length > 0 && (
+          {hasListContent(creature.condition_immunities) && (
             <div>
               <span className="text-slate-500">Condition Immunities: </span>
-              <span className="text-slate-300">{creature.condition_immunities.join(', ')}</span>
+              <span className="text-slate-300">{formatListField(creature.condition_immunities)}</span>
             </div>
           )}
         </div>
@@ -145,24 +159,26 @@ export function SrdCreatureCard({ creature, compact = false, onSelect }: SrdCrea
 
       {/* Senses & Languages */}
       <div className="grid grid-cols-2 gap-3 text-sm">
-        {creature.senses && Object.keys(creature.senses).length > 0 && (
+        {creature.senses && (typeof creature.senses === 'string' ? creature.senses : Object.keys(creature.senses).length > 0) && (
           <div>
             <span className="flex items-center gap-1 text-slate-500 mb-1">
               <Eye className="w-3 h-3" /> Senses
             </span>
             <span className="text-slate-300 text-xs">
-              {typeof creature.senses === 'object' && 'raw' in creature.senses
-                ? creature.senses.raw
-                : Object.entries(creature.senses).map(([k, v]) => `${k} ${v}`).join(', ')}
+              {typeof creature.senses === 'string'
+                ? creature.senses
+                : typeof creature.senses === 'object' && 'raw' in creature.senses
+                  ? String(creature.senses.raw)
+                  : Object.entries(creature.senses).map(([k, v]) => `${k} ${v}`).join(', ')}
             </span>
           </div>
         )}
-        {creature.languages && creature.languages.length > 0 && (
+        {hasListContent(creature.languages) && (
           <div>
             <span className="flex items-center gap-1 text-slate-500 mb-1">
               <Languages className="w-3 h-3" /> Languages
             </span>
-            <span className="text-slate-300 text-xs">{creature.languages.join(', ')}</span>
+            <span className="text-slate-300 text-xs">{formatListField(creature.languages)}</span>
           </div>
         )}
       </div>
