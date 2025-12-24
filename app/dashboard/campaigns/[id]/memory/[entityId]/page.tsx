@@ -29,6 +29,7 @@ import { EncounterSoulCard } from '@/components/entity/EncounterSoulCard'
 import { EncounterMechanicsCard } from '@/components/entity/EncounterMechanicsCard'
 import { EncounterRewardsCard } from '@/components/entity/EncounterRewardsCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
+import { EntityInventorySection } from '@/components/inventory'
 import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
@@ -530,6 +531,14 @@ export default async function EntityDetailPage({ params }: PageProps) {
                 </CardContent>
               </Card>
             )}
+
+            {/* Inventory Section - for NPCs, Players, Locations */}
+            <EntityInventorySection
+              campaignId={params.id}
+              entityId={entity.id}
+              entityType={entity.entity_type}
+              subType={entity.sub_type}
+            />
           </div>
 
 
