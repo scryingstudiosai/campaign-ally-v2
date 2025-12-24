@@ -46,6 +46,7 @@ export function SrdLookupPopover({
 
   // Inventory dialog state
   const [showInventoryDialog, setShowInventoryDialog] = useState(false)
+  const [inventoryItem, setInventoryItem] = useState<SrdItem | null>(null) // Separate state to preserve item when popover closes
   const [selectedOwnerType, setSelectedOwnerType] = useState<string>('')
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
@@ -94,16 +95,18 @@ export function SrdLookupPopover({
 
   // Open inventory dialog
   const handleOpenInventoryDialog = useCallback(() => {
+    // Copy selectedItem to inventoryItem so it persists when popover closes
+    setInventoryItem(selectedItem)
     setShowInventoryDialog(true)
     setSelectedOwnerType('')
     setSelectedOwnerId('')
     setQuantity(1)
     setOwners([])
-  }, [])
+  }, [selectedItem])
 
   // Add to inventory
   const handleAddToInventory = useCallback(async () => {
-    if (!selectedOwnerType || !selectedOwnerId || !selectedItem || !campaignId) return
+    if (!selectedOwnerType || !selectedOwnerId || !inventoryItem || !campaignId) return
 
     setAddingToInventory(true)
     try {
@@ -112,7 +115,7 @@ export function SrdLookupPopover({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaign_id: campaignId,
-          srd_item_id: selectedItem.id,
+          srd_item_id: inventoryItem.id,
           owner_type: selectedOwnerType,
           owner_id: selectedOwnerId,
           quantity: quantity,
@@ -129,13 +132,14 @@ export function SrdLookupPopover({
         ? 'Party Inventory'
         : owners.find(o => o.id === selectedOwnerId)?.name || 'inventory'
 
-      toast.success(`Added ${quantity}x ${selectedItem.name} to ${ownerName}`)
+      toast.success(`Added ${quantity}x ${inventoryItem.name} to ${ownerName}`)
 
       if (onAddedToInventory) {
-        onAddedToInventory(selectedItem.name, ownerName)
+        onAddedToInventory(inventoryItem.name, ownerName)
       }
 
       setShowInventoryDialog(false)
+      setInventoryItem(null)
       setQuantity(1)
     } catch (err) {
       console.error('Failed to add to inventory:', err)
@@ -143,7 +147,7 @@ export function SrdLookupPopover({
     } finally {
       setAddingToInventory(false)
     }
-  }, [selectedOwnerType, selectedOwnerId, selectedItem, campaignId, quantity, owners, onAddedToInventory])
+  }, [selectedOwnerType, selectedOwnerId, inventoryItem, campaignId, quantity, owners, onAddedToInventory])
 
   // Add to Memory handlers
   const handleAddCreatureToMemory = useCallback(async () => {
@@ -493,7 +497,7 @@ export function SrdLookupPopover({
       </Popover>
 
       {/* Add to Inventory Dialog */}
-      <Dialog open={showInventoryDialog} onOpenChange={setShowInventoryDialog}>
+      <Dialog open={showInventoryDialog} onOpenChange={(open) => { setShowInventoryDialog(open); if (!open) setInventoryItem(null); }}>
         <DialogContent className="bg-slate-900 border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-slate-200">Add to Inventory</DialogTitle>
@@ -502,8 +506,8 @@ export function SrdLookupPopover({
           <div className="space-y-4 py-4">
             {/* Item being added */}
             <div className="p-3 bg-slate-800 rounded-lg">
-              <p className="font-medium text-slate-200">{selectedItem?.name}</p>
-              <p className="text-sm text-slate-400">{selectedItem?.item_type}</p>
+              <p className="font-medium text-slate-200">{inventoryItem?.name}</p>
+              <p className="text-sm text-slate-400">{inventoryItem?.item_type}</p>
             </div>
 
             {/* Owner Type */}
@@ -563,12 +567,12 @@ export function SrdLookupPopover({
           </div>
 
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowInventoryDialog(false)}>
+            <Button variant="ghost" onClick={() => { setShowInventoryDialog(false); setInventoryItem(null); }}>
               Cancel
             </Button>
             <Button
               onClick={handleAddToInventory}
-              disabled={!selectedOwnerType || !selectedOwnerId || addingToInventory}
+              disabled={!inventoryItem || !selectedOwnerType || !selectedOwnerId || addingToInventory}
               className="bg-teal-600 hover:bg-teal-500"
             >
               {addingToInventory ? (
