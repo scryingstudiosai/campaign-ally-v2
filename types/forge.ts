@@ -82,6 +82,7 @@ export interface HistoryEntry {
     | 'found_at'
     | 'edited'
     | 'stub_created'
+    | 'srd_imported'
   entityId?: string
   entityName?: string
   session?: string

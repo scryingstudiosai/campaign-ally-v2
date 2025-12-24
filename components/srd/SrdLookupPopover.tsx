@@ -1,21 +1,24 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Search, Loader2, Skull, Sword, Sparkles, X } from 'lucide-react'
+import { Search, Loader2, Skull, Sword, Sparkles, X, Brain } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useSrdSearch, SrdSearchType } from '@/hooks/useSrdSearch'
 import { SrdCreatureCard } from './SrdCreatureCard'
 import { SrdItemCard } from './SrdItemCard'
+import { toast } from 'sonner'
 import type { GameSystem, SrdCreature, SrdItem, SrdSpell } from '@/types/srd'
 
 interface SrdLookupPopoverProps {
   gameSystem?: GameSystem
   types?: SrdSearchType[]
+  campaignId?: string  // Required for "Add to Memory" feature
   onSelectCreature?: (creature: SrdCreature) => void
   onSelectItem?: (item: SrdItem) => void
   onSelectSpell?: (spell: SrdSpell) => void
+  onAddedToMemory?: (entityId: string, entityName: string) => void
   triggerLabel?: string
   placeholder?: string
 }
@@ -23,15 +26,18 @@ interface SrdLookupPopoverProps {
 export function SrdLookupPopover({
   gameSystem = '5e_2014',
   types = ['creatures', 'items', 'spells'],
+  campaignId,
   onSelectCreature,
   onSelectItem,
   onSelectSpell,
+  onAddedToMemory,
   triggerLabel = 'Search SRD',
   placeholder = 'Search creatures, items, spells...',
 }: SrdLookupPopoverProps): JSX.Element {
   const [open, setOpen] = useState(false)
   const [selectedCreature, setSelectedCreature] = useState<SrdCreature | null>(null)
   const [selectedItem, setSelectedItem] = useState<SrdItem | null>(null)
+  const [isSavingToMemory, setIsSavingToMemory] = useState(false)
 
   const {
     query,
@@ -40,6 +46,83 @@ export function SrdLookupPopover({
     isLoading,
     clear,
   } = useSrdSearch({ gameSystem, types, limit: 10 })
+
+  // Add to Memory handlers
+  const handleAddCreatureToMemory = useCallback(async () => {
+    if (!selectedCreature || !campaignId) return
+
+    setIsSavingToMemory(true)
+    try {
+      const response = await fetch('/api/srd/add-to-memory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          entityType: 'creature',
+          srdEntity: selectedCreature,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to add to Memory')
+      }
+
+      const result = await response.json()
+      toast.success(`${selectedCreature.name} added to Memory!`)
+
+      if (onAddedToMemory) {
+        onAddedToMemory(result.entity.id, selectedCreature.name)
+      }
+
+      setOpen(false)
+      clear()
+      setSelectedCreature(null)
+    } catch (error) {
+      console.error('Failed to add creature to memory:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to add to Memory')
+    } finally {
+      setIsSavingToMemory(false)
+    }
+  }, [selectedCreature, campaignId, onAddedToMemory, clear])
+
+  const handleAddItemToMemory = useCallback(async () => {
+    if (!selectedItem || !campaignId) return
+
+    setIsSavingToMemory(true)
+    try {
+      const response = await fetch('/api/srd/add-to-memory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          entityType: 'item',
+          srdEntity: selectedItem,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to add to Memory')
+      }
+
+      const result = await response.json()
+      toast.success(`${selectedItem.name} added to Memory!`)
+
+      if (onAddedToMemory) {
+        onAddedToMemory(result.entity.id, selectedItem.name)
+      }
+
+      setOpen(false)
+      clear()
+      setSelectedItem(null)
+    } catch (error) {
+      console.error('Failed to add item to memory:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to add to Memory')
+    } finally {
+      setIsSavingToMemory(false)
+    }
+  }, [selectedItem, campaignId, onAddedToMemory, clear])
 
   const handleSelectCreature = useCallback((creature: SrdCreature) => {
     setSelectedCreature(creature)
@@ -132,15 +215,33 @@ export function SrdLookupPopover({
               <button
                 onClick={handleBack}
                 className="text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1"
+                disabled={isSavingToMemory}
               >
                 ← Back to results
               </button>
               <SrdCreatureCard creature={selectedCreature} />
-              {onSelectCreature && (
-                <Button onClick={handleConfirmCreature} className="w-full">
-                  Use this Creature
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {onSelectCreature && (
+                  <Button onClick={handleConfirmCreature} className="flex-1" disabled={isSavingToMemory}>
+                    Use in Forge
+                  </Button>
+                )}
+                {campaignId && (
+                  <Button
+                    onClick={handleAddCreatureToMemory}
+                    variant="outline"
+                    className="flex-1 gap-2"
+                    disabled={isSavingToMemory}
+                  >
+                    {isSavingToMemory ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Brain className="w-4 h-4" />
+                    )}
+                    Add to Memory
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
@@ -150,15 +251,33 @@ export function SrdLookupPopover({
               <button
                 onClick={handleBack}
                 className="text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1"
+                disabled={isSavingToMemory}
               >
                 ← Back to results
               </button>
               <SrdItemCard item={selectedItem} />
-              {onSelectItem && (
-                <Button onClick={handleConfirmItem} className="w-full">
-                  Use this Item
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {onSelectItem && (
+                  <Button onClick={handleConfirmItem} className="flex-1" disabled={isSavingToMemory}>
+                    Use in Forge
+                  </Button>
+                )}
+                {campaignId && (
+                  <Button
+                    onClick={handleAddItemToMemory}
+                    variant="outline"
+                    className="flex-1 gap-2"
+                    disabled={isSavingToMemory}
+                  >
+                    {isSavingToMemory ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Brain className="w-4 h-4" />
+                    )}
+                    Add to Memory
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 

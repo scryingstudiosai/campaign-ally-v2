@@ -363,6 +363,7 @@ export function ItemInputForm({
         <div className="mt-2">
           <SrdLookupPopover
             types={['items']}
+            campaignId={campaignId}
             onSelectItem={handleSrdItemSelect}
             triggerLabel="Search SRD Items"
             placeholder="Search for items by name..."

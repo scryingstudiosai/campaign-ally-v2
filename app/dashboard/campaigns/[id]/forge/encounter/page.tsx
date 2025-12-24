@@ -453,6 +453,7 @@ export default function EncounterForgePage({ params }: PageProps) {
             <Label>Add SRD Creature</Label>
             <SrdLookupPopover
               types={['creatures']}
+              campaignId={campaignId}
               onSelectCreature={handleSrdCreatureSelect}
               triggerLabel="Search Creatures"
               placeholder="Search for creatures by name..."
