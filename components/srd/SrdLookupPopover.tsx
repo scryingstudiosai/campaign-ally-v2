@@ -57,9 +57,9 @@ export function SrdLookupPopover({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          campaignId,
-          entityType: 'creature',
           srdEntity: selectedCreature,
+          campaignId,
+          srdType: 'creature',
         }),
       })
 
@@ -72,7 +72,7 @@ export function SrdLookupPopover({
       toast.success(`${selectedCreature.name} added to Memory!`)
 
       if (onAddedToMemory) {
-        onAddedToMemory(result.entity.id, selectedCreature.name)
+        onAddedToMemory(result.id, selectedCreature.name)
       }
 
       setOpen(false)
@@ -95,9 +95,9 @@ export function SrdLookupPopover({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          campaignId,
-          entityType: 'item',
           srdEntity: selectedItem,
+          campaignId,
+          srdType: 'item',
         }),
       })
 
@@ -110,7 +110,7 @@ export function SrdLookupPopover({
       toast.success(`${selectedItem.name} added to Memory!`)
 
       if (onAddedToMemory) {
-        onAddedToMemory(result.entity.id, selectedItem.name)
+        onAddedToMemory(result.id, selectedItem.name)
       }
 
       setOpen(false)
