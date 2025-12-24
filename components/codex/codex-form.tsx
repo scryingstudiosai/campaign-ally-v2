@@ -359,8 +359,20 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
               </SelectTrigger>
               <SelectContent>
                 {GAME_SYSTEMS.map((sys) => (
-                  <SelectItem key={sys.value} value={sys.value}>
-                    {sys.label}
+                  <SelectItem
+                    key={sys.value}
+                    value={sys.value}
+                    disabled={!sys.available}
+                    className={!sys.available ? 'opacity-50' : ''}
+                  >
+                    <span className="flex items-center gap-2">
+                      {sys.label}
+                      {!sys.available && (
+                        <span className="text-[10px] bg-slate-700 px-1.5 py-0.5 rounded text-slate-400">
+                          Soon
+                        </span>
+                      )}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>

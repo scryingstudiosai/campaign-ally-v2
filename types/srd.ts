@@ -1,12 +1,12 @@
 // Game System Types
 export type GameSystem = '5e_2014' | '5e_2024' | 'pf2e' | 'shadowdark' | 'custom';
 
-export const GAME_SYSTEMS: { value: GameSystem; label: string }[] = [
-  { value: '5e_2014', label: 'D&D 5e (2014)' },
-  { value: '5e_2024', label: 'D&D 5e (2024)' },
-  { value: 'pf2e', label: 'Pathfinder 2e' },
-  { value: 'shadowdark', label: 'Shadowdark' },
-  { value: 'custom', label: 'Custom / Other' },
+export const GAME_SYSTEMS: { value: GameSystem; label: string; available: boolean }[] = [
+  { value: '5e_2014', label: 'D&D 5e (2014)', available: true },
+  { value: '5e_2024', label: 'D&D 5e (2024)', available: false },
+  { value: 'pf2e', label: 'Pathfinder 2e', available: false },
+  { value: 'shadowdark', label: 'Shadowdark', available: false },
+  { value: 'custom', label: 'Custom / Homebrew', available: true },
 ];
 
 // SRD Creature

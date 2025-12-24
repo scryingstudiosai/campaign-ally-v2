@@ -2,6 +2,7 @@
 
 import { SrdItem } from '@/types/srd'
 import { Sword, Shield, Sparkles, Coins, Weight, Star } from 'lucide-react'
+import { SrdBadge } from './SrdBadge'
 
 interface SrdItemCardProps {
   item: SrdItem
@@ -70,6 +71,7 @@ export function SrdItemCard({ item, compact = false, onSelect }: SrdItemCardProp
       <div className="flex items-center gap-2 text-amber-400 font-medium border-b border-amber-500/20 pb-2">
         <Icon className="w-4 h-4" />
         <span>{item.name}</span>
+        <SrdBadge license={item.license} />
         {item.rarity && (
           <span className={`ml-auto px-2 py-0.5 rounded text-xs border ${rarityColor}`}>
             {item.rarity}

@@ -2,6 +2,7 @@
 
 import { SrdCreature } from '@/types/srd'
 import { Skull, Heart, Shield, Swords, Activity, Eye, Languages } from 'lucide-react'
+import { SrdBadge } from './SrdBadge'
 
 interface SrdCreatureCardProps {
   creature: SrdCreature
@@ -66,6 +67,7 @@ export function SrdCreatureCard({ creature, compact = false, onSelect }: SrdCrea
       <div className="flex items-center gap-2 text-rose-400 font-medium border-b border-rose-500/20 pb-2">
         <Skull className="w-4 h-4" />
         <span>{creature.name}</span>
+        <SrdBadge license={creature.license} />
         {creature.cr && (
           <span className="ml-auto text-amber-400 text-sm">CR {creature.cr}</span>
         )}
