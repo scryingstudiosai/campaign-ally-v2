@@ -328,25 +328,25 @@ function InventoryItemRow({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700">
-              <DropdownMenuItem onClick={onViewDetails} className="text-slate-200">
+              <DropdownMenuItem onSelect={onViewDetails} className="text-slate-200">
                 <Eye className="w-4 h-4 mr-2" />
                 View Details
               </DropdownMenuItem>
 
               {!item.is_identified && (
-                <DropdownMenuItem onClick={onIdentify} className="text-slate-200">
+                <DropdownMenuItem onSelect={onIdentify} className="text-slate-200">
                   <Eye className="w-4 h-4 mr-2" />
                   Identify
                 </DropdownMenuItem>
               )}
 
-              <DropdownMenuItem onClick={onEquip} className="text-slate-200">
+              <DropdownMenuItem onSelect={onEquip} className="text-slate-200">
                 <Shield className="w-4 h-4 mr-2" />
                 {item.is_equipped ? 'Unequip' : 'Equip'}
               </DropdownMenuItem>
 
               {requiresAttunement && (
-                <DropdownMenuItem onClick={onAttune} className="text-slate-200">
+                <DropdownMenuItem onSelect={onAttune} className="text-slate-200">
                   <Sparkles className="w-4 h-4 mr-2" />
                   {item.is_attuned ? 'Break Attunement' : 'Attune'}
                 </DropdownMenuItem>
@@ -354,12 +354,12 @@ function InventoryItemRow({
 
               <DropdownMenuSeparator className="bg-slate-700" />
 
-              <DropdownMenuItem onClick={onTransfer} className="text-slate-200">
+              <DropdownMenuItem onSelect={onTransfer} className="text-slate-200">
                 <ArrowRightLeft className="w-4 h-4 mr-2" />
                 Transfer
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={onRemove} className="text-red-400">
+              <DropdownMenuItem onSelect={onRemove} className="text-red-400">
                 <Trash2 className="w-4 h-4 mr-2" />
                 Remove
               </DropdownMenuItem>
