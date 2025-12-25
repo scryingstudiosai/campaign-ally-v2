@@ -228,11 +228,29 @@ export async function saveForgedEntity(
   // Save facts to the facts table (for NPC forge with Brain/Voice architecture)
   const facts = output.facts as ForgeFactOutput[] | undefined
   if (facts && Array.isArray(facts) && facts.length > 0) {
+    // Valid categories per database constraint
+    const validCategories = ['lore', 'plot', 'mechanical', 'secret', 'flavor', 'appearance', 'personality', 'backstory']
+
+    // Map any invalid categories to valid ones
+    const mapCategory = (cat: string): string => {
+      if (validCategories.includes(cat)) return cat
+      // Common mappings for AI-generated categories
+      const lowerCat = cat.toLowerCase()
+      if (lowerCat.includes('appear')) return 'appearance'
+      if (lowerCat.includes('personal')) return 'personality'
+      if (lowerCat.includes('secret') || lowerCat.includes('hidden')) return 'secret'
+      if (lowerCat.includes('plot') || lowerCat.includes('story')) return 'plot'
+      if (lowerCat.includes('back') || lowerCat.includes('history')) return 'backstory'
+      if (lowerCat.includes('lore') || lowerCat.includes('world')) return 'lore'
+      if (lowerCat.includes('mechanic') || lowerCat.includes('combat') || lowerCat.includes('stat')) return 'mechanical'
+      return 'flavor' // Default fallback
+    }
+
     const factRecords = facts.map((fact) => ({
       entity_id: savedEntity.id,
       campaign_id: campaignId,
       content: fact.content,
-      category: fact.category,
+      category: mapCategory(fact.category),
       visibility: fact.visibility || 'dm_only',
       is_current: true,
       source_type: 'generated',

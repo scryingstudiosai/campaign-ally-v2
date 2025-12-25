@@ -149,7 +149,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const statusConfig = STATUS_CONFIG[entity.status]
   const importanceConfig = IMPORTANCE_CONFIG[entity.importance_tier]
   const attributes = entity.attributes || {}
-  const isStub = attributes.is_stub || attributes.needs_review
+  // Check both attributes flags AND forge_status column for stub detection
+  const isStub = (attributes.is_stub || attributes.needs_review) && entity.forge_status !== 'complete'
 
   // Item-specific helpers
   const isItem = entity.entity_type === 'item'
