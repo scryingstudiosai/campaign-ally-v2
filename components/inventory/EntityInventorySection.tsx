@@ -38,13 +38,16 @@ export function EntityInventorySection({
   const [viewingItem, setViewingItem] = useState<InventoryInstanceWithItem | null>(null);
   const [transferringItem, setTransferringItem] = useState<InventoryInstanceWithItem | null>(null);
   const [isStocking, setIsStocking] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Use inventory hook for refetching after transfer
+  // Use inventory hook for local state (Stock Shelves button visibility)
   const { items, refetch } = useInventory(campaignId, entityType as OwnerType, entityId);
 
   const handleTransferComplete = useCallback(() => {
     setTransferringItem(null);
-    refetch();
+    // Increment refreshKey to trigger InventoryList refetch
+    setRefreshKey((k) => k + 1);
+    refetch(); // Also refresh local state for Stock Shelves button
   }, [refetch]);
 
   // Handle stock shelves action for shops
@@ -66,7 +69,9 @@ export function EntityInventorySection({
 
       const result = await response.json();
       toast.success(`Stocked ${result.itemsAdded} items!`);
-      refetch();
+      // Increment refreshKey to trigger InventoryList refetch
+      setRefreshKey((k) => k + 1);
+      refetch(); // Also refresh local state
     } catch (error) {
       console.error('Error stocking shop:', error);
       toast.error('Failed to stock shelves');
@@ -130,6 +135,7 @@ export function EntityInventorySection({
         viewMode={viewMode}
         onViewDetails={(item) => setViewingItem(item)}
         onTransfer={(item) => setTransferringItem(item)}
+        refreshKey={refreshKey}
       />
 
       {/* View Item Details Dialog */}

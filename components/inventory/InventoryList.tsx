@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useInventory } from '@/hooks/use-inventory';
 import { InventoryInstanceWithItem, OwnerType } from '@/types/inventory';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +42,7 @@ interface InventoryListProps {
   onViewDetails?: (item: InventoryInstanceWithItem) => void;
   readOnly?: boolean;
   title?: string;
+  refreshKey?: number; // Increment to trigger a refetch
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -61,11 +63,13 @@ export function InventoryList({
   onViewDetails,
   readOnly = false,
   title = 'Inventory',
+  refreshKey,
 }: InventoryListProps): JSX.Element {
   const {
     items,
     loading,
     error,
+    refetch,
     consumeItem,
     spendCharge,
     updateItem,
@@ -73,6 +77,13 @@ export function InventoryList({
     totalWeight,
     totalValue,
   } = useInventory(campaignId, ownerType, ownerId);
+
+  // Refetch when refreshKey changes (used by parent to trigger refresh after transfers)
+  React.useEffect(() => {
+    if (refreshKey !== undefined && refreshKey > 0) {
+      refetch();
+    }
+  }, [refreshKey, refetch]);
 
   if (loading) {
     return <InventoryListSkeleton />;
