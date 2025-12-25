@@ -1,13 +1,18 @@
 'use client'
 
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { LocationSoul } from '@/types/living-entity'
-import { Sparkles, Eye, Ear, Wind, Thermometer, Lightbulb } from 'lucide-react'
+import { Sparkles, Eye, Ear, Wind, Thermometer, Lightbulb, Users } from 'lucide-react'
 
 interface LocationSoulCardProps {
   soul: LocationSoul
 }
 
 export function LocationSoulCard({ soul }: LocationSoulCardProps): JSX.Element | null {
+  const params = useParams()
+  const campaignId = params?.id as string
+
   if (!soul || Object.keys(soul).length === 0) return null
 
   return (
@@ -98,6 +103,36 @@ export function LocationSoulCard({ soul }: LocationSoulCardProps): JSX.Element |
         <div className="pt-2 border-t border-slate-700">
           <span className="text-xs text-slate-500 uppercase">Mood</span>
           <p className="text-slate-300 italic">{soul.mood}</p>
+        </div>
+      )}
+
+      {/* Key Figures */}
+      {soul.key_figures && soul.key_figures.length > 0 && (
+        <div className="pt-3 border-t border-slate-700">
+          <span className="text-xs text-slate-500 uppercase flex items-center gap-1 mb-2">
+            <Users className="w-3 h-3" /> Key Figures
+          </span>
+          <div className="space-y-2">
+            {soul.key_figures.map((figure, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-2 bg-slate-800/50 rounded border border-slate-700"
+              >
+                <div>
+                  <span className="font-medium text-slate-200">{figure.name}</span>
+                  <div className="text-xs text-slate-500">{figure.role}</div>
+                </div>
+                {figure.entity_id && campaignId && (
+                  <Link
+                    href={`/dashboard/campaigns/${campaignId}/memory/${figure.entity_id}`}
+                    className="text-xs text-teal-400 hover:text-teal-300 hover:underline"
+                  >
+                    View →
+                  </Link>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -176,6 +176,13 @@ export interface LocationInhabitant {
   hook?: string;
 }
 
+// Staff/owner reference in a location (DM-facing)
+export interface LocationStaffMember {
+  name: string;
+  role: string;
+  entity_id?: string;        // Reference to NPC entity if created
+}
+
 export interface LocationBrain extends BaseBrain {
   purpose?: string;           // Why does this place exist? What function does it serve?
   atmosphere?: string;        // The overall mood/feeling (oppressive, welcoming, mysterious)
@@ -188,8 +195,11 @@ export interface LocationBrain extends BaseBrain {
   // Hierarchy
   parent_location_id?: string; // UUID of containing location
   contains?: string[];         // Names/types of sub-locations
-  // NPCs
-  inhabitants?: LocationInhabitant[]; // NPCs found at this location
+  // NPCs (from generation)
+  inhabitants?: LocationInhabitant[]; // NPCs found at this location (generation input)
+  // NPCs (after stub creation)
+  staff?: LocationStaffMember[];     // All staff/inhabitants with entity IDs
+  owner?: LocationStaffMember;       // Primary owner/proprietor
   // Legacy fields
   mood?: string;
   law?: 'lawful' | 'neutral' | 'lawless';
@@ -199,6 +209,13 @@ export interface LocationBrain extends BaseBrain {
 export const DEFAULT_LOCATION_BRAIN: LocationBrain = {
   danger_level: 'moderate',
 };
+
+// Key figure reference in a location
+export interface LocationKeyFigure {
+  name: string;
+  role: string;
+  entity_id?: string;        // Reference to NPC entity if created
+}
 
 // Location Soul - The "Texture" that makes it memorable
 export interface LocationSoul {
@@ -210,6 +227,7 @@ export interface LocationSoul {
   lighting?: string;          // Bright, dim, flickering, magical
   distinctive_feature?: string; // The ONE thing that makes this place unique
   mood?: string;              // Emotional tone (dread, wonder, melancholy)
+  key_figures?: LocationKeyFigure[]; // Important NPCs found here
 }
 
 export const DEFAULT_LOCATION_SOUL: LocationSoul = {};

@@ -1,7 +1,9 @@
 'use client'
 
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { LocationBrain } from '@/types/living-entity'
-import { Map, AlertTriangle, Clock, Swords, Gift } from 'lucide-react'
+import { Map, AlertTriangle, Clock, Swords, Gift, User, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 interface LocationBrainCardProps {
@@ -18,9 +20,17 @@ const DANGER_COLORS: Record<string, string> = {
 }
 
 export function LocationBrainCard({ brain, subType }: LocationBrainCardProps): JSX.Element | null {
+  const params = useParams()
+  const campaignId = params?.id as string
+
   if (!brain || Object.keys(brain).length === 0) return null
 
   const dangerClass = DANGER_COLORS[brain.danger_level || 'moderate'] || ''
+
+  // Get staff excluding owner to avoid duplication
+  const otherStaff = brain.staff?.filter(
+    (s) => s.entity_id !== brain.owner?.entity_id
+  ) || []
 
   return (
     <div className="ca-card p-4 space-y-4">
@@ -101,6 +111,54 @@ export function LocationBrainCard({ brain, subType }: LocationBrainCardProps): J
                 <span className="text-xs text-amber-400 uppercase">Secret (DM Only)</span>
                 <p className="text-slate-200">{brain.secret}</p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Owner/Proprietor */}
+        {brain.owner && (
+          <div className="pt-2 border-t border-slate-700">
+            <span className="text-xs text-amber-400 uppercase flex items-center gap-1 mb-2">
+              <User className="w-3 h-3" /> Owner/Proprietor
+            </span>
+            <div className="p-2 bg-slate-800/50 rounded border border-amber-700/50 flex items-center justify-between">
+              <div>
+                <span className="font-medium text-slate-200">{brain.owner.name}</span>
+                <span className="text-slate-400 text-sm ml-2">({brain.owner.role})</span>
+              </div>
+              {brain.owner.entity_id && campaignId && (
+                <Link
+                  href={`/dashboard/campaigns/${campaignId}/memory/${brain.owner.entity_id}`}
+                  className="text-xs text-teal-400 hover:text-teal-300 hover:underline"
+                >
+                  View NPC →
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Other Staff */}
+        {otherStaff.length > 0 && (
+          <div className="pt-2 border-t border-slate-700">
+            <span className="text-xs text-slate-500 uppercase flex items-center gap-1 mb-2">
+              <Users className="w-3 h-3" /> Other Staff
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {otherStaff.map((staff, i) => (
+                <Badge
+                  key={i}
+                  variant="outline"
+                  className={`border-slate-600 ${staff.entity_id && campaignId ? 'cursor-pointer hover:border-teal-500' : ''}`}
+                  onClick={() => {
+                    if (staff.entity_id && campaignId) {
+                      window.location.href = `/dashboard/campaigns/${campaignId}/memory/${staff.entity_id}`
+                    }
+                  }}
+                >
+                  {staff.name} ({staff.role})
+                </Badge>
+              ))}
             </div>
           </div>
         )}

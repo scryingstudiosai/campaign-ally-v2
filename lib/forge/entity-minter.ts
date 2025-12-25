@@ -198,6 +198,75 @@ export async function saveForgedEntity(
     })
   }
 
+  // For location forge, update the location entity with NPC references in soul/brain
+  if (forgeType === 'location') {
+    const npcStubs = context.createdStubs.filter((stub) => stub.discoveryId.startsWith('npc-'))
+
+    if (npcStubs.length > 0) {
+      // Get inhabitant details from output to enrich the references
+      const inhabitants = (output.brain as Record<string, unknown>)?.inhabitants as Array<{
+        name: string
+        role: string
+        hook?: string
+      }> | undefined
+
+      // Build NPC references with entity IDs
+      const npcReferences = npcStubs.map((stub) => {
+        // Find matching inhabitant data
+        const inhabitant = inhabitants?.find(
+          (i) => i.name.toLowerCase() === stub.name.toLowerCase()
+        )
+
+        return {
+          name: stub.name,
+          role: inhabitant?.role || 'Unknown',
+          hook: inhabitant?.hook,
+          entity_id: stub.entityId,
+        }
+      })
+
+      // Determine owner (first one with owner/keeper/master in role, or first NPC)
+      const owner = npcReferences.find((npc) =>
+        npc.role?.toLowerCase().includes('owner') ||
+        npc.role?.toLowerCase().includes('keeper') ||
+        npc.role?.toLowerCase().includes('master') ||
+        npc.role?.toLowerCase().includes('proprietor')
+      ) || npcReferences[0]
+
+      // Get current soul and brain from the saved entity
+      const currentSoul = (savedEntity.soul as Record<string, unknown>) || {}
+      const currentBrain = (savedEntity.brain as Record<string, unknown>) || {}
+
+      // Update the location entity with NPC references
+      await supabase
+        .from('entities')
+        .update({
+          soul: {
+            ...currentSoul,
+            key_figures: npcReferences.map((npc) => ({
+              name: npc.name,
+              role: npc.role,
+              entity_id: npc.entity_id,
+            })),
+          },
+          brain: {
+            ...currentBrain,
+            staff: npcReferences.map((npc) => ({
+              name: npc.name,
+              role: npc.role,
+              entity_id: npc.entity_id,
+            })),
+            owner: owner ? {
+              name: owner.name,
+              role: owner.role,
+              entity_id: owner.entity_id,
+            } : null,
+          },
+        })
+        .eq('id', savedEntity.id)
+    }
+  }
+
   // Create metadata-based relationships (owner, location, faction)
   if (context.metadata) {
     const { ownerId, locationId, factionId } = context.metadata
