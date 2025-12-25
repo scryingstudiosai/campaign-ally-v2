@@ -97,8 +97,8 @@ export function EntityInventorySection({
   // Get item display name
   const viewingItemName = viewingItem?.srd_item?.name || viewingItem?.custom_entity?.name || 'Item';
 
-  // Show Stock Shelves button for shops with empty or low inventory
-  const showStockButton = isShop && entityType === 'location' && items.length < 3;
+  // Show Stock Shelves button for ALL locations (any location can be stocked)
+  const showStockButton = entityType === 'location';
 
   return (
     <div className="ca-panel p-4">
@@ -122,13 +122,17 @@ export function EntityInventorySection({
         </Button>
       </div>
 
-      {/* Stock Shelves Button for empty shops */}
+      {/* Stock Shelves Button for locations */}
       {showStockButton && (
-        <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between">
+        <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between">
           <div className="flex items-center gap-2 text-amber-400">
             <Package className="w-5 h-5" />
             <span className="text-sm">
-              {items.length === 0 ? 'This shop has empty shelves!' : 'Running low on stock!'}
+              {isShop
+                ? items.length === 0
+                  ? 'This shop has empty shelves!'
+                  : 'Restock with appropriate items'
+                : 'Add shop inventory to this location'}
             </span>
           </div>
           <Button
