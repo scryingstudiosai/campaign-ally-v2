@@ -21,6 +21,90 @@ export interface StubCreationContext {
   sourceEntityName?: string
 }
 
+// Determine relationship type based on NPC role for location-NPC relationships
+function getLocationNpcRelationshipType(role: string): {
+  locationToNpc: string
+  npcToLocation: string
+  description: string
+} {
+  const roleLower = role?.toLowerCase() || ''
+
+  // Owner/Proprietor relationships
+  if (
+    roleLower.includes('owner') ||
+    roleLower.includes('proprietor') ||
+    roleLower.includes('master') ||
+    roleLower.includes('keeper') ||
+    roleLower.includes('head') ||
+    roleLower.includes('innkeeper') ||
+    roleLower.includes('barkeep')
+  ) {
+    return {
+      locationToNpc: 'owned_by',
+      npcToLocation: 'owns',
+      description: 'Owner/Proprietor',
+    }
+  }
+
+  // Employee/Staff relationships
+  if (
+    roleLower.includes('apprentice') ||
+    roleLower.includes('assistant') ||
+    roleLower.includes('employee') ||
+    roleLower.includes('staff') ||
+    roleLower.includes('worker') ||
+    roleLower.includes('servant') ||
+    roleLower.includes('maid') ||
+    roleLower.includes('cook') ||
+    roleLower.includes('guard') ||
+    roleLower.includes('clerk') ||
+    roleLower.includes('barmaid') ||
+    roleLower.includes('bartender') ||
+    roleLower.includes('bouncer')
+  ) {
+    return {
+      locationToNpc: 'employs',
+      npcToLocation: 'works_at',
+      description: 'Staff member',
+    }
+  }
+
+  // Resident relationships
+  if (
+    roleLower.includes('resident') ||
+    roleLower.includes('tenant') ||
+    roleLower.includes('lives') ||
+    roleLower.includes('dweller')
+  ) {
+    return {
+      locationToNpc: 'houses',
+      npcToLocation: 'lives_at',
+      description: 'Resident',
+    }
+  }
+
+  // Regular customer/visitor
+  if (
+    roleLower.includes('regular') ||
+    roleLower.includes('patron') ||
+    roleLower.includes('customer') ||
+    roleLower.includes('visitor')
+  ) {
+    return {
+      locationToNpc: 'frequented_by',
+      npcToLocation: 'frequents',
+      description: 'Regular patron',
+    }
+  }
+
+  // Default - works_at is most common for commercial locations
+  return {
+    locationToNpc: 'employs',
+    npcToLocation: 'works_at',
+    description: 'Associated with this location',
+  }
+}
+
 export async function createStubEntities(
   supabase: SupabaseClient,
   campaignId: string,
@@ -178,10 +262,20 @@ export async function saveForgedEntity(
   }
 
   // Create relationships to newly created stubs
-  // Use 'contains' for sub-locations, 'inhabited_by' for NPCs, otherwise 'related_to'
+  // Use 'contains' for sub-locations, role-based types for NPCs, otherwise 'related_to'
+  // Get inhabitant details from output for NPC role info
+  const inhabitants = forgeType === 'location'
+    ? ((output.brain as Record<string, unknown>)?.inhabitants as Array<{
+        name: string
+        role: string
+        hook?: string
+      }> | undefined)
+    : undefined
+
   for (const stub of context.createdStubs) {
     const isContainsDiscovery = stub.discoveryId.startsWith('contains-')
-    const isNpcDiscovery = stub.discoveryId.startsWith('npc-')
+    const discovery = context.discoveries.find((d) => d.id === stub.discoveryId)
+    const isNpcDiscovery = stub.discoveryId.startsWith('npc-') || discovery?.suggestedType === 'npc'
 
     let relationshipType = 'related_to'
     let description = `Discovered via ${forgeType} forge`
@@ -189,9 +283,18 @@ export async function saveForgedEntity(
     if (isContainsDiscovery) {
       relationshipType = 'contains'
       description = 'Sub-location'
-    } else if (isNpcDiscovery) {
-      relationshipType = 'inhabited_by'
-      description = 'Inhabitant of this location'
+    } else if (isNpcDiscovery && forgeType === 'location') {
+      // Get role from inhabitants or discovery context
+      const inhabitant = inhabitants?.find(
+        (i) => i.name.toLowerCase() === stub.name.toLowerCase()
+      )
+      const contextRole = discovery?.context?.split(' - ')?.[0] || discovery?.context?.split(' at ')?.[0]
+      const role = inhabitant?.role || contextRole || ''
+
+      // Use role-based relationship type
+      const relTypes = getLocationNpcRelationshipType(role)
+      relationshipType = relTypes.locationToNpc
+      description = relTypes.description
     }
 
     await supabase.from('relationships').insert({
@@ -223,12 +326,7 @@ export async function saveForgedEntity(
     console.log('[EntityMinter] NPC stubs found:', npcStubs.length, npcStubs)
 
     if (npcStubs.length > 0) {
-      // Get inhabitant details from output to enrich the references (if available)
-      const inhabitants = (output.brain as Record<string, unknown>)?.inhabitants as Array<{
-        name: string
-        role: string
-        hook?: string
-      }> | undefined
+      // Reuse inhabitants from earlier (already fetched for relationship creation)
       console.log('[EntityMinter] Inhabitants from output.brain:', inhabitants)
 
       // Build NPC references with entity IDs

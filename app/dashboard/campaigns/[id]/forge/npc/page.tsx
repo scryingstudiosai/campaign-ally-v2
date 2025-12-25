@@ -82,7 +82,17 @@ export default function NpcForgePage(): JSX.Element {
   const [npcType, setNpcType] = useState<'standard' | 'villain' | 'hero'>('standard')
 
   // Standard NPC state
-  const [concept, setConcept] = useState('')
+  // Pre-populate concept with hook/backstory from stub context (everything after " - ")
+  const getInitialConcept = (): string => {
+    if (!stubContext?.snippet) return ''
+    const parts = stubContext.snippet.split(' - ')
+    if (parts.length > 1) {
+      // Join everything after the first part (role) as the concept
+      return `Flesh out ${stubName}. ${parts.slice(1).join(' - ').trim()}`
+    }
+    return `Flesh out ${stubName}.`
+  }
+  const [concept, setConcept] = useState(getInitialConcept)
 
   // Villain state
   const [villainConcept, setVillainConcept] = useState('')
@@ -758,7 +768,8 @@ export default function NpcForgePage(): JSX.Element {
                   stubContext
                     ? {
                         name: stubName || '',
-                        slug: `Flesh out ${stubName}. ${stubContext.snippet || ''}`,
+                        // Extract just the role (before " - ") for the role field
+                        slug: stubContext.snippet?.split(' - ')[0]?.trim() || '',
                       }
                     : undefined
                 }
