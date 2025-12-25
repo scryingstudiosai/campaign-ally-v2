@@ -42,6 +42,7 @@ interface InventoryListProps {
   onViewDetails?: (item: InventoryInstanceWithItem) => void;
   readOnly?: boolean;
   title?: string;
+  showHeader?: boolean; // Whether to show the header with title and item count
   refreshKey?: number; // Increment to trigger a refetch
 }
 
@@ -63,6 +64,7 @@ export function InventoryList({
   onViewDetails,
   readOnly = false,
   title = 'Inventory',
+  showHeader = true,
   refreshKey,
 }: InventoryListProps): JSX.Element {
   const {
@@ -100,15 +102,17 @@ export function InventoryList({
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
-          <Package className="w-5 h-5" />
-          {title}
-          <span className="text-sm text-slate-400 font-normal">
-            ({items.length} {items.length === 1 ? 'item' : 'items'})
-          </span>
-        </h3>
-      </div>
+      {showHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            {title}
+            <span className="text-sm text-slate-400 font-normal">
+              ({items.length} {items.length === 1 ? 'item' : 'items'})
+            </span>
+          </h3>
+        </div>
+      )}
 
       {/* Item List */}
       {items.length === 0 ? (

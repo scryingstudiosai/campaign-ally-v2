@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { InventoryList } from './InventoryList';
 import { TransferItemDialog } from './TransferItemDialog';
+import { AddItemToInventoryDialog } from './AddItemToInventoryDialog';
 import { OwnerType, InventoryInstanceWithItem } from '@/types/inventory';
 import { useInventory } from '@/hooks/use-inventory';
 import {
@@ -14,12 +15,13 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { SrdItemDisplay } from '@/components/srd/SrdItemDisplay';
-import { Package, RefreshCw } from 'lucide-react';
+import { Package, RefreshCw, Plus } from 'lucide-react';
 
 interface EntityInventorySectionProps {
   campaignId: string;
   entityId: string;
   entityType: string;
+  entityName?: string;
   subType?: string;
   mechanics?: Record<string, unknown>;
 }
@@ -28,6 +30,7 @@ export function EntityInventorySection({
   campaignId,
   entityId,
   entityType,
+  entityName,
   subType,
   mechanics,
 }: EntityInventorySectionProps): JSX.Element | null {
@@ -37,6 +40,7 @@ export function EntityInventorySection({
   // State for dialogs
   const [viewingItem, setViewingItem] = useState<InventoryInstanceWithItem | null>(null);
   const [transferringItem, setTransferringItem] = useState<InventoryInstanceWithItem | null>(null);
+  const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [isStocking, setIsStocking] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -98,6 +102,26 @@ export function EntityInventorySection({
 
   return (
     <div className="ca-panel p-4">
+      {/* Header with Add Item button */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
+          <Package className="w-5 h-5" />
+          Inventory
+          <span className="text-sm text-slate-400 font-normal">
+            ({items.length} {items.length === 1 ? 'item' : 'items'})
+          </span>
+        </h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowAddItemDialog(true)}
+          className="border-slate-700 hover:bg-slate-800"
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          Add Item
+        </Button>
+      </div>
+
       {/* Stock Shelves Button for empty shops */}
       {showStockButton && (
         <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between">
@@ -133,6 +157,7 @@ export function EntityInventorySection({
         ownerType={entityType as OwnerType}
         ownerId={entityId}
         viewMode={viewMode}
+        showHeader={false}
         onViewDetails={(item) => setViewingItem(item)}
         onTransfer={(item) => setTransferringItem(item)}
         refreshKey={refreshKey}
@@ -219,6 +244,21 @@ export function EntityInventorySection({
         campaignId={campaignId}
         onClose={() => setTransferringItem(null)}
         onTransferComplete={handleTransferComplete}
+      />
+
+      {/* Add Item Dialog */}
+      <AddItemToInventoryDialog
+        open={showAddItemDialog}
+        onClose={() => setShowAddItemDialog(false)}
+        campaignId={campaignId}
+        ownerType={entityType}
+        ownerId={entityId}
+        ownerName={entityName}
+        onItemAdded={() => {
+          setRefreshKey((k) => k + 1);
+          refetch();
+          setShowAddItemDialog(false);
+        }}
       />
     </div>
   );
