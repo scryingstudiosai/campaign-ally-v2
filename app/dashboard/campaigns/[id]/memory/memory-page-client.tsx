@@ -1,13 +1,24 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { EntityCard, Entity } from '@/components/memory/entity-card'
 import { EntityListItem, EntityListHeader } from '@/components/memory/entity-list-item'
 import { EntityFiltersBar, EntityFilters } from '@/components/memory/entity-filters'
-import { ArrowLeft, Plus, Brain, Database } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 const STORAGE_KEY = 'memory-view-mode'
 
@@ -60,6 +71,31 @@ export function MemoryPageClient({
     visibility: 'all',
   })
 
+  // Selection mode state for bulk delete
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // Toggle selection for a single entity
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const newSelected = new Set(prev)
+      if (newSelected.has(id)) {
+        newSelected.delete(id)
+      } else {
+        newSelected.add(id)
+      }
+      return newSelected
+    })
+  }, [])
+
+  // Exit selection mode
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false)
+    setSelectedIds(new Set())
+  }, [])
+
   // Filter entities based on current filters
   const filteredEntities = useMemo(() => {
     return entities.filter((entity) => {
@@ -106,6 +142,49 @@ export function MemoryPageClient({
     return counts
   }, [entities])
 
+  // Select all visible (filtered) entities
+  const selectAll = useCallback(() => {
+    const visibleIds = filteredEntities.map((e) => e.id)
+    setSelectedIds(new Set(visibleIds))
+  }, [filteredEntities])
+
+  // Deselect all
+  const deselectAll = useCallback(() => {
+    setSelectedIds(new Set())
+  }, [])
+
+  // Bulk delete handler
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return
+
+    setDeleting(true)
+    try {
+      // Delete all selected entities
+      const deletePromises = Array.from(selectedIds).map((id) =>
+        fetch(`/api/entities/${id}`, { method: 'DELETE' })
+      )
+
+      const results = await Promise.all(deletePromises)
+      const failedCount = results.filter((r) => !r.ok).length
+
+      if (failedCount > 0) {
+        toast.error(`Failed to delete ${failedCount} items`)
+      } else {
+        toast.success(`Deleted ${selectedIds.size} items`)
+      }
+
+      // Optimistically update local state
+      setEntities((prev) => prev.filter((e) => !selectedIds.has(e.id)))
+      exitSelectionMode()
+    } catch (err) {
+      console.error('Bulk delete error:', err)
+      toast.error('Failed to delete items')
+    } finally {
+      setDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }, [selectedIds, exitSelectionMode])
+
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
       <div className="max-w-7xl mx-auto">
@@ -128,12 +207,54 @@ export function MemoryPageClient({
                 {entities.length} {entities.length === 1 ? 'entity' : 'entities'} in your campaign knowledge base
               </p>
             </div>
-            <Button asChild>
-              <Link href={`/dashboard/campaigns/${campaignId}/memory/new`}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Entity
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              {!selectionMode ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectionMode(true)}
+                  >
+                    <CheckSquare className="w-4 h-4 mr-2" />
+                    Select
+                  </Button>
+                  <Button asChild>
+                    <Link href={`/dashboard/campaigns/${campaignId}/memory/new`}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Entity
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={exitSelectionMode}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectedIds.size === filteredEntities.length ? deselectAll : selectAll}
+                  >
+                    {selectedIds.size === filteredEntities.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                  {selectedIds.size > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setShowDeleteConfirm(true)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete ({selectedIds.size})
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -229,12 +350,15 @@ export function MemoryPageClient({
                 entity={entity}
                 campaignId={campaignId}
                 onDelete={handleEntityDelete}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(entity.id)}
+                onToggleSelect={() => toggleSelection(entity.id)}
               />
             ))}
           </div>
         ) : (
           <Card className="overflow-hidden">
-            <EntityListHeader />
+            <EntityListHeader selectionMode={selectionMode} />
             <div className="divide-y divide-border">
               {filteredEntities.map((entity) => (
                 <EntityListItem
@@ -242,6 +366,9 @@ export function MemoryPageClient({
                   entity={entity}
                   campaignId={campaignId}
                   onDelete={handleEntityDelete}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(entity.id)}
+                  onToggleSelect={() => toggleSelection(entity.id)}
                 />
               ))}
             </div>
@@ -255,6 +382,40 @@ export function MemoryPageClient({
           </p>
         )}
       </div>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="bg-slate-900 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-200">
+              Delete {selectedIds.size} {selectedIds.size === 1 ? 'entity' : 'entities'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This action cannot be undone. This will permanently delete the selected
+              {selectedIds.size === 1 ? ' entity' : ' entities'} and remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-500"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                `Delete ${selectedIds.size} ${selectedIds.size === 1 ? 'item' : 'items'}`
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

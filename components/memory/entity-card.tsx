@@ -58,6 +58,9 @@ interface EntityCardProps {
   entity: Entity
   campaignId: string
   onDelete?: (id: string) => void
+  selectionMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: () => void
 }
 
 // Composite key style map for entity + subtype combinations
@@ -311,7 +314,14 @@ const IMPORTANCE_CONFIG: Record<string, { icon: typeof Star; color: string }> = 
   minor: { icon: Sparkles, color: 'text-muted-foreground' },
 }
 
-export function EntityCard({ entity, campaignId, onDelete }: EntityCardProps): JSX.Element {
+export function EntityCard({
+  entity,
+  campaignId,
+  onDelete,
+  selectionMode = false,
+  isSelected = false,
+  onToggleSelect,
+}: EntityCardProps): JSX.Element {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const supabase = createClient()
@@ -326,6 +336,13 @@ export function EntityCard({ entity, campaignId, onDelete }: EntityCardProps): J
     e.preventDefault()
     e.stopPropagation()
     setShowDeleteDialog(true)
+  }
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (selectionMode) {
+      e.preventDefault()
+      onToggleSelect?.()
+    }
   }
 
   const handleDelete = async () => {
@@ -367,90 +384,160 @@ export function EntityCard({ entity, campaignId, onDelete }: EntityCardProps): J
   return (
     <>
       <div className="relative group">
-        <Link href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}>
+        {selectionMode ? (
           <div
             className={cn(
-              'ca-card ca-card-interactive h-full p-4 border',
+              'ca-card ca-card-interactive h-full p-4 border cursor-pointer',
               entityStyle.borderClass,
               entityStyle.glowClass,
               entityStyle.hoverClass,
-              isStub && 'border-dashed border-amber-500/50 opacity-90'
+              isStub && 'border-dashed border-amber-500/50 opacity-90',
+              isSelected && 'border-teal-500 bg-teal-500/10'
             )}
+            onClick={handleCardClick}
           >
-            <div className="pb-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-slate-100 group-hover:text-primary transition-colors truncate">
-                    {entity.name}
-                  </h3>
-                  {entity.subtype && (
-                    <p className="text-xs text-slate-500">{entity.subtype}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  {importanceConfig && !isStub && (
-                    <span title={entity.importance_tier}>
-                      <importanceConfig.icon className={cn('w-4 h-4', importanceConfig.color)} />
-                    </span>
-                  )}
-                  {entity.visibility === 'dm_only' && (
-                    <span title="DM Only">
-                      <EyeOff className="w-4 h-4 text-slate-500" />
-                    </span>
-                  )}
-                  {entity.visibility === 'revealable' && (
-                    <span title="Revealable">
-                      <Eye className="w-4 h-4 text-slate-500" />
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <EntityTypeBadge type={entity.entity_type} subtype={entity.sub_type} size="sm" />
-                {isStub && (
-                  <span className="ca-inset px-2 py-0.5 text-xs text-amber-400 flex items-center gap-1">
-                    <Wand2 className="w-3 h-3" />
-                    Needs Details
-                  </span>
+            {/* Selection Checkbox */}
+            <div className="absolute top-3 left-3 z-10">
+              <div
+                className={cn(
+                  'w-5 h-5 rounded border-2 flex items-center justify-center',
+                  isSelected
+                    ? 'bg-teal-500 border-teal-500'
+                    : 'border-slate-500 hover:border-teal-500'
                 )}
-                {statusConfig && !isStub && (
-                  <span className={cn('ca-inset px-2 py-0.5 text-xs flex items-center gap-1', statusConfig.color)}>
-                    <statusConfig.icon className="w-3 h-3" />
-                    {statusConfig.label}
-                  </span>
+              >
+                {isSelected && (
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
                 )}
               </div>
             </div>
-            <div className="pt-0">
-              {isStub && entity.attributes?.source_entity_name ? (
-                <p className="text-sm text-slate-500 italic line-clamp-2">
-                  From: {entity.attributes.source_entity_name}
-                </p>
-              ) : entity.summary ? (
-                <p className="text-sm text-slate-400 line-clamp-2">
-                  {renderWithBold(entity.summary)}
-                </p>
-              ) : entity.description ? (
-                <p className="text-sm text-slate-400 line-clamp-2">
-                  {renderWithBold(entity.description)}
-                </p>
-              ) : (
-                <p className="text-sm text-slate-600 italic">
-                  No description
-                </p>
-              )}
+
+            <div className="pl-8">
+              <div className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-slate-100 truncate">
+                      {entity.name}
+                    </h3>
+                    {entity.subtype && (
+                      <p className="text-xs text-slate-500">{entity.subtype}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {importanceConfig && !isStub && (
+                      <span title={entity.importance_tier}>
+                        <importanceConfig.icon className={cn('w-4 h-4', importanceConfig.color)} />
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <EntityTypeBadge type={entity.entity_type} subtype={entity.sub_type} size="sm" />
+                </div>
+              </div>
+              <div className="pt-0">
+                {entity.summary ? (
+                  <p className="text-sm text-slate-400 line-clamp-2">
+                    {renderWithBold(entity.summary)}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-600 italic">
+                    No description
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </Link>
+        ) : (
+          <Link href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}>
+            <div
+              className={cn(
+                'ca-card ca-card-interactive h-full p-4 border',
+                entityStyle.borderClass,
+                entityStyle.glowClass,
+                entityStyle.hoverClass,
+                isStub && 'border-dashed border-amber-500/50 opacity-90'
+              )}
+            >
+              <div className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-slate-100 group-hover:text-primary transition-colors truncate">
+                      {entity.name}
+                    </h3>
+                    {entity.subtype && (
+                      <p className="text-xs text-slate-500">{entity.subtype}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {importanceConfig && !isStub && (
+                      <span title={entity.importance_tier}>
+                        <importanceConfig.icon className={cn('w-4 h-4', importanceConfig.color)} />
+                      </span>
+                    )}
+                    {entity.visibility === 'dm_only' && (
+                      <span title="DM Only">
+                        <EyeOff className="w-4 h-4 text-slate-500" />
+                      </span>
+                    )}
+                    {entity.visibility === 'revealable' && (
+                      <span title="Revealable">
+                        <Eye className="w-4 h-4 text-slate-500" />
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <EntityTypeBadge type={entity.entity_type} subtype={entity.sub_type} size="sm" />
+                  {isStub && (
+                    <span className="ca-inset px-2 py-0.5 text-xs text-amber-400 flex items-center gap-1">
+                      <Wand2 className="w-3 h-3" />
+                      Needs Details
+                    </span>
+                  )}
+                  {statusConfig && !isStub && (
+                    <span className={cn('ca-inset px-2 py-0.5 text-xs flex items-center gap-1', statusConfig.color)}>
+                      <statusConfig.icon className="w-3 h-3" />
+                      {statusConfig.label}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="pt-0">
+                {isStub && entity.attributes?.source_entity_name ? (
+                  <p className="text-sm text-slate-500 italic line-clamp-2">
+                    From: {entity.attributes.source_entity_name}
+                  </p>
+                ) : entity.summary ? (
+                  <p className="text-sm text-slate-400 line-clamp-2">
+                    {renderWithBold(entity.summary)}
+                  </p>
+                ) : entity.description ? (
+                  <p className="text-sm text-slate-400 line-clamp-2">
+                    {renderWithBold(entity.description)}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-600 italic">
+                    No description
+                  </p>
+                )}
+              </div>
+            </div>
+          </Link>
+        )}
 
-        {/* Delete Button - appears on hover */}
-        <button
-          onClick={handleDeleteClick}
-          className="absolute top-2 right-2 p-1.5 rounded-md bg-slate-800/80 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20 hover:border-red-500/50"
-          title="Delete entity"
-        >
-          <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-400" />
-        </button>
+        {/* Delete Button - appears on hover (only when not in selection mode) */}
+        {!selectionMode && (
+          <button
+            onClick={handleDeleteClick}
+            className="absolute top-2 right-2 p-1.5 rounded-md bg-slate-800/80 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20 hover:border-red-500/50"
+            title="Delete entity"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-400" />
+          </button>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
