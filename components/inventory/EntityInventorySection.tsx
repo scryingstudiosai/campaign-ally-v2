@@ -52,6 +52,18 @@ export function EntityInventorySection({
 
   return (
     <div className="ca-panel p-4">
+      {/* Debug test - remove after fixing */}
+      {viewingItem && (
+        <div style={{position: 'fixed', top: 0, left: 0, background: 'red', color: 'white', padding: '20px', zIndex: 99999}}>
+          VIEWING: {viewingItem.srd_item?.name || viewingItem.custom_entity?.name || viewingItem.id}
+        </div>
+      )}
+      {transferringItem && (
+        <div style={{position: 'fixed', top: 0, right: 0, background: 'blue', color: 'white', padding: '20px', zIndex: 99999}}>
+          TRANSFERRING: {transferringItem.srd_item?.name || transferringItem.custom_entity?.name || transferringItem.id}
+        </div>
+      )}
+
       <InventoryList
         campaignId={campaignId}
         ownerType={entityType as OwnerType}
