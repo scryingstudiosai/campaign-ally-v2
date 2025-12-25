@@ -69,8 +69,14 @@ export function EntityInventorySection({
         ownerType={entityType as OwnerType}
         ownerId={entityId}
         viewMode={viewMode}
-        onViewDetails={(item) => setViewingItem(item)}
-        onTransfer={(item) => setTransferringItem(item)}
+        onViewDetails={(item) => {
+          console.log('EntityInventorySection.onViewDetails called:', item?.id, item?.srd_item?.name);
+          setViewingItem(item);
+        }}
+        onTransfer={(item) => {
+          console.log('EntityInventorySection.onTransfer called:', item?.id, item?.srd_item?.name);
+          setTransferringItem(item);
+        }}
       />
 
       {/* View Item Details Dialog */}

@@ -119,8 +119,14 @@ export function InventoryList({
               onAttune={() => updateItem(item.id, { is_attuned: !item.is_attuned })}
               onIdentify={() => updateItem(item.id, { is_identified: true })}
               onRemove={() => removeItem(item.id)}
-              onTransfer={() => onTransfer?.(item)}
-              onViewDetails={() => onViewDetails?.(item)}
+              onTransfer={() => {
+                console.log('InventoryList.onTransfer wrapper called for item:', item.id);
+                onTransfer?.(item);
+              }}
+              onViewDetails={() => {
+                console.log('InventoryList.onViewDetails wrapper called for item:', item.id);
+                onViewDetails?.(item);
+              }}
             />
           ))}
         </div>
