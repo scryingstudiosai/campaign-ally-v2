@@ -170,6 +170,12 @@ export type LocationSubType =
   | 'dungeon';    // Adventure sites, ruins, lairs
 
 // Location Brain - The "Purpose" of the place
+export interface LocationInhabitant {
+  name: string;
+  role: string;
+  hook?: string;
+}
+
 export interface LocationBrain extends BaseBrain {
   purpose?: string;           // Why does this place exist? What function does it serve?
   atmosphere?: string;        // The overall mood/feeling (oppressive, welcoming, mysterious)
@@ -182,6 +188,8 @@ export interface LocationBrain extends BaseBrain {
   // Hierarchy
   parent_location_id?: string; // UUID of containing location
   contains?: string[];         // Names/types of sub-locations
+  // NPCs
+  inhabitants?: LocationInhabitant[]; // NPCs found at this location
   // Legacy fields
   mood?: string;
   law?: 'lawful' | 'neutral' | 'lawless';

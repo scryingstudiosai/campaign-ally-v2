@@ -173,17 +173,28 @@ export async function saveForgedEntity(
   }
 
   // Create relationships to newly created stubs
-  // Use 'contains' for sub-locations from "contains" discoveries, otherwise 'related_to'
+  // Use 'contains' for sub-locations, 'inhabited_by' for NPCs, otherwise 'related_to'
   for (const stub of context.createdStubs) {
     const isContainsDiscovery = stub.discoveryId.startsWith('contains-')
+    const isNpcDiscovery = stub.discoveryId.startsWith('npc-')
+
+    let relationshipType = 'related_to'
+    let description = `Discovered via ${forgeType} forge`
+
+    if (isContainsDiscovery) {
+      relationshipType = 'contains'
+      description = 'Sub-location'
+    } else if (isNpcDiscovery) {
+      relationshipType = 'inhabited_by'
+      description = 'Inhabitant of this location'
+    }
+
     await supabase.from('relationships').insert({
       campaign_id: campaignId,
       source_id: savedEntity.id,
       target_id: stub.entityId,
-      relationship_type: isContainsDiscovery ? 'contains' : 'related_to',
-      description: isContainsDiscovery
-        ? 'Sub-location'
-        : `Discovered via ${forgeType} forge`,
+      relationship_type: relationshipType,
+      description,
     })
   }
 
