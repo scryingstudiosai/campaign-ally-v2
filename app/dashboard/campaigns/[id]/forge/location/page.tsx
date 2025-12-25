@@ -204,7 +204,7 @@ export default function LocationForgePage(): JSX.Element {
               text: cleanName,
               suggestedType: 'npc' as EntityType,
               context,
-              status: 'pending', // Neutral/undecided - user chooses action
+              status: 'create_stub', // Auto-create NPCs as stubs by default
             })
             // Add to set to prevent duplicates within the same inhabitants array
             existingDiscoveryTexts.add(nameLower)
