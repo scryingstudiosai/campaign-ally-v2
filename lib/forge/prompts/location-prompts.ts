@@ -19,7 +19,19 @@ You must return a JSON object with this EXACT structure:
     "current_state": "What's happening here RIGHT NOW",
     "conflict": "The tension or problem that exists here",
     "opportunity": "What players can gain (allies, treasure, info, quests)",
-    "contains": ["The Gilded Spire", "Shadowmarket", "Temple of Stars"]
+    "contains": ["The Gilded Spire", "Shadowmarket", "Temple of Stars"],
+    "inhabitants": [
+      {
+        "name": "Gareth the Keeper",
+        "role": "Owner/Proprietor",
+        "hook": "Owes a debt to the thieves' guild"
+      },
+      {
+        "name": "Silent Mira",
+        "role": "Regular patron",
+        "hook": "Knows secret entrance to the catacombs"
+      }
+    ]
   },
 
   "soul": {
@@ -113,6 +125,24 @@ List 3-5 evocative sub-location NAMES ONLY. No descriptions, no dashes.
 - Good: ["The Gilded Spire", "Shadowmarket", "Temple of Stars"]
 - Bad: ["The Gilded Spire - a tall tower", "Shadowmarket - underground bazaar"]
 These become stub entities the DM can flesh out later.
+
+### INHABITANTS (NPCs)
+Generate 1-3 NPCs who inhabit or frequent this location. Each NPC needs:
+- **name**: A memorable, flavorful name
+- **role**: Their function (owner, guard, patron, servant, etc.)
+- **hook**: One interesting detail that makes them useful to players (a secret, a connection, a skill, a problem)
+
+Guidelines by location type:
+- **Tavern/Inn**: Owner, notable regulars, mysterious stranger
+- **Shop**: Proprietor, apprentice, unique customer
+- **Temple**: High priest, acolyte with doubts, petitioner seeking help
+- **Dungeon**: Prisoners, rival adventurers, creature that can parley
+- **Settlement**: Leader, merchant, troublemaker
+- **Wilderness**: Hermit, hunter, lost traveler
+
+These NPCs become stub entities for the DM to flesh out later.
+Do NOT include monsters or hostile creatures here - those go in encounters.
+Focus on NPCs the party might TALK to.
 
 ## LOCATION SOUL GUIDELINES
 

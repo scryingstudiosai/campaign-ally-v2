@@ -392,6 +392,15 @@ Generate 5-10 atomic facts covering:
 - Define complications and twists
 - Connect to existing world elements
 - Provide clear rewards and consequences`,
+
+    encounter: `FOR ENCOUNTER GENERATION:
+- Create dynamic, memorable encounters with tactical depth
+- Define clear objectives and win conditions
+- Include environmental features players can interact with
+- Provide scaling notes for different party compositions
+- Include sensory details for atmosphere
+- Define creature tactics and behavior
+- Create phases that change the encounter mid-combat`,
   }
 
   return instructions[forgeType] || ''
@@ -525,6 +534,51 @@ function getOutputFormatInstructions(forgeType: ForgeType): string {
   "rewards": ["Reward 1", "Reward 2"],
   "secrets": "DM-only true situation",
   "connected_entities": ["Related NPCs, locations, items"]
+}`,
+
+    encounter: `OUTPUT FORMAT (JSON):
+{
+  "name": "Encounter name",
+  "sub_type": "combat|boss|ambush|defense|chase|stealth|puzzle|social|exploration|trap|complex_trap|skill_challenge",
+  "dm_slug": "One-sentence DM summary",
+  "read_aloud": "2-3 sentences to read when players enter, with **bold** key details",
+  "brain": {
+    "purpose": "Why this encounter exists in the story",
+    "objective": "What players need to accomplish",
+    "tactics": "How enemies/obstacles behave",
+    "trigger": "What initiates this encounter",
+    "secret": "DM-only twist or hidden element",
+    "scaling": "How to adjust difficulty",
+    "failure_consequence": "What happens if players fail",
+    "resolution": "Possible outcomes"
+  },
+  "soul": {
+    "read_aloud": "Atmospheric description",
+    "sights": ["Visual 1", "Visual 2"],
+    "sounds": ["Sound 1", "Sound 2"],
+    "tension": "Emotional stakes and mood",
+    "environmental_features": ["Interactive element 1", "Interactive element 2"]
+  },
+  "mechanics": {
+    "difficulty": "easy|medium|hard|deadly",
+    "party_size": 4,
+    "party_level": "3-5",
+    "creatures": [{"name": "Creature name", "count": 2, "role": "minion|brute|leader", "notes": "Tactics"}],
+    "terrain": ["Terrain feature 1"],
+    "hazards": ["Hazard with DC and damage"],
+    "duration": "Estimated time",
+    "phases": [{"trigger": "When", "description": "What happens"}]
+  },
+  "rewards": {
+    "xp": 450,
+    "gold": 50,
+    "items": [{"name": "Item name", "type": "consumable|quest_item|treasure"}],
+    "story": "Non-material reward"
+  },
+  "facts": [
+    {"content": "Visible fact", "category": "appearance", "visibility": "public"},
+    {"content": "DM secret", "category": "secret", "visibility": "dm_only"}
+  ]
 }`,
   }
 

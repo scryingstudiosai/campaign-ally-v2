@@ -94,6 +94,7 @@ const FORGE_TO_ENTITY_TYPE: Record<ForgeType, string> = {
   monster: 'npc', // Monsters are stored as NPCs with a subtype
   faction: 'faction',
   quest: 'quest',
+  encounter: 'encounter',
 }
 
 export async function saveForgedEntity(
@@ -103,6 +104,11 @@ export async function saveForgedEntity(
   output: Record<string, unknown> | null,
   context: CommitContext
 ): Promise<unknown> {
+  console.log('[EntityMinter] saveForgedEntity called')
+  console.log('[EntityMinter] forgeType:', forgeType)
+  console.log('[EntityMinter] context.createdStubs:', context.createdStubs)
+  console.log('[EntityMinter] context.discoveries:', context.discoveries?.length, 'discoveries')
+
   if (!output) {
     throw new Error('No output to save')
   }
@@ -172,18 +178,122 @@ export async function saveForgedEntity(
   }
 
   // Create relationships to newly created stubs
-  // Use 'contains' for sub-locations from "contains" discoveries, otherwise 'related_to'
+  // Use 'contains' for sub-locations, 'inhabited_by' for NPCs, otherwise 'related_to'
   for (const stub of context.createdStubs) {
     const isContainsDiscovery = stub.discoveryId.startsWith('contains-')
+    const isNpcDiscovery = stub.discoveryId.startsWith('npc-')
+
+    let relationshipType = 'related_to'
+    let description = `Discovered via ${forgeType} forge`
+
+    if (isContainsDiscovery) {
+      relationshipType = 'contains'
+      description = 'Sub-location'
+    } else if (isNpcDiscovery) {
+      relationshipType = 'inhabited_by'
+      description = 'Inhabitant of this location'
+    }
+
     await supabase.from('relationships').insert({
       campaign_id: campaignId,
       source_id: savedEntity.id,
       target_id: stub.entityId,
-      relationship_type: isContainsDiscovery ? 'contains' : 'related_to',
-      description: isContainsDiscovery
-        ? 'Sub-location'
-        : `Discovered via ${forgeType} forge`,
+      relationship_type: relationshipType,
+      description,
     })
+  }
+
+  // For location forge, update the location entity with NPC references in soul/brain
+  if (forgeType === 'location') {
+    console.log('[EntityMinter] Location forge detected, checking for NPC stubs...')
+    console.log('[EntityMinter] All created stubs:', context.createdStubs)
+
+    const npcStubs = context.createdStubs.filter((stub) => stub.discoveryId.startsWith('npc-'))
+    console.log('[EntityMinter] NPC stubs found:', npcStubs.length, npcStubs)
+
+    if (npcStubs.length > 0) {
+      // Get inhabitant details from output to enrich the references
+      const inhabitants = (output.brain as Record<string, unknown>)?.inhabitants as Array<{
+        name: string
+        role: string
+        hook?: string
+      }> | undefined
+      console.log('[EntityMinter] Inhabitants from output.brain:', inhabitants)
+
+      // Build NPC references with entity IDs
+      const npcReferences = npcStubs.map((stub) => {
+        // Find matching inhabitant data
+        const inhabitant = inhabitants?.find(
+          (i) => i.name.toLowerCase() === stub.name.toLowerCase()
+        )
+
+        return {
+          name: stub.name,
+          role: inhabitant?.role || 'Unknown',
+          hook: inhabitant?.hook,
+          entity_id: stub.entityId,
+        }
+      })
+
+      console.log('[EntityMinter] Built NPC references:', npcReferences)
+
+      // Determine owner (first one with owner/keeper/master in role, or first NPC)
+      const owner = npcReferences.find((npc) =>
+        npc.role?.toLowerCase().includes('owner') ||
+        npc.role?.toLowerCase().includes('keeper') ||
+        npc.role?.toLowerCase().includes('master') ||
+        npc.role?.toLowerCase().includes('proprietor')
+      ) || npcReferences[0]
+      console.log('[EntityMinter] Determined owner:', owner)
+
+      // Get current soul and brain from the saved entity
+      const currentSoul = (savedEntity.soul as Record<string, unknown>) || {}
+      const currentBrain = (savedEntity.brain as Record<string, unknown>) || {}
+      console.log('[EntityMinter] Current soul:', currentSoul)
+      console.log('[EntityMinter] Current brain:', currentBrain)
+
+      // Update the location entity with NPC references
+      const updatePayload = {
+        soul: {
+          ...currentSoul,
+          key_figures: npcReferences.map((npc) => ({
+            name: npc.name,
+            role: npc.role,
+            entity_id: npc.entity_id,
+          })),
+        },
+        brain: {
+          ...currentBrain,
+          staff: npcReferences.map((npc) => ({
+            name: npc.name,
+            role: npc.role,
+            entity_id: npc.entity_id,
+          })),
+          owner: owner ? {
+            name: owner.name,
+            role: owner.role,
+            entity_id: owner.entity_id,
+          } : null,
+        },
+      }
+      console.log('[EntityMinter] Update payload:', JSON.stringify(updatePayload, null, 2))
+      console.log('[EntityMinter] Updating entity ID:', savedEntity.id)
+
+      const { error: updateError } = await supabase
+        .from('entities')
+        .update(updatePayload)
+        .eq('id', savedEntity.id)
+
+      if (updateError) {
+        console.error('[EntityMinter] Failed to update location with NPCs:', updateError)
+      } else {
+        console.log('[EntityMinter] Successfully updated location with NPC references')
+      }
+    } else {
+      console.log('[EntityMinter] No NPC stubs found, skipping NPC reference update')
+    }
+  } else {
+    console.log('[EntityMinter] Not a location forge, skipping NPC reference update')
   }
 
   // Create metadata-based relationships (owner, location, faction)
@@ -345,6 +455,23 @@ function buildEntityData(
         description: output.description as string,
         attributes: {
           ...additionalAttributes,
+        },
+      }
+
+    case 'encounter':
+      return {
+        ...baseData,
+        // Brain/Soul/Mechanics architecture columns
+        sub_type: (output.sub_type as string) || 'combat',
+        brain: output.brain || {},
+        soul: output.soul || {},
+        mechanics: output.mechanics || {},
+        read_aloud: output.read_aloud as string,
+        dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
+        summary: (output.dm_slug as string) || (output.summary as string),
+        attributes: {
+          ...additionalAttributes,
+          rewards: output.rewards,
         },
       }
 

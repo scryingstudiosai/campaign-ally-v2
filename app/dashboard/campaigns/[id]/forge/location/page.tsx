@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Sparkles } from 'lucide-react'
+import type { ShopInventoryData } from '@/lib/forge/shop-stocker'
 
 // Forge foundation imports
 import { useForge } from '@/hooks/useForge'
@@ -103,17 +104,19 @@ export default function LocationForgePage(): JSX.Element {
   })
 
   // Sync scan results to local review state
-  // IMPORTANT: This must MERGE with contains discoveries, not replace them
+  // IMPORTANT: This must MERGE with contains and NPC discoveries, not replace them
   useEffect(() => {
     if (forge.scanResult) {
       setReviewDiscoveries((prev) => {
-        // Keep any contains discoveries that were already added
-        const containsDiscoveries = prev.filter((d) => d.id.startsWith('contains-'))
-        // Merge scan discoveries with contains discoveries, avoiding duplicates
-        const scanDiscoveries = forge.scanResult!.discoveries.filter((scanD) =>
-          !containsDiscoveries.some((cd) => cd.text.toLowerCase() === scanD.text.toLowerCase())
+        // Keep any contains or NPC discoveries that were already added
+        const specialDiscoveries = prev.filter(
+          (d) => d.id.startsWith('contains-') || d.id.startsWith('npc-')
         )
-        return [...scanDiscoveries, ...containsDiscoveries]
+        // Merge scan discoveries with special discoveries, avoiding duplicates
+        const scanDiscoveries = forge.scanResult!.discoveries.filter((scanD) =>
+          !specialDiscoveries.some((sd) => sd.text.toLowerCase() === scanD.text.toLowerCase())
+        )
+        return [...scanDiscoveries, ...specialDiscoveries]
       })
       setReviewConflicts(forge.scanResult.conflicts)
     }
@@ -163,6 +166,59 @@ export default function LocationForgePage(): JSX.Element {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forge.output?.brain?.contains, forge.output?.name])
+
+  // Sync "inhabitants" NPCs to discoveries so users can review/create them
+  useEffect(() => {
+    const inhabitants = forge.output?.brain?.inhabitants as Array<{
+      name: string
+      role: string
+      hook?: string
+    }> | undefined
+
+    if (inhabitants && inhabitants.length > 0) {
+      setReviewDiscoveries((prev) => {
+        // Avoid duplicates - check both existing discoveries and existing entities
+        const existingDiscoveryTexts = new Set(prev.map((d) => d.text.toLowerCase()))
+        const existingEntityNames = new Set(allEntities.map((e) => e.name.toLowerCase()))
+
+        const newNpcDiscoveries: Discovery[] = []
+
+        inhabitants.forEach((inhabitant) => {
+          const cleanName = inhabitant.name?.trim()
+          if (!cleanName) return
+
+          const nameLower = cleanName.toLowerCase()
+          const isDuplicate = existingDiscoveryTexts.has(nameLower) || existingEntityNames.has(nameLower)
+
+          if (!isDuplicate) {
+            // Build context from role and hook
+            const contextParts: string[] = []
+            if (inhabitant.role) contextParts.push(inhabitant.role)
+            if (inhabitant.hook) contextParts.push(inhabitant.hook)
+            const context = contextParts.length > 0
+              ? `${contextParts.join(' - ')} (at ${forge.output?.name})`
+              : `NPC at ${forge.output?.name}`
+
+            newNpcDiscoveries.push({
+              id: `npc-${cleanName}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              text: cleanName,
+              suggestedType: 'npc' as EntityType,
+              context,
+              status: 'create_stub', // Auto-create NPCs as stubs by default
+            })
+            // Add to set to prevent duplicates within the same inhabitants array
+            existingDiscoveryTexts.add(nameLower)
+          }
+        })
+
+        if (newNpcDiscoveries.length > 0) {
+          return [...prev, ...newNpcDiscoveries]
+        }
+        return prev
+      })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forge.output?.brain?.inhabitants, forge.output?.name])
 
   // Fetch initial data
   useEffect(() => {
@@ -268,6 +324,46 @@ export default function LocationForgePage(): JSX.Element {
       return 'contains'
     }
     return 'connected_to'
+  }
+
+  // Helper function to auto-stock a shop location with inventory
+  const autoStockShopIfNeeded = async (
+    entityId: string,
+    mechanics: Record<string, unknown> | undefined
+  ): Promise<void> => {
+    if (!mechanics?.is_shop) return
+
+    const inventoryData: ShopInventoryData = {
+      shop_type: (mechanics.shop_type as string) || 'general',
+      price_modifier: (mechanics.price_modifier as number) || 1.0,
+      suggested_srd_stock: (mechanics.suggested_stock as string[]) || [],
+    }
+
+    // Only stock if we have items to stock
+    if (inventoryData.suggested_srd_stock.length === 0) return
+
+    try {
+      const response = await fetch('/api/location/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          locationId: entityId,
+          inventoryData,
+        }),
+      })
+
+      if (!response.ok) {
+        console.error('Failed to auto-stock shop:', await response.text())
+      } else {
+        const result = await response.json()
+        if (result.itemsAdded > 0) {
+          toast.success(`Shop stocked with ${result.itemsAdded} items!`)
+        }
+      }
+    } catch (error) {
+      console.error('Error auto-stocking shop:', error)
+    }
   }
 
   // Handle discovery actions
@@ -519,6 +615,9 @@ export default function LocationForgePage(): JSX.Element {
           }
         }
 
+        // Auto-stock the shop if it's a shop location
+        await autoStockShopIfNeeded(stubId, forge.output.mechanics as Record<string, unknown>)
+
         if (createdStubCount > 0) {
           toast.success(`Location fleshed out! ${createdStubCount} stub${createdStubCount > 1 ? 's' : ''} created.`)
         } else {
@@ -579,6 +678,9 @@ export default function LocationForgePage(): JSX.Element {
         }
 
         setGenerationReferencedEntities([])
+
+        // Auto-stock the shop if it's a shop location
+        await autoStockShopIfNeeded(entity.id, forge.output?.mechanics as Record<string, unknown>)
 
         // Stubs and their relationships are now created by entity-minter.ts
         // Contains stubs get 'contains' relationship, others get 'related_to'

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { X, Sparkles, Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { GameSystem, GAME_SYSTEMS } from '@/types/srd'
 
 interface Codex {
   id: string
@@ -37,6 +38,7 @@ interface Codex {
   open_questions: string[]
   resolved_questions?: string[]
   proper_nouns?: string[]
+  game_system?: string | null
 }
 
 interface CodexFormProps {
@@ -160,6 +162,9 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
   const [inspiringField, setInspiringField] = useState<string | null>(null)
 
   // Tab 1: Foundation
+  const [gameSystem, setGameSystem] = useState<GameSystem>(
+    (codex.game_system as GameSystem) || '5e_2014'
+  )
   const [worldName, setWorldName] = useState(codex.world_name || '')
   const [premise, setPremise] = useState(codex.premise || '')
   const [pillars, setPillars] = useState<string[]>(codex.pillars || [])
@@ -299,6 +304,7 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
       const { error } = await supabase
         .from('codex')
         .update({
+          game_system: gameSystem,
           world_name: worldName.trim() || null,
           premise: premise.trim() || null,
           pillars,
@@ -345,6 +351,37 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
 
         {/* Tab 1: Foundation */}
         <TabsContent value="foundation" className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="game-system">Game System</Label>
+            <Select value={gameSystem} onValueChange={(v) => setGameSystem(v as GameSystem)}>
+              <SelectTrigger id="game-system">
+                <SelectValue placeholder="Select game system" />
+              </SelectTrigger>
+              <SelectContent>
+                {GAME_SYSTEMS.map((sys) => (
+                  <SelectItem
+                    key={sys.value}
+                    value={sys.value}
+                    disabled={!sys.available}
+                    className={!sys.available ? 'opacity-50' : ''}
+                  >
+                    <span className="flex items-center gap-2">
+                      {sys.label}
+                      {!sys.available && (
+                        <span className="text-[10px] bg-slate-700 px-1.5 py-0.5 rounded text-slate-400">
+                          Soon
+                        </span>
+                      )}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Determines which SRD data is used for creature/spell/item lookups.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="world-name">World Name</Label>
             <Input

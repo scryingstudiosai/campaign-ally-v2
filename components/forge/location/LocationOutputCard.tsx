@@ -12,6 +12,12 @@ import {
 } from 'lucide-react'
 import type { ScanResult, Discovery, EntityType } from '@/types/forge'
 
+interface LocationInhabitant {
+  name: string
+  role: string
+  hook?: string
+}
+
 interface LocationBrain {
   purpose?: string
   atmosphere?: string
@@ -22,6 +28,7 @@ interface LocationBrain {
   conflict?: string
   opportunity?: string
   contains?: string[]
+  inhabitants?: LocationInhabitant[]
 }
 
 interface LocationSoul {

@@ -17,14 +17,20 @@ import { FactsWidget } from '@/components/entity/FactsWidget'
 import { ItemBrainCard } from '@/components/entity/ItemBrainCard'
 import { ItemVoiceCard } from '@/components/entity/ItemVoiceCard'
 import { ItemMechanicsCard } from '@/components/entity/ItemMechanicsCard'
+import { SrdItemDetailCard } from '@/components/entity/SrdItemDetailCard'
 import { LocationBrainCard } from '@/components/entity/LocationBrainCard'
 import { LocationSoulCard } from '@/components/entity/LocationSoulCard'
 import { LocationMechanicsCard } from '@/components/entity/LocationMechanicsCard'
 import { FactionBrainCard } from '@/components/entity/FactionBrainCard'
 import { FactionSoulCard } from '@/components/entity/FactionSoulCard'
 import { FactionMechanicsCard } from '@/components/entity/FactionMechanicsCard'
+import { EncounterBrainCard } from '@/components/entity/EncounterBrainCard'
+import { EncounterSoulCard } from '@/components/entity/EncounterSoulCard'
+import { EncounterMechanicsCard } from '@/components/entity/EncounterMechanicsCard'
+import { EncounterRewardsCard } from '@/components/entity/EncounterRewardsCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, isNpcBrain } from '@/types/living-entity'
+import { EntityInventorySection } from '@/components/inventory'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -151,6 +157,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const itemMechanics = entity.mechanics as ItemMechanics | null
   const itemCategory = (entity.attributes?.category || entity.attributes?.item_type || entity.subtype) as string | undefined
   const isSentientItem = isItem && itemBrain?.sentience_level && itemBrain.sentience_level !== 'none'
+  const isSrdItem = isItem && (entity.attributes?.is_srd || entity.source_forge === 'srd_import')
 
   // Location-specific helpers
   const isLocation = entity.entity_type === 'location'
@@ -163,6 +170,13 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const factionBrain = entity.brain as FactionBrain | null
   const factionSoul = entity.soul as FactionSoul | null
   const factionMechanics = entity.mechanics as FactionMechanics | null
+
+  // Encounter-specific helpers
+  const isEncounter = entity.entity_type === 'encounter'
+  const encounterBrain = entity.brain as EncounterBrain | null
+  const encounterSoul = entity.soul as EncounterSoul | null
+  const encounterMechanics = entity.mechanics as EncounterMechanics | null
+  const encounterRewards = entity.attributes?.rewards as EncounterRewards | null
 
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
@@ -185,11 +199,17 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (factionSoul && Object.keys(factionSoul).length > 0) ||
     (factionMechanics && Object.keys(factionMechanics).length > 0)
 
+  const hasEncounterStageContent =
+    (encounterSoul && Object.keys(encounterSoul).length > 0) ||
+    (encounterMechanics && Object.keys(encounterMechanics).length > 0) ||
+    (encounterRewards && Object.keys(encounterRewards).length > 0)
+
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
     (isItem && hasItemStageContent) ||
     (isLocation && hasLocationStageContent) ||
     (isFaction && hasFactionStageContent) ||
+    (isEncounter && hasEncounterStageContent) ||
     entity.public_notes ||
     entity.dm_notes
 
@@ -381,9 +401,41 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* --- ITEM STAGE CONTENT --- */}
             {isItem && (
               <>
-                {/* Item Mechanics - The usable game stats (player-facing) */}
-                {itemMechanics && Object.keys(itemMechanics).length > 0 && (
-                  <ItemMechanicsCard mechanics={itemMechanics} category={itemCategory} />
+                {/* SRD Items get special display - use raw mechanics from entity */}
+                {isSrdItem ? (
+                  <SrdItemDetailCard
+                    item={{
+                      name: entity.name,
+                      sub_type: entity.sub_type,
+                      mechanics: entity.mechanics as {
+                        rarity?: string
+                        requires_attunement?: boolean
+                        attunement_requirements?: string
+                        value_gp?: number
+                        weight?: number
+                        damage?: string
+                        damage_type?: string
+                        properties?: string[]
+                        ac?: number
+                        ac_bonus?: number
+                        stealth_disadvantage?: boolean
+                        str_minimum?: number
+                        effect?: string
+                        charges?: number
+                        recharge?: string
+                      } | undefined,
+                      description: entity.description as string | undefined,
+                      dm_description: entity.dm_description as string | undefined,
+                      attributes: entity.attributes,
+                    }}
+                  />
+                ) : (
+                  <>
+                    {/* Item Mechanics - The usable game stats (player-facing) */}
+                    {itemMechanics && Object.keys(itemMechanics).length > 0 && (
+                      <ItemMechanicsCard mechanics={itemMechanics} category={itemCategory} />
+                    )}
+                  </>
                 )}
 
                 {/* Item Voice - For sentient items */}
@@ -419,6 +471,26 @@ export default async function EntityDetailPage({ params }: PageProps) {
                 {/* Faction Mechanics - Power, resources (player-facing) */}
                 {factionMechanics && Object.keys(factionMechanics).length > 0 && (
                   <FactionMechanicsCard mechanics={factionMechanics} />
+                )}
+              </>
+            )}
+
+            {/* --- ENCOUNTER STAGE CONTENT --- */}
+            {isEncounter && (
+              <>
+                {/* Encounter Soul - Atmosphere, sensory details (player-facing) */}
+                {encounterSoul && Object.keys(encounterSoul).length > 0 && (
+                  <EncounterSoulCard soul={encounterSoul} />
+                )}
+
+                {/* Encounter Mechanics - Creatures, phases, hazards */}
+                {encounterMechanics && Object.keys(encounterMechanics).length > 0 && (
+                  <EncounterMechanicsCard mechanics={encounterMechanics} />
+                )}
+
+                {/* Encounter Rewards - XP, gold, loot */}
+                {encounterRewards && Object.keys(encounterRewards).length > 0 && (
+                  <EncounterRewardsCard rewards={encounterRewards} />
                 )}
               </>
             )}
@@ -459,6 +531,16 @@ export default async function EntityDetailPage({ params }: PageProps) {
                 </CardContent>
               </Card>
             )}
+
+            {/* Inventory Section - for NPCs, Players, Locations */}
+            <EntityInventorySection
+              campaignId={params.id}
+              entityId={entity.id}
+              entityType={entity.entity_type}
+              entityName={entity.name}
+              subType={entity.sub_type}
+              mechanics={entity.mechanics as Record<string, unknown>}
+            />
           </div>
 
 
@@ -483,6 +565,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* --- FACTION SCRIPT CONTENT --- */}
             {isFaction && factionBrain && Object.keys(factionBrain).length > 0 && (
               <FactionBrainCard brain={factionBrain} subType={entity.sub_type} />
+            )}
+
+            {/* --- ENCOUNTER SCRIPT CONTENT --- */}
+            {isEncounter && encounterBrain && Object.keys(encounterBrain).length > 0 && (
+              <EncounterBrainCard brain={encounterBrain} subType={entity.sub_type} />
             )}
 
             {/* --- SHARED SCRIPT CONTENT --- */}

@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   Sparkles,
   Menu,
+  Swords,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -57,6 +58,7 @@ function SidebarContent({
     { label: 'Location', href: `${baseUrl}/forge/location`, icon: MapPin },
     { label: 'Item', href: `${baseUrl}/forge/item`, icon: Package },
     { label: 'Faction', href: `${baseUrl}/forge/faction`, icon: Users },
+    { label: 'Encounter', href: `${baseUrl}/forge/encounter`, icon: Swords },
   ]
 
   const handleClick = () => {
@@ -148,7 +150,7 @@ function SidebarContent({
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-slate-800">
+      <div className="p-4 border-t border-slate-800 space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold">
             DM
@@ -157,6 +159,15 @@ function SidebarContent({
             <p className="text-slate-300 font-medium">Dungeon Master</p>
             <p className="text-slate-500">Free Plan</p>
           </div>
+        </div>
+        <div className="pt-2 border-t border-slate-800/50">
+          <Link
+            href="/licenses"
+            onClick={handleClick}
+            className="text-[10px] text-slate-500 hover:text-slate-400 transition-colors"
+          >
+            Game Content Licenses
+          </Link>
         </div>
       </div>
     </div>

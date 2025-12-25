@@ -142,15 +142,22 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
 
       try {
         // Create stub entities for approved discoveries
+        console.log('[useForge] handleCommit called')
+        console.log('[useForge] All discoveries:', decisions.discoveries)
+        console.log('[useForge] Discovery statuses:', decisions.discoveries.map(d => ({ id: d.id, text: d.text, status: d.status })))
+
         const stubsToCreate = decisions.discoveries.filter(
           (d) => d.status === 'create_stub'
         )
+        console.log('[useForge] Stubs to create (status=create_stub):', stubsToCreate)
+
         const createdStubs = await createStubEntities(
           supabase,
           campaignId,
           stubsToCreate,
           forgeType
         )
+        console.log('[useForge] Created stubs result:', createdStubs)
 
         // Extract metadata from input if not provided explicitly
         const inputData = state.input as Record<string, unknown> | null

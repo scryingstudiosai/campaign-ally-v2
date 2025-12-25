@@ -12,6 +12,7 @@ import {
   LANDMARK_PROMPT,
   DUNGEON_PROMPT
 } from '@/lib/forge/prompts/location-prompts'
+import { isLikelyShop, inferShopType, getSrdItemsForShopType } from '@/lib/srd/item-lookup'
 
 interface LocationInputs {
   name?: string
@@ -72,6 +73,11 @@ interface LocationMechanics {
     long_rest_available?: boolean
     cost?: string
   }
+  // Shop-related properties
+  is_shop?: boolean
+  shop_type?: string
+  price_modifier?: number
+  suggested_stock?: string[]
 }
 
 interface LocationFact {
@@ -210,6 +216,26 @@ Ensure this location fits within and complements its parent location.
     // Ensure mechanics exists
     if (!generatedLocation.mechanics) {
       generatedLocation.mechanics = {}
+    }
+
+    // Detect if this is a shop location and add shop metadata
+    const locationForShopCheck = {
+      name: generatedLocation.name,
+      sub_type: generatedLocation.sub_type,
+    }
+
+    if (isLikelyShop(locationForShopCheck)) {
+      const shopType = inferShopType(locationForShopCheck)
+      const suggestedStock = getSrdItemsForShopType(shopType)
+
+      // Add shop properties to mechanics
+      generatedLocation.mechanics = {
+        ...generatedLocation.mechanics,
+        is_shop: true,
+        shop_type: shopType,
+        price_modifier: 1.0, // Default standard pricing
+        suggested_stock: suggestedStock,
+      }
     }
 
     // Ensure facts exists
