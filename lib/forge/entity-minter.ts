@@ -207,6 +207,8 @@ export async function saveForgedEntity(
   if (forgeType === 'location') {
     console.log('[EntityMinter] Location forge detected, checking for NPC stubs...')
     console.log('[EntityMinter] All created stubs:', context.createdStubs)
+    console.log('[EntityMinter] output.brain raw:', output.brain)
+    console.log('[EntityMinter] output.brain?.inhabitants:', (output.brain as Record<string, unknown>)?.inhabitants)
 
     const npcStubs = context.createdStubs.filter((stub) => stub.discoveryId.startsWith('npc-'))
     console.log('[EntityMinter] NPC stubs found:', npcStubs.length, npcStubs)
@@ -288,6 +290,15 @@ export async function saveForgedEntity(
         console.error('[EntityMinter] Failed to update location with NPCs:', updateError)
       } else {
         console.log('[EntityMinter] Successfully updated location with NPC references')
+        // Verify the update by re-fetching
+        const { data: verifyData } = await supabase
+          .from('entities')
+          .select('id, name, soul, brain')
+          .eq('id', savedEntity.id)
+          .single()
+        console.log('[EntityMinter] VERIFICATION - Entity after update:')
+        console.log('[EntityMinter] - soul:', JSON.stringify(verifyData?.soul, null, 2))
+        console.log('[EntityMinter] - brain:', JSON.stringify(verifyData?.brain, null, 2))
       }
     } else {
       console.log('[EntityMinter] No NPC stubs found, skipping NPC reference update')
