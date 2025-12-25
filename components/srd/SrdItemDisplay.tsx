@@ -237,8 +237,31 @@ export function SrdItemDisplay({ item, compact = false, onSelect }: SrdItemDispl
         {/* Description with Markdown Support */}
         {item.description && (
           <div className="pt-3 border-t border-slate-700">
-            <div className="prose prose-sm prose-invert max-w-none prose-p:text-slate-300 prose-p:my-2 prose-headings:text-slate-200 prose-strong:text-slate-100 prose-em:text-slate-300 prose-table:text-sm prose-th:text-slate-300 prose-th:bg-slate-800/50 prose-th:px-2 prose-th:py-1 prose-td:px-2 prose-td:py-1 prose-td:border-slate-700 prose-tr:border-slate-700">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <div className="prose prose-sm prose-invert max-w-none prose-p:text-slate-300 prose-p:my-2 prose-headings:text-slate-200 prose-strong:text-slate-100 prose-em:text-slate-300">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  table: ({ children }) => (
+                    <div className="overflow-x-auto my-4">
+                      <table className="w-full text-sm text-left border-collapse border border-slate-700">
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  thead: ({ children }) => (
+                    <thead className="bg-slate-800 text-slate-200">{children}</thead>
+                  ),
+                  th: ({ children }) => (
+                    <th className="px-4 py-2 font-medium border border-slate-700 text-slate-200">{children}</th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="px-4 py-2 border border-slate-700 text-slate-300">{children}</td>
+                  ),
+                  tr: ({ children }) => (
+                    <tr className="border-b border-slate-700">{children}</tr>
+                  ),
+                }}
+              >
                 {item.description}
               </ReactMarkdown>
             </div>
