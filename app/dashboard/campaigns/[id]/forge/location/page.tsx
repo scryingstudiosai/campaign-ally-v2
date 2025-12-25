@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Sparkles } from 'lucide-react'
+import type { ShopInventoryData } from '@/lib/forge/shop-stocker'
 
 // Forge foundation imports
 import { useForge } from '@/hooks/useForge'
@@ -270,6 +271,46 @@ export default function LocationForgePage(): JSX.Element {
     return 'connected_to'
   }
 
+  // Helper function to auto-stock a shop location with inventory
+  const autoStockShopIfNeeded = async (
+    entityId: string,
+    mechanics: Record<string, unknown> | undefined
+  ): Promise<void> => {
+    if (!mechanics?.is_shop) return
+
+    const inventoryData: ShopInventoryData = {
+      shop_type: (mechanics.shop_type as string) || 'general',
+      price_modifier: (mechanics.price_modifier as number) || 1.0,
+      suggested_srd_stock: (mechanics.suggested_stock as string[]) || [],
+    }
+
+    // Only stock if we have items to stock
+    if (inventoryData.suggested_srd_stock.length === 0) return
+
+    try {
+      const response = await fetch('/api/location/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          locationId: entityId,
+          inventoryData,
+        }),
+      })
+
+      if (!response.ok) {
+        console.error('Failed to auto-stock shop:', await response.text())
+      } else {
+        const result = await response.json()
+        if (result.itemsAdded > 0) {
+          toast.success(`Shop stocked with ${result.itemsAdded} items!`)
+        }
+      }
+    } catch (error) {
+      console.error('Error auto-stocking shop:', error)
+    }
+  }
+
   // Handle discovery actions
   const handleDiscoveryAction = (
     discoveryId: string,
@@ -519,6 +560,9 @@ export default function LocationForgePage(): JSX.Element {
           }
         }
 
+        // Auto-stock the shop if it's a shop location
+        await autoStockShopIfNeeded(stubId, forge.output.mechanics as Record<string, unknown>)
+
         if (createdStubCount > 0) {
           toast.success(`Location fleshed out! ${createdStubCount} stub${createdStubCount > 1 ? 's' : ''} created.`)
         } else {
@@ -579,6 +623,9 @@ export default function LocationForgePage(): JSX.Element {
         }
 
         setGenerationReferencedEntities([])
+
+        // Auto-stock the shop if it's a shop location
+        await autoStockShopIfNeeded(entity.id, forge.output?.mechanics as Record<string, unknown>)
 
         // Stubs and their relationships are now created by entity-minter.ts
         // Contains stubs get 'contains' relationship, others get 'related_to'

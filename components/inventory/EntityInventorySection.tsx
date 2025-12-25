@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { InventoryList } from './InventoryList';
 import { TransferItemDialog } from './TransferItemDialog';
 import { OwnerType, InventoryInstanceWithItem } from '@/types/inventory';
@@ -11,13 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { SrdItemDisplay } from '@/components/srd/SrdItemDisplay';
+import { Package, RefreshCw } from 'lucide-react';
 
 interface EntityInventorySectionProps {
   campaignId: string;
   entityId: string;
   entityType: string;
   subType?: string;
+  mechanics?: Record<string, unknown>;
 }
 
 export function EntityInventorySection({
@@ -25,6 +29,7 @@ export function EntityInventorySection({
   entityId,
   entityType,
   subType,
+  mechanics,
 }: EntityInventorySectionProps): JSX.Element | null {
   // Only show inventory for entity types that can hold items
   const canHoldItems = ['npc', 'player', 'location'].includes(entityType);
@@ -32,27 +37,92 @@ export function EntityInventorySection({
   // State for dialogs
   const [viewingItem, setViewingItem] = useState<InventoryInstanceWithItem | null>(null);
   const [transferringItem, setTransferringItem] = useState<InventoryInstanceWithItem | null>(null);
+  const [isStocking, setIsStocking] = useState(false);
 
   // Use inventory hook for refetching after transfer
-  const { refetch } = useInventory(campaignId, entityType as OwnerType, entityId);
+  const { items, refetch } = useInventory(campaignId, entityType as OwnerType, entityId);
 
   const handleTransferComplete = useCallback(() => {
     setTransferringItem(null);
     refetch();
   }, [refetch]);
 
+  // Handle stock shelves action for shops
+  const handleStockShelves = useCallback(async () => {
+    setIsStocking(true);
+    try {
+      const response = await fetch('/api/location/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          locationId: entityId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to stock shop');
+      }
+
+      const result = await response.json();
+      toast.success(`Stocked ${result.itemsAdded} items!`);
+      refetch();
+    } catch (error) {
+      console.error('Error stocking shop:', error);
+      toast.error('Failed to stock shelves');
+    } finally {
+      setIsStocking(false);
+    }
+  }, [campaignId, entityId, refetch]);
+
   if (!canHoldItems) {
     return null;
   }
 
+  // Determine if this is a shop (from mechanics or sub_type)
+  const isShop = Boolean(mechanics?.is_shop) || subType === 'shop';
+
   // Determine view mode - shops show prices
-  const viewMode = subType === 'shop' ? 'shop' : 'default';
+  const viewMode = isShop ? 'shop' : 'default';
 
   // Get item display name
   const viewingItemName = viewingItem?.srd_item?.name || viewingItem?.custom_entity?.name || 'Item';
 
+  // Show Stock Shelves button for shops with empty or low inventory
+  const showStockButton = isShop && entityType === 'location' && items.length < 3;
+
   return (
     <div className="ca-panel p-4">
+      {/* Stock Shelves Button for empty shops */}
+      {showStockButton && (
+        <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2 text-amber-400">
+            <Package className="w-5 h-5" />
+            <span className="text-sm">
+              {items.length === 0 ? 'This shop has empty shelves!' : 'Running low on stock!'}
+            </span>
+          </div>
+          <Button
+            onClick={handleStockShelves}
+            disabled={isStocking}
+            size="sm"
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            {isStocking ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Stocking...
+              </>
+            ) : (
+              <>
+                <Package className="w-4 h-4 mr-2" />
+                Stock Shelves
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
       <InventoryList
         campaignId={campaignId}
         ownerType={entityType as OwnerType}

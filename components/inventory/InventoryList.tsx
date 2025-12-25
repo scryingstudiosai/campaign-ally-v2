@@ -354,10 +354,17 @@ function InventoryItemRow({
 
               <DropdownMenuSeparator className="bg-slate-700" />
 
-              <DropdownMenuItem onSelect={onTransfer} className="text-slate-200">
-                <ArrowRightLeft className="w-4 h-4 mr-2" />
-                Transfer
-              </DropdownMenuItem>
+              {viewMode === 'shop' ? (
+                <DropdownMenuItem onSelect={onTransfer} className="text-yellow-400">
+                  <Coins className="w-4 h-4 mr-2" />
+                  Buy ({value ?? '??'} gp)
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={onTransfer} className="text-slate-200">
+                  <ArrowRightLeft className="w-4 h-4 mr-2" />
+                  Transfer
+                </DropdownMenuItem>
+              )}
 
               <DropdownMenuItem onSelect={onRemove} className="text-red-400">
                 <Trash2 className="w-4 h-4 mr-2" />
