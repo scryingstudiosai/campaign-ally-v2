@@ -207,14 +207,23 @@ export async function saveForgedEntity(
   if (forgeType === 'location') {
     console.log('[EntityMinter] Location forge detected, checking for NPC stubs...')
     console.log('[EntityMinter] All created stubs:', context.createdStubs)
-    console.log('[EntityMinter] output.brain raw:', output.brain)
-    console.log('[EntityMinter] output.brain?.inhabitants:', (output.brain as Record<string, unknown>)?.inhabitants)
+    console.log('[EntityMinter] All discoveries:', context.discoveries.map(d => ({ id: d.id, text: d.text, type: d.suggestedType, status: d.status })))
 
-    const npcStubs = context.createdStubs.filter((stub) => stub.discoveryId.startsWith('npc-'))
+    // Find NPC stubs by EITHER:
+    // 1. Discovery ID starts with 'npc-' (from brain.inhabitants)
+    // 2. Discovery has suggestedType === 'npc' (from scanner detection)
+    const npcDiscoveryIds = new Set(
+      context.discoveries
+        .filter((d) => d.status === 'create_stub' && (d.id.startsWith('npc-') || d.suggestedType === 'npc'))
+        .map((d) => d.id)
+    )
+    console.log('[EntityMinter] NPC discovery IDs:', Array.from(npcDiscoveryIds))
+
+    const npcStubs = context.createdStubs.filter((stub) => npcDiscoveryIds.has(stub.discoveryId))
     console.log('[EntityMinter] NPC stubs found:', npcStubs.length, npcStubs)
 
     if (npcStubs.length > 0) {
-      // Get inhabitant details from output to enrich the references
+      // Get inhabitant details from output to enrich the references (if available)
       const inhabitants = (output.brain as Record<string, unknown>)?.inhabitants as Array<{
         name: string
         role: string
@@ -224,14 +233,17 @@ export async function saveForgedEntity(
 
       // Build NPC references with entity IDs
       const npcReferences = npcStubs.map((stub) => {
-        // Find matching inhabitant data
+        // Find matching inhabitant data (if AI provided it)
         const inhabitant = inhabitants?.find(
           (i) => i.name.toLowerCase() === stub.name.toLowerCase()
         )
+        // Also check discovery context for role info
+        const discovery = context.discoveries.find((d) => d.id === stub.discoveryId)
+        const contextRole = discovery?.context?.split(' - ')?.[0] || discovery?.context?.split(' at ')?.[0]
 
         return {
           name: stub.name,
-          role: inhabitant?.role || 'Unknown',
+          role: inhabitant?.role || contextRole || 'Staff',
           hook: inhabitant?.hook,
           entity_id: stub.entityId,
         }
