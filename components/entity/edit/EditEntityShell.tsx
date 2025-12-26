@@ -50,14 +50,10 @@ export function EditEntityShell({
     try {
       await onSave();
       console.log('[EditShell] Save completed successfully');
-      setHasChanges(false);
       toast.success('Changes saved!');
 
-      // Small delay to ensure toast shows before navigation
-      setTimeout(() => {
-        router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
-        router.refresh(); // Force refresh to show new data
-      }, 500);
+      // Force a hard refresh to ensure new data loads
+      window.location.href = `/dashboard/campaigns/${campaignId}/memory/${entity.id}`;
     } catch (error) {
       console.error('[EditShell] Save failed:', error);
       toast.error('Failed to save changes. Please try again.');

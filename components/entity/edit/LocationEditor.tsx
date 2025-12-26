@@ -379,30 +379,22 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
             </div>
             <div>
               <Label>Terrain</Label>
-              <Select
-                value={formData.mechanics.terrain}
-                onValueChange={(val) => updateMechanics('terrain', val)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="difficult">Difficult Terrain</SelectItem>
-                  <SelectItem value="hazardous">Hazardous</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                value={formData.mechanics.terrain || ''}
+                onChange={(e) => updateMechanics('terrain', e.target.value)}
+                placeholder="Normal, difficult, even flooring, etc."
+              />
             </div>
           </div>
 
           <div>
             <Label>Lighting</Label>
             <Select
-              value={formData.mechanics.lighting}
+              value={formData.mechanics.lighting || 'bright'}
               onValueChange={(val) => updateMechanics('lighting', val)}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select lighting..." />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="bright">Bright Light</SelectItem>
@@ -431,7 +423,7 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
                 <div>
                   <Label>Shop Type</Label>
                   <Select
-                    value={formData.mechanics.shop_type}
+                    value={formData.mechanics.shop_type || 'general'}
                     onValueChange={(val) => updateMechanics('shop_type', val)}
                   >
                     <SelectTrigger>
@@ -450,11 +442,11 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
                 <div>
                   <Label>Price Modifier</Label>
                   <Select
-                    value={formData.mechanics.price_modifier?.toString()}
+                    value={String(formData.mechanics.price_modifier || 1)}
                     onValueChange={(val) => updateMechanics('price_modifier', parseFloat(val))}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select modifier..." />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="0.8">20% Discount (0.8x)</SelectItem>
