@@ -99,14 +99,25 @@ export async function stockShopInventory(
   }
 
   // 2. Stock SRD ITEMS
+  // Determine if this shop should only get mundane items (not magic shops)
+  const isMagicShop = ['magic', 'arcane', 'enchanter', 'wizard', 'scroll'].some(
+    (term) => inventoryData.shop_type.toLowerCase().includes(term)
+  );
+  const excludeRare = !isMagicShop;
+
+  console.log(`[ShopStocker] Stocking ${inventoryData.shop_type} shop (excludeRare: ${excludeRare})`);
+
   for (const itemName of inventoryData.suggested_srd_stock || []) {
     try {
-      const srdItem = await findSrdItemByName(itemName);
+      const srdItem = await findSrdItemByName(itemName, { excludeRare });
 
       if (!srdItem) {
         results.errors.push(`SRD item not found: ${itemName}`);
         continue;
       }
+
+      console.log(`[ShopStocker] Adding item: ${srdItem.name} (${srdItem.rarity || 'common'})`);
+
 
       // Determine quantity based on rarity/type
       const isCommonConsumable = ['potion', 'ammunition', 'rations', 'torch', 'oil', 'arrow', 'bolt'].some(
