@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { InventoryList } from './InventoryList';
 import { TransferItemDialog } from './TransferItemDialog';
 import { AddItemToInventoryDialog } from './AddItemToInventoryDialog';
+import { SrdLinkDialog } from './SrdLinkDialog';
 import { OwnerType, InventoryInstanceWithItem } from '@/types/inventory';
 import { useInventory } from '@/hooks/use-inventory';
 import {
@@ -16,7 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SrdItemDisplay } from '@/components/srd/SrdItemDisplay';
-import { Package, RefreshCw, Plus, Store } from 'lucide-react';
+import { Package, RefreshCw, Plus, Store, Link } from 'lucide-react';
 
 interface EntityInventorySectionProps {
   campaignId: string;
@@ -42,6 +43,7 @@ export function EntityInventorySection({
   const [viewingItem, setViewingItem] = useState<InventoryInstanceWithItem | null>(null);
   const [transferringItem, setTransferringItem] = useState<InventoryInstanceWithItem | null>(null);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
+  const [showSrdLinkDialog, setShowSrdLinkDialog] = useState(false);
   const [isStocking, setIsStocking] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -225,6 +227,24 @@ export function EntityInventorySection({
                   </dl>
                 </div>
               )}
+
+              {/* Link to SRD option for custom items without SRD link */}
+              {viewingItem.custom_entity_id && !viewingItem.srd_item_id && (
+                <div className="p-3 bg-amber-900/20 border border-amber-700/50 rounded-lg">
+                  <p className="text-sm text-amber-400 mb-2">
+                    This is a custom item without official D&D stats.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSrdLinkDialog(true)}
+                    className="border-amber-600 text-amber-400 hover:bg-amber-900/30"
+                  >
+                    <Link className="w-4 h-4 mr-2" />
+                    Link to SRD Item for Stats
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -292,6 +312,22 @@ export function EntityInventorySection({
           setShowAddItemDialog(false);
         }}
       />
+
+      {/* SRD Link Dialog */}
+      {viewingItem && (
+        <SrdLinkDialog
+          open={showSrdLinkDialog}
+          inventoryInstanceId={viewingItem.id}
+          customItemName={viewingItem.custom_entity?.name || 'Item'}
+          onClose={() => setShowSrdLinkDialog(false)}
+          onLinked={() => {
+            setShowSrdLinkDialog(false);
+            setViewingItem(null);
+            setRefreshKey((k) => k + 1);
+            refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -688,6 +688,119 @@ export interface LootProcessingResult {
   errors: string[]
 }
 
+// Common item name variations that map to SRD items
+const ITEM_NAME_VARIATIONS: Record<string, string> = {
+  'sword': 'Longsword',
+  'steel sword': 'Longsword',
+  'iron sword': 'Longsword',
+  'axe': 'Handaxe',
+  'battle axe': 'Battleaxe',
+  'bow': 'Shortbow',
+  'staff': 'Quarterstaff',
+  'wooden staff': 'Quarterstaff',
+  'club': 'Club',
+  'mace': 'Mace',
+  'hammer': 'Warhammer',
+  'spear': 'Spear',
+  'javelin': 'Javelin',
+  'crossbow': 'Crossbow, Light',
+  'light crossbow': 'Crossbow, Light',
+  'heavy crossbow': 'Crossbow, Heavy',
+  'shield': 'Shield',
+  'leather armor': 'Leather Armor',
+  'chain mail': 'Chain Mail',
+  'chainmail': 'Chain Mail',
+  'plate armor': 'Plate',
+  'potion': 'Potion of Healing',
+  'health potion': 'Potion of Healing',
+  'healing potion': 'Potion of Healing',
+  'healing elixir': 'Potion of Healing',
+  'antidote': 'Antitoxin',
+  'rope': 'Rope, Hempen (50 feet)',
+  'torch': 'Torch',
+  'lantern': 'Lantern, Hooded',
+  'backpack': 'Backpack',
+  'bedroll': 'Bedroll',
+  'rations': 'Rations (1 day)',
+  'waterskin': 'Waterskin',
+}
+
+/**
+ * Infer the item type/category from the item name
+ */
+function inferItemType(name: string): string {
+  const nameLower = name.toLowerCase()
+  if (/sword|axe|mace|hammer|dagger|spear|bow|crossbow|staff|club|flail|halberd|pike|rapier|scimitar|whip|trident|glaive/.test(nameLower)) return 'weapon'
+  if (/armor|mail|plate|leather|shield|helm|helmet|gauntlet|boot|greave|bracer/.test(nameLower)) return 'armor'
+  if (/potion|elixir|oil|salve|tonic|draught/.test(nameLower)) return 'potion'
+  if (/scroll|tome|book|letter|map|note|document|journal|diary/.test(nameLower)) return 'document'
+  if (/ring|amulet|necklace|bracelet|cloak|robe|circlet|crown|brooch|pendant/.test(nameLower)) return 'wondrous item'
+  if (/gold|silver|copper|gem|jewel|coin|ruby|emerald|sapphire|diamond/.test(nameLower)) return 'treasure'
+  if (/key|lockpick|thieves|tool/.test(nameLower)) return 'tool'
+  if (/wand|rod|orb|focus|crystal/.test(nameLower)) return 'arcane focus'
+  return 'adventuring gear'
+}
+
+/**
+ * Find an SRD item match with fuzzy matching
+ */
+async function findSrdItemMatch(
+  supabase: SupabaseClient,
+  itemName: string
+): Promise<{ id: string; name: string; item_type: string; rarity: string | null; value_gp: number | null; weight: number | null } | null> {
+  // Normalize the item name
+  const normalized = itemName.toLowerCase()
+    .replace(/^(steel|iron|wooden|silver|golden|masterwork|fine|crude|old|rusty|worn|ancient|enchanted)\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  // Try exact match first (case-insensitive)
+  const { data: exactMatch } = await supabase
+    .from('srd_items')
+    .select('id, name, item_type, rarity, value_gp, weight')
+    .ilike('name', normalized)
+    .limit(1)
+    .single()
+
+  if (exactMatch) return exactMatch
+
+  // Try original name as-is
+  const { data: originalMatch } = await supabase
+    .from('srd_items')
+    .select('id, name, item_type, rarity, value_gp, weight')
+    .ilike('name', itemName)
+    .limit(1)
+    .single()
+
+  if (originalMatch) return originalMatch
+
+  // Try fuzzy match (contains)
+  const { data: fuzzyMatch } = await supabase
+    .from('srd_items')
+    .select('id, name, item_type, rarity, value_gp, weight')
+    .ilike('name', `%${normalized}%`)
+    .limit(1)
+    .single()
+
+  if (fuzzyMatch) return fuzzyMatch
+
+  // Try known variations
+  for (const [key, srdName] of Object.entries(ITEM_NAME_VARIATIONS)) {
+    if (normalized.includes(key) || normalized === key) {
+      const { data: variation } = await supabase
+        .from('srd_items')
+        .select('id, name, item_type, rarity, value_gp, weight')
+        .ilike('name', srdName)
+        .limit(1)
+        .single()
+
+      if (variation) return variation
+    }
+  }
+
+  return null
+}
+
 /**
  * Process NPC loot items into the inventory system
  * - SRD items are added directly as inventory instances
@@ -726,13 +839,8 @@ export async function processLootToInventory(
         continue
       }
 
-      // Try to find SRD item match
-      const { data: srdItem } = await supabase
-        .from('srd_items')
-        .select('id, name, item_type, rarity, value_gp, weight')
-        .ilike('name', lootItem.name)
-        .limit(1)
-        .single()
+      // Try to find SRD item match with fuzzy matching
+      const srdItem = await findSrdItemMatch(supabase, lootItem.name)
 
       if (srdItem) {
         // Add SRD item to inventory
@@ -744,6 +852,10 @@ export async function processLootToInventory(
           quantity: lootItem.quantity || 1,
           acquired_from: `Generated with ${ownerName}`,
           is_identified: true,
+          // Note if the original name was different
+          notes: lootItem.name.toLowerCase() !== srdItem.name.toLowerCase()
+            ? `Originally: ${lootItem.name}`
+            : null,
         })
 
         if (error) {
@@ -752,16 +864,24 @@ export async function processLootToInventory(
           result.srdItems++
         }
       } else {
-        // Create custom item entity stub
+        // Create custom item entity with inferred type
+        const itemType = inferItemType(lootItem.name)
         const { data: itemEntity, error: entityError } = await supabase
           .from('entities')
           .insert({
             campaign_id: campaignId,
             name: lootItem.name,
             entity_type: 'item',
+            sub_type: itemType,
             forge_status: 'stub',
             status: 'active',
+            summary: lootItem.description || `Custom ${itemType} from ${ownerName}`,
             description: lootItem.description || `Found on ${ownerName}`,
+            mechanics: {
+              item_type: itemType,
+              requires_attunement: false,
+              rarity: 'common',
+            },
             attributes: {
               is_stub: true,
               needs_review: true,
