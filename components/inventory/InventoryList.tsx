@@ -32,6 +32,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { getItemPrice, formatPrice } from '@/lib/inventory/price-utils';
 
 interface InventoryListProps {
   campaignId: string;
@@ -55,13 +56,6 @@ const RARITY_COLORS: Record<string, string> = {
   legendary: 'bg-orange-800 text-orange-200',
   artifact: 'bg-red-800 text-red-200',
 };
-
-// Format price for display
-function formatPrice(price: number | undefined | null, showGp = true): string {
-  if (price === null || price === undefined) return 'Price not set';
-  if (price === 0) return 'Free';
-  return showGp ? `${price.toLocaleString()} gp` : price.toLocaleString();
-}
 
 export function InventoryList({
   campaignId,
@@ -209,11 +203,12 @@ function InventoryItemRow({
   const weight = (item.srd_item?.weight || (mechanics as Record<string, unknown>).weight) as
     | number
     | undefined;
-  const baseValue = (item.value_override ??
+  // Get explicit value from override or SRD data
+  const explicitValue = item.value_override ??
     item.srd_item?.value_gp ??
-    (mechanics as Record<string, unknown>).value_gp) as number | undefined;
-  // Apply price modifier for shop mode
-  const value = baseValue != null ? Math.round(baseValue * priceModifier) : undefined;
+    (mechanics as Record<string, unknown>).value_gp as number | undefined;
+  // Use price utility to get value (with fallback for common items and rarity-based pricing)
+  const value = getItemPrice(name, explicitValue, rarity, itemType, priceModifier);
   const isSrd = !!item.srd_item_id;
   const isConsumable =
     itemType?.toLowerCase().includes('potion') || itemType?.toLowerCase().includes('scroll');

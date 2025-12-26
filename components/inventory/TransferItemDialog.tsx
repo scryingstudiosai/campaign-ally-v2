@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { getItemPrice, formatPrice } from '@/lib/inventory/price-utils';
 
 interface TransferItemDialogProps {
   item: InventoryInstanceWithItem | null;
@@ -48,13 +49,14 @@ export function TransferItemDialog({
 
   const itemName = item?.srd_item?.name || item?.custom_entity?.name || 'Item';
   const maxQuantity = item?.quantity || 1;
+  const rarity = item?.srd_item?.rarity?.toLowerCase() || 'common';
+  const itemType = item?.srd_item?.item_type || item?.custom_entity?.sub_type || 'item';
+  const mechanics = (item?.srd_item?.mechanics || item?.custom_entity?.mechanics) as Record<string, unknown> | undefined;
 
-  // Calculate price for shop mode
-  const baseValue = item?.value_override ??
-    item?.srd_item?.value_gp ??
-    ((item?.srd_item?.mechanics || item?.custom_entity?.mechanics) as Record<string, unknown>)?.value_gp as number | undefined;
-  const itemPrice = baseValue != null ? Math.round(baseValue * priceModifier) : undefined;
-  const totalPrice = itemPrice != null ? itemPrice * quantity : undefined;
+  // Calculate price for shop mode using price utility
+  const explicitValue = item?.value_override ?? item?.srd_item?.value_gp ?? mechanics?.value_gp as number | undefined;
+  const itemPrice = getItemPrice(itemName, explicitValue, rarity, itemType, priceModifier);
+  const totalPrice = itemPrice != null ? itemPrice * quantity : null;
 
   // Reset state when item changes
   useEffect(() => {
@@ -115,7 +117,7 @@ export function TransferItemDialog({
 
       if (isShopMode) {
         if (totalPrice != null) {
-          toast.success(`Purchased ${quantity}x ${itemName} for ${totalPrice.toLocaleString()} gp. Remember to deduct gold!`, { duration: 5000 });
+          toast.success(`Purchased ${quantity}x ${itemName} for ${formatPrice(totalPrice)}. Remember to deduct gold!`, { duration: 5000 });
         } else {
           toast.success(`Acquired ${quantity}x ${itemName}`);
         }
@@ -152,7 +154,7 @@ export function TransferItemDialog({
               {isShopMode && (
                 <span className={`flex items-center gap-1 ${itemPrice != null ? 'text-amber-400' : 'text-slate-500'}`}>
                   <Coins className="w-3 h-3" />
-                  {itemPrice != null ? `${itemPrice.toLocaleString()} gp each` : 'Price not set'}
+                  {itemPrice != null ? `${formatPrice(itemPrice)} each` : 'Price not set'}
                 </span>
               )}
             </div>
@@ -223,7 +225,7 @@ export function TransferItemDialog({
             <div className={`flex items-center gap-2 mr-auto ${totalPrice != null ? 'text-amber-400' : 'text-slate-500'}`}>
               <Coins className="w-4 h-4" />
               <span className="font-medium">
-                {totalPrice != null ? `Total: ${totalPrice.toLocaleString()} gp` : 'Price not set'}
+                {totalPrice != null ? `Total: ${formatPrice(totalPrice)}` : 'Price not set'}
               </span>
             </div>
           )}

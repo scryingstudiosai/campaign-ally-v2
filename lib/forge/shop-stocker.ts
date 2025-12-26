@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { findSrdItemByName } from '@/lib/srd/item-lookup';
+import { getItemPrice } from '@/lib/inventory/price-utils';
 
 export interface ShopSpecialItem {
   name: string;
@@ -114,9 +115,14 @@ export async function stockShopInventory(
       );
       const quantity = isCommonConsumable ? randomInt(5, 15) : randomInt(1, 3);
 
-      // Calculate shop price
-      const basePrice = srdItem.value_gp || 0;
-      const finalPrice = basePrice > 0 ? Math.ceil(basePrice * priceMultiplier) : null;
+      // Calculate shop price using price utility (handles fallbacks for items without prices)
+      const finalPrice = getItemPrice(
+        srdItem.name,
+        srdItem.value_gp,
+        srdItem.rarity,
+        srdItem.item_type,
+        priceMultiplier
+      );
 
       // Check if item already exists in this shop's inventory
       const { data: existing } = await supabase
