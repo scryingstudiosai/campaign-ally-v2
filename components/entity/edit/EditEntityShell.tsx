@@ -1,0 +1,149 @@
+'use client';
+
+import { useState, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface EditEntityShellProps {
+  entity: {
+    id: string;
+    name: string;
+    entity_type: string;
+    sub_type?: string;
+  };
+  campaignId: string;
+  title?: string;
+  children: ReactNode;
+  onSave: (data: unknown) => Promise<void>;
+  hasChanges?: boolean;
+  setHasChanges?: (value: boolean) => void;
+}
+
+export function EditEntityShell({
+  entity,
+  campaignId,
+  title,
+  children,
+  onSave,
+  hasChanges: externalHasChanges,
+  setHasChanges: externalSetHasChanges,
+}: EditEntityShellProps): JSX.Element {
+  const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
+  const [internalHasChanges, setInternalHasChanges] = useState(false);
+
+  // Use external state if provided, otherwise use internal
+  const hasChanges = externalHasChanges ?? internalHasChanges;
+  const setHasChanges = externalSetHasChanges ?? setInternalHasChanges;
+
+  const handleSave = async (): Promise<void> => {
+    setIsSaving(true);
+    try {
+      // Trigger form submission by dispatching a custom event
+      const form = document.querySelector('form');
+      if (form) {
+        form.requestSubmit();
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to save changes');
+      setIsSaving(false);
+    }
+  };
+
+  const handleFormSubmit = async (formData: unknown): Promise<void> => {
+    try {
+      await onSave(formData);
+      setHasChanges(false);
+      toast.success('Changes saved successfully');
+      router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = (): void => {
+    if (hasChanges) {
+      const confirmed = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+      if (!confirmed) return;
+    }
+    router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCancel}
+            className="text-slate-400 hover:text-slate-200"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-100">
+              {title || `Edit ${entity.name}`}
+            </h1>
+            <p className="text-sm text-slate-500 capitalize">
+              {entity.entity_type} • {entity.sub_type || 'No subtype'}
+            </p>
+          </div>
+        </div>
+
+        {hasChanges && (
+          <span className="text-xs text-amber-400 bg-amber-900/30 px-2 py-1 rounded">
+            Unsaved changes
+          </span>
+        )}
+      </div>
+
+      {/* Form Content */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
+        {children}
+      </div>
+
+      {/* Footer Actions */}
+      <div className="flex justify-end gap-3 mt-6">
+        <Button
+          variant="outline"
+          onClick={handleCancel}
+          disabled={isSaving}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="bg-teal-600 hover:bg-teal-700"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              Save Changes
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Export context for child forms to trigger saves
+export interface EditFormContext {
+  onSubmit: (data: unknown) => Promise<void>;
+  setHasChanges: (value: boolean) => void;
+}
