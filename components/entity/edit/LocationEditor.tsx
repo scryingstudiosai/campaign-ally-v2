@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { EditEntityShell } from './EditEntityShell';
 import { TabbedFormLayout } from '@/components/form-widgets/TabbedFormLayout';
 import { StringArrayInput } from '@/components/form-widgets/StringArrayInput';
@@ -80,6 +80,8 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
   const [hasChanges, setHasChanges] = useState(false);
 
   const handleSave = async (): Promise<void> => {
+    console.log('[LocationEditor] Saving data:', formData);
+
     const response = await fetch(`/api/entities/${entity.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -94,9 +96,16 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
       }),
     });
 
+    console.log('[LocationEditor] Response status:', response.status);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[LocationEditor] Save failed:', errorText);
       throw new Error('Failed to save');
     }
+
+    const result = await response.json();
+    console.log('[LocationEditor] Save result:', result);
   };
 
   // Helper to update nested state
@@ -127,11 +136,6 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
   const updateBasic = (field: string, value: unknown): void => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setHasChanges(true);
-  };
-
-  const handleSubmit = (e: FormEvent): void => {
-    e.preventDefault();
-    handleSave();
   };
 
   // Define the tabs
@@ -498,9 +502,7 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
       hasChanges={hasChanges}
       setHasChanges={setHasChanges}
     >
-      <form onSubmit={handleSubmit}>
-        <TabbedFormLayout tabs={tabs} defaultTab="basics" />
-      </form>
+      <TabbedFormLayout tabs={tabs} defaultTab="basics" />
     </EditEntityShell>
   );
 }

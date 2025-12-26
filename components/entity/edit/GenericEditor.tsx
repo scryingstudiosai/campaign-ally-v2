@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { EditEntityShell } from './EditEntityShell';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,11 +53,6 @@ export function GenericEditor({ entity, campaignId }: GenericEditorProps): JSX.E
     setHasChanges(true);
   };
 
-  const handleSubmit = (e: FormEvent): void => {
-    e.preventDefault();
-    handleSave();
-  };
-
   return (
     <EditEntityShell
       entity={entity}
@@ -66,7 +61,7 @@ export function GenericEditor({ entity, campaignId }: GenericEditorProps): JSX.E
       hasChanges={hasChanges}
       setHasChanges={setHasChanges}
     >
-      <form onSubmit={handleSubmit}>
+      <>
         {/* Basic Fields */}
         <div className="space-y-4 mb-6">
           <div className="grid grid-cols-2 gap-4">
@@ -146,7 +141,7 @@ export function GenericEditor({ entity, campaignId }: GenericEditorProps): JSX.E
             />
           </TabsContent>
         </Tabs>
-      </form>
+      </>
     </EditEntityShell>
   );
 }

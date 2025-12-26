@@ -16,7 +16,7 @@ interface EditEntityShellProps {
   campaignId: string;
   title?: string;
   children: ReactNode;
-  onSave: (data: unknown) => Promise<void>;
+  onSave: () => Promise<void>; // Form manages its own state
   hasChanges?: boolean;
   setHasChanges?: (value: boolean) => void;
 }
@@ -39,28 +39,19 @@ export function EditEntityShell({
   const setHasChanges = externalSetHasChanges ?? setInternalHasChanges;
 
   const handleSave = async (): Promise<void> => {
-    setIsSaving(true);
-    try {
-      // Trigger form submission by dispatching a custom event
-      const form = document.querySelector('form');
-      if (form) {
-        form.requestSubmit();
-      }
-    } catch (error) {
-      console.error('Save error:', error);
-      toast.error('Failed to save changes');
-      setIsSaving(false);
-    }
-  };
+    if (isSaving) return; // Prevent double-clicks
 
-  const handleFormSubmit = async (formData: unknown): Promise<void> => {
+    setIsSaving(true);
+    console.log('[EditShell] Starting save...');
+
     try {
-      await onSave(formData);
+      await onSave();
+      console.log('[EditShell] Save successful');
       setHasChanges(false);
       toast.success('Changes saved successfully');
       router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
     } catch (error) {
-      console.error('Save error:', error);
+      console.error('[EditShell] Save error:', error);
       toast.error('Failed to save changes');
     } finally {
       setIsSaving(false);
@@ -142,8 +133,3 @@ export function EditEntityShell({
   );
 }
 
-// Export context for child forms to trigger saves
-export interface EditFormContext {
-  onSubmit: (data: unknown) => Promise<void>;
-  setHasChanges: (value: boolean) => void;
-}
