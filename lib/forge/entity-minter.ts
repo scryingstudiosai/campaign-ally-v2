@@ -9,6 +9,8 @@ import type {
   HistoryEntry,
 } from '@/types/forge'
 import type { ForgeFactOutput } from '@/types/living-entity'
+// Import pure helper functions (no server imports) for shop detection
+import { isLikelyShop, inferShopType } from '@/lib/srd/shop-helpers'
 
 export interface StubCreationResult {
   discoveryId: string
@@ -432,6 +434,40 @@ export async function saveForgedEntity(
       }
     } else {
       console.log('[EntityMinter] No NPC stubs found, skipping NPC reference update')
+    }
+
+    // For location forge, check if this is a shop and mark it in mechanics
+    const locationData = {
+      name: savedEntity.name as string | undefined,
+      sub_type: (output.sub_type as string) || undefined,
+      mechanics: (output.mechanics as Record<string, unknown>) || undefined,
+    }
+
+    if (isLikelyShop(locationData)) {
+      console.log('[EntityMinter] Location detected as shop, marking in mechanics...')
+      const shopType = inferShopType(locationData)
+      const priceModifier = (locationData.mechanics?.price_modifier as number) || 1.0
+
+      console.log('[EntityMinter] Shop type:', shopType)
+
+      // Mark the location as a shop in its mechanics
+      // Note: DM can use "Stock Shelves" button on the entity page to add inventory
+      const existingMechanics = (savedEntity.mechanics as Record<string, unknown>) || {}
+      await supabase
+        .from('entities')
+        .update({
+          mechanics: {
+            ...existingMechanics,
+            is_shop: true,
+            shop_type: shopType,
+            price_modifier: priceModifier,
+          },
+        })
+        .eq('id', savedEntity.id)
+
+      console.log('[EntityMinter] Marked location as shop - DM can use Stock Shelves button to add inventory')
+    } else {
+      console.log('[EntityMinter] Location is not a shop, skipping shop marking')
     }
   } else {
     console.log('[EntityMinter] Not a location forge, skipping NPC reference update')
