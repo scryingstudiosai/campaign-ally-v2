@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
-import { findSrdItemByName } from '@/lib/srd/item-lookup';
 import { getItemPrice } from '@/lib/inventory/price-utils';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface ShopSpecialItem {
   name: string;
@@ -23,6 +23,128 @@ export interface StockingResult {
   specialItems: number;
   srdItems: number;
   errors: string[];
+}
+
+// Search terms for each shop type - these will be used with ILIKE
+const SHOP_SEARCH_TERMS: Record<string, string[]> = {
+  general: [
+    'rope', 'torch', 'lantern', 'ration', 'waterskin',
+    'backpack', 'bedroll', 'blanket', 'candle', 'crowbar',
+    'flask', 'piton', 'pole', 'pot', 'pouch',
+    'sack', 'shovel', 'tent', 'tinderbox', 'vial',
+    'caltrops', 'ball bearing', 'grappling', 'chain',
+    'antitoxin', 'oil', 'mirror', 'lock', 'manacle',
+    'healer', 'kit', 'tools', 'ink', 'chalk', 'whistle',
+    'ladder', 'mess kit', 'spyglass', 'hunting trap',
+  ],
+  weapons: [
+    'sword', 'axe', 'mace', 'dagger', 'spear',
+    'bow', 'crossbow', 'staff', 'club', 'flail',
+    'rapier', 'scimitar', 'javelin', 'sling', 'arrow', 'bolt',
+    'halberd', 'pike', 'trident', 'morningstar', 'whip',
+  ],
+  armor: [
+    'armor', 'mail', 'plate', 'leather', 'hide',
+    'shield', 'breastplate', 'padded', 'studded', 'scale',
+  ],
+  potions: [
+    'potion', 'antitoxin', 'holy water', 'alchemist',
+    'acid', 'healer', 'herbalism',
+  ],
+  magic: [
+    'potion', 'scroll', 'wand', 'rod', 'staff',
+    'ring', 'amulet', 'cloak', 'boots',
+  ],
+};
+
+interface SrdItem {
+  id: string;
+  name: string;
+  item_type: string;
+  rarity: string | null;
+  value_gp: number | null;
+  weight: number | null;
+}
+
+/**
+ * Find items for a shop using ILIKE pattern matching
+ */
+async function findItemsForShopType(
+  supabase: SupabaseClient,
+  shopType: string,
+  count: number
+): Promise<SrdItem[]> {
+  const searchTerms = SHOP_SEARCH_TERMS[shopType] || SHOP_SEARCH_TERMS.general;
+  const allItems: SrdItem[] = [];
+  const seenIds = new Set<string>();
+
+  console.log(`[ShopStocker] Searching for ${shopType} items with terms:`, searchTerms.slice(0, 10));
+
+  // Search for each term
+  for (const term of searchTerms) {
+    if (allItems.length >= count * 3) break; // Get extras to randomize
+
+    const { data, error } = await supabase
+      .from('srd_items')
+      .select('id, name, item_type, rarity, value_gp, weight')
+      .ilike('name', `%${term}%`)
+      .limit(5);
+
+    if (error) {
+      console.error(`[ShopStocker] Error searching for "${term}":`, error);
+      continue;
+    }
+
+    if (data && data.length > 0) {
+      // Filter out rare+ items and magic items for non-magic shops
+      const filtered = data.filter((item: SrdItem) => {
+        // Skip duplicates
+        if (seenIds.has(item.id)) return false;
+
+        // Skip rare+ items unless magic shop
+        const rarity = (item.rarity || '').toLowerCase();
+        if (shopType !== 'magic') {
+          if (rarity.includes('rare') || rarity.includes('legendary') || rarity.includes('artifact')) {
+            return false;
+          }
+        }
+
+        // Skip magic item indicators for non-magic shops
+        if (shopType !== 'magic') {
+          const name = item.name.toLowerCase();
+          if (name.includes('+1') || name.includes('+2') || name.includes('+3')) {
+            return false;
+          }
+          if (name.includes(' of ') && !name.includes('bag of') && !name.includes('ball of')) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      for (const item of filtered) {
+        seenIds.add(item.id);
+        allItems.push(item);
+      }
+    }
+  }
+
+  console.log(`[ShopStocker] Found ${allItems.length} candidate items`);
+
+  if (allItems.length === 0) {
+    // Diagnostic query - what's in the SRD?
+    const { data: sampleItems } = await supabase
+      .from('srd_items')
+      .select('name, item_type')
+      .limit(10);
+
+    console.log('[ShopStocker] Sample SRD items:', sampleItems?.map(i => i.name));
+  }
+
+  // Shuffle and return requested count
+  const shuffled = allItems.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
 }
 
 /**
@@ -98,59 +220,26 @@ export async function stockShopInventory(
     }
   }
 
-  // 2. Stock SRD ITEMS using direct name lookup (most reliable)
-  const itemsToStock = inventoryData.suggested_srd_stock || [];
+  // 2. Stock SRD ITEMS using ILIKE pattern matching (most reliable)
+  const shopType = inventoryData.shop_type.toLowerCase();
+  const itemCount = 8; // Stock up to 8 items
 
-  if (itemsToStock.length === 0) {
-    console.log('[ShopStocker] No items to stock');
+  console.log(`[ShopStocker] Stocking ${shopType} shop using pattern matching`);
+
+  // Find items using ILIKE pattern matching
+  const foundItems = await findItemsForShopType(supabase, shopType, itemCount);
+
+  if (foundItems.length === 0) {
+    console.log('[ShopStocker] No items found via pattern matching');
+    results.errors.push(`No items found for shop type: ${shopType}`);
     return results;
   }
 
-  // Shuffle the item list and select a reasonable number
-  const shuffled = [...itemsToStock].sort(() => Math.random() - 0.5);
-  const itemCount = Math.min(8, shuffled.length); // Stock 8 items max
-  const selectedNames = shuffled.slice(0, itemCount * 2); // Get extras in case some aren't found
+  console.log(`[ShopStocker] Found ${foundItems.length} items:`,
+    foundItems.map(i => i.name));
 
-  console.log(`[ShopStocker] Stocking ${inventoryData.shop_type} shop`);
-  console.log(`[ShopStocker] Looking for items:`, selectedNames.slice(0, 10));
-
-  // Do a bulk lookup using exact name matching
-  const { data: srdItems, error: srdError } = await supabase
-    .from('srd_items')
-    .select('id, name, item_type, rarity, value_gp, weight')
-    .in('name', selectedNames);
-
-  if (srdError) {
-    console.error('[ShopStocker] SRD query error:', srdError);
-    results.errors.push(`SRD query failed: ${srdError.message}`);
-    return results;
-  }
-
-  console.log(`[ShopStocker] Found ${srdItems?.length || 0} exact matches:`,
-    srdItems?.map(i => i.name).slice(0, 10));
-
-  // If no exact matches, try fuzzy matching for missing items
-  const foundItems = srdItems || [];
-  const foundNames = new Set(foundItems.map(i => i.name.toLowerCase()));
-  const missingNames = selectedNames.filter(name =>
-    !foundNames.has(name.toLowerCase())
-  ).slice(0, 5); // Only try fuzzy for first 5 missing
-
-  if (missingNames.length > 0 && foundItems.length < itemCount) {
-    console.log('[ShopStocker] Trying fuzzy match for:', missingNames);
-
-    for (const name of missingNames) {
-      const srdItem = await findSrdItemByName(name, { excludeRare: true });
-      if (srdItem && !foundNames.has(srdItem.name.toLowerCase())) {
-        foundItems.push(srdItem);
-        foundNames.add(srdItem.name.toLowerCase());
-        console.log(`[ShopStocker] Fuzzy found: ${srdItem.name}`);
-      }
-    }
-  }
-
-  // Stock the found items (limit to itemCount)
-  const finalItems = foundItems.slice(0, itemCount);
+  // Stock the found items
+  const finalItems = foundItems;
 
   for (const srdItem of finalItems) {
     try {
