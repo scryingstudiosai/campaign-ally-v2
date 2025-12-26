@@ -14,8 +14,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { SrdItemDisplay } from '@/components/srd/SrdItemDisplay';
-import { Package, RefreshCw, Plus } from 'lucide-react';
+import { Package, RefreshCw, Plus, Store } from 'lucide-react';
 
 interface EntityInventorySectionProps {
   campaignId: string;
@@ -88,8 +89,17 @@ export function EntityInventorySection({
     return null;
   }
 
-  // Determine if this is a shop (from mechanics or sub_type)
-  const isShop = Boolean(mechanics?.is_shop) || subType === 'shop';
+  // Determine if this is a shop
+  // Check: mechanics.is_shop, sub_type, or name/sub_type contains shop keywords
+  const shopKeywords = /shop|store|merchant|market|smithy|blacksmith|apothecary|armorer|armourer|weaponsmith|fletcher|tannery|jeweler|jeweller|emporium|bazaar|trading post|general store/i;
+  const isShop = entityType === 'location' && (
+    Boolean(mechanics?.is_shop) ||
+    subType === 'shop' ||
+    shopKeywords.test(`${entityName || ''} ${subType || ''}`)
+  );
+
+  // Get price modifier from mechanics (default 1.0 = no markup/discount)
+  const priceModifier = (mechanics?.price_modifier as number) || 1.0;
 
   // Determine view mode - shops show prices
   const viewMode = isShop ? 'shop' : 'default';
@@ -105,11 +115,26 @@ export function EntityInventorySection({
       {/* Header with Add Item button */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
-          <Package className="w-5 h-5" />
-          Inventory
+          {isShop ? <Store className="w-5 h-5 text-amber-400" /> : <Package className="w-5 h-5" />}
+          {isShop ? 'Shop Inventory' : 'Inventory'}
           <span className="text-sm text-slate-400 font-normal">
             ({items.length} {items.length === 1 ? 'item' : 'items'})
           </span>
+          {/* Price modifier badge for shops */}
+          {isShop && priceModifier !== 1.0 && (
+            <Badge
+              variant="outline"
+              className={priceModifier > 1
+                ? 'border-red-500 text-red-400 text-xs'
+                : 'border-green-500 text-green-400 text-xs'
+              }
+            >
+              {priceModifier > 1
+                ? `${Math.round((priceModifier - 1) * 100)}% Markup`
+                : `${Math.round((1 - priceModifier) * 100)}% Discount`
+              }
+            </Badge>
+          )}
         </h3>
         <Button
           variant="outline"
@@ -161,6 +186,7 @@ export function EntityInventorySection({
         ownerType={entityType as OwnerType}
         ownerId={entityId}
         viewMode={viewMode}
+        priceModifier={isShop ? priceModifier : undefined}
         showHeader={false}
         onViewDetails={(item) => setViewingItem(item)}
         onTransfer={(item) => setTransferringItem(item)}
@@ -246,6 +272,8 @@ export function EntityInventorySection({
       <TransferItemDialog
         item={transferringItem}
         campaignId={campaignId}
+        isShopMode={isShop}
+        priceModifier={priceModifier}
         onClose={() => setTransferringItem(null)}
         onTransferComplete={handleTransferComplete}
       />
