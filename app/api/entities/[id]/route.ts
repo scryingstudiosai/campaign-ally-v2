@@ -5,6 +5,42 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// Deep merge helper - merges nested objects without losing data
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  if (!source) return target;
+  if (!target) return source;
+
+  const result = { ...target };
+
+  for (const key of Object.keys(source)) {
+    const sourceValue = source[key];
+    const targetValue = target[key];
+
+    // Skip undefined or null values from source - don't overwrite with empty
+    if (sourceValue === undefined || sourceValue === null) {
+      continue;
+    }
+
+    // If both are objects (not arrays), merge recursively
+    if (
+      typeof sourceValue === 'object' &&
+      !Array.isArray(sourceValue) &&
+      typeof targetValue === 'object' &&
+      !Array.isArray(targetValue)
+    ) {
+      result[key] = deepMerge(
+        targetValue as Record<string, unknown>,
+        sourceValue as Record<string, unknown>
+      );
+    } else {
+      // For arrays and primitives, use source value
+      result[key] = sourceValue;
+    }
+  }
+
+  return result;
+}
+
 // PATCH /api/entities/[id] - Update an entity (partial update)
 export async function PATCH(
   request: NextRequest,
@@ -16,49 +52,98 @@ export async function PATCH(
     return NextResponse.json({ error: 'Entity ID required' }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
+    const body = await request.json();
 
-  // Get the update payload
-  const body = await request.json();
+    console.log('[API] PATCH entity:', id);
 
-  // First verify the entity exists
-  const { data: entity, error: fetchError } = await supabase
-    .from('entities')
-    .select('id, campaign_id, attributes')
-    .eq('id', id)
-    .is('deleted_at', null)
-    .single();
+    // Fetch the existing entity with all fields
+    const { data: existing, error: fetchError } = await supabase
+      .from('entities')
+      .select('*')
+      .eq('id', id)
+      .is('deleted_at', null)
+      .single();
 
-  if (fetchError || !entity) {
-    return NextResponse.json({ error: 'Entity not found' }, { status: 404 });
-  }
+    if (fetchError || !existing) {
+      console.error('[API] Entity not found:', fetchError);
+      return NextResponse.json({ error: 'Entity not found' }, { status: 404 });
+    }
 
-  // Handle partial attributes updates (merge with existing)
-  let updatePayload = { ...body };
-  if (body.attributes) {
-    updatePayload.attributes = {
-      ...(entity.attributes || {}),
-      ...body.attributes,
+    // Build update object with deep merging for nested objects
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
     };
+
+    // Simple fields - direct update
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.sub_type !== undefined) updateData.sub_type = body.sub_type;
+    if (body.summary !== undefined) updateData.summary = body.summary;
+    if (body.description !== undefined) updateData.description = body.description;
+
+    // Nested objects - DEEP MERGE with existing data
+    if (body.soul !== undefined) {
+      updateData.soul = deepMerge(
+        (existing.soul as Record<string, unknown>) || {},
+        body.soul
+      );
+      console.log('[API] Merged soul:', Object.keys(updateData.soul as object));
+    }
+
+    if (body.brain !== undefined) {
+      updateData.brain = deepMerge(
+        (existing.brain as Record<string, unknown>) || {},
+        body.brain
+      );
+      console.log('[API] Merged brain:', Object.keys(updateData.brain as object));
+    }
+
+    if (body.voice !== undefined) {
+      updateData.voice = deepMerge(
+        (existing.voice as Record<string, unknown>) || {},
+        body.voice
+      );
+    }
+
+    if (body.mechanics !== undefined) {
+      updateData.mechanics = deepMerge(
+        (existing.mechanics as Record<string, unknown>) || {},
+        body.mechanics
+      );
+    }
+
+    if (body.attributes !== undefined) {
+      updateData.attributes = deepMerge(
+        (existing.attributes as Record<string, unknown>) || {},
+        body.attributes
+      );
+    }
+
+    console.log('[API] Update fields:', Object.keys(updateData));
+
+    // Perform update
+    const { data, error } = await supabase
+      .from('entities')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[API] Update error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    console.log('[API] Update successful');
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[API] PATCH error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update entity' },
+      { status: 500 }
+    );
   }
-
-  // Add updated_at timestamp
-  updatePayload.updated_at = new Date().toISOString();
-
-  // Update the entity
-  const { data: updated, error: updateError } = await supabase
-    .from('entities')
-    .update(updatePayload)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (updateError) {
-    console.error('Failed to update entity:', updateError);
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
-  }
-
-  return NextResponse.json(updated);
 }
 
 // DELETE /api/entities/[id] - Soft delete an entity

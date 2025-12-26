@@ -37,15 +37,24 @@ export function GenericEditor({ entity, campaignId }: GenericEditorProps): JSX.E
   const [hasChanges, setHasChanges] = useState(false);
 
   const handleSave = async (): Promise<void> => {
+    console.log('[GenericEditor] Saving data...');
+
     const response = await fetch(`/api/entities/${entity.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
     });
 
+    console.log('[GenericEditor] Response status:', response.status);
+
     if (!response.ok) {
-      throw new Error('Failed to save');
+      const errorText = await response.text();
+      console.error('[GenericEditor] Save failed:', errorText);
+      throw new Error(`Save failed: ${response.status}`);
     }
+
+    const result = await response.json();
+    console.log('[GenericEditor] Saved successfully:', result.id);
   };
 
   const updateField = (field: string, value: unknown): void => {

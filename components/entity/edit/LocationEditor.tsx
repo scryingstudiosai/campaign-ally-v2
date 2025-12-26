@@ -80,20 +80,46 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
   const [hasChanges, setHasChanges] = useState(false);
 
   const handleSave = async (): Promise<void> => {
-    console.log('[LocationEditor] Saving data:', formData);
+    console.log('[LocationEditor] Preparing save data...');
+
+    // Build save data - only include fields that have actual values
+    const saveData: Record<string, unknown> = {
+      name: formData.name,
+      sub_type: formData.sub_type,
+      summary: formData.summary,
+      description: formData.description,
+    };
+
+    // Helper to check if an object has any non-empty values
+    const hasValues = (obj: Record<string, unknown>): boolean => {
+      return Object.values(obj).some((v) => {
+        if (Array.isArray(v)) return v.length > 0;
+        if (typeof v === 'string') return v.trim() !== '';
+        if (typeof v === 'boolean') return true; // booleans always count
+        if (typeof v === 'number') return true; // numbers always count
+        return v !== null && v !== undefined;
+      });
+    };
+
+    // Only include soul if it has data
+    if (hasValues(formData.soul)) {
+      saveData.soul = formData.soul;
+    }
+
+    // Only include brain if it has data
+    if (hasValues(formData.brain)) {
+      saveData.brain = formData.brain;
+    }
+
+    // Always include mechanics (has important flags like is_shop, safe_rest)
+    saveData.mechanics = formData.mechanics;
+
+    console.log('[LocationEditor] Save data keys:', Object.keys(saveData));
 
     const response = await fetch(`/api/entities/${entity.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: formData.name,
-        sub_type: formData.sub_type,
-        summary: formData.summary,
-        description: formData.description,
-        soul: formData.soul,
-        brain: formData.brain,
-        mechanics: formData.mechanics,
-      }),
+      body: JSON.stringify(saveData),
     });
 
     console.log('[LocationEditor] Response status:', response.status);
@@ -101,11 +127,11 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[LocationEditor] Save failed:', errorText);
-      throw new Error('Failed to save');
+      throw new Error(`Save failed: ${response.status}`);
     }
 
     const result = await response.json();
-    console.log('[LocationEditor] Save result:', result);
+    console.log('[LocationEditor] Saved successfully:', result.id);
   };
 
   // Helper to update nested state

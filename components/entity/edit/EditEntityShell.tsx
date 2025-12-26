@@ -16,7 +16,7 @@ interface EditEntityShellProps {
   campaignId: string;
   title?: string;
   children: ReactNode;
-  onSave: () => Promise<void>; // Form manages its own state
+  onSave: () => Promise<void>;
   hasChanges?: boolean;
   setHasChanges?: (value: boolean) => void;
 }
@@ -39,22 +39,29 @@ export function EditEntityShell({
   const setHasChanges = externalSetHasChanges ?? setInternalHasChanges;
 
   const handleSave = async (): Promise<void> => {
-    if (isSaving) return; // Prevent double-clicks
+    if (isSaving) {
+      console.log('[EditShell] Already saving, ignoring click');
+      return;
+    }
 
     setIsSaving(true);
     console.log('[EditShell] Starting save...');
 
     try {
       await onSave();
-      console.log('[EditShell] Save successful');
+      console.log('[EditShell] Save completed successfully');
       setHasChanges(false);
-      toast.success('Changes saved successfully');
-      router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
+      toast.success('Changes saved!');
+
+      // Small delay to ensure toast shows before navigation
+      setTimeout(() => {
+        router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
+        router.refresh(); // Force refresh to show new data
+      }, 500);
     } catch (error) {
-      console.error('[EditShell] Save error:', error);
-      toast.error('Failed to save changes');
-    } finally {
-      setIsSaving(false);
+      console.error('[EditShell] Save failed:', error);
+      toast.error('Failed to save changes. Please try again.');
+      setIsSaving(false); // Only reset on error so user can retry
     }
   };
 
@@ -75,6 +82,7 @@ export function EditEntityShell({
             variant="ghost"
             size="sm"
             onClick={handleCancel}
+            disabled={isSaving}
             className="text-slate-400 hover:text-slate-200"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -90,11 +98,15 @@ export function EditEntityShell({
           </div>
         </div>
 
-        {hasChanges && (
+        {isSaving ? (
+          <span className="text-xs text-amber-400 bg-amber-900/30 px-2 py-1 rounded animate-pulse">
+            Saving changes...
+          </span>
+        ) : hasChanges ? (
           <span className="text-xs text-amber-400 bg-amber-900/30 px-2 py-1 rounded">
             Unsaved changes
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Form Content */}
@@ -114,7 +126,7 @@ export function EditEntityShell({
         <Button
           onClick={handleSave}
           disabled={isSaving}
-          className="bg-teal-600 hover:bg-teal-700"
+          className="bg-teal-600 hover:bg-teal-700 min-w-[120px]"
         >
           {isSaving ? (
             <>
@@ -132,4 +144,3 @@ export function EditEntityShell({
     </div>
   );
 }
-
