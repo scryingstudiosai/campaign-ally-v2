@@ -133,6 +133,7 @@ export async function createStubEntities(
         status: 'active',
         importance_tier: 'background',
         visibility: 'dm_only',
+        forge_status: 'stub',
         attributes: {
           is_stub: true,
           needs_review: true,
