@@ -792,6 +792,66 @@ export interface ForgeOutput {
   tags: string[];
 }
 
+// NPC Combat Role
+export type NpcCombatRole = 'non-combatant' | 'minion' | 'elite' | 'villain' | 'hero';
+
+// NPC Mechanics - Full D&D 5e stat block for combat-capable NPCs
+export interface NpcMechanics {
+  combat_role: NpcCombatRole;
+  cr?: string;
+  xp?: number;
+  ac: number;
+  ac_type?: string;
+  hp: number;
+  hit_dice?: string;
+  speed: {
+    walk?: number;
+    fly?: number;
+    swim?: number;
+    burrow?: number;
+    climb?: number;
+  };
+  abilities: {
+    str: number;
+    dex: number;
+    con: number;
+    int: number;
+    wis: number;
+    cha: number;
+  };
+  saving_throws?: Array<{ ability: string; modifier: number }>;
+  skills?: Array<{ name: string; modifier: number }>;
+  damage_resistances?: string[];
+  damage_immunities?: string[];
+  condition_immunities?: string[];
+  senses?: {
+    darkvision?: number;
+    blindsight?: number;
+    tremorsense?: number;
+    truesight?: number;
+    passive_perception?: number;
+  };
+  languages?: string[];
+  special_abilities?: Array<{ name: string; description: string }>;
+  actions?: Array<{ name: string; description: string }>;
+  bonus_actions?: Array<{ name: string; description: string }>;
+  reactions?: Array<{ name: string; description: string }>;
+  legendary_actions?: Array<{ name: string; description: string; cost?: number }>;
+  srd_base?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}
+
+export const DEFAULT_NPC_MECHANICS: NpcMechanics = {
+  combat_role: 'non-combatant',
+  ac: 10,
+  hp: 4,
+  speed: { walk: 30 },
+  abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+};
+
 // NPC-specific forge output with legacy fields for backward compatibility
 export interface NpcForgeOutput {
   name: string;
@@ -802,6 +862,9 @@ export interface NpcForgeOutput {
 
   // Voice
   voice: Voice;
+
+  // Mechanics (full stat block)
+  mechanics?: NpcMechanics;
 
   // Facts (will be saved to facts table)
   facts: ForgeFactOutput[];

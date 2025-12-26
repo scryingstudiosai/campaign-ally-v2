@@ -524,10 +524,11 @@ function buildEntityData(
     case 'npc':
       return {
         ...baseData,
-        // New Brain/Voice architecture columns
+        // New Brain/Voice/Mechanics architecture columns
         sub_type: (output.sub_type as string) || 'standard',
         brain: output.brain || {},
         voice: output.voice || {},
+        mechanics: output.mechanics || {},  // Full D&D 5e stat block
         read_aloud: output.read_aloud as string,
         dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
         // Legacy fields for backward compatibility

@@ -115,8 +115,8 @@ export function CreatureInputForm({
   };
 
   const randomizeType = (): void => {
-    const types = CREATURE_TYPES.filter((t) => t !== 'let_ai_decide');
-    const randomType = types[Math.floor(Math.random() * types.length)];
+    // CREATURE_TYPES doesn't include 'let_ai_decide' - just pick a random type
+    const randomType = CREATURE_TYPES[Math.floor(Math.random() * CREATURE_TYPES.length)];
     setCreatureType(randomType);
   };
 

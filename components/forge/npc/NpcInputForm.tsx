@@ -12,10 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Sparkles, Dices, Loader2 } from 'lucide-react'
+import { Sparkles, Dices, Loader2, X, Swords } from 'lucide-react'
 import type { PreValidationResult } from '@/types/forge'
 import { PreValidationAlert } from '@/components/forge/PreValidationAlert'
 import { RoleCombobox } from '@/components/forge/RoleCombobox'
+import { SrdLookupPopover } from '@/components/srd'
+import type { SrdCreature } from '@/types/srd'
 
 interface NpcInputFormProps {
   onSubmit: (data: NpcInputData) => void
@@ -46,6 +48,8 @@ export interface HeroInputs {
   powerTier?: string
 }
 
+export type CombatRole = 'non-combatant' | 'minion' | 'elite' | 'villain' | 'hero'
+
 export interface NpcInputData {
   name?: string
   role?: string  // Optional if concept is provided
@@ -61,6 +65,9 @@ export interface NpcInputData {
   villainInputs?: VillainInputs
   heroInputs?: HeroInputs
   referencedEntityIds?: string[]  // Entity IDs selected via QuickReference
+  combatRole?: CombatRole
+  combatTemplateSlug?: string  // SRD creature slug for combat template
+  combatTemplateName?: string  // SRD creature name for display
   [key: string]: unknown
 }
 
@@ -150,6 +157,8 @@ export function NpcInputForm({
   const [additionalRequirements, setAdditionalRequirements] = useState('')
   const [locationId, setLocationId] = useState('none')
   const [factionId, setFactionId] = useState('none')
+  const [combatRole, setCombatRole] = useState<CombatRole>('non-combatant')
+  const [combatTemplate, setCombatTemplate] = useState<SrdCreature | null>(null)
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()
@@ -166,7 +175,20 @@ export function NpcInputForm({
       additionalRequirements: additionalRequirements.trim() || undefined,
       locationId: locationId === 'none' ? undefined : locationId,
       factionId: factionId === 'none' ? undefined : factionId,
+      combatRole,
+      combatTemplateSlug: combatTemplate?.slug,
+      combatTemplateName: combatTemplate?.name,
     })
+  }
+
+  // Auto-suggest combat role based on CR when template selected
+  const handleSelectCombatTemplate = (creature: SrdCreature): void => {
+    setCombatTemplate(creature)
+    // Auto-suggest role based on CR
+    const cr = creature.cr_numeric ?? 0
+    if (cr >= 5) setCombatRole('villain')
+    else if (cr >= 2) setCombatRole('elite')
+    else if (cr >= 0.5) setCombatRole('minion')
   }
 
   const randomizeRace = (): void => {
@@ -366,6 +388,65 @@ export function NpcInputForm({
           </Select>
         </div>
       )}
+
+      {/* Combat Role Section */}
+      <div className="space-y-4 p-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
+        <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <Swords className="w-4 h-4 text-rose-400" />
+          Combat Capability
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="combat-role">Combat Role</Label>
+          <Select value={combatRole} onValueChange={(v) => setCombatRole(v as CombatRole)} disabled={isLocked}>
+            <SelectTrigger id="combat-role">
+              <SelectValue placeholder="Select combat capability" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="non-combatant">Non-combatant (Commoner stats)</SelectItem>
+              <SelectItem value="minion">Minion/Guard (Basic combat)</SelectItem>
+              <SelectItem value="elite">Elite/Lieutenant (Skilled fighter)</SelectItem>
+              <SelectItem value="villain">Villain/Boss (Full stat block)</SelectItem>
+              <SelectItem value="hero">Hero/Ally (Full stat block)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {combatRole === 'non-combatant' && 'Minimal stats - just AC 10, HP 4'}
+            {combatRole === 'minion' && 'Basic combat stats - CR 1/4 to 1'}
+            {combatRole === 'elite' && 'Full stat block with 2-3 abilities - CR 1-5'}
+            {combatRole === 'villain' && 'Full stat block with legendary/lair actions - CR 5+'}
+            {combatRole === 'hero' && 'Full stat block, optimized for ally support'}
+          </p>
+        </div>
+
+        {/* Combat Template - SRD Creature Lookup */}
+        {combatRole !== 'non-combatant' && (
+          <div className="space-y-2">
+            <Label>Combat Template (Optional)</Label>
+            <div className="flex gap-2 items-center">
+              <SrdLookupPopover
+                types={['creatures']}
+                triggerLabel={combatTemplate ? `Base: ${combatTemplate.name} (CR ${combatTemplate.cr})` : 'Select a monster template...'}
+                onSelectCreature={handleSelectCombatTemplate}
+              />
+              {combatTemplate && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setCombatTemplate(null)}
+                  disabled={isLocked}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Uses official D&D stats as a starting point for AI generation.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Personality Hints */}
       <div className="space-y-2">

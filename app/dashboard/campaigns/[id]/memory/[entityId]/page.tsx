@@ -32,9 +32,10 @@ import { EncounterRewardsCard } from '@/components/entity/EncounterRewardsCard'
 import { CreatureBrainCard } from '@/components/entity/CreatureBrainCard'
 import { CreatureSoulCard } from '@/components/entity/CreatureSoulCard'
 import { CreatureMechanicsCard } from '@/components/entity/CreatureMechanicsCard'
+import { NpcMechanicsCard } from '@/components/entity/NpcMechanicsCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, isNpcBrain } from '@/types/living-entity'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, NpcMechanics, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -191,10 +192,16 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const creatureMechanics = entity.mechanics as CreatureMechanics | null
   const creatureTreasure = attributes.treasure as CreatureTreasure | null
 
+  // NPC-specific helpers
+  const isNpc = entity.entity_type === 'npc'
+  const npcMechanics = isNpc ? (entity.mechanics as NpcMechanics | null) : null
+  const hasNpcMechanics = npcMechanics && Object.keys(npcMechanics).length > 0
+
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
     (entity.voice && (entity.voice as Voice).style?.length > 0) ||
     attributes.appearance ||
+    hasNpcMechanics ||
     attributes.combatStats ||
     attributes.loot ||
     attributes.voiceAndMannerisms ||
@@ -364,8 +371,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {/* Combat Stats */}
-                {attributes.combatStats && (
+                {/* NPC Mechanics - Full Stat Block */}
+                {hasNpcMechanics && npcMechanics ? (
+                  <NpcMechanicsCard mechanics={npcMechanics} name={entity.name} />
+                ) : attributes.combatStats && (
+                  /* Legacy Combat Stats fallback */
                   <div className="ca-panel p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Shield className="w-4 h-4 text-slate-400" />

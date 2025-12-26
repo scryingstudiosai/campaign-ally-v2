@@ -17,6 +17,8 @@ interface HeroInputs {
   powerTier?: string
 }
 
+type CombatRole = 'non-combatant' | 'minion' | 'elite' | 'villain' | 'hero'
+
 interface NPCInputs {
   name?: string
   role?: string  // Optional if concept is provided
@@ -30,6 +32,9 @@ interface NPCInputs {
   villainInputs?: VillainInputs
   heroInputs?: HeroInputs
   referencedEntityIds?: string[]
+  combatRole?: CombatRole
+  combatTemplateSlug?: string
+  combatTemplateName?: string
 }
 
 interface NpcBrain {
@@ -68,14 +73,64 @@ interface NpcFact {
   visibility: 'public' | 'limited' | 'dm_only'
 }
 
+// Full D&D 5e stat block for combat-capable NPCs
+interface NpcMechanics {
+  combat_role: CombatRole
+  cr?: string
+  xp?: number
+  ac: number
+  ac_type?: string
+  hp: number
+  hit_dice?: string
+  speed: {
+    walk?: number
+    fly?: number
+    swim?: number
+    burrow?: number
+    climb?: number
+  }
+  abilities: {
+    str: number
+    dex: number
+    con: number
+    int: number
+    wis: number
+    cha: number
+  }
+  saving_throws?: Array<{ ability: string; modifier: number }>
+  skills?: Array<{ name: string; modifier: number }>
+  damage_resistances?: string[]
+  damage_immunities?: string[]
+  condition_immunities?: string[]
+  senses?: {
+    darkvision?: number
+    blindsight?: number
+    tremorsense?: number
+    truesight?: number
+    passive_perception?: number
+  }
+  languages?: string[]
+  special_abilities?: Array<{ name: string; description: string }>
+  actions?: Array<{ name: string; description: string }>
+  bonus_actions?: Array<{ name: string; description: string }>
+  reactions?: Array<{ name: string; description: string }>
+  legendary_actions?: Array<{ name: string; description: string; cost?: number }>
+  srd_base?: {
+    id: string
+    name: string
+    slug: string
+  }
+}
+
 interface GeneratedNPC {
   name: string
   sub_type: string
 
-  // New Brain/Voice/Facts structure
+  // New Brain/Voice/Facts/Mechanics structure
   brain: NpcBrain | VillainBrain | HeroBrain
   voice: NpcVoice
   facts: NpcFact[]
+  mechanics?: NpcMechanics  // Full stat block for combat-capable NPCs
   read_aloud: string
   dm_slug: string
 
@@ -144,11 +199,28 @@ export async function POST(request: NextRequest) {
       entityContext = formatEntityContextForPrompt(contextEntities)
     }
 
+    // Fetch SRD creature if combat template selected
+    let srdCreature = null
+    if (inputs.combatTemplateSlug) {
+      const { data: creature } = await supabase
+        .from('srd_creatures')
+        .select('*')
+        .eq('slug', inputs.combatTemplateSlug)
+        .single()
+      srdCreature = creature
+    }
+
     // Build the prompt with proper context hierarchy:
     // 1. Campaign Context (Global) - world rules, tone, themes
     // 2. Entity Context (Local) - specific referenced entities
     // 3. User Request (Specific) - role, concept, etc.
-    const systemPrompt = buildSystemPrompt(inputs.npcType || 'standard', campaignContext, entityContext)
+    const systemPrompt = buildSystemPrompt(
+      inputs.npcType || 'standard',
+      campaignContext,
+      entityContext,
+      inputs.combatRole || 'non-combatant',
+      srdCreature
+    )
     const userPrompt = buildUserPrompt(inputs)
 
     // Call OpenAI
@@ -204,7 +276,9 @@ export async function POST(request: NextRequest) {
 function buildSystemPrompt(
   npcType: 'standard' | 'villain' | 'hero' = 'standard',
   campaignContext: string = '',
-  entityContext: string = ''
+  entityContext: string = '',
+  combatRole: CombatRole = 'non-combatant',
+  srdCreature: Record<string, unknown> | null = null
 ): string {
   let prompt = `You are a creative assistant for Dungeon Masters, specializing in generating memorable NPCs for tabletop RPG campaigns.
 
@@ -216,7 +290,7 @@ The NPC should be:
 - Include a "brain" with psychology for roleplaying decisions
 - Include a "voice" profile for speaking in character
 - Include atomic facts about appearance, personality, secrets
-- Include practical combat stats for potential encounters
+- Include a "mechanics" block with D&D 5e combat statistics (complexity based on combat role)
 - Provide items they carry for looting/pickpocketing (as separate items for quick reading)
 - Have secrets and plot hooks that drive gameplay
 
@@ -317,6 +391,76 @@ Generate 6-10 atomic facts including:
     prompt += `\n\n${entityContext}`
   }
 
+  // Add combat mechanics instructions based on combat role
+  let mechanicsInstruction = ''
+
+  if (srdCreature) {
+    // Use SRD creature as base
+    mechanicsInstruction = `
+## COMBAT STATISTICS BASE
+
+Use the following SRD creature as a base for this NPC's combat statistics:
+- Base Creature: ${srdCreature.name}
+- CR: ${srdCreature.cr || 'Unknown'}
+- AC: ${srdCreature.ac || 'Unknown'}
+- HP: ${srdCreature.hp || 'Unknown'}
+- Hit Dice: ${srdCreature.hit_dice || 'Unknown'}
+- Abilities: STR ${srdCreature.str || 10}, DEX ${srdCreature.dex || 10}, CON ${srdCreature.con || 10}, INT ${srdCreature.int || 10}, WIS ${srdCreature.wis || 10}, CHA ${srdCreature.cha || 10}
+
+MODIFY these base stats to fit the NPC's narrative:
+- Adjust ability scores to reflect personality (scholarly NPCs higher INT, brutish ones higher STR)
+- Keep CR appropriate but flavor abilities/actions to match their role
+- Include the srd_base reference in the mechanics block
+`
+  } else if (combatRole === 'villain' || combatRole === 'hero') {
+    // Full stat block for major NPCs
+    mechanicsInstruction = `
+## COMBAT STATISTICS (${combatRole.toUpperCase()})
+
+Generate a FULL D&D 5e stat block for this NPC. As a ${combatRole}, they should be formidable:
+- CR 2-5 for local threats, CR 5-10 for regional, CR 10+ for world-level threats
+- Include 2-3 special abilities that reflect their personality/role
+- Include 2-3 actions with proper attack/damage formatting
+- Consider legendary actions for CR 10+ NPCs
+- Stats should tell a story about who they are
+`
+  } else if (combatRole === 'elite') {
+    // Significant stat block for elite combatants
+    mechanicsInstruction = `
+## COMBAT STATISTICS (ELITE)
+
+Generate combat statistics for this elite combatant:
+- CR 1-4 range, tough but not legendary
+- Include 1-2 special abilities
+- Include 2-3 actions with proper formatting
+- AC and HP appropriate for a challenging individual fight
+`
+  } else if (combatRole === 'minion') {
+    // Basic stat block for minions
+    mechanicsInstruction = `
+## COMBAT STATISTICS (MINION)
+
+Generate basic combat statistics for this minion-tier NPC:
+- CR 0-1 range (easily defeated individually)
+- AC 10-14, HP 5-20
+- One or two simple attacks
+- No special abilities needed unless thematic
+`
+  } else {
+    // Non-combatant - minimal stats
+    mechanicsInstruction = `
+## COMBAT STATISTICS (NON-COMBATANT)
+
+This NPC is NOT a combatant. Generate minimal defensive statistics only:
+- AC 10-12 (unarmored commoner)
+- HP 4-10 (1-2 hit dice)
+- No attack actions unless improvised (dagger, club)
+- The mechanics block is optional and can be minimal
+`
+  }
+
+  prompt += `\n${mechanicsInstruction}`
+
   // Add response format based on NPC type
   if (npcType === 'villain') {
     prompt += `\n\nRESPONSE FORMAT FOR VILLAIN:
@@ -352,6 +496,29 @@ Return a JSON object with these exact fields:
     {"content": "Dark secret", "category": "secret", "visibility": "dm_only"},
     {"content": "Plot-relevant info", "category": "plot", "visibility": "dm_only"}
   ],
+
+  "mechanics": {
+    "combat_role": "villain|hero|elite|minion|non-combatant",
+    "cr": "Challenge Rating (e.g., '5' or '1/2')",
+    "xp": 1800,
+    "ac": 16,
+    "ac_type": "natural armor|mage armor|etc",
+    "hp": 85,
+    "hit_dice": "10d10+30",
+    "speed": {"walk": 30, "fly": 0},
+    "abilities": {"str": 16, "dex": 14, "con": 16, "int": 12, "wis": 14, "cha": 18},
+    "saving_throws": [{"ability": "wis", "modifier": 5}, {"ability": "cha", "modifier": 7}],
+    "skills": [{"name": "Deception", "modifier": 10}, {"name": "Intimidation", "modifier": 7}],
+    "damage_resistances": ["fire"],
+    "damage_immunities": ["poison"],
+    "condition_immunities": ["charmed", "frightened"],
+    "senses": {"darkvision": 60, "passive_perception": 14},
+    "languages": ["Common", "Infernal"],
+    "special_abilities": [{"name": "Ability Name", "description": "Full description"}],
+    "actions": [{"name": "Multiattack", "description": "The villain makes two attacks."}, {"name": "Weapon Attack", "description": "Melee Weapon Attack: +7 to hit..."}],
+    "legendary_actions": [{"name": "Action", "description": "Description", "cost": 1}],
+    "srd_base": {"id": "uuid if applicable", "name": "Base creature name", "slug": "base-creature-slug"}
+  },
 
   "read_aloud": "40-60 word sensory description emphasizing their menace or presence",
   "dm_slug": "One-line reference, e.g. 'Power-hungry mage building an undead army'",
@@ -417,6 +584,25 @@ Return a JSON object with these exact fields:
     {"content": "Why they're limited now", "category": "plot", "visibility": "dm_only"}
   ],
 
+  "mechanics": {
+    "combat_role": "hero",
+    "cr": "Challenge Rating",
+    "xp": 1800,
+    "ac": 17,
+    "ac_type": "plate armor",
+    "hp": 75,
+    "hit_dice": "8d10+24",
+    "speed": {"walk": 30},
+    "abilities": {"str": 18, "dex": 12, "con": 16, "int": 14, "wis": 16, "cha": 14},
+    "saving_throws": [{"ability": "wis", "modifier": 6}],
+    "skills": [{"name": "Insight", "modifier": 6}],
+    "senses": {"passive_perception": 13},
+    "languages": ["Common"],
+    "special_abilities": [{"name": "Ability Name", "description": "Full description"}],
+    "actions": [{"name": "Attack", "description": "Melee Weapon Attack: +7 to hit..."}],
+    "srd_base": {"id": "uuid if applicable", "name": "Base creature name", "slug": "base-creature-slug"}
+  },
+
   "read_aloud": "40-60 word sensory description emphasizing their warmth, wisdom, or faded glory",
   "dm_slug": "One-line reference, e.g. 'Retired paladin who can't leave the shrine he guards'",
   "dmSlug": "Same as dm_slug for compatibility",
@@ -477,6 +663,19 @@ Return a JSON object with these exact fields:
     {"content": "Personality fact", "category": "personality", "visibility": "public"},
     {"content": "Secret fact", "category": "secret", "visibility": "dm_only"}
   ],
+
+  "mechanics": {
+    "combat_role": "non-combatant|minion|elite|villain|hero",
+    "cr": "0 or 1/8 for non-combatants",
+    "ac": 10,
+    "hp": 4,
+    "hit_dice": "1d8",
+    "speed": {"walk": 30},
+    "abilities": {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10},
+    "senses": {"passive_perception": 10},
+    "languages": ["Common"],
+    "actions": [{"name": "Unarmed Strike", "description": "Melee Weapon Attack: +2 to hit, 1 bludgeoning damage"}]
+  },
 
   "read_aloud": "A 40-60 word sensory description for when players first meet this character. Focus on sight, sound, smell.",
   "dm_slug": "One-line quick reference (e.g., 'Nervous blacksmith hiding a dark secret')",
@@ -548,6 +747,21 @@ function buildUserPrompt(inputs: NPCInputs): string {
     prompt += `Gender: ${inputs.gender}\n`
   } else {
     prompt += `Gender: Choose as appropriate\n`
+  }
+
+  // Combat role information
+  if (inputs.combatRole && inputs.combatRole !== 'non-combatant') {
+    const roleDescriptions: Record<string, string> = {
+      minion: 'Minion - Low-threat combatant (CR 0-1)',
+      elite: 'Elite - Significant individual threat (CR 1-4)',
+      villain: 'Villain - Major antagonist (CR 5+)',
+      hero: 'Hero - Powerful ally (appropriate CR for their story)',
+    }
+    prompt += `\nCombat Role: ${roleDescriptions[inputs.combatRole] || inputs.combatRole}\n`
+  }
+
+  if (inputs.combatTemplateName) {
+    prompt += `Combat Base: Using ${inputs.combatTemplateName} as stat block template\n`
   }
 
   // Villain-specific inputs
