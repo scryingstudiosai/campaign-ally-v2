@@ -464,6 +464,41 @@ export async function saveForgedEntity(
     }
   }
 
+  // For quest forge, process reward items into inventory
+  if (forgeType === 'quest') {
+    console.log('[EntityMinter] Quest forge detected, checking for reward items...')
+    const rewards = output.rewards as { items?: Array<{ name: string; type?: string; rarity?: string; description?: string }> } | undefined
+    const rewardItems = rewards?.items || []
+    console.log('[EntityMinter] Reward items:', rewardItems)
+
+    if (rewardItems.length > 0) {
+      // Convert reward items to LootItem format
+      const lootItems: LootItem[] = rewardItems.map((item) => ({
+        name: item.name,
+        quantity: 1,
+        description: item.description || `Quest reward${item.rarity ? ` (${item.rarity})` : ''}`,
+      }))
+
+      const questTitle = (output.soul as Record<string, unknown>)?.title as string || savedEntity.name as string
+      const lootResult = await processLootToInventory(
+        supabase,
+        campaignId,
+        savedEntity.id,
+        questTitle,
+        lootItems,
+        'quest'
+      )
+      console.log('[EntityMinter] Quest reward processing result:', lootResult)
+      if (lootResult.errors.length > 0) {
+        console.error('[EntityMinter] Quest reward errors:', lootResult.errors)
+      } else {
+        console.log(`[EntityMinter] Added ${lootResult.srdItems} SRD items and ${lootResult.customItems} custom items as quest rewards`)
+      }
+    } else {
+      console.log('[EntityMinter] No reward items to process')
+    }
+  }
+
   // Create metadata-based relationships (owner, location, faction)
   if (context.metadata) {
     const { ownerId, locationId, factionId } = context.metadata
@@ -884,7 +919,7 @@ export async function processLootToInventory(
   ownerId: string,
   ownerName: string,
   loot: LootItem[] | string[],
-  ownerType: 'npc' | 'creature' = 'npc'
+  ownerType: 'npc' | 'creature' | 'quest' = 'npc'
 ): Promise<LootProcessingResult> {
   const result: LootProcessingResult = { srdItems: 0, customItems: 0, errors: [] }
 

@@ -1,27 +1,32 @@
 'use client';
 
+import { useState } from 'react';
 import { QuestRewards } from '@/types/living-entity';
-import { Gift, Coins, Sparkles, Users } from 'lucide-react';
+import { Gift, Coins, Sparkles, Users, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { InventoryList } from '@/components/inventory/InventoryList';
+import { TransferItemDialog } from '@/components/inventory/TransferItemDialog';
+import { InventoryInstanceWithItem } from '@/types/inventory';
 
 interface QuestRewardsCardProps {
   rewards: QuestRewards;
+  questId?: string;
+  campaignId?: string;
 }
 
-const RARITY_COLORS: Record<string, string> = {
-  common: 'border-slate-500 text-slate-400',
-  uncommon: 'border-green-500 text-green-400',
-  rare: 'border-blue-500 text-blue-400',
-  'very rare': 'border-purple-500 text-purple-400',
-  legendary: 'border-orange-500 text-orange-400',
-};
+export function QuestRewardsCard({
+  rewards,
+  questId,
+  campaignId,
+}: QuestRewardsCardProps): JSX.Element | null {
+  const [transferItem, setTransferItem] = useState<InventoryInstanceWithItem | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-export function QuestRewardsCard({ rewards }: QuestRewardsCardProps): JSX.Element | null {
   if (!rewards || Object.keys(rewards).length === 0) return null;
 
   const hasXpOrGold = (rewards.xp && rewards.xp > 0) || rewards.gold;
-  const hasItems = rewards.items && rewards.items.length > 0;
   const hasReputation = rewards.reputation && rewards.reputation.length > 0;
+  const canShowInventory = !!questId && !!campaignId;
 
   return (
     <div className="ca-card p-4 space-y-4">
@@ -55,15 +60,33 @@ export function QuestRewardsCard({ rewards }: QuestRewardsCardProps): JSX.Elemen
         </div>
       )}
 
-      {/* Items */}
-      {hasItems && (
+      {/* Item Rewards - Now as Inventory */}
+      {canShowInventory ? (
+        <div>
+          <div className="flex items-center gap-2 text-purple-400 text-sm mb-2">
+            <Gift className="w-4 h-4" />
+            <span>Item Rewards</span>
+          </div>
+          <InventoryList
+            campaignId={campaignId}
+            ownerType="quest"
+            ownerId={questId}
+            viewMode="rewards"
+            showHeader={false}
+            onTransfer={(item) => setTransferItem(item)}
+            emptyMessage="No item rewards for this quest"
+            refreshKey={refreshKey}
+          />
+        </div>
+      ) : rewards.items && rewards.items.length > 0 ? (
+        // Fallback to static display if no questId/campaignId
         <div>
           <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
             <Gift className="w-4 h-4" />
             <span>Item Rewards</span>
           </div>
           <div className="space-y-2">
-            {rewards.items!.map((item, i) => (
+            {rewards.items.map((item, i) => (
               <div key={i} className="p-3 bg-slate-800 rounded-lg flex items-center gap-3">
                 <Gift className="w-5 h-5 text-purple-400" />
                 <div>
@@ -71,7 +94,7 @@ export function QuestRewardsCard({ rewards }: QuestRewardsCardProps): JSX.Elemen
                   {item.rarity && (
                     <Badge
                       variant="outline"
-                      className={`ml-2 text-xs capitalize ${RARITY_COLORS[item.rarity] || ''}`}
+                      className={`ml-2 text-xs capitalize ${getRarityColor(item.rarity)}`}
                     >
                       {item.rarity}
                     </Badge>
@@ -87,7 +110,7 @@ export function QuestRewardsCard({ rewards }: QuestRewardsCardProps): JSX.Elemen
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Reputation */}
       {hasReputation && (
@@ -118,12 +141,37 @@ export function QuestRewardsCard({ rewards }: QuestRewardsCardProps): JSX.Elemen
       {rewards.special && (
         <div className="p-3 bg-purple-900/20 border border-purple-700/50 rounded-lg">
           <div className="flex items-center gap-2 text-purple-400 text-sm mb-1">
-            <Sparkles className="w-4 h-4" />
+            <Star className="w-4 h-4" />
             <span>Special Reward</span>
           </div>
           <p className="text-sm text-slate-300">{rewards.special}</p>
         </div>
       )}
+
+      {/* Transfer Dialog for awarding items to players */}
+      {canShowInventory && (
+        <TransferItemDialog
+          item={transferItem}
+          campaignId={campaignId}
+          isShopMode={false}
+          onClose={() => setTransferItem(null)}
+          onTransferComplete={() => {
+            setTransferItem(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
+      )}
     </div>
   );
+}
+
+function getRarityColor(rarity: string): string {
+  const colors: Record<string, string> = {
+    common: 'border-slate-500 text-slate-400',
+    uncommon: 'border-green-500 text-green-400',
+    rare: 'border-blue-500 text-blue-400',
+    'very rare': 'border-purple-500 text-purple-400',
+    legendary: 'border-orange-500 text-orange-400',
+  };
+  return colors[rarity] || '';
 }

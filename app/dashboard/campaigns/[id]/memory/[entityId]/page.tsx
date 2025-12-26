@@ -575,7 +575,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
                 {/* Quest Rewards - XP, gold, items, reputation */}
                 {questRewards && Object.keys(questRewards).length > 0 && (
-                  <QuestRewardsCard rewards={questRewards} />
+                  <QuestRewardsCard
+                    rewards={questRewards}
+                    questId={entity.id}
+                    campaignId={params.id}
+                  />
                 )}
 
                 {/* Quest Chain - Position in quest chain */}

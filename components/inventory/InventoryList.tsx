@@ -18,6 +18,7 @@ import {
   Trash2,
   ArrowRightLeft,
   MoreHorizontal,
+  Gift,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -38,7 +39,7 @@ interface InventoryListProps {
   campaignId: string;
   ownerType: OwnerType;
   ownerId: string;
-  viewMode?: 'default' | 'compact' | 'shop';
+  viewMode?: 'default' | 'compact' | 'shop' | 'rewards';
   priceModifier?: number; // For shops: multiply base prices (1.1 = 10% markup, 0.9 = 10% discount)
   onTransfer?: (item: InventoryInstanceWithItem) => void;
   onViewDetails?: (item: InventoryInstanceWithItem) => void;
@@ -46,6 +47,7 @@ interface InventoryListProps {
   title?: string;
   showHeader?: boolean; // Whether to show the header with title and item count
   refreshKey?: number; // Increment to trigger a refetch
+  emptyMessage?: string; // Custom message when no items
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -69,6 +71,7 @@ export function InventoryList({
   title = 'Inventory',
   showHeader = true,
   refreshKey,
+  emptyMessage,
 }: InventoryListProps): JSX.Element {
   const {
     items,
@@ -121,7 +124,7 @@ export function InventoryList({
       {items.length === 0 ? (
         <div className="p-8 text-center text-slate-500 bg-slate-900/50 rounded-lg border border-slate-800 border-dashed">
           <Package className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p>No items in inventory</p>
+          <p>{emptyMessage || 'No items in inventory'}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -167,7 +170,7 @@ export function InventoryList({
 // Individual item row component
 interface InventoryItemRowProps {
   item: InventoryInstanceWithItem;
-  viewMode: 'default' | 'compact' | 'shop';
+  viewMode: 'default' | 'compact' | 'shop' | 'rewards';
   priceModifier: number;
   readOnly: boolean;
   onUse: () => void;
@@ -386,6 +389,11 @@ function InventoryItemRow({
                 <DropdownMenuItem onSelect={onTransfer} className="text-amber-400">
                   <Coins className="w-4 h-4 mr-2" />
                   Buy ({formatPrice(value)})
+                </DropdownMenuItem>
+              ) : viewMode === 'rewards' ? (
+                <DropdownMenuItem onSelect={onTransfer} className="text-green-400">
+                  <Gift className="w-4 h-4 mr-2" />
+                  Award to Player
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem onSelect={onTransfer} className="text-slate-200">
