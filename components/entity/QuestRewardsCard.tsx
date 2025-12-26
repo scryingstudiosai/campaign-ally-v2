@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { InventoryList } from '@/components/inventory/InventoryList';
 import { TransferItemDialog } from '@/components/inventory/TransferItemDialog';
 import { InventoryInstanceWithItem } from '@/types/inventory';
+import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 interface QuestRewardsCardProps {
   rewards: QuestRewards;
@@ -21,6 +23,32 @@ export function QuestRewardsCard({
 }: QuestRewardsCardProps): JSX.Element | null {
   const [transferItem, setTransferItem] = useState<InventoryInstanceWithItem | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Handle claiming item to party stash
+  const handleClaimToParty = async (item: InventoryInstanceWithItem) => {
+    if (!campaignId) return;
+
+    const supabase = createClient();
+    const itemName = item.srd_item?.name || item.custom_entity?.name || 'Item';
+
+    const { error } = await supabase
+      .from('inventory_instances')
+      .update({
+        owner_type: 'party',
+        owner_id: campaignId, // Party stash uses campaign ID as owner
+        notes: `Claimed from quest reward`,
+      })
+      .eq('id', item.id);
+
+    if (error) {
+      console.error('Failed to claim item to party:', error);
+      toast.error('Failed to claim item');
+      return;
+    }
+
+    toast.success(`${itemName} claimed to party stash`);
+    setRefreshKey((k) => k + 1);
+  };
 
   if (!rewards || Object.keys(rewards).length === 0) return null;
 
@@ -74,6 +102,7 @@ export function QuestRewardsCard({
             viewMode="rewards"
             showHeader={false}
             onTransfer={(item) => setTransferItem(item)}
+            onClaimToParty={handleClaimToParty}
             emptyMessage="No item rewards for this quest"
             refreshKey={refreshKey}
           />

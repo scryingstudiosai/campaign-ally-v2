@@ -19,6 +19,7 @@ import {
   ArrowRightLeft,
   MoreHorizontal,
   Gift,
+  Users,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -42,6 +43,7 @@ interface InventoryListProps {
   viewMode?: 'default' | 'compact' | 'shop' | 'rewards';
   priceModifier?: number; // For shops: multiply base prices (1.1 = 10% markup, 0.9 = 10% discount)
   onTransfer?: (item: InventoryInstanceWithItem) => void;
+  onClaimToParty?: (item: InventoryInstanceWithItem) => void; // For rewards: claim to party stash
   onViewDetails?: (item: InventoryInstanceWithItem) => void;
   readOnly?: boolean;
   title?: string;
@@ -66,6 +68,7 @@ export function InventoryList({
   viewMode = 'default',
   priceModifier = 1.0,
   onTransfer,
+  onClaimToParty,
   onViewDetails,
   readOnly = false,
   title = 'Inventory',
@@ -142,6 +145,7 @@ export function InventoryList({
               onIdentify={() => updateItem(item.id, { is_identified: true })}
               onRemove={() => removeItem(item.id)}
               onTransfer={() => onTransfer?.(item)}
+              onClaimToParty={() => onClaimToParty?.(item)}
               onViewDetails={() => onViewDetails?.(item)}
             />
           ))}
@@ -180,6 +184,7 @@ interface InventoryItemRowProps {
   onIdentify: () => void;
   onRemove: () => void;
   onTransfer: () => void;
+  onClaimToParty?: () => void;
   onViewDetails: () => void;
 }
 
@@ -195,6 +200,7 @@ function InventoryItemRow({
   onIdentify,
   onRemove,
   onTransfer,
+  onClaimToParty,
   onViewDetails,
 }: InventoryItemRowProps): JSX.Element {
   // Resolve item data from either SRD or custom entity
@@ -391,10 +397,16 @@ function InventoryItemRow({
                   Buy ({formatPrice(value)})
                 </DropdownMenuItem>
               ) : viewMode === 'rewards' ? (
-                <DropdownMenuItem onSelect={onTransfer} className="text-green-400">
-                  <Gift className="w-4 h-4 mr-2" />
-                  Award to Player
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onSelect={onTransfer} className="text-green-400">
+                    <Gift className="w-4 h-4 mr-2" />
+                    Award to Player
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={onClaimToParty} className="text-blue-400">
+                    <Users className="w-4 h-4 mr-2" />
+                    Claim to Party Stash
+                  </DropdownMenuItem>
+                </>
               ) : (
                 <DropdownMenuItem onSelect={onTransfer} className="text-slate-200">
                   <ArrowRightLeft className="w-4 h-4 mr-2" />

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { QuestObjective, QuestObjectiveState } from '@/types/living-entity';
-import { ListChecks, Lock, ChevronRight, Lightbulb, RotateCcw, X, Check } from 'lucide-react';
+import { ListChecks, Lock, ChevronRight, Lightbulb, RotateCcw, X, Check, Unlock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,6 +16,74 @@ interface QuestObjectivesCardProps {
   readOnly?: boolean;
 }
 
+// Common stop words to ignore in matching
+const STOP_WORDS = ['after', 'before', 'when', 'once', 'the', 'and', 'for', 'with', 'from', 'into', 'have', 'has', 'been', 'are', 'is', 'to', 'of', 'a', 'an', 'complete', 'completing', 'completed'];
+
+/**
+ * Get significant words from a string (remove stop words, punctuation)
+ */
+function getSignificantWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, '') // Remove punctuation
+    .split(/\s+/)
+    .filter(word => word.length >= 3 && !STOP_WORDS.includes(word));
+}
+
+/**
+ * Get word root for fuzzy matching (first 4-5 chars)
+ */
+function getWordRoot(word: string): string {
+  return word.slice(0, Math.min(word.length, 5));
+}
+
+/**
+ * Check if an unlock condition is satisfied by a completed objective
+ * Uses fuzzy word matching to handle "enter" vs "entering" etc.
+ */
+function checkUnlockCondition(
+  condition: string,
+  completedObj: QuestObjective,
+  allObjectives: QuestObjective[]
+): boolean {
+  const conditionWords = getSignificantWords(condition);
+  const titleWords = getSignificantWords(completedObj.title);
+
+  console.log('[Quest] Matching condition:', condition);
+  console.log('[Quest] Against completed title:', completedObj.title);
+  console.log('[Quest] Condition words:', conditionWords);
+  console.log('[Quest] Title words:', titleWords);
+
+  // Check for ANY significant word match
+  for (const titleWord of titleWords) {
+    for (const conditionWord of conditionWords) {
+      const titleRoot = getWordRoot(titleWord);
+      const conditionRoot = getWordRoot(conditionWord);
+
+      // Match conditions:
+      // 1. Exact match: "temple" === "temple"
+      // 2. Contains: "entering" includes "enter"
+      // 3. Root match: "enter" root === "entering" root
+      if (titleWord === conditionWord ||
+          titleWord.includes(conditionWord) ||
+          conditionWord.includes(titleWord) ||
+          (titleRoot.length >= 4 && titleRoot === conditionRoot)) {
+        console.log(`[Quest] ✅ MATCH: "${titleWord}" ~ "${conditionWord}"`);
+        return true;
+      }
+    }
+  }
+
+  // Also check objective ID
+  if (condition.toLowerCase().includes(completedObj.id.toLowerCase())) {
+    console.log('[Quest] ✅ ID match');
+    return true;
+  }
+
+  console.log('[Quest] ❌ No match found');
+  return false;
+}
+
 export function QuestObjectivesCard({
   objectives: initialObjectives,
   questId,
@@ -25,11 +93,20 @@ export function QuestObjectivesCard({
   const [objectives, setObjectives] = useState<QuestObjective[]>(initialObjectives);
   const [saving, setSaving] = useState(false);
 
-  // Check if an objective can be unlocked (all prerequisites completed)
+  // Check if an objective can be unlocked (parent completed or unlock_condition met)
   const canUnlock = useCallback((objective: QuestObjective): boolean => {
-    if (!objective.parent_id) return true;
-    const parent = objectives.find((o) => o.id === objective.parent_id);
-    return parent?.state === 'completed';
+    // If has parent_id, check parent is completed
+    if (objective.parent_id) {
+      const parent = objectives.find((o) => o.id === objective.parent_id);
+      return parent?.state === 'completed';
+    }
+    // If no parent but has unlock_condition, check if any completed objective matches
+    if (objective.unlock_condition) {
+      return objectives.some(
+        (o) => o.state === 'completed' && checkUnlockCondition(objective.unlock_condition!, o, objectives)
+      );
+    }
+    return true;
   }, [objectives]);
 
   // Update objective state and save to database
@@ -39,21 +116,47 @@ export function QuestObjectivesCard({
   ) => {
     if (!questId || !campaignId || readOnly) return;
 
-    // Optimistically update local state
-    const updatedObjectives = objectives.map((obj) => {
+    const completedObj = objectives.find((o) => o.id === objectiveId);
+    const unlockedObjectives: string[] = [];
+
+    // Build updated objectives with auto-unlock logic
+    let updatedObjectives = objectives.map((obj) => {
       if (obj.id === objectiveId) {
         return { ...obj, state: newState };
       }
-      // Auto-unlock children when parent is completed
-      if (newState === 'completed' && obj.parent_id === objectiveId && obj.state === 'locked') {
-        return { ...obj, state: 'active' as QuestObjectiveState };
-      }
-      // Re-lock children when parent is uncompleted
-      if (newState === 'active' && obj.parent_id === objectiveId && obj.state !== 'completed') {
-        return { ...obj, state: 'locked' as QuestObjectiveState };
-      }
       return obj;
     });
+
+    // Auto-unlock when completing an objective
+    if (newState === 'completed' && completedObj) {
+      updatedObjectives = updatedObjectives.map((obj) => {
+        if (obj.state !== 'locked') return obj;
+
+        // Check parent_id match
+        if (obj.parent_id === objectiveId) {
+          unlockedObjectives.push(obj.title);
+          return { ...obj, state: 'active' as QuestObjectiveState };
+        }
+
+        // Check unlock_condition match using fuzzy word matching
+        if (obj.unlock_condition && checkUnlockCondition(obj.unlock_condition, completedObj, updatedObjectives)) {
+          unlockedObjectives.push(obj.title);
+          return { ...obj, state: 'active' as QuestObjectiveState };
+        }
+
+        return obj;
+      });
+    }
+
+    // Re-lock children when parent is uncompleted
+    if (newState === 'active') {
+      updatedObjectives = updatedObjectives.map((obj) => {
+        if (obj.parent_id === objectiveId && obj.state !== 'completed') {
+          return { ...obj, state: 'locked' as QuestObjectiveState };
+        }
+        return obj;
+      });
+    }
 
     setObjectives(updatedObjectives);
     setSaving(true);
@@ -73,12 +176,20 @@ export function QuestObjectivesCard({
 
       // Show feedback based on action
       if (newState === 'completed') {
-        toast.success('Objective completed!');
+        toast.success(`Completed: ${completedObj?.title}`);
       } else if (newState === 'failed') {
         toast.error('Objective marked as failed');
       } else if (newState === 'active') {
         toast.info('Objective reset');
       }
+
+      // Show unlock notifications
+      unlockedObjectives.forEach((title) => {
+        toast.info(`Objective Unlocked: ${title}`, {
+          icon: <Unlock className="w-4 h-4 text-amber-400" />,
+          duration: 4000,
+        });
+      });
     } catch (error) {
       // Rollback on error
       setObjectives(initialObjectives);
@@ -170,18 +281,19 @@ export function QuestObjectivesCard({
                 {/* Checkbox or Lock Icon */}
                 {isLocked && !isInteractive ? (
                   <Lock className="w-5 h-5 text-slate-600 mt-0.5" />
-                ) : isLocked && canBeUnlocked && isInteractive ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                ) : isLocked && isInteractive ? (
+                  <button
                     onClick={() => updateObjectiveState(obj.id, 'active')}
-                    className="p-0 h-5 w-5 text-amber-500 hover:text-amber-400"
-                    title="Unlock this objective"
+                    disabled={saving}
+                    className={`p-1 rounded transition-colors disabled:opacity-50 ${
+                      canBeUnlocked
+                        ? 'text-amber-500 hover:text-amber-400 hover:bg-amber-900/30'
+                        : 'text-slate-500 hover:text-amber-400 hover:bg-amber-900/30'
+                    }`}
+                    title={canBeUnlocked ? 'Unlock this objective' : 'Force unlock (condition not met)'}
                   >
-                    <Lock className="w-5 h-5" />
-                  </Button>
-                ) : isLocked ? (
-                  <Lock className="w-5 h-5 text-slate-600 mt-0.5" />
+                    <Lock className="w-4 h-4" />
+                  </button>
                 ) : isFailed ? (
                   <X className="w-5 h-5 text-red-500 mt-0.5" />
                 ) : (

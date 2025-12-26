@@ -503,35 +503,123 @@ export async function saveForgedEntity(
   // For quest forge, process reward items into inventory
   if (forgeType === 'quest') {
     console.log('[EntityMinter] Quest forge detected, checking for reward items...')
-    const rewards = output.rewards as { items?: Array<{ name: string; type?: string; rarity?: string; description?: string }> } | undefined
+    console.log('[EntityMinter] Full output.rewards:', JSON.stringify(output.rewards, null, 2))
+
+    // Rewards can be in output.rewards or in attributes.rewards
+    const rewards = (output.rewards || (savedEntity.attributes as Record<string, unknown>)?.rewards) as {
+      items?: Array<{ name: string; type?: string; rarity?: string; description?: string; quantity?: number }>
+    } | undefined
     const rewardItems = rewards?.items || []
-    console.log('[EntityMinter] Reward items:', rewardItems)
+    console.log('[EntityMinter] Reward items to process:', rewardItems)
 
     if (rewardItems.length > 0) {
-      // Convert reward items to LootItem format
-      const lootItems: LootItem[] = rewardItems.map((item) => ({
-        name: item.name,
-        quantity: 1,
-        description: item.description || `Quest reward${item.rarity ? ` (${item.rarity})` : ''}`,
-      }))
-
       const questTitle = (output.soul as Record<string, unknown>)?.title as string || savedEntity.name as string
-      const lootResult = await processLootToInventory(
-        supabase,
-        campaignId,
-        savedEntity.id,
-        questTitle,
-        lootItems,
-        'quest'
-      )
-      console.log('[EntityMinter] Quest reward processing result:', lootResult)
-      if (lootResult.errors.length > 0) {
-        console.error('[EntityMinter] Quest reward errors:', lootResult.errors)
-      } else {
-        console.log(`[EntityMinter] Added ${lootResult.srdItems} SRD items and ${lootResult.customItems} custom items as quest rewards`)
+      console.log('[EntityMinter] Quest title for rewards:', questTitle)
+
+      // Process each reward item individually for better error isolation
+      let srdCount = 0
+      let customCount = 0
+      const errors: string[] = []
+
+      for (const rewardItem of rewardItems) {
+        const itemName = rewardItem.name
+        const quantity = rewardItem.quantity || 1
+        console.log(`[EntityMinter] Processing reward: ${itemName} (x${quantity})`)
+
+        try {
+          // Try SRD match first using the same logic as processLootToInventory
+          const { data: srdMatch } = await supabase
+            .from('srd_items')
+            .select('id, name, rarity, value_gp, item_type')
+            .ilike('name', itemName)
+            .limit(1)
+            .single()
+
+          if (srdMatch) {
+            console.log(`[EntityMinter] SRD match found: ${srdMatch.name}`)
+            const { error: insertError } = await supabase.from('inventory_instances').insert({
+              campaign_id: campaignId,
+              srd_item_id: srdMatch.id,
+              owner_type: 'quest',
+              owner_id: savedEntity.id,
+              quantity: quantity,
+              acquired_from: `Reward: ${questTitle}`,
+              notes: rewardItem.description || null,
+            })
+
+            if (insertError) {
+              console.error(`[EntityMinter] Insert error for ${itemName}:`, insertError)
+              errors.push(`${itemName}: ${insertError.message}`)
+            } else {
+              srdCount++
+              console.log(`[EntityMinter] ✅ SRD item ${srdMatch.name} added to quest inventory`)
+            }
+          } else {
+            // Create custom item entity as stub
+            console.log(`[EntityMinter] No SRD match, creating custom item: ${itemName}`)
+            const { data: itemEntity, error: entityError } = await supabase
+              .from('entities')
+              .insert({
+                campaign_id: campaignId,
+                name: itemName,
+                entity_type: 'item',
+                sub_type: rewardItem.type || 'wondrous item',
+                forge_status: 'stub',
+                summary: rewardItem.description || 'Quest reward item',
+                mechanics: {
+                  rarity: rewardItem.rarity || 'uncommon',
+                  quest_reward: true,
+                  source_quest_id: savedEntity.id,
+                },
+                attributes: {
+                  is_stub: true,
+                  needs_review: true,
+                  source_entity_id: savedEntity.id,
+                  source_entity_name: questTitle,
+                  stub_context: rewardItem.description || `Quest reward from ${questTitle}`,
+                },
+              })
+              .select('id')
+              .single()
+
+            if (entityError) {
+              console.error(`[EntityMinter] Entity creation error for ${itemName}:`, entityError)
+              errors.push(`${itemName}: ${entityError.message}`)
+              continue
+            }
+
+            if (itemEntity) {
+              const { error: instanceError } = await supabase.from('inventory_instances').insert({
+                campaign_id: campaignId,
+                custom_entity_id: itemEntity.id,
+                owner_type: 'quest',
+                owner_id: savedEntity.id,
+                quantity: quantity,
+                acquired_from: `Reward: ${questTitle}`,
+                notes: rewardItem.description || null,
+              })
+
+              if (instanceError) {
+                console.error(`[EntityMinter] Inventory instance error for ${itemName}:`, instanceError)
+                errors.push(`${itemName}: ${instanceError.message}`)
+              } else {
+                customCount++
+                console.log(`[EntityMinter] ✅ Custom item ${itemName} created and added to quest inventory`)
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`[EntityMinter] Exception processing ${itemName}:`, err)
+          errors.push(`${itemName}: ${String(err)}`)
+        }
+      }
+
+      console.log(`[EntityMinter] Quest reward processing complete: ${srdCount} SRD, ${customCount} custom items`)
+      if (errors.length > 0) {
+        console.error('[EntityMinter] Quest reward errors:', errors)
       }
     } else {
-      console.log('[EntityMinter] No reward items to process')
+      console.log('[EntityMinter] No reward items to process (rewards.items is empty or undefined)')
     }
   }
 
