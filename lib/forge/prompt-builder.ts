@@ -454,9 +454,20 @@ function getOutputFormatInstructions(forgeType: ForgeType): string {
     "primaryWeapon": "Weapon name",
     "combatStyle": "How they fight"
   },
-  "loot": ["Item 1", "Item 2"],
+  "loot": [
+    {"name": "Longsword", "quantity": 1},
+    {"name": "Potion of Healing", "quantity": 2},
+    {"name": "Gold pieces", "quantity": 25},
+    {"name": "Encoded letter", "description": "Sealed with red wax, contains hidden instructions", "quantity": 1}
+  ],
   "tags": ["tag1", "tag2"]
-}`,
+}
+
+LOOT GUIDELINES:
+- Use exact D&D 5e SRD item names when applicable (e.g., "Longsword" not "sword", "Potion of Healing" not "healing potion")
+- For currency, use "Gold pieces", "Silver pieces", or "Copper pieces" with quantity
+- For unique/custom items, add a "description" field explaining what it is
+- Include 3-6 items appropriate to the NPC's role and wealth level`,
 
     item: `OUTPUT FORMAT (JSON):
 {

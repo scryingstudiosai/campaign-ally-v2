@@ -30,6 +30,7 @@ import {
   type GeneratedNPC,
 } from '@/components/forge/npc'
 import { QuickReference } from '@/components/forge/QuickReference'
+import { processLootToInventory } from '@/lib/forge/entity-minter'
 
 interface StubContext {
   stubId: string
@@ -555,6 +556,20 @@ export default function NpcForgePage(): JSX.Element {
         }
         setGenerationReferencedEntities([])
 
+        // Process loot into inventory system
+        if (forge.output?.loot && forge.output.loot.length > 0) {
+          const lootResult = await processLootToInventory(
+            supabase,
+            campaignId,
+            stubId,
+            forge.output.name,
+            forge.output.loot
+          )
+          if (lootResult.errors.length > 0) {
+            console.error('Loot processing errors:', lootResult.errors)
+          }
+        }
+
         toast.success('NPC fleshed out and saved!')
         // Force Next.js to invalidate cache and refetch server data
         router.refresh()
@@ -599,6 +614,20 @@ export default function NpcForgePage(): JSX.Element {
 
         // Clear generation referenced entities after commit
         setGenerationReferencedEntities([])
+
+        // Process loot into inventory system
+        if (forge.output?.loot && forge.output.loot.length > 0) {
+          const lootResult = await processLootToInventory(
+            supabase,
+            campaignId,
+            entity.id,
+            forge.output.name,
+            forge.output.loot
+          )
+          if (lootResult.errors.length > 0) {
+            console.error('Loot processing errors:', lootResult.errors)
+          }
+        }
 
         toast.success('NPC saved to Memory!')
         // Force Next.js to invalidate cache and refetch server data

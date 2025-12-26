@@ -673,3 +673,133 @@ export async function addHistoryEntry(
     })
     .eq('id', entityId)
 }
+
+// Loot item structure for inventory integration
+interface LootItem {
+  name: string
+  quantity: number
+  description?: string
+}
+
+// Result of processing loot into inventory
+export interface LootProcessingResult {
+  srdItems: number
+  customItems: number
+  errors: string[]
+}
+
+/**
+ * Process NPC loot items into the inventory system
+ * - SRD items are added directly as inventory instances
+ * - Custom items are created as item entity stubs and added to inventory
+ */
+export async function processLootToInventory(
+  supabase: SupabaseClient,
+  campaignId: string,
+  ownerId: string,
+  ownerName: string,
+  loot: LootItem[] | string[]
+): Promise<LootProcessingResult> {
+  const result: LootProcessingResult = { srdItems: 0, customItems: 0, errors: [] }
+
+  // Normalize loot to LootItem format
+  const normalizedLoot: LootItem[] = loot.map((item) => {
+    if (typeof item === 'string') {
+      // Legacy string format - parse as single item
+      return { name: item, quantity: 1 }
+    }
+    return item
+  })
+
+  for (const lootItem of normalizedLoot) {
+    try {
+      // Skip empty items
+      if (!lootItem.name?.trim()) continue
+
+      // Handle currency separately (Gold pieces, Silver pieces, etc.)
+      if (lootItem.name.toLowerCase().includes('pieces') ||
+          lootItem.name.toLowerCase().includes('gold') ||
+          lootItem.name.toLowerCase().includes('silver') ||
+          lootItem.name.toLowerCase().includes('copper')) {
+        // Add as note in inventory - we don't have a currency system
+        // For now, skip currency items (they're just tracked in attributes)
+        continue
+      }
+
+      // Try to find SRD item match
+      const { data: srdItem } = await supabase
+        .from('srd_items')
+        .select('id, name, item_type, rarity, value_gp, weight')
+        .ilike('name', lootItem.name)
+        .limit(1)
+        .single()
+
+      if (srdItem) {
+        // Add SRD item to inventory
+        const { error } = await supabase.from('inventory_instances').insert({
+          campaign_id: campaignId,
+          srd_item_id: srdItem.id,
+          owner_type: 'npc',
+          owner_id: ownerId,
+          quantity: lootItem.quantity || 1,
+          acquired_from: `Generated with ${ownerName}`,
+          is_identified: true,
+        })
+
+        if (error) {
+          result.errors.push(`Failed to add ${lootItem.name} to inventory: ${error.message}`)
+        } else {
+          result.srdItems++
+        }
+      } else {
+        // Create custom item entity stub
+        const { data: itemEntity, error: entityError } = await supabase
+          .from('entities')
+          .insert({
+            campaign_id: campaignId,
+            name: lootItem.name,
+            entity_type: 'item',
+            forge_status: 'stub',
+            status: 'active',
+            description: lootItem.description || `Found on ${ownerName}`,
+            attributes: {
+              is_stub: true,
+              needs_review: true,
+              source_entity_id: ownerId,
+              source_entity_name: ownerName,
+              stub_context: lootItem.description || `Carried by ${ownerName}`,
+            },
+          })
+          .select('id')
+          .single()
+
+        if (entityError) {
+          result.errors.push(`Failed to create item ${lootItem.name}: ${entityError.message}`)
+          continue
+        }
+
+        // Add to inventory
+        const { error: invError } = await supabase.from('inventory_instances').insert({
+          campaign_id: campaignId,
+          custom_entity_id: itemEntity.id,
+          owner_type: 'npc',
+          owner_id: ownerId,
+          quantity: lootItem.quantity || 1,
+          acquired_from: `Generated with ${ownerName}`,
+          notes: lootItem.description,
+          is_identified: true,
+        })
+
+        if (invError) {
+          result.errors.push(`Failed to add ${lootItem.name} to inventory: ${invError.message}`)
+        } else {
+          result.customItems++
+        }
+      }
+    } catch (err) {
+      result.errors.push(`Error processing ${lootItem.name}: ${String(err)}`)
+    }
+  }
+
+  return result
+}

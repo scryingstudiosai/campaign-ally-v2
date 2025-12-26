@@ -704,7 +704,15 @@ export interface NpcForgeOutput {
     primaryWeapon: string;
     combatStyle: string;
   };
-  loot?: string[];
+  // Structured loot format (new) or legacy string array
+  loot?: LootItem[] | string[];
 
   tags: string[];
+}
+
+// Structured loot item for inventory integration
+export interface LootItem {
+  name: string;
+  quantity: number;
+  description?: string; // For custom/unique items
 }

@@ -9,7 +9,8 @@ import { Relationship } from '@/components/memory/relationship-display'
 import { EntityRelationshipsSection } from '@/components/memory/entity-relationships-section'
 import { DeleteEntityButton } from '@/components/memory/delete-entity-button'
 import { StubBanner } from '@/components/memory/stub-banner'
-import { LootDisplay } from '@/components/memory/loot-display'
+// LootDisplay removed - items are now in inventory system
+// import { LootDisplay } from '@/components/memory/loot-display'
 import { BrainCard } from '@/components/entity/BrainCard'
 import { VoiceCard } from '@/components/entity/VoiceCard'
 import { ReadAloudCard } from '@/components/entity/ReadAloudCard'
@@ -365,16 +366,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {/* Loot */}
-                {attributes.loot && (
-                  <LootDisplay
-                    loot={attributes.loot}
-                    entityId={entity.id}
-                    entityName={entity.name}
-                    entityType={entity.entity_type}
-                    campaignId={params.id}
-                  />
-                )}
+                {/* Legacy Loot - deprecated in favor of Inventory system */}
+                {/* LootDisplay removed - items are now shown in EntityInventorySection */}
 
                 {/* Legacy Voice/Mannerisms - Only if no Voice profile */}
                 {!(entity.voice && (entity.voice as Voice).style?.length > 0) && attributes.voiceAndMannerisms && (
