@@ -566,7 +566,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
                 {/* Quest Objectives - Interactive objective tracker */}
                 {questObjectives && questObjectives.length > 0 && (
-                  <QuestObjectivesCard objectives={questObjectives} />
+                  <QuestObjectivesCard
+                    objectives={questObjectives}
+                    questId={entity.id}
+                    campaignId={params.id}
+                  />
                 )}
 
                 {/* Quest Rewards - XP, gold, items, reputation */}

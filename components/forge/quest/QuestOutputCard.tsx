@@ -91,7 +91,8 @@ export function QuestOutputCard({
   existingEntities,
   onForgeReward,
 }: QuestOutputCardProps): JSX.Element {
-  const [showLocked, setShowLocked] = useState(false);
+  // DM sees all objectives by default in Forge preview
+  const [showLocked, setShowLocked] = useState(true);
   const [selection, setSelection] = useState<{
     text: string;
     range: Range;
@@ -280,7 +281,7 @@ export function QuestOutputCard({
               ) : (
                 <EyeOff className="w-4 h-4 mr-1" />
               )}
-              {showLocked ? 'Showing Locked' : 'Hiding Locked'}
+              {showLocked ? 'All Visible' : 'Player View'}
             </Button>
           </div>
 

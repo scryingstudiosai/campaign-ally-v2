@@ -5,6 +5,62 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// PATCH /api/entities/[id] - Update an entity (partial update)
+export async function PATCH(
+  request: NextRequest,
+  { params }: RouteParams
+): Promise<NextResponse> {
+  const { id } = await params;
+
+  if (!id) {
+    return NextResponse.json({ error: 'Entity ID required' }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+
+  // Get the update payload
+  const body = await request.json();
+
+  // First verify the entity exists
+  const { data: entity, error: fetchError } = await supabase
+    .from('entities')
+    .select('id, campaign_id, attributes')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single();
+
+  if (fetchError || !entity) {
+    return NextResponse.json({ error: 'Entity not found' }, { status: 404 });
+  }
+
+  // Handle partial attributes updates (merge with existing)
+  let updatePayload = { ...body };
+  if (body.attributes) {
+    updatePayload.attributes = {
+      ...(entity.attributes || {}),
+      ...body.attributes,
+    };
+  }
+
+  // Add updated_at timestamp
+  updatePayload.updated_at = new Date().toISOString();
+
+  // Update the entity
+  const { data: updated, error: updateError } = await supabase
+    .from('entities')
+    .update(updatePayload)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (updateError) {
+    console.error('Failed to update entity:', updateError);
+    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+
+  return NextResponse.json(updated);
+}
+
 // DELETE /api/entities/[id] - Soft delete an entity
 export async function DELETE(
   request: NextRequest,

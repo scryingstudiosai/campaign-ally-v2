@@ -1,24 +1,119 @@
 'use client';
 
-import { useState } from 'react';
-import { QuestObjective } from '@/types/living-entity';
-import { ListChecks, Lock, Eye, EyeOff, ChevronRight, Lightbulb } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { QuestObjective, QuestObjectiveState } from '@/types/living-entity';
+import { ListChecks, Lock, ChevronRight, Lightbulb, RotateCcw, X, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
 
 interface QuestObjectivesCardProps {
   objectives: QuestObjective[];
-  onObjectiveToggle?: (objectiveId: string, newState: 'active' | 'completed') => void;
+  questId?: string;
+  campaignId?: string;
+  readOnly?: boolean;
 }
 
-export function QuestObjectivesCard({ objectives, onObjectiveToggle }: QuestObjectivesCardProps): JSX.Element | null {
-  const [showLocked, setShowLocked] = useState(false);
+export function QuestObjectivesCard({
+  objectives: initialObjectives,
+  questId,
+  campaignId,
+  readOnly = false,
+}: QuestObjectivesCardProps): JSX.Element | null {
+  const [objectives, setObjectives] = useState<QuestObjective[]>(initialObjectives);
+  const [saving, setSaving] = useState(false);
 
+  // Check if an objective can be unlocked (all prerequisites completed)
+  const canUnlock = useCallback((objective: QuestObjective): boolean => {
+    if (!objective.parent_id) return true;
+    const parent = objectives.find((o) => o.id === objective.parent_id);
+    return parent?.state === 'completed';
+  }, [objectives]);
+
+  // Update objective state and save to database
+  const updateObjectiveState = useCallback(async (
+    objectiveId: string,
+    newState: QuestObjectiveState
+  ) => {
+    if (!questId || !campaignId || readOnly) return;
+
+    // Optimistically update local state
+    const updatedObjectives = objectives.map((obj) => {
+      if (obj.id === objectiveId) {
+        return { ...obj, state: newState };
+      }
+      // Auto-unlock children when parent is completed
+      if (newState === 'completed' && obj.parent_id === objectiveId && obj.state === 'locked') {
+        return { ...obj, state: 'active' as QuestObjectiveState };
+      }
+      // Re-lock children when parent is uncompleted
+      if (newState === 'active' && obj.parent_id === objectiveId && obj.state !== 'completed') {
+        return { ...obj, state: 'locked' as QuestObjectiveState };
+      }
+      return obj;
+    });
+
+    setObjectives(updatedObjectives);
+    setSaving(true);
+
+    try {
+      const response = await fetch(`/api/entities/${questId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attributes: { objectives: updatedObjectives },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save objective state');
+      }
+
+      // Show feedback based on action
+      if (newState === 'completed') {
+        toast.success('Objective completed!');
+      } else if (newState === 'failed') {
+        toast.error('Objective marked as failed');
+      } else if (newState === 'active') {
+        toast.info('Objective reset');
+      }
+    } catch (error) {
+      // Rollback on error
+      setObjectives(initialObjectives);
+      toast.error('Failed to update objective');
+      console.error('Error updating objective:', error);
+    } finally {
+      setSaving(false);
+    }
+  }, [objectives, questId, campaignId, readOnly, initialObjectives]);
+
+  const handleToggle = (obj: QuestObjective, checked: boolean) => {
+    const newState: QuestObjectiveState = checked ? 'completed' : 'active';
+    updateObjectiveState(obj.id, newState);
+  };
+
+  const handleFail = (obj: QuestObjective) => {
+    updateObjectiveState(obj.id, 'failed');
+  };
+
+  const handleReset = (obj: QuestObjective) => {
+    updateObjectiveState(obj.id, 'active');
+  };
+
+  // DM always sees all objectives - no blur/hide
+  const isInteractive = !!questId && !!campaignId && !readOnly;
+
+  // Early return if no objectives
   if (!objectives || objectives.length === 0) return null;
 
+  // Computed values
   const requiredObjectives = objectives.filter((o) => o.type === 'required');
   const completedRequired = requiredObjectives.filter((o) => o.state === 'completed').length;
+  const progressPercent = requiredObjectives.length > 0
+    ? Math.round((completedRequired / requiredObjectives.length) * 100)
+    : 0;
 
   return (
     <div className="ca-card p-4 space-y-4">
@@ -32,51 +127,38 @@ export function QuestObjectivesCard({ objectives, onObjectiveToggle }: QuestObje
           <span className="text-sm text-slate-400">
             {completedRequired} / {requiredObjectives.length} required
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowLocked(!showLocked)}
-            className="text-slate-400 h-7 px-2"
-          >
-            {showLocked ? (
-              <Eye className="w-4 h-4" />
-            ) : (
-              <EyeOff className="w-4 h-4" />
-            )}
-          </Button>
+          {saving && (
+            <span className="text-xs text-slate-500 animate-pulse">Saving...</span>
+          )}
         </div>
       </div>
+
+      {/* Progress Bar */}
+      {requiredObjectives.length > 0 && (
+        <div className="space-y-1">
+          <Progress value={progressPercent} className="h-2" />
+          <p className="text-xs text-slate-500 text-right">{progressPercent}% complete</p>
+        </div>
+      )}
 
       {/* Objectives List */}
       <div className="space-y-2">
         {objectives.map((obj, i) => {
-          // Hide locked objectives unless toggled
-          if (obj.state === 'locked' && !showLocked) {
-            return (
-              <div
-                key={obj.id || i}
-                className="p-3 bg-slate-900/50 rounded-lg border border-slate-800 opacity-50"
-              >
-                <div className="flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-slate-600" />
-                  <span className="text-slate-600 blur-sm select-none">
-                    Hidden Objective
-                  </span>
-                </div>
-              </div>
-            );
-          }
+          const isLocked = obj.state === 'locked';
+          const isCompleted = obj.state === 'completed';
+          const isFailed = obj.state === 'failed';
+          const canBeUnlocked = isLocked && canUnlock(obj);
 
           return (
             <div
               key={obj.id || i}
               className={`p-3 rounded-lg border transition-all ${
-                obj.state === 'completed'
+                isCompleted
                   ? 'bg-green-900/20 border-green-700/50'
-                  : obj.state === 'failed'
+                  : isFailed
                   ? 'bg-red-900/20 border-red-700/50'
-                  : obj.state === 'locked'
-                  ? 'bg-slate-900/50 border-slate-700/50'
+                  : isLocked
+                  ? 'bg-slate-900/50 border-slate-700/50 opacity-60'
                   : obj.type === 'hidden'
                   ? 'bg-purple-900/20 border-purple-700/50'
                   : obj.type === 'optional'
@@ -85,28 +167,42 @@ export function QuestObjectivesCard({ objectives, onObjectiveToggle }: QuestObje
               }`}
             >
               <div className="flex items-start gap-3">
-                {obj.state === 'locked' ? (
+                {/* Checkbox or Lock Icon */}
+                {isLocked && !isInteractive ? (
                   <Lock className="w-5 h-5 text-slate-600 mt-0.5" />
+                ) : isLocked && canBeUnlocked && isInteractive ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => updateObjectiveState(obj.id, 'active')}
+                    className="p-0 h-5 w-5 text-amber-500 hover:text-amber-400"
+                    title="Unlock this objective"
+                  >
+                    <Lock className="w-5 h-5" />
+                  </Button>
+                ) : isLocked ? (
+                  <Lock className="w-5 h-5 text-slate-600 mt-0.5" />
+                ) : isFailed ? (
+                  <X className="w-5 h-5 text-red-500 mt-0.5" />
                 ) : (
                   <Checkbox
-                    checked={obj.state === 'completed'}
-                    onCheckedChange={(checked) => {
-                      if (onObjectiveToggle) {
-                        onObjectiveToggle(obj.id, checked ? 'completed' : 'active');
-                      }
-                    }}
+                    checked={isCompleted}
+                    onCheckedChange={(checked) => handleToggle(obj, !!checked)}
+                    disabled={!isInteractive || saving}
                     className="mt-0.5"
                   />
                 )}
+
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {/* Title */}
                     <span
                       className={`font-medium ${
-                        obj.state === 'completed'
+                        isCompleted
                           ? 'text-green-400 line-through'
-                          : obj.state === 'failed'
+                          : isFailed
                           ? 'text-red-400 line-through'
-                          : obj.state === 'locked'
+                          : isLocked
                           ? 'text-slate-500'
                           : 'text-slate-200'
                       }`}
@@ -114,6 +210,7 @@ export function QuestObjectivesCard({ objectives, onObjectiveToggle }: QuestObje
                       {obj.title}
                     </span>
 
+                    {/* Type Badges */}
                     {obj.type === 'optional' && (
                       <Badge variant="outline" className="text-xs">
                         Optional
@@ -127,7 +224,7 @@ export function QuestObjectivesCard({ objectives, onObjectiveToggle }: QuestObje
                         Hidden
                       </Badge>
                     )}
-                    {obj.state === 'locked' && (
+                    {isLocked && (
                       <Badge
                         variant="outline"
                         className="text-xs text-slate-500 border-slate-600"
@@ -135,30 +232,85 @@ export function QuestObjectivesCard({ objectives, onObjectiveToggle }: QuestObje
                         Locked
                       </Badge>
                     )}
+                    {isFailed && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs text-red-400 border-red-600"
+                      >
+                        Failed
+                      </Badge>
+                    )}
                   </div>
 
+                  {/* Description */}
                   <p
                     className={`text-sm mt-1 ${
-                      obj.state === 'locked' ? 'text-slate-600' : 'text-slate-400'
+                      isLocked ? 'text-slate-600' : 'text-slate-400'
                     }`}
                   >
                     {obj.description}
                   </p>
 
-                  {obj.state === 'locked' && obj.unlock_condition && (
+                  {/* Unlock condition */}
+                  {isLocked && obj.unlock_condition && (
                     <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
                       <ChevronRight className="w-3 h-3" />
                       Unlocks: {obj.unlock_condition}
                     </p>
                   )}
 
+                  {/* Hints for DM */}
                   {obj.hints && obj.hints.length > 0 && (
                     <div className="mt-2 text-xs text-slate-500">
                       <Lightbulb className="w-3 h-3 inline mr-1" />
                       Hints: {obj.hints.join(' | ')}
                     </div>
                   )}
+
+                  {/* Action buttons for interactive mode */}
+                  {isInteractive && !isLocked && (
+                    <div className="flex gap-2 mt-2">
+                      {!isFailed && !isCompleted && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleFail(obj)}
+                          disabled={saving}
+                          className="h-6 px-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-900/30"
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          Fail
+                        </Button>
+                      )}
+                      {(isFailed || isCompleted) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReset(obj)}
+                          disabled={saving}
+                          className="h-6 px-2 text-xs text-slate-400 hover:text-slate-300 hover:bg-slate-700"
+                        >
+                          <RotateCcw className="w-3 h-3 mr-1" />
+                          Reset
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {/* Quick complete button for active objectives */}
+                {isInteractive && !isLocked && !isCompleted && !isFailed && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => updateObjectiveState(obj.id, 'completed')}
+                    disabled={saving}
+                    className="h-8 w-8 p-0 text-green-500 hover:text-green-400 hover:bg-green-900/30"
+                    title="Mark as completed"
+                  >
+                    <Check className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
           );
