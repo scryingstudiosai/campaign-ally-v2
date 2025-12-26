@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { InventoryList } from './InventoryList';
 import { TransferItemDialog } from './TransferItemDialog';
 import { AddItemToInventoryDialog } from './AddItemToInventoryDialog';
+import { SrdLinkDialog } from './SrdLinkDialog';
 import { OwnerType, InventoryInstanceWithItem } from '@/types/inventory';
 import { useInventory } from '@/hooks/use-inventory';
 import {
@@ -14,8 +15,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { SrdItemDisplay } from '@/components/srd/SrdItemDisplay';
-import { Package, RefreshCw, Plus } from 'lucide-react';
+import { Package, RefreshCw, Plus, Store, Link } from 'lucide-react';
 
 interface EntityInventorySectionProps {
   campaignId: string;
@@ -35,12 +37,13 @@ export function EntityInventorySection({
   mechanics,
 }: EntityInventorySectionProps): JSX.Element | null {
   // Only show inventory for entity types that can hold items
-  const canHoldItems = ['npc', 'player', 'location'].includes(entityType);
+  const canHoldItems = ['npc', 'player', 'location', 'creature'].includes(entityType);
 
   // State for dialogs
   const [viewingItem, setViewingItem] = useState<InventoryInstanceWithItem | null>(null);
   const [transferringItem, setTransferringItem] = useState<InventoryInstanceWithItem | null>(null);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
+  const [showSrdLinkDialog, setShowSrdLinkDialog] = useState(false);
   const [isStocking, setIsStocking] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -88,8 +91,17 @@ export function EntityInventorySection({
     return null;
   }
 
-  // Determine if this is a shop (from mechanics or sub_type)
-  const isShop = Boolean(mechanics?.is_shop) || subType === 'shop';
+  // Determine if this is a shop
+  // Check: mechanics.is_shop, sub_type, or name/sub_type contains shop keywords
+  const shopKeywords = /shop|store|merchant|market|smithy|blacksmith|apothecary|armorer|armourer|weaponsmith|fletcher|tannery|jeweler|jeweller|emporium|bazaar|trading post|general store/i;
+  const isShop = entityType === 'location' && (
+    Boolean(mechanics?.is_shop) ||
+    subType === 'shop' ||
+    shopKeywords.test(`${entityName || ''} ${subType || ''}`)
+  );
+
+  // Get price modifier from mechanics (default 1.0 = no markup/discount)
+  const priceModifier = (mechanics?.price_modifier as number) || 1.0;
 
   // Determine view mode - shops show prices
   const viewMode = isShop ? 'shop' : 'default';
@@ -105,11 +117,26 @@ export function EntityInventorySection({
       {/* Header with Add Item button */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
-          <Package className="w-5 h-5" />
-          Inventory
+          {isShop ? <Store className="w-5 h-5 text-amber-400" /> : <Package className="w-5 h-5" />}
+          {isShop ? 'Shop Inventory' : 'Inventory'}
           <span className="text-sm text-slate-400 font-normal">
             ({items.length} {items.length === 1 ? 'item' : 'items'})
           </span>
+          {/* Price modifier badge for shops */}
+          {isShop && priceModifier !== 1.0 && (
+            <Badge
+              variant="outline"
+              className={priceModifier > 1
+                ? 'border-red-500 text-red-400 text-xs'
+                : 'border-green-500 text-green-400 text-xs'
+              }
+            >
+              {priceModifier > 1
+                ? `${Math.round((priceModifier - 1) * 100)}% Markup`
+                : `${Math.round((1 - priceModifier) * 100)}% Discount`
+              }
+            </Badge>
+          )}
         </h3>
         <Button
           variant="outline"
@@ -161,6 +188,7 @@ export function EntityInventorySection({
         ownerType={entityType as OwnerType}
         ownerId={entityId}
         viewMode={viewMode}
+        priceModifier={isShop ? priceModifier : undefined}
         showHeader={false}
         onViewDetails={(item) => setViewingItem(item)}
         onTransfer={(item) => setTransferringItem(item)}
@@ -197,6 +225,24 @@ export function EntityInventorySection({
                       </div>
                     ))}
                   </dl>
+                </div>
+              )}
+
+              {/* Link to SRD option for custom items without SRD link */}
+              {viewingItem.custom_entity_id && !viewingItem.srd_item_id && (
+                <div className="p-3 bg-amber-900/20 border border-amber-700/50 rounded-lg">
+                  <p className="text-sm text-amber-400 mb-2">
+                    This is a custom item without official D&D stats.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSrdLinkDialog(true)}
+                    className="border-amber-600 text-amber-400 hover:bg-amber-900/30"
+                  >
+                    <Link className="w-4 h-4 mr-2" />
+                    Link to SRD Item for Stats
+                  </Button>
                 </div>
               )}
             </div>
@@ -246,6 +292,8 @@ export function EntityInventorySection({
       <TransferItemDialog
         item={transferringItem}
         campaignId={campaignId}
+        isShopMode={isShop}
+        priceModifier={priceModifier}
         onClose={() => setTransferringItem(null)}
         onTransferComplete={handleTransferComplete}
       />
@@ -264,6 +312,22 @@ export function EntityInventorySection({
           setShowAddItemDialog(false);
         }}
       />
+
+      {/* SRD Link Dialog */}
+      {viewingItem && (
+        <SrdLinkDialog
+          open={showSrdLinkDialog}
+          inventoryInstanceId={viewingItem.id}
+          customItemName={viewingItem.custom_entity?.name || 'Item'}
+          onClose={() => setShowSrdLinkDialog(false)}
+          onLinked={() => {
+            setShowSrdLinkDialog(false);
+            setViewingItem(null);
+            setRefreshKey((k) => k + 1);
+            refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

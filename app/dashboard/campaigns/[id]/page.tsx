@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { DeleteCampaignButton } from '@/components/campaigns/delete-campaign-button'
-import { ArrowLeft, BookOpen, Brain, Calendar, Pencil, Sparkles, User, MapPin, Swords, Gem } from 'lucide-react'
+import { ArrowLeft, BookOpen, Brain, Calendar, Pencil, Sparkles, User, MapPin, Swords, Gem, Bug, Flag, Scroll } from 'lucide-react'
 
 interface PageProps {
   params: { id: string }
@@ -164,7 +164,8 @@ export default async function CampaignDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Beings */}
             <Link href={`/dashboard/campaigns/${params.id}/forge/npc`} className="block">
               <div className="ca-card ca-card--npc ca-card-interactive p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -177,6 +178,19 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
+            <Link href={`/dashboard/campaigns/${params.id}/forge/creature`} className="block">
+              <div className="ca-card ca-card--creature ca-card-interactive p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Bug className="w-4 h-4 text-rose-400" />
+                  <h3 className="text-base font-semibold text-slate-100">Creature Forge</h3>
+                </div>
+                <p className="text-sm text-slate-400">
+                  Design monsters and beasts with full stat blocks
+                </p>
+              </div>
+            </Link>
+
+            {/* Places */}
             <Link href={`/dashboard/campaigns/${params.id}/forge/location`} className="block">
               <div className="ca-card ca-card--location ca-card-interactive p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -189,6 +203,33 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
+            {/* Things */}
+            <Link href={`/dashboard/campaigns/${params.id}/forge/item`} className="block">
+              <div className="ca-card ca-card--item ca-card-interactive p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Gem className="w-4 h-4 text-primary" />
+                  <h3 className="text-base font-semibold text-slate-100">Item Forge</h3>
+                </div>
+                <p className="text-sm text-slate-400">
+                  Generate unique items with dual player/DM descriptions
+                </p>
+              </div>
+            </Link>
+
+            {/* Groups */}
+            <Link href={`/dashboard/campaigns/${params.id}/forge/faction`} className="block">
+              <div className="ca-card ca-card--faction ca-card-interactive p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Flag className="w-4 h-4 text-orange-400" />
+                  <h3 className="text-base font-semibold text-slate-100">Faction Forge</h3>
+                </div>
+                <p className="text-sm text-slate-400">
+                  Create organizations with goals, resources, and influence
+                </p>
+              </div>
+            </Link>
+
+            {/* Events */}
             <Link href={`/dashboard/campaigns/${params.id}/forge/encounter`} className="block">
               <div className="ca-card ca-card--encounter ca-card-interactive p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -201,14 +242,15 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
-            <Link href={`/dashboard/campaigns/${params.id}/forge/item`} className="block">
-              <div className="ca-card ca-card--item ca-card-interactive p-4">
+            {/* Adventures */}
+            <Link href={`/dashboard/campaigns/${params.id}/forge/quest`} className="block">
+              <div className="ca-card ca-card--quest ca-card-interactive p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Gem className="w-4 h-4 text-primary" />
-                  <h3 className="text-base font-semibold text-slate-100">Item Forge</h3>
+                  <Scroll className="w-4 h-4 text-amber-400" />
+                  <h3 className="text-base font-semibold text-slate-100">Quest Forge</h3>
                 </div>
                 <p className="text-sm text-slate-400">
-                  Generate unique items with dual player/DM descriptions
+                  Design quests with objectives, chains, and rewards
                 </p>
               </div>
             </Link>

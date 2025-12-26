@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Coins } from 'lucide-react';
 import { InventoryInstanceWithItem } from '@/types/inventory';
 import {
   Dialog,
@@ -25,6 +25,8 @@ import { toast } from 'sonner';
 interface TransferItemDialogProps {
   item: InventoryInstanceWithItem | null;
   campaignId: string;
+  isShopMode?: boolean;
+  priceModifier?: number;
   onClose: () => void;
   onTransferComplete: () => void;
 }
@@ -32,6 +34,8 @@ interface TransferItemDialogProps {
 export function TransferItemDialog({
   item,
   campaignId,
+  isShopMode = false,
+  priceModifier = 1.0,
   onClose,
   onTransferComplete,
 }: TransferItemDialogProps): JSX.Element {
@@ -44,6 +48,13 @@ export function TransferItemDialog({
 
   const itemName = item?.srd_item?.name || item?.custom_entity?.name || 'Item';
   const maxQuantity = item?.quantity || 1;
+
+  // Calculate price for shop mode
+  const baseValue = item?.value_override ??
+    item?.srd_item?.value_gp ??
+    ((item?.srd_item?.mechanics || item?.custom_entity?.mechanics) as Record<string, unknown>)?.value_gp as number | undefined;
+  const itemPrice = baseValue != null ? Math.round(baseValue * priceModifier) : undefined;
+  const totalPrice = itemPrice != null ? itemPrice * quantity : undefined;
 
   // Reset state when item changes
   useEffect(() => {
@@ -102,7 +113,11 @@ export function TransferItemDialog({
         throw new Error(error.error || 'Transfer failed');
       }
 
-      toast.success(`Transferred ${quantity}x ${itemName}`);
+      if (isShopMode && totalPrice != null) {
+        toast.success(`Purchased ${quantity}x ${itemName} for ${totalPrice} gp. Remember to deduct gold!`);
+      } else {
+        toast.success(`Transferred ${quantity}x ${itemName}`);
+      }
       onTransferComplete();
       onClose();
     } catch (err) {
@@ -119,14 +134,24 @@ export function TransferItemDialog({
     <Dialog open={!!item} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="bg-slate-900 border-slate-700">
         <DialogHeader>
-          <DialogTitle className="text-slate-200">Transfer Item</DialogTitle>
+          <DialogTitle className="text-slate-200">
+            {isShopMode ? 'Purchase Item' : 'Transfer Item'}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Item being transferred */}
+          {/* Item being transferred/purchased */}
           <div className="p-3 bg-slate-800 rounded-lg">
             <p className="font-medium text-slate-200">{itemName}</p>
-            <p className="text-sm text-slate-400">Current quantity: {maxQuantity}</p>
+            <div className="flex items-center justify-between text-sm text-slate-400">
+              <span>Available: {maxQuantity}</span>
+              {isShopMode && itemPrice != null && (
+                <span className="flex items-center gap-1 text-amber-400">
+                  <Coins className="w-3 h-3" />
+                  {itemPrice} gp each
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Owner Type */}
@@ -188,24 +213,38 @@ export function TransferItemDialog({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleTransfer}
-            disabled={!canTransfer}
-            className="bg-teal-600 hover:bg-teal-500"
-          >
-            {transferring ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Transferring...
-              </>
-            ) : (
-              'Transfer'
-            )}
-          </Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          {/* Total price in shop mode */}
+          {isShopMode && totalPrice != null && (
+            <div className="flex items-center gap-2 text-amber-400 mr-auto">
+              <Coins className="w-4 h-4" />
+              <span className="font-medium">Total: {totalPrice} gp</span>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleTransfer}
+              disabled={!canTransfer}
+              className={isShopMode ? 'bg-amber-600 hover:bg-amber-500' : 'bg-teal-600 hover:bg-teal-500'}
+            >
+              {transferring ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  {isShopMode ? 'Purchasing...' : 'Transferring...'}
+                </>
+              ) : isShopMode ? (
+                <>
+                  <Coins className="w-4 h-4 mr-2" />
+                  Purchase
+                </>
+              ) : (
+                'Transfer'
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

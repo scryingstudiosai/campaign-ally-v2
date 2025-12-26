@@ -3,7 +3,7 @@
 
 export type EntityType = 'npc' | 'location' | 'item' | 'faction' | 'quest' | 'encounter' | 'creature' | 'other'
 
-export type ForgeType = 'npc' | 'item' | 'location' | 'monster' | 'faction' | 'quest' | 'encounter'
+export type ForgeType = 'npc' | 'item' | 'location' | 'monster' | 'faction' | 'quest' | 'encounter' | 'creature'
 
 export type ForgeStatus =
   | 'idle'

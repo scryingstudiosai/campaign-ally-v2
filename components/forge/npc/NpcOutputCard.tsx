@@ -5,9 +5,10 @@ import { InteractiveText } from '@/components/forge/InteractiveText'
 import { SelectionPopover } from '@/components/forge/SelectionPopover'
 import { BrainCard } from '@/components/entity/BrainCard'
 import { VoiceCard } from '@/components/entity/VoiceCard'
+import { NpcMechanicsCard } from '@/components/entity/NpcMechanicsCard'
 import { renderWithBold } from '@/lib/text-utils'
 import type { ScanResult, Discovery } from '@/types/forge'
-import type { NpcBrain, VillainBrain, HeroBrain, Voice, ForgeFactOutput } from '@/types/living-entity'
+import type { NpcBrain, VillainBrain, HeroBrain, Voice, ForgeFactOutput, NpcMechanics } from '@/types/living-entity'
 import {
   Eye,
   Heart,
@@ -24,15 +25,16 @@ import {
   BookOpen,
 } from 'lucide-react'
 
-// Match the existing GeneratedNPC structure from the API with new Brain/Voice fields
+// Match the existing GeneratedNPC structure from the API with new Brain/Voice/Mechanics fields
 export interface GeneratedNPC {
   name: string
   sub_type?: string
 
-  // New Brain/Voice/Facts structure
+  // New Brain/Voice/Facts/Mechanics structure
   brain?: NpcBrain | VillainBrain | HeroBrain
   voice?: Partial<Voice>
   facts?: ForgeFactOutput[]
+  mechanics?: NpcMechanics
   read_aloud?: string
   dm_slug?: string
 
@@ -176,8 +178,11 @@ export function NpcOutputCard({
         </div>
       </div>
 
-      {/* COMBAT STATS */}
-      {data.combatStats && (
+      {/* COMBAT STATS - Full Mechanics Card */}
+      {data.mechanics && Object.keys(data.mechanics).length > 0 ? (
+        <NpcMechanicsCard mechanics={data.mechanics} />
+      ) : data.combatStats && (
+        /* Legacy combat stats fallback */
         <div className="ca-panel p-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">

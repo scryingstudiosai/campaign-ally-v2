@@ -9,7 +9,8 @@ import { Relationship } from '@/components/memory/relationship-display'
 import { EntityRelationshipsSection } from '@/components/memory/entity-relationships-section'
 import { DeleteEntityButton } from '@/components/memory/delete-entity-button'
 import { StubBanner } from '@/components/memory/stub-banner'
-import { LootDisplay } from '@/components/memory/loot-display'
+// LootDisplay removed - items are now in inventory system
+// import { LootDisplay } from '@/components/memory/loot-display'
 import { BrainCard } from '@/components/entity/BrainCard'
 import { VoiceCard } from '@/components/entity/VoiceCard'
 import { ReadAloudCard } from '@/components/entity/ReadAloudCard'
@@ -28,9 +29,18 @@ import { EncounterBrainCard } from '@/components/entity/EncounterBrainCard'
 import { EncounterSoulCard } from '@/components/entity/EncounterSoulCard'
 import { EncounterMechanicsCard } from '@/components/entity/EncounterMechanicsCard'
 import { EncounterRewardsCard } from '@/components/entity/EncounterRewardsCard'
+import { CreatureBrainCard } from '@/components/entity/CreatureBrainCard'
+import { CreatureSoulCard } from '@/components/entity/CreatureSoulCard'
+import { CreatureMechanicsCard } from '@/components/entity/CreatureMechanicsCard'
+import { NpcMechanicsCard } from '@/components/entity/NpcMechanicsCard'
+import { QuestSoulCard } from '@/components/entity/QuestSoulCard'
+import { QuestBrainCard } from '@/components/entity/QuestBrainCard'
+import { QuestObjectivesCard } from '@/components/entity/QuestObjectivesCard'
+import { QuestRewardsCard } from '@/components/entity/QuestRewardsCard'
+import { QuestChainCard } from '@/components/entity/QuestChainCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, isNpcBrain } from '@/types/living-entity'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, NpcMechanics, QuestBrain, QuestSoul, QuestObjective, QuestRewards, QuestChain, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -149,7 +159,9 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const statusConfig = STATUS_CONFIG[entity.status]
   const importanceConfig = IMPORTANCE_CONFIG[entity.importance_tier]
   const attributes = entity.attributes || {}
-  const isStub = attributes.is_stub || attributes.needs_review
+  // Stub detection: forge_status === 'stub' or legacy attributes flags (when forge_status not set)
+  const isStub = entity.forge_status === 'stub' ||
+    ((attributes.is_stub || attributes.needs_review) && !entity.forge_status)
 
   // Item-specific helpers
   const isItem = entity.entity_type === 'item'
@@ -178,10 +190,31 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const encounterMechanics = entity.mechanics as EncounterMechanics | null
   const encounterRewards = entity.attributes?.rewards as EncounterRewards | null
 
+  // Creature-specific helpers
+  const isCreature = entity.entity_type === 'creature'
+  const creatureBrain = entity.brain as CreatureBrain | null
+  const creatureSoul = entity.soul as CreatureSoul | null
+  const creatureMechanics = entity.mechanics as CreatureMechanics | null
+  const creatureTreasure = attributes.treasure as CreatureTreasure | null
+
+  // NPC-specific helpers
+  const isNpc = entity.entity_type === 'npc'
+  const npcMechanics = isNpc ? (entity.mechanics as NpcMechanics | null) : null
+  const hasNpcMechanics = npcMechanics && Object.keys(npcMechanics).length > 0
+
+  // Quest-specific helpers
+  const isQuest = entity.entity_type === 'quest'
+  const questBrain = entity.brain as QuestBrain | null
+  const questSoul = entity.soul as QuestSoul | null
+  const questObjectives = attributes.objectives as QuestObjective[] | null
+  const questRewards = attributes.rewards as QuestRewards | null
+  const questChain = attributes.chain as QuestChain | null
+
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
     (entity.voice && (entity.voice as Voice).style?.length > 0) ||
     attributes.appearance ||
+    hasNpcMechanics ||
     attributes.combatStats ||
     attributes.loot ||
     attributes.voiceAndMannerisms ||
@@ -204,12 +237,30 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (encounterMechanics && Object.keys(encounterMechanics).length > 0) ||
     (encounterRewards && Object.keys(encounterRewards).length > 0)
 
+  const hasCreatureTreasureContent = creatureTreasure && (
+    creatureTreasure.treasure_description ||
+    (creatureTreasure.treasure_items && creatureTreasure.treasure_items.length > 0)
+  )
+
+  const hasCreatureStageContent =
+    (creatureSoul && Object.keys(creatureSoul).length > 0) ||
+    (creatureMechanics && Object.keys(creatureMechanics).length > 0) ||
+    hasCreatureTreasureContent
+
+  const hasQuestStageContent =
+    (questSoul && Object.keys(questSoul).length > 0) ||
+    (questObjectives && questObjectives.length > 0) ||
+    (questRewards && Object.keys(questRewards).length > 0) ||
+    (questChain && Object.keys(questChain).length > 0)
+
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
     (isItem && hasItemStageContent) ||
     (isLocation && hasLocationStageContent) ||
     (isFaction && hasFactionStageContent) ||
     (isEncounter && hasEncounterStageContent) ||
+    (isCreature && hasCreatureStageContent) ||
+    (isQuest && hasQuestStageContent) ||
     entity.public_notes ||
     entity.dm_notes
 
@@ -340,8 +391,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {/* Combat Stats */}
-                {attributes.combatStats && (
+                {/* NPC Mechanics - Full Stat Block */}
+                {hasNpcMechanics && npcMechanics ? (
+                  <NpcMechanicsCard mechanics={npcMechanics} name={entity.name} />
+                ) : attributes.combatStats && (
+                  /* Legacy Combat Stats fallback */
                   <div className="ca-panel p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Shield className="w-4 h-4 text-slate-400" />
@@ -363,16 +417,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {/* Loot */}
-                {attributes.loot && (
-                  <LootDisplay
-                    loot={attributes.loot}
-                    entityId={entity.id}
-                    entityName={entity.name}
-                    entityType={entity.entity_type}
-                    campaignId={params.id}
-                  />
-                )}
+                {/* Legacy Loot - deprecated in favor of Inventory system */}
+                {/* LootDisplay removed - items are now shown in EntityInventorySection */}
 
                 {/* Legacy Voice/Mannerisms - Only if no Voice profile */}
                 {!(entity.voice && (entity.voice as Voice).style?.length > 0) && attributes.voiceAndMannerisms && (
@@ -495,6 +541,46 @@ export default async function EntityDetailPage({ params }: PageProps) {
               </>
             )}
 
+            {/* --- CREATURE STAGE CONTENT --- */}
+            {isCreature && (
+              <>
+                {/* Creature Mechanics - Full stat block (player-facing for combat) */}
+                {creatureMechanics && Object.keys(creatureMechanics).length > 0 && (
+                  <CreatureMechanicsCard mechanics={creatureMechanics} name={entity.name} />
+                )}
+
+                {/* Creature Soul - Appearance, behavior, habitat (player-facing) */}
+                {creatureSoul && Object.keys(creatureSoul).length > 0 && (
+                  <CreatureSoulCard soul={creatureSoul} />
+                )}
+              </>
+            )}
+
+            {/* --- QUEST STAGE CONTENT --- */}
+            {isQuest && (
+              <>
+                {/* Quest Soul - Hook, summary, stakes (player-facing) */}
+                {questSoul && Object.keys(questSoul).length > 0 && (
+                  <QuestSoulCard soul={questSoul} />
+                )}
+
+                {/* Quest Objectives - Interactive objective tracker */}
+                {questObjectives && questObjectives.length > 0 && (
+                  <QuestObjectivesCard objectives={questObjectives} />
+                )}
+
+                {/* Quest Rewards - XP, gold, items, reputation */}
+                {questRewards && Object.keys(questRewards).length > 0 && (
+                  <QuestRewardsCard rewards={questRewards} />
+                )}
+
+                {/* Quest Chain - Position in quest chain */}
+                {questChain && Object.keys(questChain).length > 0 && (
+                  <QuestChainCard chain={questChain} campaignId={params.id} />
+                )}
+              </>
+            )}
+
             {/* --- SHARED STAGE CONTENT --- */}
             {/* Public Notes */}
             {entity.public_notes && (
@@ -570,6 +656,16 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* --- ENCOUNTER SCRIPT CONTENT --- */}
             {isEncounter && encounterBrain && Object.keys(encounterBrain).length > 0 && (
               <EncounterBrainCard brain={encounterBrain} subType={entity.sub_type} />
+            )}
+
+            {/* --- CREATURE SCRIPT CONTENT --- */}
+            {isCreature && ((creatureBrain && Object.keys(creatureBrain).length > 0) || hasCreatureTreasureContent) && (
+              <CreatureBrainCard brain={creatureBrain || {}} treasure={creatureTreasure} />
+            )}
+
+            {/* --- QUEST SCRIPT CONTENT --- */}
+            {isQuest && questBrain && Object.keys(questBrain).length > 0 && (
+              <QuestBrainCard brain={questBrain} />
             )}
 
             {/* --- SHARED SCRIPT CONTENT --- */}

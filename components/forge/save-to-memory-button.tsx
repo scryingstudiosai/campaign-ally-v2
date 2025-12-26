@@ -13,6 +13,7 @@ import {
 import { Loader2, Save, Check, MapPin, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { GeneratedNPC } from './npc-output-display'
+import { processLootToInventory } from '@/lib/forge/entity-minter'
 import Link from 'next/link'
 
 interface Location {
@@ -130,6 +131,23 @@ export function SaveToMemoryButton({
 
         if (relationshipError) {
           console.error('Failed to create location relationship:', relationshipError)
+        }
+      }
+
+      // Process loot into inventory system
+      if (data?.id && npc.loot && npc.loot.length > 0) {
+        const lootResult = await processLootToInventory(
+          supabase,
+          campaignId,
+          data.id,
+          npc.name,
+          npc.loot
+        )
+        if (lootResult.errors.length > 0) {
+          console.error('Loot processing errors:', lootResult.errors)
+        }
+        if (lootResult.srdItems > 0 || lootResult.customItems > 0) {
+          console.log(`Added ${lootResult.srdItems} SRD items and ${lootResult.customItems} custom items to inventory`)
         }
       }
 

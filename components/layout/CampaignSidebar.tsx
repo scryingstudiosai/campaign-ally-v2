@@ -16,6 +16,8 @@ import {
   Sparkles,
   Menu,
   Swords,
+  Bug,
+  Scroll,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -55,10 +57,12 @@ function SidebarContent({
 
   const FORGE_ITEMS = [
     { label: 'NPC', href: `${baseUrl}/forge/npc`, icon: User },
+    { label: 'Creature', href: `${baseUrl}/forge/creature`, icon: Bug },
     { label: 'Location', href: `${baseUrl}/forge/location`, icon: MapPin },
     { label: 'Item', href: `${baseUrl}/forge/item`, icon: Package },
     { label: 'Faction', href: `${baseUrl}/forge/faction`, icon: Users },
     { label: 'Encounter', href: `${baseUrl}/forge/encounter`, icon: Swords },
+    { label: 'Quest', href: `${baseUrl}/forge/quest`, icon: Scroll },
   ]
 
   const handleClick = () => {

@@ -175,6 +175,9 @@ export default function LocationForgePage(): JSX.Element {
       hook?: string
     }> | undefined
 
+    console.log('[LocationForge] inhabitants useEffect triggered')
+    console.log('[LocationForge] forge.output?.brain?.inhabitants:', inhabitants)
+
     if (inhabitants && inhabitants.length > 0) {
       setReviewDiscoveries((prev) => {
         // Avoid duplicates - check both existing discoveries and existing entities
@@ -204,7 +207,7 @@ export default function LocationForgePage(): JSX.Element {
               text: cleanName,
               suggestedType: 'npc' as EntityType,
               context,
-              status: 'create_stub', // Auto-create NPCs as stubs by default
+              status: 'pending', // Default to pending - user chooses to create stub, link, or ignore
             })
             // Add to set to prevent duplicates within the same inhabitants array
             existingDiscoveryTexts.add(nameLower)
@@ -212,10 +215,18 @@ export default function LocationForgePage(): JSX.Element {
         })
 
         if (newNpcDiscoveries.length > 0) {
+          console.log('[LocationForge] Adding NPC discoveries to state:', newNpcDiscoveries.map(d => ({
+            id: d.id,
+            text: d.text,
+            status: d.status,
+          })))
           return [...prev, ...newNpcDiscoveries]
         }
+        console.log('[LocationForge] No new NPC discoveries to add (already exist or empty)')
         return prev
       })
+    } else {
+      console.log('[LocationForge] No inhabitants found in forge.output.brain')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forge.output?.brain?.inhabitants, forge.output?.name])
@@ -432,6 +443,21 @@ export default function LocationForgePage(): JSX.Element {
   // Handle commit
   const handleCommit = async (): Promise<void> => {
     if (!forge.output) return
+
+    // DEBUG: Log all discoveries being committed
+    console.log('[LocationForge] handleCommit called')
+    console.log('[LocationForge] reviewDiscoveries count:', reviewDiscoveries.length)
+    console.log('[LocationForge] reviewDiscoveries:', reviewDiscoveries.map(d => ({
+      id: d.id,
+      text: d.text,
+      status: d.status,
+      suggestedType: d.suggestedType,
+      isNpc: d.id.startsWith('npc-'),
+      isContains: d.id.startsWith('contains-'),
+    })))
+    const npcDiscoveries = reviewDiscoveries.filter(d => d.id.startsWith('npc-'))
+    console.log('[LocationForge] NPC discoveries:', npcDiscoveries)
+    console.log('[LocationForge] NPC discoveries with create_stub status:', npcDiscoveries.filter(d => d.status === 'create_stub'))
 
     // If fleshing out a stub, update the existing entity instead of creating new
     if (stubId) {

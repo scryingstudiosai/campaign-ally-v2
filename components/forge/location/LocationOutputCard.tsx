@@ -8,7 +8,7 @@ import { SelectionPopover } from '@/components/forge/SelectionPopover'
 import { renderWithBold } from '@/lib/text-utils'
 import {
   Map, Eye, Ear, Wind, Thermometer, Lightbulb,
-  AlertTriangle, Swords, Tent, Sparkles, Package, Clock, Gift
+  AlertTriangle, Swords, Tent, Sparkles, Package, Clock, Gift, Users
 } from 'lucide-react'
 import type { ScanResult, Discovery, EntityType } from '@/types/forge'
 
@@ -285,6 +285,37 @@ export function LocationOutputCard({
                   <p className="text-slate-300 italic">{data.soul.mood}</p>
                 </div>
               )}
+
+              {/* Key Figures - Preview of inhabitants */}
+              {data.brain?.inhabitants && data.brain.inhabitants.length > 0 && (
+                <div className="pt-3 border-t border-slate-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-purple-400 uppercase flex items-center gap-1">
+                      <Users className="w-3 h-3" /> Key Figures
+                    </span>
+                    <span className="text-xs text-amber-400">Added to Discoveries ↗</span>
+                  </div>
+                  <div className="space-y-2">
+                    {data.brain.inhabitants.map((npc, i) => (
+                      <div
+                        key={i}
+                        className="p-2 bg-purple-500/10 border border-dashed border-purple-500/30 rounded"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-purple-300">{npc.name}</span>
+                          <span className="text-xs text-slate-400">{npc.role}</span>
+                        </div>
+                        {npc.hook && (
+                          <p className="text-xs text-slate-500 italic mt-1">{npc.hook}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">
+                    These NPCs appear in the Review panel. Accept to create stubs.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
@@ -391,6 +422,37 @@ export function LocationOutputCard({
                   </div>
                   <p className="text-xs text-slate-500 mt-2">
                     These appear in the Review panel. Accept or ignore them there.
+                  </p>
+                </div>
+              )}
+
+              {/* Inhabitants - Added to Discoveries for user review */}
+              {data.brain.inhabitants && data.brain.inhabitants.length > 0 && (
+                <div className="pt-3 border-t border-slate-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-emerald-400 uppercase flex items-center gap-1">
+                      <Users className="w-3 h-3" /> Inhabitants
+                    </span>
+                    <span className="text-xs text-amber-400">Added to Discoveries ↗</span>
+                  </div>
+                  <div className="space-y-2">
+                    {data.brain.inhabitants.map((npc, i) => (
+                      <div
+                        key={i}
+                        className="p-2 bg-emerald-500/10 border border-dashed border-emerald-500/30 rounded"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-emerald-300">{npc.name}</span>
+                          <span className="text-xs text-slate-400">{npc.role}</span>
+                        </div>
+                        {npc.hook && (
+                          <p className="text-xs text-slate-500 italic mt-1">{npc.hook}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Accept in the Review panel to create NPC stubs.
                   </p>
                 </div>
               )}

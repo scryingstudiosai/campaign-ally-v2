@@ -401,6 +401,15 @@ Generate 5-10 atomic facts covering:
 - Include sensory details for atmosphere
 - Define creature tactics and behavior
 - Create phases that change the encounter mid-combat`,
+
+    creature: `FOR CREATURE GENERATION:
+- Create unique creatures with compelling flavor and mechanics
+- Define appearance, behavior, and habitat
+- Include full D&D 5e stat block with abilities and actions
+- Provide tactical notes for combat
+- Define lair actions for powerful creatures (CR 10+)
+- Include treasure and loot they might have
+- Connect the creature to the world with ecology and hooks`,
   }
 
   return instructions[forgeType] || ''
@@ -454,9 +463,20 @@ function getOutputFormatInstructions(forgeType: ForgeType): string {
     "primaryWeapon": "Weapon name",
     "combatStyle": "How they fight"
   },
-  "loot": ["Item 1", "Item 2"],
+  "loot": [
+    {"name": "Longsword", "quantity": 1},
+    {"name": "Potion of Healing", "quantity": 2},
+    {"name": "Gold pieces", "quantity": 25},
+    {"name": "Encoded letter", "description": "Sealed with red wax, contains hidden instructions", "quantity": 1}
+  ],
   "tags": ["tag1", "tag2"]
-}`,
+}
+
+LOOT GUIDELINES:
+- Use exact D&D 5e SRD item names when applicable (e.g., "Longsword" not "sword", "Potion of Healing" not "healing potion")
+- For currency, use "Gold pieces", "Silver pieces", or "Copper pieces" with quantity
+- For unique/custom items, add a "description" field explaining what it is
+- Include 3-6 items appropriate to the NPC's role and wealth level`,
 
     item: `OUTPUT FORMAT (JSON):
 {
@@ -579,6 +599,53 @@ function getOutputFormatInstructions(forgeType: ForgeType): string {
     {"content": "Visible fact", "category": "appearance", "visibility": "public"},
     {"content": "DM secret", "category": "secret", "visibility": "dm_only"}
   ]
+}`,
+
+    creature: `OUTPUT FORMAT (JSON):
+{
+  "name": "Creature name",
+  "sub_type": "beast|aberration|celestial|construct|dragon|elemental|fey|fiend|giant|humanoid|monstrosity|ooze|plant|undead",
+  "dm_slug": "One-line DM reference",
+  "read_aloud": "2-3 sentences for when players first encounter it",
+  "brain": {
+    "tactics": "How it fights and prioritizes targets",
+    "weaknesses": "Exploitable vulnerabilities",
+    "motivations": "Why it's here, what it wants",
+    "lair_description": "For CR 5+ only",
+    "plot_hooks": ["Story hook 1", "Story hook 2"],
+    "secret": "Hidden fact about this creature"
+  },
+  "soul": {
+    "vivid_description": "2-3 sentences players hear when encountering",
+    "distinctive_features": ["Unique trait 1", "Unique trait 2"],
+    "behavior": "How it acts, hunts, defends",
+    "habitat": "Where it lives and why",
+    "ecology": "Role in ecosystem",
+    "sounds": "What noises it makes"
+  },
+  "mechanics": {
+    "size": "Tiny|Small|Medium|Large|Huge|Gargantuan",
+    "type": "Beast (swarm)",
+    "alignment": "Neutral evil",
+    "ac": 15,
+    "ac_type": "natural armor",
+    "hp": 52,
+    "hit_dice": "8d10+8",
+    "speeds": {"walk": 30, "fly": 60},
+    "abilities": {"str": 14, "dex": 16, "con": 12, "int": 6, "wis": 14, "cha": 8},
+    "saving_throws": [{"ability": "dex", "modifier": 5}],
+    "skills": [{"name": "Perception", "modifier": 4}],
+    "senses": {"darkvision": 60, "passive_perception": 14},
+    "languages": ["Common"],
+    "cr": "3",
+    "xp": 700,
+    "special_abilities": [{"name": "Ability", "description": "Effect"}],
+    "actions": [{"name": "Action", "description": "Attack details"}]
+  },
+  "treasure": {
+    "treasure_description": "What valuables it has",
+    "treasure_items": ["Item 1", "Item 2"]
+  }
 }`,
   }
 

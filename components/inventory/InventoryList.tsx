@@ -38,6 +38,7 @@ interface InventoryListProps {
   ownerType: OwnerType;
   ownerId: string;
   viewMode?: 'default' | 'compact' | 'shop';
+  priceModifier?: number; // For shops: multiply base prices (1.1 = 10% markup, 0.9 = 10% discount)
   onTransfer?: (item: InventoryInstanceWithItem) => void;
   onViewDetails?: (item: InventoryInstanceWithItem) => void;
   readOnly?: boolean;
@@ -60,6 +61,7 @@ export function InventoryList({
   ownerType,
   ownerId,
   viewMode = 'default',
+  priceModifier = 1.0,
   onTransfer,
   onViewDetails,
   readOnly = false,
@@ -127,6 +129,7 @@ export function InventoryList({
               key={item.id}
               item={item}
               viewMode={viewMode}
+              priceModifier={priceModifier}
               readOnly={readOnly}
               onUse={() => consumeItem(item.id)}
               onUseCharge={() => spendCharge(item.id)}
@@ -164,6 +167,7 @@ export function InventoryList({
 interface InventoryItemRowProps {
   item: InventoryInstanceWithItem;
   viewMode: 'default' | 'compact' | 'shop';
+  priceModifier: number;
   readOnly: boolean;
   onUse: () => void;
   onUseCharge: () => void;
@@ -178,6 +182,7 @@ interface InventoryItemRowProps {
 function InventoryItemRow({
   item,
   viewMode,
+  priceModifier,
   readOnly,
   onUse,
   onUseCharge,
@@ -197,9 +202,11 @@ function InventoryItemRow({
   const weight = (item.srd_item?.weight || (mechanics as Record<string, unknown>).weight) as
     | number
     | undefined;
-  const value = (item.value_override ??
+  const baseValue = (item.value_override ??
     item.srd_item?.value_gp ??
     (mechanics as Record<string, unknown>).value_gp) as number | undefined;
+  // Apply price modifier for shop mode
+  const value = baseValue != null ? Math.round(baseValue * priceModifier) : undefined;
   const isSrd = !!item.srd_item_id;
   const isConsumable =
     itemType?.toLowerCase().includes('potion') || itemType?.toLowerCase().includes('scroll');
