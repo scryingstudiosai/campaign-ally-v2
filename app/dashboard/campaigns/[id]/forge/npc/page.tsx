@@ -556,6 +556,8 @@ export default function NpcForgePage(): JSX.Element {
         setGenerationReferencedEntities([])
 
         toast.success('NPC fleshed out and saved!')
+        // Force Next.js to invalidate cache and refetch server data
+        router.refresh()
         router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`)
       } catch {
         toast.error('Failed to update stub')
@@ -599,6 +601,8 @@ export default function NpcForgePage(): JSX.Element {
         setGenerationReferencedEntities([])
 
         toast.success('NPC saved to Memory!')
+        // Force Next.js to invalidate cache and refetch server data
+        router.refresh()
         router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`)
       } else if (result.error) {
         toast.error(result.error)
