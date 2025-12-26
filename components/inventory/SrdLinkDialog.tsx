@@ -104,11 +104,15 @@ export function SrdLinkDialog({
     setLinking(true);
     try {
       // Update the inventory instance to link to the SRD item
+      // Must clear custom_entity_id to satisfy the item_reference_check constraint
+      // (database requires either srd_item_id OR custom_entity_id, not both)
       const { error } = await supabase
         .from('inventory_instances')
         .update({
           srd_item_id: srdItem.id,
-          // Keep custom_entity_id so we preserve the custom name/description
+          custom_entity_id: null,
+          // Preserve original custom name in notes if different from SRD name
+          notes: customItemName !== srdItem.name ? `Originally: ${customItemName}` : null,
         })
         .eq('id', inventoryInstanceId);
 
