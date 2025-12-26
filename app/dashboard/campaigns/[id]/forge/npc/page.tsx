@@ -380,63 +380,107 @@ export default function NpcForgePage(): JSX.Element {
     // If fleshing out a stub, update the existing entity instead of creating new
     if (stubId) {
       try {
-        // Fetch existing stub to get its history
-        const { data: existingStub } = await supabase
+        console.log('[NPC Forge] Fleshing out stub:', stubId)
+        console.log('[NPC Forge] forge.output:', forge.output?.name, forge.output?.sub_type)
+
+        // Fetch existing stub to get its history and current state
+        const { data: existingStub, error: fetchError } = await supabase
           .from('entities')
-          .select('attributes')
+          .select('id, name, attributes, forge_status')
           .eq('id', stubId)
           .single()
+
+        if (fetchError || !existingStub) {
+          console.error('[NPC Forge] Failed to fetch stub:', fetchError)
+          toast.error('Failed to find stub entity')
+          return
+        }
+
+        console.log('[NPC Forge] Existing stub state:', {
+          id: existingStub.id,
+          name: existingStub.name,
+          forge_status: existingStub.forge_status,
+        })
 
         const existingHistory =
           (existingStub?.attributes as Record<string, unknown>)?.history || []
 
+        // Build update payload
+        const updatePayload = {
+          name: forge.output.name,
+          subtype: forge.output.race,
+          summary: forge.output.dm_slug || forge.output.dmSlug,
+          description: `**Appearance:** ${forge.output.appearance}\n\n**Personality:** ${forge.output.personality}`,
+          // New Brain/Voice architecture columns
+          sub_type: forge.output.sub_type || 'standard',
+          brain: forge.output.brain || {},
+          voice: forge.output.voice || {},
+          read_aloud: forge.output.read_aloud,
+          dm_slug: forge.output.dm_slug || forge.output.dmSlug,
+          // Mark as complete (no longer a stub)
+          forge_status: 'complete',
+          // Legacy attributes (backward compatibility)
+          attributes: {
+            race: forge.output.race,
+            gender: forge.output.gender,
+            appearance: forge.output.appearance,
+            personality: forge.output.personality,
+            voiceAndMannerisms: forge.output.voiceAndMannerisms,
+            voiceReference: forge.output.voiceReference,
+            motivation: forge.output.motivation,
+            secret: forge.output.secret,
+            plotHook: forge.output.plotHook,
+            loot: forge.output.loot,
+            combatStats: forge.output.combatStats,
+            connectionHooks: forge.output.connectionHooks,
+            is_stub: false,
+            needs_review: false,
+            history: [
+              ...(existingHistory as Array<Record<string, unknown>>),
+              {
+                event: 'fleshed_out',
+                timestamp: new Date().toISOString(),
+                note: 'Completed via NPC forge',
+              },
+            ],
+          },
+        }
+
+        console.log('[NPC Forge] Update payload forge_status:', updatePayload.forge_status)
+        console.log('[NPC Forge] Update payload is_stub:', updatePayload.attributes.is_stub)
+
         // Update the stub with the generated content
-        const { error } = await supabase
+        const { error, count } = await supabase
           .from('entities')
-          .update({
-            name: forge.output.name,
-            subtype: forge.output.race,
-            summary: forge.output.dm_slug || forge.output.dmSlug,
-            description: `**Appearance:** ${forge.output.appearance}\n\n**Personality:** ${forge.output.personality}`,
-            // New Brain/Voice architecture columns
-            sub_type: forge.output.sub_type || 'standard',
-            brain: forge.output.brain || {},
-            voice: forge.output.voice || {},
-            read_aloud: forge.output.read_aloud,
-            dm_slug: forge.output.dm_slug || forge.output.dmSlug,
-            // Mark as complete (no longer a stub)
-            forge_status: 'complete',
-            // Legacy attributes (backward compatibility)
-            attributes: {
-              race: forge.output.race,
-              gender: forge.output.gender,
-              appearance: forge.output.appearance,
-              personality: forge.output.personality,
-              voiceAndMannerisms: forge.output.voiceAndMannerisms,
-              voiceReference: forge.output.voiceReference,
-              motivation: forge.output.motivation,
-              secret: forge.output.secret,
-              plotHook: forge.output.plotHook,
-              loot: forge.output.loot,
-              combatStats: forge.output.combatStats,
-              connectionHooks: forge.output.connectionHooks,
-              is_stub: false,
-              needs_review: false,
-              history: [
-                ...(existingHistory as Array<Record<string, unknown>>),
-                {
-                  event: 'fleshed_out',
-                  timestamp: new Date().toISOString(),
-                  note: 'Completed via NPC forge',
-                },
-              ],
-            },
-          })
+          .update(updatePayload)
           .eq('id', stubId)
+          .select('id, forge_status')
+
+        console.log('[NPC Forge] Update result - error:', error, 'count:', count)
 
         if (error) {
-          toast.error('Failed to update entity')
+          console.error('[NPC Forge] Update failed:', error)
+          toast.error(`Failed to update entity: ${error.message}`)
           return
+        }
+
+        // Verify the update worked by checking the entity again
+        const { data: verifyEntity } = await supabase
+          .from('entities')
+          .select('id, name, forge_status, attributes')
+          .eq('id', stubId)
+          .single()
+
+        console.log('[NPC Forge] Verification after update:', {
+          id: verifyEntity?.id,
+          name: verifyEntity?.name,
+          forge_status: verifyEntity?.forge_status,
+          is_stub: (verifyEntity?.attributes as Record<string, unknown>)?.is_stub,
+        })
+
+        if (verifyEntity?.forge_status !== 'complete') {
+          console.error('[NPC Forge] forge_status not updated! Current value:', verifyEntity?.forge_status)
+          toast.error('Update may not have completed properly')
         }
 
         // Save facts to the facts table (if available)
