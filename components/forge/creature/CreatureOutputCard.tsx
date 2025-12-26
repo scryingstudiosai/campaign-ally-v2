@@ -548,7 +548,7 @@ export function CreatureOutputCard({
             <div>
               <h4 className="text-sm font-medium text-amber-400 mb-2 flex items-center gap-2">
                 <Coins className="w-4 h-4" />
-                Loot Items
+                Loot Items ({treasure.treasure_items.length})
               </h4>
               <div className="space-y-2">
                 {treasure.treasure_items.map((item, i) => (
@@ -558,13 +558,14 @@ export function CreatureOutputCard({
                   >
                     <span className="text-slate-200">{item}</span>
                     <Badge variant="outline" className="text-xs text-teal-400 border-teal-500/30">
-                      + Inventory
+                      Auto-add to inventory
                     </Badge>
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-slate-500 mt-2">
-                These items will be added to the creature&apos;s inventory when saved
+              <p className="text-xs text-slate-500 mt-3 p-2 bg-teal-500/10 rounded border border-teal-500/20">
+                <Coins className="w-3 h-3 inline mr-1" />
+                These items will be automatically added to the creature&apos;s inventory when saved to Memory.
               </p>
             </div>
           )}

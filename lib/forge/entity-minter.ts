@@ -437,6 +437,33 @@ export async function saveForgedEntity(
     console.log('[EntityMinter] Not a location forge, skipping NPC reference update')
   }
 
+  // For creature forge, process treasure items into inventory
+  if (forgeType === 'creature') {
+    console.log('[EntityMinter] Creature forge detected, checking for treasure items...')
+    const treasure = output.treasure as { treasure_description?: string; treasure_items?: string[] } | undefined
+    const treasureItems = treasure?.treasure_items || []
+    console.log('[EntityMinter] Treasure items:', treasureItems)
+
+    if (treasureItems.length > 0) {
+      const lootResult = await processLootToInventory(
+        supabase,
+        campaignId,
+        savedEntity.id,
+        savedEntity.name as string,
+        treasureItems,
+        'creature'
+      )
+      console.log('[EntityMinter] Creature loot processing result:', lootResult)
+      if (lootResult.errors.length > 0) {
+        console.error('[EntityMinter] Creature loot errors:', lootResult.errors)
+      } else {
+        console.log(`[EntityMinter] Added ${lootResult.srdItems} SRD items and ${lootResult.customItems} custom items to creature inventory`)
+      }
+    } else {
+      console.log('[EntityMinter] No treasure items to process')
+    }
+  }
+
   // Create metadata-based relationships (owner, location, faction)
   if (context.metadata) {
     const { ownerId, locationId, factionId } = context.metadata
@@ -823,7 +850,7 @@ async function findSrdItemMatch(
 }
 
 /**
- * Process NPC loot items into the inventory system
+ * Process NPC/creature loot items into the inventory system
  * - SRD items are added directly as inventory instances
  * - Custom items are created as item entity stubs and added to inventory
  */
@@ -832,7 +859,8 @@ export async function processLootToInventory(
   campaignId: string,
   ownerId: string,
   ownerName: string,
-  loot: LootItem[] | string[]
+  loot: LootItem[] | string[],
+  ownerType: 'npc' | 'creature' = 'npc'
 ): Promise<LootProcessingResult> {
   const result: LootProcessingResult = { srdItems: 0, customItems: 0, errors: [] }
 
@@ -868,7 +896,7 @@ export async function processLootToInventory(
         const { error } = await supabase.from('inventory_instances').insert({
           campaign_id: campaignId,
           srd_item_id: srdItem.id,
-          owner_type: 'npc',
+          owner_type: ownerType,
           owner_id: ownerId,
           quantity: lootItem.quantity || 1,
           acquired_from: `Generated with ${ownerName}`,
@@ -923,7 +951,7 @@ export async function processLootToInventory(
         const { error: invError } = await supabase.from('inventory_instances').insert({
           campaign_id: campaignId,
           custom_entity_id: itemEntity.id,
-          owner_type: 'npc',
+          owner_type: ownerType,
           owner_id: ownerId,
           quantity: lootItem.quantity || 1,
           acquired_from: `Generated with ${ownerName}`,
