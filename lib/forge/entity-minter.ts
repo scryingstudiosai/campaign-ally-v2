@@ -664,6 +664,29 @@ function buildEntityData(
         },
       }
 
+    case 'quest':
+      return {
+        ...baseData,
+        // Brain/Soul/Mechanics architecture columns
+        sub_type: (output.sub_type as string) || 'side',
+        brain: output.brain || {},
+        soul: output.soul || {},
+        mechanics: output.mechanics || {},
+        read_aloud: output.read_aloud as string,
+        dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
+        summary: (output.soul as Record<string, unknown>)?.hook as string ||
+          (output.dm_slug as string) || '',
+        description: (output.soul as Record<string, unknown>)?.summary as string || '',
+        attributes: {
+          ...additionalAttributes,
+          objectives: output.objectives,
+          rewards: output.rewards,
+          chain: output.chain,
+          encounters: output.encounters,
+          npcs: output.npcs,
+        },
+      }
+
     default:
       return {
         ...baseData,

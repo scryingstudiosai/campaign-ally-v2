@@ -465,18 +465,122 @@ export interface EncounterMechanics {
 
 export const DEFAULT_ENCOUNTER_MECHANICS: EncounterMechanics = {};
 
-// Quest Brain
+// Quest Sub-Types
+export type QuestSubType =
+  | 'main'
+  | 'side'
+  | 'personal'
+  | 'faction'
+  | 'bounty';
+
+// Quest Objective State
+export type QuestObjectiveState = 'active' | 'locked' | 'completed' | 'failed';
+export type QuestObjectiveType = 'required' | 'optional' | 'hidden';
+
+// Quest Objective
+export interface QuestObjective {
+  id: string;
+  title: string;
+  description: string;
+  type: QuestObjectiveType;
+  state: QuestObjectiveState;
+  unlock_condition?: string;
+  parent_id?: string | null;
+  hints?: string[];
+}
+
+// Quest Soul - Player-facing information
+export interface QuestSoul {
+  title?: string;
+  hook?: string;
+  summary?: string;
+  stakes?: string;
+  timeline?: 'immediate' | 'days' | 'weeks' | 'no_pressure';
+}
+
+export const DEFAULT_QUEST_SOUL: QuestSoul = {};
+
+// Quest Brain - DM-only information
 export interface QuestBrain extends BaseBrain {
-  stakes: string;
-  complications: string[];
+  background?: string;
+  twists?: string[];
+  secret?: string;
+  failure_consequences?: string;
+  success_variations?: string[];
+  dm_notes?: string;
+  // Legacy fields for backward compatibility
+  stakes?: string;
+  complications?: string[];
   moral_tension?: string;
   time_pressure?: string;
 }
 
-export const DEFAULT_QUEST_BRAIN: QuestBrain = {
-  stakes: '',
-  complications: [],
-};
+export const DEFAULT_QUEST_BRAIN: QuestBrain = {};
+
+// Quest Reward Item
+export interface QuestRewardItem {
+  name: string;
+  type?: string;
+  rarity?: 'common' | 'uncommon' | 'rare' | 'very rare' | 'legendary';
+  description?: string;
+}
+
+// Quest Reputation Change
+export interface QuestReputationChange {
+  faction: string;
+  change: string;
+}
+
+// Quest Rewards
+export interface QuestRewards {
+  xp?: number;
+  gold?: number | string;
+  items?: QuestRewardItem[];
+  reputation?: QuestReputationChange[];
+  special?: string;
+}
+
+export const DEFAULT_QUEST_REWARDS: QuestRewards = {};
+
+// Quest Chain
+export interface QuestChain {
+  chain_position?: string | null;
+  previous_quest?: string | null;
+  previous_quest_id?: string | null;
+  next_quest_hook?: string | null;
+  arc_name?: string | null;
+}
+
+export const DEFAULT_QUEST_CHAIN: QuestChain = {};
+
+// Quest Encounter Seed
+export interface QuestEncounterSeed {
+  name: string;
+  objective_id?: string;
+  type: 'combat' | 'social' | 'exploration' | 'puzzle';
+  description: string;
+  creatures?: string[];
+  difficulty?: 'easy' | 'medium' | 'hard' | 'deadly';
+}
+
+// Quest NPC Seed
+export interface QuestNpcSeed {
+  name: string;
+  role: string;
+  objective_id?: string;
+  brief: string;
+}
+
+// Quest Mechanics
+export interface QuestMechanics {
+  quest_type?: QuestSubType;
+  recommended_level?: string;
+  estimated_sessions?: number;
+  difficulty?: 'easy' | 'medium' | 'hard' | 'deadly';
+  themes?: string[];
+}
+
+export const DEFAULT_QUEST_MECHANICS: QuestMechanics = {};
 
 // Creature Sub-Types
 export type CreatureSubType =

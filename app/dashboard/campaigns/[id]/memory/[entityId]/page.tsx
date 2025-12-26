@@ -33,9 +33,14 @@ import { CreatureBrainCard } from '@/components/entity/CreatureBrainCard'
 import { CreatureSoulCard } from '@/components/entity/CreatureSoulCard'
 import { CreatureMechanicsCard } from '@/components/entity/CreatureMechanicsCard'
 import { NpcMechanicsCard } from '@/components/entity/NpcMechanicsCard'
+import { QuestSoulCard } from '@/components/entity/QuestSoulCard'
+import { QuestBrainCard } from '@/components/entity/QuestBrainCard'
+import { QuestObjectivesCard } from '@/components/entity/QuestObjectivesCard'
+import { QuestRewardsCard } from '@/components/entity/QuestRewardsCard'
+import { QuestChainCard } from '@/components/entity/QuestChainCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, NpcMechanics, isNpcBrain } from '@/types/living-entity'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, NpcMechanics, QuestBrain, QuestSoul, QuestObjective, QuestRewards, QuestChain, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -197,6 +202,14 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const npcMechanics = isNpc ? (entity.mechanics as NpcMechanics | null) : null
   const hasNpcMechanics = npcMechanics && Object.keys(npcMechanics).length > 0
 
+  // Quest-specific helpers
+  const isQuest = entity.entity_type === 'quest'
+  const questBrain = entity.brain as QuestBrain | null
+  const questSoul = entity.soul as QuestSoul | null
+  const questObjectives = attributes.objectives as QuestObjective[] | null
+  const questRewards = attributes.rewards as QuestRewards | null
+  const questChain = attributes.chain as QuestChain | null
+
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
     (entity.voice && (entity.voice as Voice).style?.length > 0) ||
@@ -234,6 +247,12 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (creatureMechanics && Object.keys(creatureMechanics).length > 0) ||
     hasCreatureTreasureContent
 
+  const hasQuestStageContent =
+    (questSoul && Object.keys(questSoul).length > 0) ||
+    (questObjectives && questObjectives.length > 0) ||
+    (questRewards && Object.keys(questRewards).length > 0) ||
+    (questChain && Object.keys(questChain).length > 0)
+
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
     (isItem && hasItemStageContent) ||
@@ -241,6 +260,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (isFaction && hasFactionStageContent) ||
     (isEncounter && hasEncounterStageContent) ||
     (isCreature && hasCreatureStageContent) ||
+    (isQuest && hasQuestStageContent) ||
     entity.public_notes ||
     entity.dm_notes
 
@@ -536,6 +556,31 @@ export default async function EntityDetailPage({ params }: PageProps) {
               </>
             )}
 
+            {/* --- QUEST STAGE CONTENT --- */}
+            {isQuest && (
+              <>
+                {/* Quest Soul - Hook, summary, stakes (player-facing) */}
+                {questSoul && Object.keys(questSoul).length > 0 && (
+                  <QuestSoulCard soul={questSoul} />
+                )}
+
+                {/* Quest Objectives - Interactive objective tracker */}
+                {questObjectives && questObjectives.length > 0 && (
+                  <QuestObjectivesCard objectives={questObjectives} />
+                )}
+
+                {/* Quest Rewards - XP, gold, items, reputation */}
+                {questRewards && Object.keys(questRewards).length > 0 && (
+                  <QuestRewardsCard rewards={questRewards} />
+                )}
+
+                {/* Quest Chain - Position in quest chain */}
+                {questChain && Object.keys(questChain).length > 0 && (
+                  <QuestChainCard chain={questChain} campaignId={params.id} />
+                )}
+              </>
+            )}
+
             {/* --- SHARED STAGE CONTENT --- */}
             {/* Public Notes */}
             {entity.public_notes && (
@@ -616,6 +661,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* --- CREATURE SCRIPT CONTENT --- */}
             {isCreature && ((creatureBrain && Object.keys(creatureBrain).length > 0) || hasCreatureTreasureContent) && (
               <CreatureBrainCard brain={creatureBrain || {}} treasure={creatureTreasure} />
+            )}
+
+            {/* --- QUEST SCRIPT CONTENT --- */}
+            {isQuest && questBrain && Object.keys(questBrain).length > 0 && (
+              <QuestBrainCard brain={questBrain} />
             )}
 
             {/* --- SHARED SCRIPT CONTENT --- */}

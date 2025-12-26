@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { DeleteCampaignButton } from '@/components/campaigns/delete-campaign-button'
-import { ArrowLeft, BookOpen, Brain, Calendar, Pencil, Sparkles, User, MapPin, Swords, Gem, Bug, Flag } from 'lucide-react'
+import { ArrowLeft, BookOpen, Brain, Calendar, Pencil, Sparkles, User, MapPin, Swords, Gem, Bug, Flag, Scroll } from 'lucide-react'
 
 interface PageProps {
   params: { id: string }
@@ -238,6 +238,19 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                 </div>
                 <p className="text-sm text-slate-400">
                   Create dynamic combat, social, and exploration encounters
+                </p>
+              </div>
+            </Link>
+
+            {/* Adventures */}
+            <Link href={`/dashboard/campaigns/${params.id}/forge/quest`} className="block">
+              <div className="ca-card ca-card--quest ca-card-interactive p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Scroll className="w-4 h-4 text-amber-400" />
+                  <h3 className="text-base font-semibold text-slate-100">Quest Forge</h3>
+                </div>
+                <p className="text-sm text-slate-400">
+                  Design quests with objectives, chains, and rewards
                 </p>
               </div>
             </Link>
