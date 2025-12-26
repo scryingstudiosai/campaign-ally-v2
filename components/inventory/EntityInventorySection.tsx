@@ -37,7 +37,7 @@ export function EntityInventorySection({
   mechanics,
 }: EntityInventorySectionProps): JSX.Element | null {
   // Only show inventory for entity types that can hold items
-  const canHoldItems = ['npc', 'player', 'location'].includes(entityType);
+  const canHoldItems = ['npc', 'player', 'location', 'creature'].includes(entityType);
 
   // State for dialogs
   const [viewingItem, setViewingItem] = useState<InventoryInstanceWithItem | null>(null);

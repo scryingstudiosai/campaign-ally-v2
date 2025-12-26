@@ -1,4 +1,4 @@
-export type OwnerType = 'npc' | 'player' | 'location' | 'container' | 'loot_pile' | 'party' | 'shop';
+export type OwnerType = 'npc' | 'player' | 'location' | 'container' | 'loot_pile' | 'party' | 'shop' | 'creature';
 
 export interface InventoryInstance {
   id: string;

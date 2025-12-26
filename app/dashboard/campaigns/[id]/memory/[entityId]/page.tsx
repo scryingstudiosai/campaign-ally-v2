@@ -34,7 +34,7 @@ import { CreatureSoulCard } from '@/components/entity/CreatureSoulCard'
 import { CreatureMechanicsCard } from '@/components/entity/CreatureMechanicsCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, isNpcBrain } from '@/types/living-entity'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -189,6 +189,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const creatureBrain = entity.brain as CreatureBrain | null
   const creatureSoul = entity.soul as CreatureSoul | null
   const creatureMechanics = entity.mechanics as CreatureMechanics | null
+  const creatureTreasure = attributes.treasure as CreatureTreasure | null
 
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
@@ -216,9 +217,15 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (encounterMechanics && Object.keys(encounterMechanics).length > 0) ||
     (encounterRewards && Object.keys(encounterRewards).length > 0)
 
+  const hasCreatureTreasureContent = creatureTreasure && (
+    creatureTreasure.treasure_description ||
+    (creatureTreasure.treasure_items && creatureTreasure.treasure_items.length > 0)
+  )
+
   const hasCreatureStageContent =
     (creatureSoul && Object.keys(creatureSoul).length > 0) ||
-    (creatureMechanics && Object.keys(creatureMechanics).length > 0)
+    (creatureMechanics && Object.keys(creatureMechanics).length > 0) ||
+    hasCreatureTreasureContent
 
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
@@ -597,8 +604,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
             )}
 
             {/* --- CREATURE SCRIPT CONTENT --- */}
-            {isCreature && creatureBrain && Object.keys(creatureBrain).length > 0 && (
-              <CreatureBrainCard brain={creatureBrain} />
+            {isCreature && ((creatureBrain && Object.keys(creatureBrain).length > 0) || hasCreatureTreasureContent) && (
+              <CreatureBrainCard brain={creatureBrain || {}} treasure={creatureTreasure} />
             )}
 
             {/* --- SHARED SCRIPT CONTENT --- */}
