@@ -38,6 +38,7 @@ import { QuestBrainCard } from '@/components/entity/QuestBrainCard'
 import { QuestObjectivesCard } from '@/components/entity/QuestObjectivesCard'
 import { QuestRewardsCard } from '@/components/entity/QuestRewardsCard'
 import { QuestChainCard } from '@/components/entity/QuestChainCard'
+import { TavernMenuCard } from '@/components/entity/TavernMenuCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
 import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, NpcMechanics, QuestBrain, QuestSoul, QuestObjective, QuestRewards, QuestChain, isNpcBrain } from '@/types/living-entity'
@@ -62,6 +63,7 @@ import {
   Calendar,
   Wand2,
   Heart,
+  Beer,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { renderWithBold } from '@/lib/text-utils'
@@ -502,6 +504,28 @@ export default async function EntityDetailPage({ params }: PageProps) {
                 {/* Location Mechanics - Hazards, encounters (player-facing) */}
                 {locationMechanics && Object.keys(locationMechanics).length > 0 && (
                   <LocationMechanicsCard mechanics={locationMechanics} />
+                )}
+
+                {/* Tavern/Inn Menu & Services - Room rates, drinks, meals */}
+                {locationMechanics && (locationMechanics.is_tavern || locationMechanics.lodging || locationMechanics.menu) && (
+                  <div className="ca-panel p-4">
+                    <h3 className="text-lg font-semibold text-amber-400 mb-3 flex items-center gap-2">
+                      <Beer className="w-5 h-5" />
+                      Menu & Services
+                    </h3>
+                    <TavernMenuCard mechanics={locationMechanics as {
+                      establishment_quality?: string;
+                      lodging?: {
+                        available: boolean;
+                        rooms: Array<{ type: string; price_per_night: number; description: string }>;
+                      };
+                      menu?: {
+                        drinks: Array<{ name: string; price: number; description: string }>;
+                        meals: Array<{ name: string; price: number; description: string }>;
+                        specialty?: { name: string; price: number; description: string };
+                      };
+                    }} />
+                  </div>
                 )}
               </>
             )}

@@ -10,7 +10,8 @@ import {
   BUILDING_PROMPT,
   ROOM_PROMPT,
   LANDMARK_PROMPT,
-  DUNGEON_PROMPT
+  DUNGEON_PROMPT,
+  TAVERN_INN_PROMPT
 } from '@/lib/forge/prompts/location-prompts'
 import { isLikelyShop, inferShopType, getSrdItemsForShopType } from '@/lib/srd/item-lookup'
 
@@ -78,6 +79,34 @@ interface LocationMechanics {
   shop_type?: string
   price_modifier?: number
   suggested_stock?: string[]
+  // Tavern/Inn-related properties
+  is_tavern?: boolean
+  establishment_quality?: 'poor' | 'modest' | 'comfortable' | 'wealthy' | 'aristocratic'
+  lodging?: {
+    available: boolean
+    rooms: Array<{
+      type: string
+      price_per_night: number
+      description: string
+    }>
+  }
+  menu?: {
+    drinks: Array<{
+      name: string
+      price: number
+      description: string
+    }>
+    meals: Array<{
+      name: string
+      price: number
+      description: string
+    }>
+    specialty?: {
+      name: string
+      price: number
+      description: string
+    }
+  }
 }
 
 interface LocationFact {
@@ -317,6 +346,16 @@ IMPORTANT GUIDELINES:
     case 'dungeon':
       prompt += '\n' + DUNGEON_PROMPT
       break
+  }
+
+  // Add tavern/inn specific prompt if the concept suggests it
+  const conceptLower = (inputs.concept || '').toLowerCase()
+  const nameLower = (inputs.name || '').toLowerCase()
+  const isTavernConcept = /tavern|inn|pub|ale\s*house|drinking|bar|taproom/.test(conceptLower) ||
+    /tavern|inn|pub|ale\s*house/.test(nameLower)
+
+  if (isTavernConcept && (inputs.locationType === 'building' || inputs.locationType === 'room')) {
+    prompt += '\n' + TAVERN_INN_PROMPT
   }
 
   // Inject parent location context (hierarchy)

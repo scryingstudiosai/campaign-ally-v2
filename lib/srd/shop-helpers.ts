@@ -14,35 +14,55 @@ export function getSrdItemsForShopType(shopType: string): string[] {
       'Longsword', 'Shortsword', 'Dagger', 'Handaxe', 'Greataxe',
       'Chain Mail', 'Scale Mail', 'Shield', 'Warhammer', 'Mace'
     ],
+    weapons: [
+      'Longsword', 'Greatsword', 'Rapier', 'Scimitar', 'Shortbow',
+      'Longbow', 'Crossbow, Light', 'Crossbow, Heavy', 'Javelin', 'Spear',
+      'Dagger', 'Shortsword', 'Handaxe', 'Battleaxe', 'Flail'
+    ],
     weaponsmith: [
       'Longsword', 'Greatsword', 'Rapier', 'Scimitar', 'Shortbow',
       'Longbow', 'Crossbow, Light', 'Crossbow, Heavy', 'Javelin', 'Spear'
     ],
+    armor: [
+      'Chain Mail', 'Scale Mail', 'Plate', 'Leather Armor', 'Studded Leather Armor',
+      'Shield', 'Half Plate', 'Breastplate', 'Ring Mail', 'Hide Armor'
+    ],
     armorer: [
-      'Chain Mail', 'Scale Mail', 'Plate', 'Leather', 'Studded Leather',
-      'Shield', 'Half Plate', 'Breastplate', 'Ring Mail', 'Hide'
+      'Chain Mail', 'Scale Mail', 'Plate', 'Leather Armor', 'Studded Leather Armor',
+      'Shield', 'Half Plate', 'Breastplate', 'Ring Mail', 'Hide Armor'
+    ],
+    potions: [
+      'Potion of Healing', 'Antitoxin', "Healer's Kit", 'Herbalism Kit',
+      'Component Pouch', 'Vial', 'Holy Water'
     ],
     apothecary: [
       'Potion of Healing', 'Antitoxin', "Healer's Kit", 'Herbalism Kit',
-      'Component Pouch', 'Vial'
+      'Component Pouch', 'Vial', 'Holy Water'
     ],
     alchemist: [
       'Potion of Healing', "Alchemist's Fire", 'Acid', 'Antitoxin',
-      'Oil', 'Holy Water', "Alchemist's Supplies"
+      'Oil', 'Holy Water', "Alchemist's Supplies", 'Vial'
     ],
     general: [
       'Backpack', 'Bedroll', 'Rope, Hempen (50 feet)', 'Torch',
-      'Rations (1 day)', 'Waterskin', 'Tinderbox', 'Lantern, Hooded', 'Oil'
+      'Rations (1 day)', 'Waterskin', 'Tinderbox', 'Lantern, Hooded', 'Oil',
+      'Crowbar', 'Hammer', 'Piton', 'Grappling Hook', 'Chain (10 feet)',
+      'Chalk', 'Candle', 'Flask', 'Hunting Trap', 'Ink',
+      'Mirror, Steel', 'Pole (10-foot)', 'Shovel', 'Signal Whistle',
+      'Tent, Two-Person', 'Caltrops', 'Ball Bearings', 'Antitoxin'
     ],
     tavern: [
-      'Rations (1 day)', 'Waterskin', 'Wine, Common', 'Ale'
+      'Rations (1 day)', 'Waterskin'
     ],
     magic: [
       'Potion of Healing', 'Component Pouch', 'Spellbook',
-      'Arcane Focus', 'Crystal', 'Orb'
+      'Arcane Focus', 'Crystal', 'Orb', 'Rod', 'Wand'
+    ],
+    jewelry: [
+      'Fine Clothes', 'Signet Ring'
     ],
     jeweler: [
-      'Ring', 'Amulet', 'Fine Clothes', 'Signet Ring'
+      'Fine Clothes', 'Signet Ring'
     ],
     fletcher: [
       'Shortbow', 'Longbow', 'Crossbow, Light', 'Crossbow, Heavy',
@@ -50,7 +70,24 @@ export function getSrdItemsForShopType(shopType: string): string[] {
     ],
     provisioner: [
       'Rations (1 day)', 'Waterskin', 'Tinderbox', 'Torch',
-      'Rope, Hempen (50 feet)', 'Grappling Hook', 'Piton'
+      'Rope, Hempen (50 feet)', 'Grappling Hook', 'Piton', 'Bedroll'
+    ],
+    clothing: [
+      'Common Clothes', 'Fine Clothes', "Traveler's Clothes", 'Robes'
+    ],
+    mounts: [
+      'Riding Horse', 'Draft Horse', 'Pony', 'Donkey', 'Mule',
+      'Saddle, Riding', 'Saddle, Military', 'Saddlebags', 'Bit and Bridle',
+      'Feed (per day)'
+    ],
+    stable: [
+      'Riding Horse', 'Draft Horse', 'Pony', 'Donkey', 'Mule',
+      'Saddle, Riding', 'Saddle, Military', 'Saddlebags', 'Bit and Bridle',
+      'Feed (per day)'
+    ],
+    books: [
+      'Book', 'Ink', 'Ink Pen', 'Paper (one sheet)', 'Parchment (one sheet)',
+      'Sealing Wax', 'Spellbook'
     ],
   };
 
@@ -66,23 +103,26 @@ export function getSrdItemsForShopType(shopType: string): string[] {
 }
 
 /**
- * Infer shop type from location name/sub_type
+ * Infer shop type from location name/sub_type/description
  */
-export function inferShopType(location: { name?: string; sub_type?: string }): string {
-  const text = `${location.name || ''} ${location.sub_type || ''}`.toLowerCase();
+export function inferShopType(location: { name?: string; sub_type?: string; description?: string }): string {
+  const text = `${location.name || ''} ${location.sub_type || ''} ${location.description || ''}`.toLowerCase();
 
-  if (text.includes('blacksmith') || text.includes('forge') || text.includes('smith')) return 'blacksmith';
-  if (text.includes('apothecary') || text.includes('potion') || text.includes('herb')) return 'apothecary';
-  if (text.includes('alchemist')) return 'alchemist';
-  if (text.includes('armor')) return 'armorer';
-  if (text.includes('weapon')) return 'weaponsmith';
-  if (text.includes('magic') || text.includes('arcane') || text.includes('wizard')) return 'magic';
-  if (text.includes('jewel') || text.includes('gem')) return 'jeweler';
-  if (text.includes('tavern') || text.includes('inn') || text.includes('pub')) return 'tavern';
-  if (text.includes('fletcher') || text.includes('bow') || text.includes('arrow')) return 'fletcher';
-  if (text.includes('provision') || text.includes('supply') || text.includes('outfitter')) return 'provisioner';
+  // Order matters - check specific types first
+  if (/blacksmith|weaponsmith|sword|blade/.test(text)) return 'weapons';
+  if (/armou?rer|armor|mail|plate/.test(text)) return 'armor';
+  if (/apothecary|alchemist|potion|herb|remedy|elixir/.test(text)) return 'potions';
+  if (/magic|arcane|enchant|wizard|scroll|wand|mystic|curiosit/.test(text)) return 'magic';
+  if (/jewel|gem|goldsmith|silver|ring|necklace/.test(text)) return 'jewelry';
+  if (/tavern|inn|pub|ale\s*house/.test(text)) return 'tavern';
+  if (/general\s*store|outfitter|supply|provisions|adventur|gear|trading\s*post|mercantile/.test(text)) return 'general';
+  if (/leather|cloth|tailor|weaver/.test(text)) return 'clothing';
+  if (/stable|horse|mount|livery/.test(text)) return 'mounts';
+  if (/book|scroll|library|scribe/.test(text)) return 'books';
+  if (/fletcher|bow|arrow/.test(text)) return 'fletcher';
+  if (/forge|smithy/.test(text)) return 'blacksmith';
 
-  return 'general';
+  return 'general'; // Default fallback
 }
 
 /**
@@ -98,7 +138,8 @@ export function isLikelyShop(location: { name?: string; sub_type?: string; mecha
     'magic shop', 'alchemist', 'herbalist', 'jeweler', 'trader', 'vendor',
     'emporium', 'bazaar', 'trading post', 'provisioner', 'outfitter',
     'fletcher', 'bowyer', 'tanner', 'leatherworker', 'tailor', 'forge',
-    'foundry', 'arcane', 'enchanter', 'scroll', 'potion'
+    'foundry', 'arcane', 'enchanter', 'scroll', 'potion', 'stable',
+    'livery', 'scribe', 'bookshop', 'pub', 'ale house'
   ];
 
   const text = `${location.name || ''} ${location.sub_type || ''}`.toLowerCase();

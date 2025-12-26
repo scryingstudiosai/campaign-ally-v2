@@ -259,6 +259,38 @@ export interface LocationMechanics {
     long_rest_available?: boolean;
     cost?: string;            // For inns
   };
+  // Shop-related properties
+  is_shop?: boolean;
+  shop_type?: string;
+  price_modifier?: number;
+  // Tavern/Inn-related properties
+  is_tavern?: boolean;
+  establishment_quality?: 'poor' | 'modest' | 'comfortable' | 'wealthy' | 'aristocratic';
+  lodging?: {
+    available: boolean;
+    rooms: Array<{
+      type: string;
+      price_per_night: number;
+      description: string;
+    }>;
+  };
+  menu?: {
+    drinks: Array<{
+      name: string;
+      price: number;
+      description: string;
+    }>;
+    meals: Array<{
+      name: string;
+      price: number;
+      description: string;
+    }>;
+    specialty?: {
+      name: string;
+      price: number;
+      description: string;
+    };
+  };
 }
 
 export const DEFAULT_LOCATION_MECHANICS: LocationMechanics = {};
