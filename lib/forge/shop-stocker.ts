@@ -98,31 +98,67 @@ export async function stockShopInventory(
     }
   }
 
-  // 2. Stock SRD ITEMS
-  // Determine if this shop should only get mundane items (not magic shops)
-  const isMagicShop = ['magic', 'arcane', 'enchanter', 'wizard', 'scroll'].some(
-    (term) => inventoryData.shop_type.toLowerCase().includes(term)
-  );
-  const excludeRare = !isMagicShop;
+  // 2. Stock SRD ITEMS using direct name lookup (most reliable)
+  const itemsToStock = inventoryData.suggested_srd_stock || [];
 
-  console.log(`[ShopStocker] Stocking ${inventoryData.shop_type} shop (excludeRare: ${excludeRare})`);
+  if (itemsToStock.length === 0) {
+    console.log('[ShopStocker] No items to stock');
+    return results;
+  }
 
-  for (const itemName of inventoryData.suggested_srd_stock || []) {
-    try {
-      const srdItem = await findSrdItemByName(itemName, { excludeRare });
+  // Shuffle the item list and select a reasonable number
+  const shuffled = [...itemsToStock].sort(() => Math.random() - 0.5);
+  const itemCount = Math.min(8, shuffled.length); // Stock 8 items max
+  const selectedNames = shuffled.slice(0, itemCount * 2); // Get extras in case some aren't found
 
-      if (!srdItem) {
-        results.errors.push(`SRD item not found: ${itemName}`);
-        continue;
+  console.log(`[ShopStocker] Stocking ${inventoryData.shop_type} shop`);
+  console.log(`[ShopStocker] Looking for items:`, selectedNames.slice(0, 10));
+
+  // Do a bulk lookup using exact name matching
+  const { data: srdItems, error: srdError } = await supabase
+    .from('srd_items')
+    .select('id, name, item_type, rarity, value_gp, weight')
+    .in('name', selectedNames);
+
+  if (srdError) {
+    console.error('[ShopStocker] SRD query error:', srdError);
+    results.errors.push(`SRD query failed: ${srdError.message}`);
+    return results;
+  }
+
+  console.log(`[ShopStocker] Found ${srdItems?.length || 0} exact matches:`,
+    srdItems?.map(i => i.name).slice(0, 10));
+
+  // If no exact matches, try fuzzy matching for missing items
+  const foundItems = srdItems || [];
+  const foundNames = new Set(foundItems.map(i => i.name.toLowerCase()));
+  const missingNames = selectedNames.filter(name =>
+    !foundNames.has(name.toLowerCase())
+  ).slice(0, 5); // Only try fuzzy for first 5 missing
+
+  if (missingNames.length > 0 && foundItems.length < itemCount) {
+    console.log('[ShopStocker] Trying fuzzy match for:', missingNames);
+
+    for (const name of missingNames) {
+      const srdItem = await findSrdItemByName(name, { excludeRare: true });
+      if (srdItem && !foundNames.has(srdItem.name.toLowerCase())) {
+        foundItems.push(srdItem);
+        foundNames.add(srdItem.name.toLowerCase());
+        console.log(`[ShopStocker] Fuzzy found: ${srdItem.name}`);
       }
+    }
+  }
 
-      console.log(`[ShopStocker] Adding item: ${srdItem.name} (${srdItem.rarity || 'common'})`);
+  // Stock the found items (limit to itemCount)
+  const finalItems = foundItems.slice(0, itemCount);
 
+  for (const srdItem of finalItems) {
+    try {
+      console.log(`[ShopStocker] Adding item: ${srdItem.name} (${srdItem.rarity || 'mundane'})`);
 
-      // Determine quantity based on rarity/type
-      const isCommonConsumable = ['potion', 'ammunition', 'rations', 'torch', 'oil', 'arrow', 'bolt'].some(
-        (t) =>
-          srdItem.item_type?.toLowerCase().includes(t) || itemName.toLowerCase().includes(t)
+      // Determine quantity based on item type
+      const isCommonConsumable = ['potion', 'ammunition', 'rations', 'torch', 'oil', 'arrow', 'bolt', 'vial'].some(
+        (t) => srdItem.name?.toLowerCase().includes(t) || srdItem.item_type?.toLowerCase().includes(t)
       );
       const quantity = isCommonConsumable ? randomInt(5, 15) : randomInt(1, 3);
 
@@ -166,15 +202,17 @@ export async function stockShopInventory(
           });
 
         if (invError) {
-          results.errors.push(`Failed to add ${itemName}: ${invError.message}`);
+          results.errors.push(`Failed to add ${srdItem.name}: ${invError.message}`);
         } else {
           results.srdItems++;
         }
       }
     } catch (err) {
-      results.errors.push(`Error processing ${itemName}: ${String(err)}`);
+      results.errors.push(`Error processing ${srdItem.name}: ${String(err)}`);
     }
   }
+
+  console.log(`[ShopStocker] Successfully stocked ${results.srdItems} items`);
 
   return results;
 }
