@@ -113,8 +113,12 @@ export function TransferItemDialog({
         throw new Error(error.error || 'Transfer failed');
       }
 
-      if (isShopMode && totalPrice != null) {
-        toast.success(`Purchased ${quantity}x ${itemName} for ${totalPrice} gp. Remember to deduct gold!`);
+      if (isShopMode) {
+        if (totalPrice != null) {
+          toast.success(`Purchased ${quantity}x ${itemName} for ${totalPrice.toLocaleString()} gp. Remember to deduct gold!`, { duration: 5000 });
+        } else {
+          toast.success(`Acquired ${quantity}x ${itemName}`);
+        }
       } else {
         toast.success(`Transferred ${quantity}x ${itemName}`);
       }
@@ -145,10 +149,10 @@ export function TransferItemDialog({
             <p className="font-medium text-slate-200">{itemName}</p>
             <div className="flex items-center justify-between text-sm text-slate-400">
               <span>Available: {maxQuantity}</span>
-              {isShopMode && itemPrice != null && (
-                <span className="flex items-center gap-1 text-amber-400">
+              {isShopMode && (
+                <span className={`flex items-center gap-1 ${itemPrice != null ? 'text-amber-400' : 'text-slate-500'}`}>
                   <Coins className="w-3 h-3" />
-                  {itemPrice} gp each
+                  {itemPrice != null ? `${itemPrice.toLocaleString()} gp each` : 'Price not set'}
                 </span>
               )}
             </div>
@@ -215,10 +219,12 @@ export function TransferItemDialog({
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           {/* Total price in shop mode */}
-          {isShopMode && totalPrice != null && (
-            <div className="flex items-center gap-2 text-amber-400 mr-auto">
+          {isShopMode && (
+            <div className={`flex items-center gap-2 mr-auto ${totalPrice != null ? 'text-amber-400' : 'text-slate-500'}`}>
               <Coins className="w-4 h-4" />
-              <span className="font-medium">Total: {totalPrice} gp</span>
+              <span className="font-medium">
+                {totalPrice != null ? `Total: ${totalPrice.toLocaleString()} gp` : 'Price not set'}
+              </span>
             </div>
           )}
           <div className="flex gap-2">

@@ -56,6 +56,13 @@ const RARITY_COLORS: Record<string, string> = {
   artifact: 'bg-red-800 text-red-200',
 };
 
+// Format price for display
+function formatPrice(price: number | undefined | null, showGp = true): string {
+  if (price === null || price === undefined) return 'Price not set';
+  if (price === 0) return 'Free';
+  return showGp ? `${price.toLocaleString()} gp` : price.toLocaleString();
+}
+
 export function InventoryList({
   campaignId,
   ownerType,
@@ -300,12 +307,6 @@ function InventoryItemRow({
               {weight} lb.
             </span>
           )}
-          {viewMode === 'shop' && value != null && (
-            <span className="flex items-center gap-1 text-yellow-500">
-              <Coins className="w-3 h-3" />
-              {value} gp
-            </span>
-          )}
           {hasCharges && (
             <span className="flex items-center gap-1 text-blue-400">
               <Zap className="w-3 h-3" />
@@ -314,6 +315,16 @@ function InventoryItemRow({
           )}
         </div>
       </div>
+
+      {/* Shop Price Display - More prominent for shop mode */}
+      {viewMode === 'shop' && (
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-900/30 rounded-md border border-amber-700/50">
+          <Coins className="w-4 h-4 text-amber-400" />
+          <span className={`font-medium ${value != null ? 'text-amber-400' : 'text-slate-500 text-xs'}`}>
+            {formatPrice(value)}
+          </span>
+        </div>
+      )}
 
       {/* Actions */}
       {!readOnly && (
@@ -377,9 +388,9 @@ function InventoryItemRow({
               <DropdownMenuSeparator className="bg-slate-700" />
 
               {viewMode === 'shop' ? (
-                <DropdownMenuItem onSelect={onTransfer} className="text-yellow-400">
+                <DropdownMenuItem onSelect={onTransfer} className="text-amber-400">
                   <Coins className="w-4 h-4 mr-2" />
-                  Buy ({value ?? '??'} gp)
+                  Buy ({formatPrice(value)})
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem onSelect={onTransfer} className="text-slate-200">
