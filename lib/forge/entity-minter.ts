@@ -177,6 +177,7 @@ const FORGE_TO_ENTITY_TYPE: Record<ForgeType, string> = {
   item: 'item',
   location: 'location',
   monster: 'npc', // Monsters are stored as NPCs with a subtype
+  creature: 'creature',
   faction: 'faction',
   quest: 'quest',
   encounter: 'encounter',
@@ -612,6 +613,26 @@ function buildEntityData(
         attributes: {
           ...additionalAttributes,
           rewards: output.rewards,
+        },
+      }
+
+    case 'creature':
+      return {
+        ...baseData,
+        // Brain/Soul/Mechanics architecture columns
+        sub_type: (output.sub_type as string) || 'beast',
+        brain: output.brain || {},
+        soul: output.soul || {},
+        mechanics: output.mechanics || {},
+        read_aloud: output.read_aloud as string,
+        dm_slug: (output.dm_slug as string) || (output.dmSlug as string),
+        summary: (output.soul as Record<string, unknown>)?.vivid_description as string ||
+          (output.dm_slug as string) || '',
+        description: (output.soul as Record<string, unknown>)?.vivid_description as string || '',
+        attributes: {
+          ...additionalAttributes,
+          treasure: output.treasure,
+          srd_base: output.srd_base,
         },
       }
 

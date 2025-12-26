@@ -478,6 +478,120 @@ export const DEFAULT_QUEST_BRAIN: QuestBrain = {
   complications: [],
 };
 
+// Creature Sub-Types
+export type CreatureSubType =
+  | 'aberration'
+  | 'beast'
+  | 'celestial'
+  | 'construct'
+  | 'dragon'
+  | 'elemental'
+  | 'fey'
+  | 'fiend'
+  | 'giant'
+  | 'humanoid'
+  | 'monstrosity'
+  | 'ooze'
+  | 'plant'
+  | 'swarm'
+  | 'undead';
+
+// Creature Brain - DM-facing tactical info
+export interface CreatureBrain extends BaseBrain {
+  tactics?: string;              // How it fights, prioritizes targets, retreats
+  weaknesses?: string;           // Exploitable vulnerabilities beyond damage types
+  motivations?: string;          // Why it's here, what it wants
+  lair_description?: string;     // If CR 5+, describe its lair
+  lair_actions?: string[];       // If CR 10+, array of lair actions
+  legendary_actions?: Array<{
+    name: string;
+    cost: number;
+    description: string;
+  }>;
+  regional_effects?: string[];   // If legendary, effects on surrounding area
+  plot_hooks?: string[];         // Ways to involve this creature in stories
+  secret?: string;               // Hidden fact about this creature (DM only)
+}
+
+export const DEFAULT_CREATURE_BRAIN: CreatureBrain = {};
+
+// Creature Soul - Player-facing flavor
+export interface CreatureSoul {
+  vivid_description?: string;    // 2-3 sentences players hear when encountering
+  distinctive_features?: string[]; // Unique physical traits
+  behavior?: string;             // How it acts, hunts, defends territory
+  habitat?: string;              // Where it lives and why
+  ecology?: string;              // Role in ecosystem, diet, predators/prey
+  social_structure?: 'solitary' | 'pair' | 'pack' | 'swarm' | 'hive' | 'colony';
+  sounds?: string;               // What noises it makes
+  signs_of_presence?: string;    // Tracks, marks, smells that indicate nearby
+}
+
+export const DEFAULT_CREATURE_SOUL: CreatureSoul = {};
+
+// Creature Mechanics - Full D&D stat block
+export interface CreatureMechanics {
+  size?: 'Tiny' | 'Small' | 'Medium' | 'Large' | 'Huge' | 'Gargantuan';
+  type?: string;                 // Creature type with optional tags
+  alignment?: string;
+  ac?: number;
+  ac_type?: string;              // Natural armor, leather armor, etc.
+  hp?: number;
+  hit_dice?: string;             // e.g., "8d10 + 24"
+  speeds?: {
+    walk?: number;
+    fly?: number;
+    swim?: number;
+    burrow?: number;
+    climb?: number;
+    hover?: boolean;
+  };
+  abilities?: {
+    str: number;
+    dex: number;
+    con: number;
+    int: number;
+    wis: number;
+    cha: number;
+  };
+  saving_throws?: Array<{ ability: string; modifier: number }>;
+  skills?: Array<{ name: string; modifier: number }>;
+  damage_vulnerabilities?: string[];
+  damage_resistances?: string[];
+  damage_immunities?: string[];
+  condition_immunities?: string[];
+  senses?: {
+    darkvision?: number;
+    blindsight?: number;
+    tremorsense?: number;
+    truesight?: number;
+    passive_perception?: number;
+  };
+  languages?: string[];
+  cr?: string;
+  xp?: number;
+  special_abilities?: Array<{ name: string; description: string }>;
+  actions?: Array<{ name: string; description: string }>;
+  bonus_actions?: Array<{ name: string; description: string }>;
+  reactions?: Array<{ name: string; description: string }>;
+  legendary_actions_list?: Array<{ name: string; cost?: number; description: string }>;
+  mythic_actions?: Array<{ name: string; description: string }>;
+  lair_actions?: Array<{ description: string }>;
+}
+
+export const DEFAULT_CREATURE_MECHANICS: CreatureMechanics = {
+  size: 'Medium',
+  abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+};
+
+// Creature Treasure - Loot for inventory system
+export interface CreatureTreasure {
+  treasure_description?: string;  // Narrative description
+  treasure_items?: string[];      // Item names for inventory linking
+}
+
+export const DEFAULT_CREATURE_TREASURE: CreatureTreasure = {};
+
 // Union type for all brains
 export type AnyBrain =
   | NpcBrain
@@ -488,6 +602,7 @@ export type AnyBrain =
   | FactionBrain
   | EncounterBrain
   | QuestBrain
+  | CreatureBrain
   | BaseBrain;
 
 // Type guards
@@ -515,6 +630,10 @@ export function isFactionBrain(brain: BaseBrain): brain is FactionBrain {
   return 'purpose' in brain || 'goals' in brain || 'hierarchy' in brain || 'key_members' in brain;
 }
 
+export function isCreatureBrain(brain: BaseBrain): brain is CreatureBrain {
+  return 'tactics' in brain || 'weaknesses' in brain || 'lair_description' in brain || 'legendary_actions' in brain;
+}
+
 // Get default brain for entity type
 export function getDefaultBrain(entityType: EntityType, subType?: EntitySubType): AnyBrain {
   if (entityType === 'npc') {
@@ -527,6 +646,7 @@ export function getDefaultBrain(entityType: EntityType, subType?: EntitySubType)
   if (entityType === 'faction') return { ...DEFAULT_FACTION_BRAIN };
   if (entityType === 'encounter') return { ...DEFAULT_ENCOUNTER_BRAIN };
   if (entityType === 'quest') return { ...DEFAULT_QUEST_BRAIN };
+  if (entityType === 'creature') return { ...DEFAULT_CREATURE_BRAIN };
   return { ...DEFAULT_BRAIN };
 }
 

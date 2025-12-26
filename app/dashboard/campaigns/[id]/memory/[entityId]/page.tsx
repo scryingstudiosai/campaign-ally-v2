@@ -29,9 +29,12 @@ import { EncounterBrainCard } from '@/components/entity/EncounterBrainCard'
 import { EncounterSoulCard } from '@/components/entity/EncounterSoulCard'
 import { EncounterMechanicsCard } from '@/components/entity/EncounterMechanicsCard'
 import { EncounterRewardsCard } from '@/components/entity/EncounterRewardsCard'
+import { CreatureBrainCard } from '@/components/entity/CreatureBrainCard'
+import { CreatureSoulCard } from '@/components/entity/CreatureSoulCard'
+import { CreatureMechanicsCard } from '@/components/entity/CreatureMechanicsCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, isNpcBrain } from '@/types/living-entity'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -181,6 +184,12 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const encounterMechanics = entity.mechanics as EncounterMechanics | null
   const encounterRewards = entity.attributes?.rewards as EncounterRewards | null
 
+  // Creature-specific helpers
+  const isCreature = entity.entity_type === 'creature'
+  const creatureBrain = entity.brain as CreatureBrain | null
+  const creatureSoul = entity.soul as CreatureSoul | null
+  const creatureMechanics = entity.mechanics as CreatureMechanics | null
+
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
     (entity.voice && (entity.voice as Voice).style?.length > 0) ||
@@ -207,12 +216,17 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (encounterMechanics && Object.keys(encounterMechanics).length > 0) ||
     (encounterRewards && Object.keys(encounterRewards).length > 0)
 
+  const hasCreatureStageContent =
+    (creatureSoul && Object.keys(creatureSoul).length > 0) ||
+    (creatureMechanics && Object.keys(creatureMechanics).length > 0)
+
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
     (isItem && hasItemStageContent) ||
     (isLocation && hasLocationStageContent) ||
     (isFaction && hasFactionStageContent) ||
     (isEncounter && hasEncounterStageContent) ||
+    (isCreature && hasCreatureStageContent) ||
     entity.public_notes ||
     entity.dm_notes
 
@@ -490,6 +504,21 @@ export default async function EntityDetailPage({ params }: PageProps) {
               </>
             )}
 
+            {/* --- CREATURE STAGE CONTENT --- */}
+            {isCreature && (
+              <>
+                {/* Creature Mechanics - Full stat block (player-facing for combat) */}
+                {creatureMechanics && Object.keys(creatureMechanics).length > 0 && (
+                  <CreatureMechanicsCard mechanics={creatureMechanics} name={entity.name} />
+                )}
+
+                {/* Creature Soul - Appearance, behavior, habitat (player-facing) */}
+                {creatureSoul && Object.keys(creatureSoul).length > 0 && (
+                  <CreatureSoulCard soul={creatureSoul} />
+                )}
+              </>
+            )}
+
             {/* --- SHARED STAGE CONTENT --- */}
             {/* Public Notes */}
             {entity.public_notes && (
@@ -565,6 +594,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* --- ENCOUNTER SCRIPT CONTENT --- */}
             {isEncounter && encounterBrain && Object.keys(encounterBrain).length > 0 && (
               <EncounterBrainCard brain={encounterBrain} subType={entity.sub_type} />
+            )}
+
+            {/* --- CREATURE SCRIPT CONTENT --- */}
+            {isCreature && creatureBrain && Object.keys(creatureBrain).length > 0 && (
+              <CreatureBrainCard brain={creatureBrain} />
             )}
 
             {/* --- SHARED SCRIPT CONTENT --- */}
