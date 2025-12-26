@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,14 +35,91 @@ interface StatBlockEditorProps {
   showLegendary?: boolean;
 }
 
+// ActionListEditor is now a separate component to avoid stale closure issues
+interface ActionListEditorProps {
+  label: string;
+  actions: { name: string; description: string }[];
+  onUpdate: (newActions: { name: string; description: string }[]) => void;
+}
+
+function ActionListEditor({ label, actions, onUpdate }: ActionListEditorProps): JSX.Element {
+  const [newName, setNewName] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+
+  const addAction = (): void => {
+    if (newName.trim()) {
+      console.log('[ActionListEditor] Adding action:', newName, 'to list of', actions.length);
+      const updated = [...(actions || []), { name: newName, description: newDesc }];
+      console.log('[ActionListEditor] New actions array:', updated);
+      onUpdate(updated);
+      setNewName('');
+      setNewDesc('');
+    }
+  };
+
+  const removeAction = (index: number): void => {
+    console.log('[ActionListEditor] Removing action at index:', index);
+    const updated = actions.filter((_, i) => i !== index);
+    onUpdate(updated);
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {actions?.map((action, i) => (
+        <div key={i} className="p-2 bg-slate-900/50 rounded-lg">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1">
+              <span className="font-medium text-slate-200">{action.name}</span>
+              <p className="text-sm text-slate-400 mt-1">{action.description}</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => removeAction(i)}
+              className="text-red-400 hover:text-red-300"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <Input
+          placeholder="Action name"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          className="flex-1"
+        />
+        <Button type="button" onClick={addAction} size="sm">
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+      {newName && (
+        <Textarea
+          placeholder="Action description..."
+          value={newDesc}
+          onChange={(e) => setNewDesc(e.target.value)}
+          rows={2}
+        />
+      )}
+    </div>
+  );
+}
+
 export function StatBlockEditor({
   value,
   onChange,
   showLegendary = false,
 }: StatBlockEditorProps): JSX.Element {
-  const updateField = (field: string, val: unknown): void => {
-    onChange({ ...value, [field]: val });
-  };
+  const updateField = useCallback(
+    (field: string, val: unknown): void => {
+      console.log('[StatBlockEditor] updateField called:', field, val);
+      onChange({ ...value, [field]: val });
+    },
+    [onChange, value]
+  );
 
   const updateAbility = (ability: string, score: number): void => {
     onChange({
@@ -70,79 +147,6 @@ export function StatBlockEditor({
     const mod = Math.floor((score - 10) / 2);
     return mod >= 0 ? `+${mod}` : `${mod}`;
   };
-
-  // Action list manager component
-  function ActionListEditor({
-    label,
-    actions,
-    field,
-  }: {
-    label: string;
-    actions: { name: string; description: string }[];
-    field: string;
-  }): JSX.Element {
-    const [newName, setNewName] = useState('');
-    const [newDesc, setNewDesc] = useState('');
-
-    const addAction = (): void => {
-      if (newName.trim()) {
-        updateField(field, [...(actions || []), { name: newName, description: newDesc }]);
-        setNewName('');
-        setNewDesc('');
-      }
-    };
-
-    const removeAction = (index: number): void => {
-      updateField(
-        field,
-        actions.filter((_, i) => i !== index)
-      );
-    };
-
-    return (
-      <div className="space-y-2">
-        <Label>{label}</Label>
-        {actions?.map((action, i) => (
-          <div key={i} className="p-2 bg-slate-900/50 rounded-lg">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <span className="font-medium text-slate-200">{action.name}</span>
-                <p className="text-sm text-slate-400 mt-1">{action.description}</p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeAction(i)}
-                className="text-red-400 hover:text-red-300"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
-        <div className="flex gap-2">
-          <Input
-            placeholder="Action name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="flex-1"
-          />
-          <Button type="button" onClick={addAction} size="sm">
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-        {newName && (
-          <Textarea
-            placeholder="Action description..."
-            value={newDesc}
-            onChange={(e) => setNewDesc(e.target.value)}
-            rows={2}
-          />
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -311,23 +315,31 @@ export function StatBlockEditor({
       </div>
 
       {/* Actions */}
-      <ActionListEditor label="Actions" actions={value.actions || []} field="actions" />
+      <ActionListEditor
+        label="Actions"
+        actions={value.actions || []}
+        onUpdate={(updated) => updateField('actions', updated)}
+      />
 
       {/* Bonus Actions */}
       <ActionListEditor
         label="Bonus Actions"
         actions={value.bonus_actions || []}
-        field="bonus_actions"
+        onUpdate={(updated) => updateField('bonus_actions', updated)}
       />
 
       {/* Reactions */}
-      <ActionListEditor label="Reactions" actions={value.reactions || []} field="reactions" />
+      <ActionListEditor
+        label="Reactions"
+        actions={value.reactions || []}
+        onUpdate={(updated) => updateField('reactions', updated)}
+      />
 
       {/* Special Abilities */}
       <ActionListEditor
         label="Special Abilities"
         actions={value.special_abilities || []}
-        field="special_abilities"
+        onUpdate={(updated) => updateField('special_abilities', updated)}
       />
 
       {/* Legendary Actions (optional) */}
@@ -335,7 +347,7 @@ export function StatBlockEditor({
         <ActionListEditor
           label="Legendary Actions"
           actions={value.legendary_actions || []}
-          field="legendary_actions"
+          onUpdate={(updated) => updateField('legendary_actions', updated)}
         />
       )}
     </div>

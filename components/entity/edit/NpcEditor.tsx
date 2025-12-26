@@ -35,86 +35,116 @@ interface NpcEditorProps {
 }
 
 export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
-  const [formData, setFormData] = useState({
-    // Basic Info
-    name: entity.name || '',
-    sub_type: entity.sub_type || '',
-    summary: entity.summary || '',
-    description: entity.description || '',
+  const [formData, setFormData] = useState(() => {
+    // Debug: log what we're receiving
+    console.log('[NpcEditor] Initializing with entity:', entity.name);
+    console.log('[NpcEditor] Entity soul:', entity.soul);
+    console.log('[NpcEditor] Entity brain:', entity.brain);
+    console.log('[NpcEditor] Entity voice:', entity.voice);
+    console.log('[NpcEditor] Entity mechanics:', entity.mechanics);
 
-    // Soul (Player-facing)
-    soul: {
-      appearance: (entity.soul?.appearance as string) || '',
-      personality: (entity.soul?.personality as string) || '',
-      first_impression: (entity.soul?.first_impression as string) || '',
-      ideal: (entity.soul?.ideal as string) || '',
-      bond: (entity.soul?.bond as string) || '',
-      flaw: (entity.soul?.flaw as string) || '',
-      mannerisms: (entity.soul?.mannerisms as string[]) || [],
-      quirks: (entity.soul?.quirks as string[]) || [],
-      likes: (entity.soul?.likes as string[]) || [],
-      dislikes: (entity.soul?.dislikes as string[]) || [],
-    },
+    return {
+      // Basic Info
+      name: entity.name || '',
+      sub_type: entity.sub_type || '',
+      summary: entity.summary || '',
+      description: entity.description || '',
 
-    // Brain (DM-only)
-    brain: {
-      motivation: (entity.brain?.motivation as string) || '',
-      secret: (entity.brain?.secret as string) || '',
-      fear: (entity.brain?.fear as string) || '',
-      goal: (entity.brain?.goal as string) || '',
-      obstacle: (entity.brain?.obstacle as string) || '',
-      leverage: (entity.brain?.leverage as string) || '',
-      line_they_wont_cross: (entity.brain?.line_they_wont_cross as string) || '',
-      what_they_want_from_pcs: (entity.brain?.what_they_want_from_pcs as string) || '',
-      plot_hooks: (entity.brain?.plot_hooks as string[]) || [],
-      relationships: (entity.brain?.relationships as string) || '',
-    },
-
-    // Voice
-    voice: {
-      speech_pattern: (entity.voice?.speech_pattern as string) || '',
-      vocabulary: (entity.voice?.vocabulary as string) || '',
-      tone: (entity.voice?.tone as string) || '',
-      accent: (entity.voice?.accent as string) || '',
-      catchphrase: (entity.voice?.catchphrase as string) || '',
-      verbal_tics: (entity.voice?.verbal_tics as string[]) || [],
-      sample_quotes: (entity.voice?.sample_quotes as string[]) || [],
-    },
-
-    // Mechanics
-    mechanics: {
-      combat_role: (entity.mechanics?.combat_role as string) || 'non-combatant',
-      ac: (entity.mechanics?.ac as number) || 10,
-      ac_type: (entity.mechanics?.ac_type as string) || '',
-      hp: (entity.mechanics?.hp as number) || 4,
-      hit_dice: (entity.mechanics?.hit_dice as string) || '',
-      speed: (entity.mechanics?.speed as Record<string, number>) || { walk: 30 },
-      abilities: (entity.mechanics?.abilities as Record<string, number>) || {
-        str: 10,
-        dex: 10,
-        con: 10,
-        int: 10,
-        wis: 10,
-        cha: 10,
+      // Soul - merge defaults with existing data, handle field name variations
+      soul: {
+        // Spread existing soul data first
+        ...(entity.soul || {}),
+        // Handle field name variations and provide defaults
+        appearance:
+          (entity.soul?.appearance as string) ||
+          (entity.soul?.physical_description as string) ||
+          '',
+        personality:
+          (entity.soul?.personality as string) || (entity.soul?.demeanor as string) || '',
+        first_impression: (entity.soul?.first_impression as string) || '',
+        ideal: (entity.soul?.ideal as string) || '',
+        bond: (entity.soul?.bond as string) || '',
+        flaw: (entity.soul?.flaw as string) || '',
+        mannerisms: (entity.soul?.mannerisms as string[]) || [],
+        quirks: (entity.soul?.quirks as string[]) || [],
+        likes: (entity.soul?.likes as string[]) || [],
+        dislikes: (entity.soul?.dislikes as string[]) || [],
       },
-      senses: (entity.mechanics?.senses as Record<string, number>) || { passive_perception: 10 },
-      languages: (entity.mechanics?.languages as string[]) || ['Common'],
-      cr: (entity.mechanics?.cr as string) || '',
-      actions: (entity.mechanics?.actions as { name: string; description: string }[]) || [],
-      bonus_actions:
-        (entity.mechanics?.bonus_actions as { name: string; description: string }[]) || [],
-      reactions: (entity.mechanics?.reactions as { name: string; description: string }[]) || [],
-      special_abilities:
-        (entity.mechanics?.special_abilities as { name: string; description: string }[]) || [],
-      legendary_actions:
-        (entity.mechanics?.legendary_actions as { name: string; description: string }[]) || [],
-    },
+
+      // Brain - merge defaults with existing data
+      brain: {
+        // Spread existing brain data first
+        ...(entity.brain || {}),
+        // Handle field name variations and provide defaults
+        motivation:
+          (entity.brain?.motivation as string) || (entity.brain?.desire as string) || '',
+        secret: (entity.brain?.secret as string) || '',
+        fear: (entity.brain?.fear as string) || '',
+        goal: (entity.brain?.goal as string) || '',
+        obstacle: (entity.brain?.obstacle as string) || '',
+        leverage: (entity.brain?.leverage as string) || '',
+        line_they_wont_cross: (entity.brain?.line_they_wont_cross as string) || '',
+        what_they_want_from_pcs: (entity.brain?.what_they_want_from_pcs as string) || '',
+        plot_hooks:
+          (entity.brain?.plot_hooks as string[]) ||
+          (entity.brain?.plot_hook ? [entity.brain.plot_hook as string] : []),
+        relationships: (entity.brain?.relationships as string) || '',
+      },
+
+      // Voice - merge defaults with existing data
+      voice: {
+        // Spread existing voice data first
+        ...(entity.voice || {}),
+        // Handle field name variations and provide defaults
+        speech_pattern: (entity.voice?.speech_pattern as string) || '',
+        vocabulary: (entity.voice?.vocabulary as string) || '',
+        tone: (entity.voice?.tone as string) || '',
+        accent: (entity.voice?.accent as string) || '',
+        catchphrase: (entity.voice?.catchphrase as string) || '',
+        verbal_tics:
+          (entity.voice?.verbal_tics as string[]) || (entity.voice?.tells as string[]) || [],
+        sample_quotes: (entity.voice?.sample_quotes as string[]) || [],
+      },
+
+      // Mechanics - merge defaults with existing data
+      mechanics: {
+        combat_role:
+          (entity.mechanics?.combat_role as string) || 'non-combatant',
+        ac: (entity.mechanics?.ac as number) ?? 10,
+        ac_type: (entity.mechanics?.ac_type as string) || '',
+        hp: (entity.mechanics?.hp as number) ?? 4,
+        hit_dice: (entity.mechanics?.hit_dice as string) || '',
+        speed: (entity.mechanics?.speed as Record<string, number>) || { walk: 30 },
+        abilities: (entity.mechanics?.abilities as Record<string, number>) || {
+          str: 10,
+          dex: 10,
+          con: 10,
+          int: 10,
+          wis: 10,
+          cha: 10,
+        },
+        senses: (entity.mechanics?.senses as Record<string, number>) || { passive_perception: 10 },
+        languages: (entity.mechanics?.languages as string[]) || ['Common'],
+        cr: (entity.mechanics?.cr as string) || '',
+        actions: (entity.mechanics?.actions as { name: string; description: string }[]) || [],
+        bonus_actions:
+          (entity.mechanics?.bonus_actions as { name: string; description: string }[]) || [],
+        reactions: (entity.mechanics?.reactions as { name: string; description: string }[]) || [],
+        special_abilities:
+          (entity.mechanics?.special_abilities as { name: string; description: string }[]) || [],
+        legendary_actions:
+          (entity.mechanics?.legendary_actions as { name: string; description: string }[]) || [],
+      },
+    };
   });
 
   const [hasChanges, setHasChanges] = useState(false);
 
   const handleSave = async (): Promise<void> => {
-    console.log('[NpcEditor] Saving:', formData);
+    console.log('[NpcEditor] === SAVING ===');
+    console.log('[NpcEditor] mechanics.actions:', formData.mechanics.actions);
+    console.log('[NpcEditor] mechanics.legendary_actions:', formData.mechanics.legendary_actions);
+    console.log('[NpcEditor] Full mechanics:', formData.mechanics);
 
     const response = await fetch(`/api/entities/${entity.id}`, {
       method: 'PATCH',
@@ -138,7 +168,7 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
     }
 
     const result = await response.json();
-    console.log('[NpcEditor] Saved successfully:', result.id);
+    console.log('[NpcEditor] Saved result mechanics:', result.mechanics);
   };
 
   // Helper updaters
