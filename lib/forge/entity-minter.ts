@@ -826,6 +826,9 @@ function buildEntityData(
     case 'quest':
       return {
         ...baseData,
+        // Use soul.title for the unique quest name (arc name is in chain.arc_name)
+        name: (output.soul as Record<string, unknown>)?.title as string ||
+          output.name as string || 'Untitled Quest',
         // Brain/Soul/Mechanics architecture columns
         sub_type: (output.sub_type as string) || 'side',
         brain: output.brain || {},
