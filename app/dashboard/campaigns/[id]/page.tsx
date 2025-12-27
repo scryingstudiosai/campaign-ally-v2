@@ -3,7 +3,8 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { DeleteCampaignButton } from '@/components/campaigns/delete-campaign-button'
-import { ArrowLeft, BookOpen, Brain, Calendar, Pencil, Sparkles, User, MapPin, Swords, Gem, Bug, Flag, Scroll } from 'lucide-react'
+import { SessionsList } from '@/components/dashboard/SessionsList'
+import { ArrowLeft, BookOpen, Brain, Pencil, Sparkles, User, MapPin, Swords, Gem, Bug, Flag, Scroll } from 'lucide-react'
 
 interface PageProps {
   params: { id: string }
@@ -136,17 +137,8 @@ export default async function CampaignDetailPage({ params }: PageProps) {
             </Link>
           </div>
 
-          <div className="ca-card p-6 opacity-60">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-semibold text-slate-100">Sessions</h3>
-            </div>
-            <p className="text-sm text-slate-400 mb-4">
-              Session notes and recaps
-            </p>
-            <p className="text-sm text-slate-500 italic">
-              Coming soon...
-            </p>
+          <div className="lg:col-span-3">
+            <SessionsList campaignId={params.id} />
           </div>
         </div>
 
