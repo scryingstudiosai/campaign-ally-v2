@@ -37,7 +37,7 @@ interface NpcEditorProps {
 export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
   const [formData, setFormData] = useState(() => {
     // Debug: log what we're receiving
-    console.log('[NpcEditor] Initializing with entity:', entity.name);
+    console.log('[NpcEditor] Raw entity data:', entity);
     console.log('[NpcEditor] Entity soul:', entity.soul);
     console.log('[NpcEditor] Entity brain:', entity.brain);
     console.log('[NpcEditor] Entity voice:', entity.voice);
@@ -50,14 +50,15 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
       summary: entity.summary || '',
       description: entity.description || '',
 
-      // Soul - merge defaults with existing data, handle field name variations
+      // Soul - map all possible field name variations
       soul: {
-        // Spread existing soul data first
+        // Spread existing soul data first to preserve extra fields
         ...(entity.soul || {}),
-        // Handle field name variations and provide defaults
+        // Appearance can be in multiple places
         appearance:
           (entity.soul?.appearance as string) ||
           (entity.soul?.physical_description as string) ||
+          (entity.description as string) ||
           '',
         personality:
           (entity.soul?.personality as string) || (entity.soul?.demeanor as string) || '',
@@ -71,45 +72,80 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
         dislikes: (entity.soul?.dislikes as string[]) || [],
       },
 
-      // Brain - merge defaults with existing data
+      // Brain - map all possible field name variations
       brain: {
-        // Spread existing brain data first
+        // Spread existing brain data first to preserve extra fields
         ...(entity.brain || {}),
-        // Handle field name variations and provide defaults
+        // Motivation/Desire
         motivation:
-          (entity.brain?.motivation as string) || (entity.brain?.desire as string) || '',
+          (entity.brain?.motivation as string) ||
+          (entity.brain?.desire as string) ||
+          '',
         secret: (entity.brain?.secret as string) || '',
         fear: (entity.brain?.fear as string) || '',
         goal: (entity.brain?.goal as string) || '',
         obstacle: (entity.brain?.obstacle as string) || '',
         leverage: (entity.brain?.leverage as string) || '',
-        line_they_wont_cross: (entity.brain?.line_they_wont_cross as string) || '',
-        what_they_want_from_pcs: (entity.brain?.what_they_want_from_pcs as string) || '',
-        plot_hooks:
-          (entity.brain?.plot_hooks as string[]) ||
-          (entity.brain?.plot_hook ? [entity.brain.plot_hook as string] : []),
+        // Line they won't cross - multiple possible names
+        line_they_wont_cross:
+          (entity.brain?.line_they_wont_cross as string) ||
+          (entity.brain?.line as string) ||
+          (entity.brain?.moral_line as string) ||
+          '',
+        what_they_want_from_pcs:
+          (entity.brain?.what_they_want_from_pcs as string) ||
+          (entity.brain?.wants_from_party as string) ||
+          '',
+        plot_hooks: Array.isArray(entity.brain?.plot_hooks)
+          ? (entity.brain.plot_hooks as string[])
+          : entity.brain?.plot_hook
+            ? [entity.brain.plot_hook as string]
+            : [],
         relationships: (entity.brain?.relationships as string) || '',
+        // Preserve original villain-specific brain fields
+        scheme: (entity.brain?.scheme as string) || '',
+        escape_plan: (entity.brain?.escape_plan as string) || '',
+        escalation: (entity.brain?.escalation as string) || '',
+        resources: (entity.brain?.resources as string[]) || [],
       },
 
-      // Voice - merge defaults with existing data
+      // Voice - map all possible field names
       voice: {
-        // Spread existing voice data first
+        // Spread existing voice data first to preserve extra fields
         ...(entity.voice || {}),
-        // Handle field name variations and provide defaults
-        speech_pattern: (entity.voice?.speech_pattern as string) || '',
+        speech_pattern:
+          (entity.voice?.speech_pattern as string) ||
+          (Array.isArray(entity.voice?.patterns)
+            ? (entity.voice.patterns as string[]).join(', ')
+            : '') ||
+          '',
         vocabulary: (entity.voice?.vocabulary as string) || '',
-        tone: (entity.voice?.tone as string) || '',
+        tone:
+          (entity.voice?.tone as string) ||
+          (Array.isArray(entity.voice?.tones)
+            ? (entity.voice.tones as string[]).join(', ')
+            : '') ||
+          '',
         accent: (entity.voice?.accent as string) || '',
-        catchphrase: (entity.voice?.catchphrase as string) || '',
+        catchphrase:
+          (entity.voice?.catchphrase as string) ||
+          (entity.voice?.signature_phrase as string) ||
+          '',
         verbal_tics:
           (entity.voice?.verbal_tics as string[]) || (entity.voice?.tells as string[]) || [],
-        sample_quotes: (entity.voice?.sample_quotes as string[]) || [],
+        sample_quotes:
+          (entity.voice?.sample_quotes as string[]) || (entity.voice?.quotes as string[]) || [],
+        // Preserve original voice fields
+        energy: (entity.voice?.energy as string) || '',
+        style: (entity.voice?.style as string[]) || [],
       },
 
       // Mechanics - merge defaults with existing data
       mechanics: {
+        // Auto-detect combat role from sub_type if not set
         combat_role:
-          (entity.mechanics?.combat_role as string) || 'non-combatant',
+          (entity.mechanics?.combat_role as string) ||
+          (entity.sub_type === 'villain' ? 'villain' : 'non-combatant'),
         ac: (entity.mechanics?.ac as number) ?? 10,
         ac_type: (entity.mechanics?.ac_type as string) || '',
         hp: (entity.mechanics?.hp as number) ?? 4,
@@ -123,9 +159,13 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
           wis: 10,
           cha: 10,
         },
-        senses: (entity.mechanics?.senses as Record<string, number>) || { passive_perception: 10 },
+        senses: (entity.mechanics?.senses as Record<string, number>) || {
+          passive_perception: 10,
+        },
         languages: (entity.mechanics?.languages as string[]) || ['Common'],
         cr: (entity.mechanics?.cr as string) || '',
+        xp: (entity.mechanics?.xp as number) || 0,
+        // Combat arrays
         actions: (entity.mechanics?.actions as { name: string; description: string }[]) || [],
         bonus_actions:
           (entity.mechanics?.bonus_actions as { name: string; description: string }[]) || [],
@@ -134,6 +174,12 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
           (entity.mechanics?.special_abilities as { name: string; description: string }[]) || [],
         legendary_actions:
           (entity.mechanics?.legendary_actions as { name: string; description: string }[]) || [],
+        // Other combat fields
+        saving_throws: (entity.mechanics?.saving_throws as { ability: string; modifier: number }[]) || [],
+        skills: (entity.mechanics?.skills as { name: string; modifier: number }[]) || [],
+        damage_resistances: (entity.mechanics?.damage_resistances as string[]) || [],
+        damage_immunities: (entity.mechanics?.damage_immunities as string[]) || [],
+        condition_immunities: (entity.mechanics?.condition_immunities as string[]) || [],
       },
     };
   });
@@ -144,21 +190,25 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
     console.log('[NpcEditor] === SAVING ===');
     console.log('[NpcEditor] mechanics.actions:', formData.mechanics.actions);
     console.log('[NpcEditor] mechanics.legendary_actions:', formData.mechanics.legendary_actions);
-    console.log('[NpcEditor] Full mechanics:', formData.mechanics);
+    console.log('[NpcEditor] Full mechanics:', JSON.stringify(formData.mechanics, null, 2));
+
+    const payload = {
+      name: formData.name,
+      sub_type: formData.sub_type,
+      summary: formData.summary,
+      description: formData.description,
+      soul: formData.soul,
+      brain: formData.brain,
+      voice: formData.voice,
+      mechanics: formData.mechanics,
+    };
+
+    console.log('[NpcEditor] Sending payload:', JSON.stringify(payload, null, 2));
 
     const response = await fetch(`/api/entities/${entity.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: formData.name,
-        sub_type: formData.sub_type,
-        summary: formData.summary,
-        description: formData.description,
-        soul: formData.soul,
-        brain: formData.brain,
-        voice: formData.voice,
-        mechanics: formData.mechanics,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -168,7 +218,8 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
     }
 
     const result = await response.json();
-    console.log('[NpcEditor] Saved result mechanics:', result.mechanics);
+    console.log('[NpcEditor] Saved result:', result);
+    console.log('[NpcEditor] Saved mechanics:', JSON.stringify(result.mechanics, null, 2));
   };
 
   // Helper updaters
