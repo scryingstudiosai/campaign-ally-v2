@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { User, Sparkles, Brain, Wrench, Mic } from 'lucide-react';
+import { User, Sparkles, Brain, Wrench, Mic, Skull } from 'lucide-react';
 
 interface NpcEditorProps {
   entity: {
@@ -104,6 +104,7 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
         relationships: (entity.brain?.relationships as string) || '',
         // Preserve original villain-specific brain fields
         scheme: (entity.brain?.scheme as string) || '',
+        scheme_status: (entity.brain?.scheme_status as string) || 'planning',
         escape_plan: (entity.brain?.escape_plan as string) || '',
         escalation: (entity.brain?.escalation as string) || '',
         resources: (entity.brain?.resources as string[]) || [],
@@ -188,9 +189,9 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
 
   const handleSave = async (): Promise<void> => {
     console.log('[NpcEditor] === SAVING ===');
+    console.log('[NpcEditor] Brain data:', formData.brain);
     console.log('[NpcEditor] mechanics.actions:', formData.mechanics.actions);
     console.log('[NpcEditor] mechanics.legendary_actions:', formData.mechanics.legendary_actions);
-    console.log('[NpcEditor] Full mechanics:', JSON.stringify(formData.mechanics, null, 2));
 
     const payload = {
       name: formData.name,
@@ -198,8 +199,20 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
       summary: formData.summary,
       description: formData.description,
       soul: formData.soul,
-      brain: formData.brain,
-      voice: formData.voice,
+      brain: {
+        ...formData.brain,
+        // Save with both field names for compatibility
+        desire: formData.brain.motivation,
+        line: formData.brain.line_they_wont_cross,
+        wants_from_party: formData.brain.what_they_want_from_pcs,
+      },
+      voice: {
+        ...formData.voice,
+        // Save with both field names for compatibility
+        tells: formData.voice.verbal_tics,
+        signature_phrase: formData.voice.catchphrase,
+        quotes: formData.voice.sample_quotes,
+      },
       mechanics: formData.mechanics,
     };
 
@@ -219,7 +232,6 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
 
     const result = await response.json();
     console.log('[NpcEditor] Saved result:', result);
-    console.log('[NpcEditor] Saved mechanics:', JSON.stringify(result.mechanics, null, 2));
   };
 
   // Helper updaters
@@ -251,6 +263,7 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
   const combatRole = formData.mechanics.combat_role;
   const showFullStats = ['villain', 'hero', 'elite', 'minion'].includes(combatRole);
   const showLegendary = combatRole === 'villain';
+  const isVillain = formData.sub_type?.toLowerCase() === 'villain';
 
   // Define tabs
   const tabs = [
@@ -497,6 +510,75 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
             onChange={(val) => updateBrain('plot_hooks', val)}
             placeholder="Add a plot hook..."
           />
+
+          {/* ========== VILLAIN-SPECIFIC SECTION ========== */}
+          {isVillain && (
+            <div className="mt-6 p-4 border border-red-900/50 bg-red-950/20 rounded-lg space-y-4">
+              <h3 className="text-red-400 font-semibold flex items-center gap-2">
+                <Skull className="w-4 h-4" />
+                Villain Details
+              </h3>
+
+              <div>
+                <Label className="text-red-300">Scheme</Label>
+                <Textarea
+                  value={formData.brain.scheme}
+                  onChange={(e) => updateBrain('scheme', e.target.value)}
+                  rows={3}
+                  placeholder="Their evil plan..."
+                  className="border-red-900/50"
+                />
+              </div>
+
+              <div>
+                <Label className="text-red-300">Scheme Status</Label>
+                <Select
+                  value={formData.brain.scheme_status || 'planning'}
+                  onValueChange={(val) => updateBrain('scheme_status', val)}
+                >
+                  <SelectTrigger className="border-red-900/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="planning">Planning</SelectItem>
+                    <SelectItem value="preparing">Preparing</SelectItem>
+                    <SelectItem value="executing">Executing</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <StringArrayInput
+                label="Resources"
+                value={formData.brain.resources}
+                onChange={(val) => updateBrain('resources', val)}
+                placeholder="Add a resource (minions, artifacts, allies)..."
+              />
+
+              <div>
+                <Label className="text-red-300">Escape Plan</Label>
+                <Textarea
+                  value={formData.brain.escape_plan}
+                  onChange={(e) => updateBrain('escape_plan', e.target.value)}
+                  rows={2}
+                  placeholder="How they'll escape if defeated..."
+                  className="border-red-900/50"
+                />
+              </div>
+
+              <div>
+                <Label className="text-red-300">Escalation (If Unchecked)</Label>
+                <Textarea
+                  value={formData.brain.escalation}
+                  onChange={(e) => updateBrain('escalation', e.target.value)}
+                  rows={2}
+                  placeholder="What happens if the party doesn't stop them..."
+                  className="border-red-900/50"
+                />
+              </div>
+            </div>
+          )}
         </div>
       ),
     },
@@ -537,17 +619,27 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
             />
           </div>
 
-          <div>
-            <Label>Vocabulary Level</Label>
-            <Input
-              value={formData.voice.vocabulary}
-              onChange={(e) => updateVoice('vocabulary', e.target.value)}
-              placeholder="Simple, educated, archaic..."
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Vocabulary Level</Label>
+              <Input
+                value={formData.voice.vocabulary}
+                onChange={(e) => updateVoice('vocabulary', e.target.value)}
+                placeholder="Simple, educated, archaic..."
+              />
+            </div>
+            <div>
+              <Label>Energy</Label>
+              <Input
+                value={formData.voice.energy}
+                onChange={(e) => updateVoice('energy', e.target.value)}
+                placeholder="Measured, manic, calm..."
+              />
+            </div>
           </div>
 
           <div>
-            <Label>Catchphrase</Label>
+            <Label>Catchphrase / Signature Phrase</Label>
             <Input
               value={formData.voice.catchphrase}
               onChange={(e) => updateVoice('catchphrase', e.target.value)}
