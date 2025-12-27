@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EditEntityShell } from './EditEntityShell';
 import { TabbedFormLayout } from '@/components/form-widgets/TabbedFormLayout';
 import { StringArrayInput } from '@/components/form-widgets/StringArrayInput';
@@ -203,6 +203,45 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
   });
 
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Debug logging to see actual field names from AI
+  useEffect(() => {
+    console.log('========== ITEM EDITOR DEBUG ==========');
+    console.log('Full entity:', JSON.stringify(entity, null, 2));
+    console.log('');
+    console.log('--- SOUL fields ---');
+    console.log('entity.soul:', entity.soul);
+    if (entity.soul) {
+      Object.keys(entity.soul).forEach(key => {
+        console.log(`  soul.${key}:`, (entity.soul as Record<string, unknown>)[key]);
+      });
+    }
+    console.log('');
+    console.log('--- MECHANICS fields ---');
+    console.log('entity.mechanics:', entity.mechanics);
+    if (entity.mechanics) {
+      Object.keys(entity.mechanics).forEach(key => {
+        console.log(`  mechanics.${key}:`, (entity.mechanics as Record<string, unknown>)[key]);
+      });
+    }
+    console.log('');
+    console.log('--- BRAIN fields ---');
+    console.log('entity.brain:', entity.brain);
+    if (entity.brain) {
+      Object.keys(entity.brain).forEach(key => {
+        console.log(`  brain.${key}:`, (entity.brain as Record<string, unknown>)[key]);
+      });
+    }
+    console.log('');
+    console.log('--- ATTRIBUTES fields ---');
+    console.log('entity.attributes:', entity.attributes);
+    if (entity.attributes) {
+      Object.keys(entity.attributes).forEach(key => {
+        console.log(`  attributes.${key}:`, (entity.attributes as Record<string, unknown>)[key]);
+      });
+    }
+    console.log('========================================');
+  }, [entity]);
 
   // Helper functions to update nested state
   const updateBasic = (field: string, value: unknown): void => {
