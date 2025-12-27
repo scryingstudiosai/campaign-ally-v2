@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EditEntityShell } from './EditEntityShell';
 import { TabbedFormLayout } from '@/components/form-widgets/TabbedFormLayout';
 import { StringArrayInput } from '@/components/form-widgets/StringArrayInput';
@@ -276,6 +276,44 @@ export function CreatureEditor({ entity, campaignId }: CreatureEditorProps): JSX
   });
 
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Debug: Find where treasure data is stored
+  useEffect(() => {
+    console.log('========== CREATURE EDITOR DEBUG ==========');
+    console.log('Full entity:', JSON.stringify(entity, null, 2));
+    console.log('');
+    console.log('--- Checking ALL possible treasure locations ---');
+    console.log('entity.treasure:', entity.treasure);
+    console.log('typeof entity.treasure:', typeof entity.treasure);
+
+    console.log('entity.brain:', entity.brain);
+    console.log('entity.brain?.treasure:', entity.brain?.treasure);
+    console.log('typeof entity.brain?.treasure:', typeof entity.brain?.treasure);
+
+    console.log('entity.attributes:', entity.attributes);
+    console.log('entity.attributes?.treasure:', entity.attributes?.treasure);
+
+    console.log('entity.mechanics?.treasure:', entity.mechanics?.treasure);
+    console.log('entity.soul?.treasure:', entity.soul?.treasure);
+
+    // Check if treasure is nested deeper in brain
+    if (entity.brain) {
+      console.log('--- All brain keys ---');
+      Object.keys(entity.brain).forEach(key => {
+        console.log(`  brain.${key}:`, (entity.brain as Record<string, unknown>)[key]);
+      });
+    }
+
+    // Check all attributes keys
+    if (entity.attributes) {
+      console.log('--- All attributes keys ---');
+      Object.keys(entity.attributes).forEach(key => {
+        console.log(`  attributes.${key}:`, (entity.attributes as Record<string, unknown>)[key]);
+      });
+    }
+
+    console.log('==========================================');
+  }, [entity]);
 
   // Helper functions to update nested state
   const updateBasic = (field: string, value: unknown): void => {
