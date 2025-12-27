@@ -1,16 +1,16 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: Request): Promise<NextResponse> {
-  const { searchParams } = new URL(request.url);
+// GET /api/sessions?campaignId=X
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const searchParams = request.nextUrl.searchParams;
   const campaignId = searchParams.get('campaignId');
 
   if (!campaignId) {
-    return NextResponse.json({ error: 'Campaign ID required' }, { status: 400 });
+    return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
   }
 
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('sessions')
@@ -19,21 +19,23 @@ export async function GET(request: Request): Promise<NextResponse> {
     .order('session_number', { ascending: false });
 
   if (error) {
+    console.error('Failed to fetch sessions:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json(data);
 }
 
-export async function POST(request: Request): Promise<NextResponse> {
+// POST /api/sessions
+export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.json();
   const { campaign_id, name, starting_location_id } = body;
 
   if (!campaign_id) {
-    return NextResponse.json({ error: 'Campaign ID required' }, { status: 400 });
+    return NextResponse.json({ error: 'campaign_id required' }, { status: 400 });
   }
 
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = await createClient();
 
   // Get next session number
   const { data: existingSessions } = await supabase
@@ -70,6 +72,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     .single();
 
   if (error) {
+    console.error('Failed to create session:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

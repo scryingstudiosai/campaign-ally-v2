@@ -1,5 +1,4 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import { SessionShell } from '@/components/session/SessionShell';
 
@@ -11,7 +10,7 @@ interface PageProps {
 }
 
 export default async function SessionPage({ params }: PageProps): Promise<JSX.Element> {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await createClient();
 
   const { data: session, error } = await supabase
     .from('sessions')
