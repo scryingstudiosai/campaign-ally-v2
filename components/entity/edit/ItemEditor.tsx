@@ -28,6 +28,8 @@ import {
   Brain,
   Wrench,
   FlaskConical,
+  AlertTriangle,
+  Battery,
 } from 'lucide-react';
 
 interface ItemEditorProps {
@@ -135,10 +137,10 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
       sub_type: entity.sub_type || (mechanics.item_type as string) || 'wondrous',
 
       soul: {
-        description: (soul.description as string) || entity.description || '',
-        origin: (soul.origin as string) || (soul.history as string) || '',
-        visuals: (soul.visuals as string) || (soul.visual_details as string) || '',
-        lore: (soul.lore as string) || (soul.legend as string) || '',
+        description: (soul.description as string) || (soul.full_description as string) || entity.description || '',
+        origin: (soul.origin as string) || (soul.history as string) || (soul.backstory as string) || (soul.creation as string) || '',
+        visuals: (soul.visuals as string) || (soul.visual_details as string) || (soul.appearance as string) || (soul.physical_description as string) || '',
+        lore: (soul.lore as string) || (soul.legend as string) || (soul.legends as string) || (soul.mythology as string) || '',
       },
 
       brain: {
@@ -159,11 +161,12 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
 
         // Magical Properties
         ability: (mechanics.ability as string) || (mechanics.effect as string) ||
+          (mechanics.magical_effect as string) || (mechanics.power as string) ||
           (mechanics.magical_properties as string) || '',
         trigger: (mechanics.trigger as string) || (mechanics.trigger_condition as string) ||
-          (mechanics.activation as string) || '',
+          (mechanics.activation as string) || (mechanics.activated_by as string) || '',
         cost_drawback: (mechanics.cost_drawback as string) || (mechanics.drawback as string) ||
-          (mechanics.cost as string) || '',
+          (mechanics.cost as string) || (brain.cost_drawback as string) || (brain.drawback as string) || '',
 
         // SRD Reference
         srd_id: (mechanics.srd_id as string) || null,
@@ -184,9 +187,9 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
         strength_requirement: (mechanics.strength_requirement as number) || 0,
 
         // Charged items
-        max_charges: (mechanics.max_charges as number) || 0,
-        current_charges: (mechanics.current_charges as number) || 0,
-        recharge_rate: (mechanics.recharge_rate as string) || '',
+        max_charges: (mechanics.max_charges as number) ?? (mechanics.charges as number) ?? null,
+        current_charges: (mechanics.current_charges as number) ?? (mechanics.charges as number) ?? null,
+        recharge_rate: (mechanics.recharge_rate as string) || (mechanics.recharge as string) || '',
 
         // Consumables
         uses: (mechanics.uses as number) || 1,
@@ -446,44 +449,98 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
             placeholder="Add property (Finesse, Light, Versatile...)"
           />
 
-          {/* ========== MAGICAL PROPERTIES SECTION ========== */}
-          {formData.mechanics.is_magical && (
-            <div className="p-4 border border-amber-900/30 bg-amber-950/10 rounded-lg space-y-4">
-              <h3 className="text-amber-400 font-semibold flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                Magical Properties
-              </h3>
+          {/* ========== ABILITY / EFFECT ========== */}
+          <div>
+            <Label className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              Ability / Effect
+            </Label>
+            <Textarea
+              value={formData.mechanics.ability}
+              onChange={(e) => updateMechanics('ability', e.target.value)}
+              rows={4}
+              placeholder="Describe the item's magical ability or effect..."
+              className="bg-slate-900/50 border-slate-700"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              The main magical power or effect of this item
+            </p>
+          </div>
 
-              <div>
-                <Label>Magical Ability / Effect</Label>
-                <Textarea
-                  value={formData.mechanics.ability}
-                  onChange={(e) => updateMechanics('ability', e.target.value)}
-                  rows={3}
-                  placeholder="Describe the main magical effect or ability..."
-                />
-              </div>
+          {/* ========== TRIGGER / ACTIVATION ========== */}
+          <div>
+            <Label className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-400" />
+              Trigger / Activation
+            </Label>
+            <Input
+              value={formData.mechanics.trigger}
+              onChange={(e) => updateMechanics('trigger', e.target.value)}
+              placeholder="Command word, bonus action, when you hit with an attack..."
+              className="bg-slate-900/50 border-slate-700"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              How is the ability activated?
+            </p>
+          </div>
 
+          {/* ========== COST / DRAWBACK ========== */}
+          <div>
+            <Label className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+              Cost / Drawback
+            </Label>
+            <Textarea
+              value={formData.mechanics.cost_drawback}
+              onChange={(e) => updateMechanics('cost_drawback', e.target.value)}
+              rows={2}
+              placeholder="Expend 1 charge, take 1d6 necrotic damage, can't use until dawn..."
+              className="bg-slate-900/50 border-slate-700"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Any cost, limitation, or negative effect
+            </p>
+          </div>
+
+          {/* ========== CHARGES SECTION ========== */}
+          <div className="p-4 border border-purple-900/30 bg-purple-950/10 rounded-lg space-y-4">
+            <h4 className="text-purple-400 font-medium flex items-center gap-2">
+              <Battery className="w-4 h-4" />
+              Charges (if applicable)
+            </h4>
+
+            <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label>Trigger / Activation</Label>
+                <Label>Max Charges</Label>
                 <Input
-                  value={formData.mechanics.trigger}
-                  onChange={(e) => updateMechanics('trigger', e.target.value)}
-                  placeholder="How is this ability activated? (command word, action, bonus action...)"
+                  type="number"
+                  value={formData.mechanics.max_charges ?? ''}
+                  onChange={(e) => updateMechanics('max_charges', e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder="7"
+                  className="bg-slate-900/50 border-slate-700"
                 />
               </div>
-
               <div>
-                <Label>Cost / Drawback</Label>
-                <Textarea
-                  value={formData.mechanics.cost_drawback}
-                  onChange={(e) => updateMechanics('cost_drawback', e.target.value)}
-                  rows={2}
-                  placeholder="Any costs, drawbacks, or negative effects (consumes charge, deals damage to user...)"
+                <Label>Current Charges</Label>
+                <Input
+                  type="number"
+                  value={formData.mechanics.current_charges ?? ''}
+                  onChange={(e) => updateMechanics('current_charges', e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder="7"
+                  className="bg-slate-900/50 border-slate-700"
+                />
+              </div>
+              <div>
+                <Label>Recharge Rate</Label>
+                <Input
+                  value={formData.mechanics.recharge_rate}
+                  onChange={(e) => updateMechanics('recharge_rate', e.target.value)}
+                  placeholder="1d6+1 at dawn"
+                  className="bg-slate-900/50 border-slate-700"
                 />
               </div>
             </div>
-          )}
+          </div>
 
           {/* ========== WEAPON SECTION ========== */}
           {isWeapon && (
@@ -627,50 +684,33 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
             </div>
           )}
 
-          {/* ========== CHARGED ITEMS (Wand, Staff, Ring) ========== */}
-          {isChargedItem && (
+          {/* ========== SPELLCASTING ITEMS (Wand, Staff, Ring, Wondrous) ========== */}
+          {isChargedItem && formData.mechanics.spells.length > 0 && (
             <div className="p-4 border border-purple-900/30 bg-purple-950/10 rounded-lg space-y-4">
               <h3 className="text-purple-400 font-semibold flex items-center gap-2">
                 <Zap className="w-4 h-4" />
-                Charges & Magic
+                Spellcasting
               </h3>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label>Max Charges</Label>
-                  <Input
-                    type="number"
-                    value={formData.mechanics.max_charges || ''}
-                    onChange={(e) => updateMechanics('max_charges', parseInt(e.target.value) || 0)}
-                    placeholder="7"
-                  />
-                </div>
-                <div>
-                  <Label>Current Charges</Label>
-                  <Input
-                    type="number"
-                    value={formData.mechanics.current_charges || ''}
-                    onChange={(e) => updateMechanics('current_charges', parseInt(e.target.value) || 0)}
-                    placeholder="7"
-                  />
-                </div>
-                <div>
-                  <Label>Recharge</Label>
-                  <Input
-                    value={formData.mechanics.recharge_rate}
-                    onChange={(e) => updateMechanics('recharge_rate', e.target.value)}
-                    placeholder="1d6+1 at dawn"
-                  />
-                </div>
-              </div>
-
               <StringArrayInput
-                label="Spells (if any)"
+                label="Spells"
                 value={formData.mechanics.spells}
                 onChange={(val) => updateMechanics('spells', val)}
                 placeholder="Add spell name..."
               />
             </div>
+          )}
+
+          {/* Add Spells Button for spellcasting item types */}
+          {isChargedItem && formData.mechanics.spells.length === 0 && (
+            <button
+              type="button"
+              onClick={() => updateMechanics('spells', [''])}
+              className="w-full p-3 border border-dashed border-purple-700/50 rounded-lg text-purple-400 hover:bg-purple-950/20 transition-colors flex items-center justify-center gap-2"
+            >
+              <Zap className="w-4 h-4" />
+              Add Spells to This Item
+            </button>
           )}
 
           {/* ========== CONSUMABLES (Potion, Scroll) ========== */}
