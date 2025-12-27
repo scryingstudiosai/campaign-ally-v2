@@ -29,11 +29,69 @@ interface QuestEditorProps {
     soul?: Record<string, unknown>;
     brain?: Record<string, unknown>;
     mechanics?: Record<string, unknown>;
+    attributes?: Record<string, unknown>;
   };
   campaignId: string;
 }
 
 export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Element {
+  // Debug logging to understand data structure
+  console.log('[QuestEditor] Entity received:', entity);
+  console.log('[QuestEditor] Entity brain:', entity.brain);
+  console.log('[QuestEditor] Entity mechanics:', entity.mechanics);
+  console.log('[QuestEditor] Entity attributes:', entity.attributes);
+  console.log('[QuestEditor] Objectives from attributes:', entity.attributes?.objectives);
+  console.log('[QuestEditor] Rewards from attributes:', entity.attributes?.rewards);
+
+  // Helper to extract objectives from various locations
+  const extractObjectives = (): Objective[] => {
+    // Check attributes first (where forge saves them)
+    if (Array.isArray(entity.attributes?.objectives)) {
+      return entity.attributes.objectives as Objective[];
+    }
+    // Fallback to mechanics
+    if (Array.isArray(entity.mechanics?.objectives)) {
+      return entity.mechanics.objectives as Objective[];
+    }
+    return [];
+  };
+
+  // Helper to extract rewards from various locations
+  const extractRewards = (): QuestRewards => {
+    // Check attributes first (where forge saves them)
+    if (entity.attributes?.rewards) {
+      const attrRewards = entity.attributes.rewards as QuestRewards;
+      return {
+        gold: attrRewards.gold || 0,
+        xp: attrRewards.xp || 0,
+        items: attrRewards.items || [],
+        special: attrRewards.special || '',
+      };
+    }
+    // Fallback to mechanics
+    if (entity.mechanics?.rewards) {
+      const mechRewards = entity.mechanics.rewards as QuestRewards;
+      return {
+        gold: mechRewards.gold || 0,
+        xp: mechRewards.xp || 0,
+        items: mechRewards.items || [],
+        special: mechRewards.special || '',
+      };
+    }
+    return { gold: 0, xp: 0, items: [], special: '' };
+  };
+
+  // Helper to extract chain from various locations
+  const extractChain = (): Record<string, unknown> => {
+    if (entity.attributes?.chain) {
+      return entity.attributes.chain as Record<string, unknown>;
+    }
+    if (entity.mechanics?.chain) {
+      return entity.mechanics.chain as Record<string, unknown>;
+    }
+    return {};
+  };
+
   const [formData, setFormData] = useState({
     // Basic Info
     name: entity.name || '',
@@ -44,15 +102,20 @@ export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Eleme
       hook: (entity.soul?.hook as string) || '',
       stakes: (entity.soul?.stakes as string) || '',
       timeline: (entity.soul?.timeline as string) || '',
+      description: (entity.soul?.description as string) || '',
       ...(entity.soul || {}),
     },
 
     // Brain (DM-only)
     brain: {
-      true_background: (entity.brain?.true_background as string) || '',
+      true_background: (entity.brain?.true_background as string) ||
+                       (entity.brain?.background as string) || '', // Also check 'background' field
       secret: (entity.brain?.secret as string) || '',
       twists: (entity.brain?.twists as string[]) || [],
+      success_outcomes: (entity.brain?.success_outcomes as string[]) ||
+                        (entity.brain?.success_variations as string[]) || [], // Also check 'success_variations'
       failure_consequences: (entity.brain?.failure_consequences as string) || '',
+      dm_notes: (entity.brain?.dm_notes as string) || '',
       ...(entity.brain || {}),
     },
 
@@ -62,28 +125,58 @@ export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Eleme
       difficulty: (entity.mechanics?.difficulty as string) || 'medium',
       recommended_level: (entity.mechanics?.recommended_level as number) || 5,
       estimated_sessions: (entity.mechanics?.estimated_sessions as number) || 1,
-      objectives: (entity.mechanics?.objectives as Objective[]) || [],
-      rewards: (entity.mechanics?.rewards as QuestRewards) || {
-        gold: 0,
-        xp: 0,
-        items: [],
-        special: '',
-      },
+      objectives: extractObjectives(),
+      rewards: extractRewards(),
+      chain: extractChain(),
       ...(entity.mechanics || {}),
     },
   });
 
+  console.log('[QuestEditor] Initialized objectives:', formData.mechanics.objectives);
+  console.log('[QuestEditor] Initialized rewards:', formData.mechanics.rewards);
+
   const [hasChanges, setHasChanges] = useState(false);
 
   const handleSave = async (): Promise<void> => {
-    console.log('[QuestEditor] Preparing save data...');
+    console.log('[QuestEditor] === SAVING ===');
+    console.log('[QuestEditor] Saving objectives:', formData.mechanics.objectives);
+    console.log('[QuestEditor] Saving rewards:', formData.mechanics.rewards);
+    console.log('[QuestEditor] Saving brain:', formData.brain);
 
     const saveData = {
       name: formData.name,
       summary: formData.summary,
       soul: formData.soul,
-      brain: formData.brain,
-      mechanics: formData.mechanics,
+      brain: {
+        ...formData.brain,
+        // Explicitly include all brain fields
+        true_background: formData.brain.true_background,
+        background: formData.brain.true_background, // Also save as 'background' for compatibility
+        secret: formData.brain.secret,
+        twists: formData.brain.twists,
+        success_outcomes: formData.brain.success_outcomes,
+        success_variations: formData.brain.success_outcomes, // Also save as 'success_variations' for compatibility
+        failure_consequences: formData.brain.failure_consequences,
+        dm_notes: formData.brain.dm_notes,
+      },
+      mechanics: {
+        ...formData.mechanics,
+        quest_type: formData.mechanics.quest_type,
+        difficulty: formData.mechanics.difficulty,
+        recommended_level: formData.mechanics.recommended_level,
+        estimated_sessions: formData.mechanics.estimated_sessions,
+        // Also save objectives and rewards in mechanics for consistency
+        objectives: formData.mechanics.objectives,
+        rewards: formData.mechanics.rewards,
+        chain: formData.mechanics.chain,
+      },
+      // Save objectives, rewards, and chain to attributes (where detail page reads from)
+      attributes: {
+        ...(entity.attributes || {}),
+        objectives: formData.mechanics.objectives,
+        rewards: formData.mechanics.rewards,
+        chain: formData.mechanics.chain,
+      },
     };
 
     console.log('[QuestEditor] Save data:', saveData);
@@ -244,11 +337,12 @@ export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Eleme
             <Textarea
               value={formData.brain.true_background}
               onChange={(e) => updateBrain('true_background', e.target.value)}
-              rows={3}
+              rows={4}
               placeholder="What's REALLY going on behind the scenes..."
+              className="bg-slate-900/50 border-slate-700"
             />
             <p className="text-xs text-slate-500 mt-1">
-              The full story the players don&apos;t know yet
+              The hidden truth the players don&apos;t initially know
             </p>
           </div>
 
@@ -257,17 +351,24 @@ export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Eleme
             <Textarea
               value={formData.brain.secret}
               onChange={(e) => updateBrain('secret', e.target.value)}
-              rows={2}
-              placeholder="The twist the players haven't discovered..."
+              rows={3}
+              placeholder="The twist or hidden element..."
               className="border-amber-700/50 bg-amber-950/20"
             />
           </div>
 
           <StringArrayInput
-            label="Potential Twists"
+            label="Possible Twists"
             value={formData.brain.twists}
             onChange={(val) => updateBrain('twists', val)}
-            placeholder="Add a plot twist..."
+            placeholder="Add a possible twist..."
+          />
+
+          <StringArrayInput
+            label="Success Outcomes"
+            value={formData.brain.success_outcomes}
+            onChange={(val) => updateBrain('success_outcomes', val)}
+            placeholder="Add a success outcome..."
           />
 
           <div>
@@ -277,10 +378,24 @@ export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Eleme
               onChange={(e) => updateBrain('failure_consequences', e.target.value)}
               rows={3}
               placeholder="What happens to the world if the party fails..."
-              className="border-red-900/50"
+              className="border-red-900/50 bg-slate-900/50"
             />
             <p className="text-xs text-slate-500 mt-1">
               Concrete outcomes if the quest fails or is abandoned
+            </p>
+          </div>
+
+          <div>
+            <Label>DM Notes</Label>
+            <Textarea
+              value={formData.brain.dm_notes}
+              onChange={(e) => updateBrain('dm_notes', e.target.value)}
+              rows={4}
+              placeholder="Personal notes, reminders, ideas for running this quest..."
+              className="bg-slate-900/50 border-slate-700"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Your private notes for running this quest
             </p>
           </div>
         </div>
