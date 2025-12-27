@@ -78,6 +78,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { campaignId, inputs } = body as { campaignId: string; inputs: QuestInputRequest };
 
+    // Debug: Log incoming arc planning data
+    console.log('[Quest API] Received arcPlanning:', inputs?.arcPlanning);
+    console.log('[Quest API] Received chainContext:', inputs?.chainContext);
+
     if (!campaignId || !inputs?.concept) {
       return NextResponse.json(
         { error: 'Campaign ID and concept are required' },

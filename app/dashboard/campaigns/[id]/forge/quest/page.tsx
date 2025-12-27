@@ -93,6 +93,7 @@ export default function QuestForgePage(): JSX.Element {
             parentQuestName: input.parentQuestName,
             referencedEntityIds: input.referencedEntityIds,
             chainContext: input.chainContext, // Arc info for sequel quests
+            arcPlanning: input.arcPlanning,   // Arc planning for new arcs (Part 1)
           },
         }),
       });
@@ -491,6 +492,9 @@ export default function QuestForgePage(): JSX.Element {
     setReviewConflicts([]);
 
     try {
+      console.log('[QuestForge] Input arcPlanning:', input.arcPlanning);
+      console.log('[QuestForge] Input chainContext:', input.chainContext);
+
       const result = await forge.handleGenerate(input);
       if (result.success) {
         // CRITICAL: If this is a sequel, ensure chain info is correct
@@ -518,6 +522,26 @@ export default function QuestForgePage(): JSX.Element {
             console.log('[QuestForge] Created chain with inherited info:', output.chain);
           }
         }
+
+        // CRITICAL: If this is Part 1 of a new arc, enforce arc planning values
+        // The API should have set these, but we double-check here as a safeguard
+        if (input.arcPlanning && !input.chainContext && forge.output) {
+          const output = forge.output as GeneratedQuest & { chain?: Record<string, unknown> };
+          if (!output.chain) {
+            output.chain = {};
+          }
+          // Enforce user's arc name if provided
+          if (input.arcPlanning.arc_name) {
+            output.chain.arc_name = input.arcPlanning.arc_name;
+          }
+          // Enforce chain position from arc planning
+          output.chain.chain_position = `Part ${input.arcPlanning.current_part} of ${input.arcPlanning.total_parts}`;
+          output.chain.total_parts = input.arcPlanning.total_parts;
+          output.chain.previous_quest = null;
+          output.chain.previous_quest_id = null;
+          console.log('[QuestForge] Enforced arc planning values:', output.chain);
+        }
+
         toast.success('Quest generated successfully!');
       }
     } catch (error) {
