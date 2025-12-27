@@ -30,28 +30,37 @@ interface NpcEditorProps {
     brain?: Record<string, unknown>;
     voice?: Record<string, unknown>;
     mechanics?: Record<string, unknown>;
+    attributes?: Record<string, unknown>;
   };
   campaignId: string;
 }
 
 export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
   const [formData, setFormData] = useState(() => {
-    // Debug: comprehensive logging
-    console.log('[NpcEditor] === FULL BRAIN DATA ===');
-    console.log(JSON.stringify(entity.brain, null, 2));
-    console.log('[NpcEditor] brain.secret:', entity.brain?.secret);
-    console.log('[NpcEditor] brain.plot_hook (singular):', entity.brain?.plot_hook);
-    console.log('[NpcEditor] brain.plot_hooks (plural):', entity.brain?.plot_hooks);
-    console.log('[NpcEditor] brain.desire:', entity.brain?.desire);
-    console.log('[NpcEditor] brain.motivation:', entity.brain?.motivation);
+    // Debug: comprehensive logging - check both brain and attributes
+    console.log('[NpcEditor] === SEARCHING FOR SECRET ===');
+    console.log('[NpcEditor] entity.attributes?.secret:', entity.attributes?.secret);
+    console.log('[NpcEditor] entity.brain?.secret:', entity.brain?.secret);
+    console.log('[NpcEditor] === SEARCHING FOR PLOT HOOK ===');
+    console.log('[NpcEditor] entity.attributes?.plotHook:', entity.attributes?.plotHook);
+    console.log('[NpcEditor] entity.brain?.plot_hook:', entity.brain?.plot_hook);
+    console.log('[NpcEditor] entity.brain?.plot_hooks:', entity.brain?.plot_hooks);
 
-    // Helper to extract plot_hooks from various formats
+    // Helper to extract plot_hooks from various locations and formats
     const extractPlotHooks = (): string[] => {
-      // If it's already an array, use it
+      // Check attributes first (camelCase singular)
+      if (entity.attributes?.plotHook) {
+        return [entity.attributes.plotHook as string];
+      }
+      // Check attributes (snake_case)
+      if (entity.attributes?.plot_hook) {
+        return [entity.attributes.plot_hook as string];
+      }
+      // If it's already an array in brain, use it
       if (Array.isArray(entity.brain?.plot_hooks)) {
         return entity.brain.plot_hooks as string[];
       }
-      // If there's a singular plot_hook string, wrap in array
+      // If there's a singular plot_hook string in brain, wrap in array
       if (entity.brain?.plot_hook) {
         return [entity.brain.plot_hook as string];
       }
@@ -60,6 +69,19 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
         return [entity.brain.plot_hooks];
       }
       return [];
+    };
+
+    // Helper to extract secret from various locations
+    const extractSecret = (): string => {
+      // Check attributes first (where detail page reads from)
+      if (entity.attributes?.secret) {
+        return entity.attributes.secret as string;
+      }
+      // Fallback to brain
+      if (entity.brain?.secret) {
+        return entity.brain.secret as string;
+      }
+      return '';
     };
 
     return {
@@ -100,7 +122,7 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
           (entity.brain?.motivation as string) ||
           (entity.brain?.desire as string) ||
           '',
-        secret: (entity.brain?.secret as string) || '',
+        secret: extractSecret(),
         fear: (entity.brain?.fear as string) || '',
         goal: (entity.brain?.goal as string) || '',
         obstacle: (entity.brain?.obstacle as string) || '',
@@ -235,6 +257,12 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
         quotes: formData.voice.sample_quotes,
       },
       mechanics: formData.mechanics,
+      // Also save to attributes (where detail page reads from)
+      attributes: {
+        ...(entity.attributes || {}),
+        secret: formData.brain.secret,
+        plotHook: formData.brain.plot_hooks?.[0] || '',
+      },
     };
 
     console.log('[NpcEditor] Sending payload:', JSON.stringify(payload, null, 2));
