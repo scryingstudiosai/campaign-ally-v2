@@ -52,8 +52,8 @@ export function EditEntityShell({
       console.log('[EditShell] Save completed successfully');
       toast.success('Changes saved!');
 
-      // Force a hard refresh to ensure new data loads
-      window.location.href = `/dashboard/campaigns/${campaignId}/memory/${entity.id}`;
+      // Force a hard refresh with cache-busting timestamp to ensure new data loads
+      window.location.href = `/dashboard/campaigns/${campaignId}/memory/${entity.id}?t=${Date.now()}`;
     } catch (error) {
       console.error('[EditShell] Save failed:', error);
       toast.error('Failed to save changes. Please try again.');
