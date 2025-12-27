@@ -6,8 +6,6 @@ import { Session } from '@/types/session';
 import { SessionHeader } from './SessionHeader';
 import { GripVertical } from 'lucide-react';
 
-import 'react-resizable-panels/styles.css';
-
 interface SessionShellProps {
   session: Session;
   campaignId: string;
