@@ -171,6 +171,21 @@ export async function POST(request: NextRequest) {
 
     const generatedQuest: GeneratedQuest = JSON.parse(responseContent);
 
+    // CRITICAL: Enforce chain context for sequel quests
+    // The AI may not include the exact arc_id/previous_quest_id, so we enforce it here
+    if (inputs.chainContext) {
+      if (!generatedQuest.chain) {
+        generatedQuest.chain = {} as QuestChain;
+      }
+      // Enforce all inherited chain data
+      generatedQuest.chain.arc_id = inputs.chainContext.arc_id;
+      generatedQuest.chain.arc_name = inputs.chainContext.arc_name;
+      generatedQuest.chain.chain_position = inputs.chainContext.chain_position;
+      generatedQuest.chain.previous_quest_id = inputs.chainContext.parent_quest_id;
+      generatedQuest.chain.previous_quest = inputs.chainContext.parent_quest_name;
+      console.log('[Quest API] Enforced chain context:', generatedQuest.chain);
+    }
+
     // Track generation in database (for analytics)
     const { error: genError } = await supabase.from('generations').insert({
       user_id: user.id,
