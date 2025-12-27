@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { User, Sparkles, Brain, Wrench, Mic, Skull } from 'lucide-react';
+import { User, Sparkles, Brain, Wrench, Mic, Skull, Shield } from 'lucide-react';
 
 interface NpcEditorProps {
   entity: {
@@ -145,6 +145,11 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
         escape_plan: (entity.brain?.escape_plan as string) || '',
         escalation: (entity.brain?.escalation as string) || '',
         resources: (entity.brain?.resources as string[]) || [],
+        // Hero-specific brain fields
+        limitation: (entity.brain?.limitation as string) || '',
+        why_they_cant_solve_it: (entity.brain?.why_they_cant_solve_it as string) || '',
+        support_role: (entity.brain?.support_role as string) || '',
+        availability: (entity.brain?.availability as string) || 'scheduled',
       },
 
       // Voice - map all possible field names
@@ -247,6 +252,11 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
         wants_from_party: formData.brain.what_they_want_from_pcs,
         // Save plot_hook as string
         plot_hook: formData.brain.plot_hook,
+        // Hero fields (explicitly included for clarity)
+        limitation: formData.brain.limitation,
+        why_they_cant_solve_it: formData.brain.why_they_cant_solve_it,
+        support_role: formData.brain.support_role,
+        availability: formData.brain.availability,
       },
       voice: {
         ...formData.voice,
@@ -311,7 +321,8 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
   const combatRole = formData.mechanics.combat_role;
   const showFullStats = ['villain', 'hero', 'elite', 'minion'].includes(combatRole);
   const showLegendary = combatRole === 'villain';
-  const isVillain = formData.sub_type?.toLowerCase() === 'villain';
+  const isVillain = combatRole === 'villain';
+  const isHero = combatRole === 'hero';
 
   // Define tabs
   const tabs = [
@@ -628,6 +639,75 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
                   placeholder="What happens if the party doesn't stop them..."
                   className="border-red-900/50"
                 />
+              </div>
+            </div>
+          )}
+
+          {/* ========== HERO-SPECIFIC SECTION ========== */}
+          {isHero && (
+            <div className="mt-6 p-4 border border-amber-500/30 bg-amber-950/20 rounded-lg space-y-4 animate-in fade-in slide-in-from-top-2">
+              <h3 className="text-amber-400 font-semibold flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                Hero Details
+              </h3>
+
+              <div className="p-3 bg-amber-900/10 border border-amber-900/30 rounded text-xs text-amber-200/70 italic">
+                &quot;A Hero opens the door, but the Party must walk through it.&quot;
+                These fields ensure the NPC supports rather than overshadows the players.
+              </div>
+
+              <div>
+                <Label className="text-amber-300">Limitation / Constraint</Label>
+                <Textarea
+                  value={formData.brain.limitation || ''}
+                  onChange={(e) => updateBrain('limitation', e.target.value)}
+                  rows={2}
+                  placeholder="Oath-bound to the temple, cursed to never leave the forest, too old to fight..."
+                  className="border-amber-900/50 bg-slate-900/50 focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <Label className="text-amber-300">Why They Can&apos;t Solve It</Label>
+                <Textarea
+                  value={formData.brain.why_they_cant_solve_it || ''}
+                  onChange={(e) => updateBrain('why_they_cant_solve_it', e.target.value)}
+                  rows={3}
+                  placeholder="If they leave the shrine, the protective ward fails. Therefore, the players must go to the dungeon."
+                  className="border-amber-900/50 bg-slate-900/50 focus:border-amber-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Critical: The reason this powerful ally can&apos;t just handle things themselves
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-amber-300">Support Role</Label>
+                <Textarea
+                  value={formData.brain.support_role || ''}
+                  onChange={(e) => updateBrain('support_role', e.target.value)}
+                  rows={2}
+                  placeholder="Provides ancient lore, offers safe haven, buffs the party before battle..."
+                  className="border-amber-900/50 bg-slate-900/50 focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <Label className="text-amber-300">Availability</Label>
+                <Select
+                  value={formData.brain.availability || 'scheduled'}
+                  onValueChange={(val) => updateBrain('availability', val)}
+                >
+                  <SelectTrigger className="border-amber-900/50 bg-slate-900/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="always">Always Available</SelectItem>
+                    <SelectItem value="scheduled">By Appointment / At Location</SelectItem>
+                    <SelectItem value="emergency">Emergencies Only</SelectItem>
+                    <SelectItem value="once">One-Time Help</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
