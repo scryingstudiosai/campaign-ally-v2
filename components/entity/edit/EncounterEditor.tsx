@@ -154,35 +154,33 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
       return [];
     };
 
-    // Helper to extract rewards - check all possible locations
+    // Helper to extract rewards - prioritize attributes.rewards (AI storage location)
     const extractRewards = (): QuestRewards => {
-      const mechRewards = (mechanics.rewards as Record<string, unknown>) || {};
       const attrRewards = (attributes.rewards as Record<string, unknown>) || {};
-      const mechTreasure = (mechanics.treasure as Record<string, unknown>) || {};
+      const mechRewards = (mechanics.rewards as Record<string, unknown>) || {};
 
       return {
-        xp: (mechRewards.xp as number) ||
+        // XP - attributes has the real data, mechanics often has 0
+        xp: (attrRewards.xp as number) ||
+          (mechRewards.xp as number) ||
           (rewards.xp as number) ||
           (mechanics.xp as number) ||
-          (attributes.xp as number) ||
           0,
 
-        gold: (mechRewards.gold as number) ||
+        // Gold - attributes has real value, mechanics often has 0
+        gold: (attrRewards.gold as number) ||
+          (mechRewards.gold as number) ||
           (rewards.gold as number) ||
           (mechanics.gold as number) ||
-          (mechTreasure.gold as number) ||
-          (attributes.gold as number) ||
           0,
 
         items: (() => {
-          // Check all possible locations for items
-          const items = (mechRewards.items as unknown[]) ||
+          // Check attributes.rewards.items first (AI storage location)
+          const items = (attrRewards.items as unknown[]) ||
+            (mechRewards.items as unknown[]) ||
             (rewards.items as unknown[]) ||
             (mechanics.items as unknown[]) ||
             (mechanics.loot as unknown[]) ||
-            (mechTreasure.items as unknown[]) ||
-            (mechanics.treasure_items as unknown[]) ||
-            (attrRewards.items as unknown[]) ||
             [];
 
           if (!Array.isArray(items)) return [];
@@ -197,9 +195,11 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
           }) as (string | Record<string, unknown>)[];
         })(),
 
-        special: (mechRewards.special as string) ||
+        // Special - AI uses "story" field name, also check "special"
+        special: (attrRewards.special as string) ||
+          (attrRewards.story as string) ||
+          (mechRewards.special as string) ||
           (rewards.special as string) ||
-          (mechanics.special_reward as string) ||
           '',
       };
     };
@@ -398,10 +398,20 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
           gold: formData.rewards.gold,
           items: formData.rewards.items,
           special: formData.rewards.special,
+          story: formData.rewards.special, // AI uses "story" field name
         },
-        // Also save flat for compatibility
-        xp: formData.rewards.xp,
-        gold: formData.rewards.gold,
+      },
+
+      // Save to attributes.rewards (where AI originally stores it)
+      attributes: {
+        ...entity.attributes,
+        rewards: {
+          xp: formData.rewards.xp,
+          gold: formData.rewards.gold,
+          items: formData.rewards.items,
+          special: formData.rewards.special,
+          story: formData.rewards.special, // AI uses "story" field name
+        },
       },
 
       // Also save to top-level rewards for compatibility
