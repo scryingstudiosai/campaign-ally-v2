@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { EditEntityShell } from './EditEntityShell';
 import { TabbedFormLayout } from '@/components/form-widgets/TabbedFormLayout';
 import { StringArrayInput } from '@/components/form-widgets/StringArrayInput';
-import { RewardsEditor, QuestRewards } from '@/components/form-widgets/RewardsEditor';
+import { RewardsEditor, QuestRewards, RewardItemInput } from '@/components/form-widgets/RewardsEditor';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -185,14 +185,22 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
 
           if (!Array.isArray(items)) return [];
 
-          // Normalize items - can be strings or objects
+          // Normalize items - can be strings or RewardItem objects
           return items.map(item => {
             if (typeof item === 'string') return item;
             if (typeof item === 'object' && item !== null) {
-              return item as Record<string, unknown>;
+              const obj = item as Record<string, unknown>;
+              return {
+                name: (obj.name as string) || 'Unknown Item',
+                type: obj.type as string | undefined,
+                rarity: obj.rarity as string | undefined,
+                description: obj.description as string | undefined,
+                srd_id: obj.srd_id as string | undefined,
+                is_custom: obj.is_custom as boolean | undefined,
+              };
             }
-            return item;
-          }) as (string | Record<string, unknown>)[];
+            return String(item);
+          }) as RewardItemInput[];
         })(),
 
         // Special - AI uses "story" field name, also check "special"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 import { Session } from '@/types/session';
 import { SessionHeader } from './SessionHeader';
 import { GripVertical } from 'lucide-react';
@@ -24,7 +24,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps): JSX.El
       />
 
       {/* 3-Column Layout */}
-      <PanelGroup direction="horizontal" className="flex-1">
+      <Group orientation="horizontal" className="flex-1">
         {/* Left Panel: The Plan */}
         <Panel defaultSize={25} minSize={15} maxSize={40}>
           <div className="h-full bg-slate-900 border-r border-slate-800 p-4 overflow-y-auto">
@@ -43,9 +43,9 @@ export function SessionShell({ session, campaignId }: SessionShellProps): JSX.El
         </Panel>
 
         {/* Resize Handle */}
-        <PanelResizeHandle className="w-2 bg-slate-800 hover:bg-teal-900/50 transition-colors flex items-center justify-center group">
+        <Separator className="w-2 bg-slate-800 hover:bg-teal-900/50 transition-colors flex items-center justify-center group">
           <GripVertical className="w-4 h-4 text-slate-600 group-hover:text-teal-400" />
-        </PanelResizeHandle>
+        </Separator>
 
         {/* Center Panel: The Stage */}
         <Panel defaultSize={50} minSize={30}>
@@ -93,9 +93,9 @@ export function SessionShell({ session, campaignId }: SessionShellProps): JSX.El
         </Panel>
 
         {/* Resize Handle */}
-        <PanelResizeHandle className="w-2 bg-slate-800 hover:bg-teal-900/50 transition-colors flex items-center justify-center group">
+        <Separator className="w-2 bg-slate-800 hover:bg-teal-900/50 transition-colors flex items-center justify-center group">
           <GripVertical className="w-4 h-4 text-slate-600 group-hover:text-teal-400" />
-        </PanelResizeHandle>
+        </Separator>
 
         {/* Right Panel: The Toolkit */}
         <Panel defaultSize={25} minSize={15} maxSize={40}>
@@ -132,7 +132,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps): JSX.El
             </div>
           </div>
         </Panel>
-      </PanelGroup>
+      </Group>
     </div>
   );
 }
