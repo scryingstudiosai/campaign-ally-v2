@@ -116,11 +116,48 @@ export function CreatureEditor({ entity, campaignId }: CreatureEditorProps): JSX
       return [];
     };
 
-    // Helper to extract treasure items
+    // Helper to extract treasure description - handle multiple data structures
+    const extractTreasureDescription = (): string => {
+      // Direct treasure.description (most common)
+      if (typeof treasure.description === 'string') {
+        return treasure.description;
+      }
+      // treasure itself might be a string
+      if (typeof entity.treasure === 'string') {
+        return entity.treasure;
+      }
+      // brain.treasure might be a string
+      if (typeof brain.treasure === 'string') {
+        return brain.treasure;
+      }
+      // brain.treasure might be an object with description
+      if (brain.treasure && typeof (brain.treasure as Record<string, unknown>).description === 'string') {
+        return (brain.treasure as Record<string, unknown>).description as string;
+      }
+      // attributes.treasure might be a string
+      if (typeof attributes.treasure === 'string') {
+        return attributes.treasure;
+      }
+      // attributes.treasure might be an object with description
+      if (attributes.treasure && typeof (attributes.treasure as Record<string, unknown>).description === 'string') {
+        return (attributes.treasure as Record<string, unknown>).description as string;
+      }
+      return '';
+    };
+
+    // Helper to extract treasure items - handle multiple data structures
     const extractTreasureItems = (): string[] => {
       if (Array.isArray(treasure.items)) return treasure.items as string[];
       if (Array.isArray(brain.treasure_items)) return brain.treasure_items as string[];
+      // brain.treasure might be an object with items array
+      if (brain.treasure && Array.isArray((brain.treasure as Record<string, unknown>).items)) {
+        return (brain.treasure as Record<string, unknown>).items as string[];
+      }
       if (Array.isArray(attributes.treasure_items)) return attributes.treasure_items as string[];
+      // attributes.treasure might be an object with items array
+      if (attributes.treasure && Array.isArray((attributes.treasure as Record<string, unknown>).items)) {
+        return (attributes.treasure as Record<string, unknown>).items as string[];
+      }
       return [];
     };
 
@@ -232,10 +269,7 @@ export function CreatureEditor({ entity, campaignId }: CreatureEditorProps): JSX
       },
 
       treasure: {
-        description: (treasure.description as string) ||
-          (brain.treasure as string) ||
-          (attributes.treasure as string) ||
-          '',
+        description: extractTreasureDescription(),
         items: extractTreasureItems(),
       },
     };
