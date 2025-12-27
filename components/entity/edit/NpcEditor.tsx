@@ -46,29 +46,29 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
     console.log('[NpcEditor] entity.brain?.plot_hook:', entity.brain?.plot_hook);
     console.log('[NpcEditor] entity.brain?.plot_hooks:', entity.brain?.plot_hooks);
 
-    // Helper to extract plot_hooks from various locations and formats
-    const extractPlotHooks = (): string[] => {
-      // Check attributes first (camelCase singular)
+    // Helper to extract plot_hook from various locations (now returns single string)
+    const extractPlotHook = (): string => {
+      // Check attributes first (camelCase singular - where detail page reads from)
       if (entity.attributes?.plotHook) {
-        return [entity.attributes.plotHook as string];
+        return entity.attributes.plotHook as string;
       }
       // Check attributes (snake_case)
       if (entity.attributes?.plot_hook) {
-        return [entity.attributes.plot_hook as string];
+        return entity.attributes.plot_hook as string;
       }
-      // If it's already an array in brain, use it
-      if (Array.isArray(entity.brain?.plot_hooks)) {
-        return entity.brain.plot_hooks as string[];
-      }
-      // If there's a singular plot_hook string in brain, wrap in array
+      // If there's a singular plot_hook string in brain
       if (entity.brain?.plot_hook) {
-        return [entity.brain.plot_hook as string];
+        return entity.brain.plot_hook as string;
       }
-      // Check if plot_hooks is a string that should be an array
+      // If it's an array in brain, take the first element
+      if (Array.isArray(entity.brain?.plot_hooks) && entity.brain.plot_hooks.length > 0) {
+        return entity.brain.plot_hooks[0] as string;
+      }
+      // If plot_hooks is a string
       if (typeof entity.brain?.plot_hooks === 'string' && entity.brain.plot_hooks) {
-        return [entity.brain.plot_hooks];
+        return entity.brain.plot_hooks;
       }
-      return [];
+      return '';
     };
 
     // Helper to extract secret from various locations
@@ -137,7 +137,7 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
           (entity.brain?.what_they_want_from_pcs as string) ||
           (entity.brain?.wants_from_party as string) ||
           '',
-        plot_hooks: extractPlotHooks(),
+        plot_hook: extractPlotHook(),
         relationships: (entity.brain?.relationships as string) || '',
         // Preserve original villain-specific brain fields
         scheme: (entity.brain?.scheme as string) || '',
@@ -227,7 +227,7 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
   const handleSave = async (): Promise<void> => {
     console.log('[NpcEditor] === SAVING ===');
     console.log('[NpcEditor] Saving brain.secret:', formData.brain.secret);
-    console.log('[NpcEditor] Saving brain.plot_hooks:', formData.brain.plot_hooks);
+    console.log('[NpcEditor] Saving brain.plot_hook:', formData.brain.plot_hook);
     console.log('[NpcEditor] mechanics.actions:', formData.mechanics.actions);
     console.log('[NpcEditor] mechanics.legendary_actions:', formData.mechanics.legendary_actions);
 
@@ -245,9 +245,8 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
         desire: formData.brain.motivation,
         line: formData.brain.line_they_wont_cross,
         wants_from_party: formData.brain.what_they_want_from_pcs,
-        // Save plot_hooks as both singular and plural for compatibility
-        plot_hooks: formData.brain.plot_hooks,
-        plot_hook: formData.brain.plot_hooks?.[0] || '',
+        // Save plot_hook as string
+        plot_hook: formData.brain.plot_hook,
       },
       voice: {
         ...formData.voice,
@@ -261,7 +260,7 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
       attributes: {
         ...(entity.attributes || {}),
         secret: formData.brain.secret,
-        plotHook: formData.brain.plot_hooks?.[0] || '',
+        plotHook: formData.brain.plot_hook,
       },
     };
 
@@ -553,12 +552,16 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
             />
           </div>
 
-          <StringArrayInput
-            label="Plot Hooks"
-            value={formData.brain.plot_hooks}
-            onChange={(val) => updateBrain('plot_hooks', val)}
-            placeholder="Add a plot hook..."
-          />
+          <div>
+            <Label className="text-teal-400">Plot Hook</Label>
+            <Textarea
+              value={formData.brain.plot_hook}
+              onChange={(e) => updateBrain('plot_hook', e.target.value)}
+              rows={3}
+              placeholder="How this NPC could draw the party into adventure..."
+              className="border-teal-700/50"
+            />
+          </div>
 
           {/* ========== VILLAIN-SPECIFIC SECTION ========== */}
           {isVillain && (
