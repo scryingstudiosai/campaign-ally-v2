@@ -24,6 +24,15 @@ interface ChainContext {
   parent_quest_name: string;
 }
 
+// Arc planning for new arcs (Part 1)
+interface ArcPlanning {
+  arc_name: string | null;
+  total_parts: number;
+  current_part: number;
+  arc_beat: string;
+  arc_beat_description: string;
+}
+
 interface QuestInputRequest {
   name?: string;
   questType: QuestSubType;
@@ -39,6 +48,7 @@ interface QuestInputRequest {
   parentQuestName?: string;
   referencedEntityIds?: string[];
   chainContext?: ChainContext; // Arc info for sequel quests
+  arcPlanning?: ArcPlanning;   // Arc planning for new arcs (Part 1)
 }
 
 interface GeneratedQuest {
@@ -184,6 +194,23 @@ export async function POST(request: NextRequest) {
       generatedQuest.chain.previous_quest_id = inputs.chainContext.parent_quest_id;
       generatedQuest.chain.previous_quest = inputs.chainContext.parent_quest_name;
       console.log('[Quest API] Enforced chain context:', generatedQuest.chain);
+    }
+
+    // CRITICAL: Set up chain data for new arcs (Part 1)
+    // When arcPlanning is provided, this is the first quest in a planned arc
+    if (inputs.arcPlanning && !inputs.chainContext) {
+      if (!generatedQuest.chain) {
+        generatedQuest.chain = {} as QuestChain;
+      }
+      // Set arc info - arc_id will be set to the quest's ID when saved
+      // For now, we mark it as needing the arc_id to be set on save
+      generatedQuest.chain.arc_name = inputs.arcPlanning.arc_name || generatedQuest.soul?.title || generatedQuest.name;
+      generatedQuest.chain.chain_position = `Part ${inputs.arcPlanning.current_part} of ${inputs.arcPlanning.total_parts}`;
+      generatedQuest.chain.total_parts = inputs.arcPlanning.total_parts;
+      // No previous quest for Part 1
+      generatedQuest.chain.previous_quest = null;
+      generatedQuest.chain.previous_quest_id = null;
+      console.log('[Quest API] Set up new arc chain data:', generatedQuest.chain);
     }
 
     // Track generation in database (for analytics)

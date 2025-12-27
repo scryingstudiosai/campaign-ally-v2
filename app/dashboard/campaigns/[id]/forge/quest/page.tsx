@@ -404,11 +404,36 @@ export default function QuestForgePage(): JSX.Element {
       });
 
       if (result.success && result.entity) {
-        const entity = result.entity as { id: string };
+        const entity = result.entity as { id: string; attributes?: Record<string, unknown> };
 
-        // Get parent quest ID from input if this is a sequel
+        // Get input data for arc/chain context
         const inputData = forge.input as QuestInputData | null;
         const parentQuestId = inputData?.parentQuestId;
+
+        // CRITICAL: If this is Part 1 of a new arc, set arc_id to this quest's ID
+        // The arc_id wasn't set during generation because we didn't have the ID yet
+        if (inputData?.arcPlanning && !inputData?.chainContext) {
+          try {
+            const existingAttributes = entity.attributes || {};
+            const existingChain = (existingAttributes.chain as Record<string, unknown>) || {};
+
+            await supabase
+              .from('entities')
+              .update({
+                attributes: {
+                  ...existingAttributes,
+                  chain: {
+                    ...existingChain,
+                    arc_id: entity.id, // This quest IS the arc anchor
+                  },
+                },
+              })
+              .eq('id', entity.id);
+            console.log('[QuestForge] Set arc_id for Part 1:', entity.id);
+          } catch (arcError) {
+            console.error('Failed to set arc_id:', arcError);
+          }
+        }
 
         // Create "leads_to" relationship if this is a sequel
         if (parentQuestId) {
