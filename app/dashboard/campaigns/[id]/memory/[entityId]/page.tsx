@@ -340,9 +340,9 @@ export default async function EntityDetailPage({ params }: PageProps) {
                 )}
               </div>
               {/* Summary as subtitle - the quick reference */}
-              {(entity.dm_slug || entity.summary) && (
+              {(entity.summary || entity.dm_slug) && (
                 <p className="text-slate-400 italic mt-3">
-                  {entity.dm_slug || entity.summary}
+                  {entity.summary || entity.dm_slug}
                 </p>
               )}
             </div>
