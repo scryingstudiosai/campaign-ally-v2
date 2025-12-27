@@ -136,6 +136,15 @@ export default async function EntityDetailPage({ params }: PageProps) {
     notFound()
   }
 
+  // DEBUG: Log what we fetched from database
+  console.log('=== DETAIL PAGE DEBUG ===');
+  console.log('entity.id:', entity.id);
+  console.log('entity.name:', entity.name);
+  console.log('entity.summary:', entity.summary);
+  console.log('entity.dm_slug:', entity.dm_slug);
+  console.log('entity.description:', entity.description?.slice(0, 100));
+  console.log('Timestamp:', new Date().toISOString());
+
   // Fetch relationships
   const { data: rawRelationships } = await supabase
     .from('relationships')
