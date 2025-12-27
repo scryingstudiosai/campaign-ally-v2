@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import {
   Eye,
   EyeOff,
   ChevronRight,
+  ChevronLeft,
   Sparkles,
   Target,
   Lightbulb,
@@ -129,9 +131,19 @@ export function QuestOutputCard({
           </div>
         )}
         {data.chain?.previous_quest && (
-          <div className="text-xs text-slate-500 mb-2">
-            <ChevronRight className="w-3 h-3 inline" /> Follows:{' '}
-            <span className="text-teal-400">{data.chain.previous_quest}</span>
+          <div className="text-xs text-slate-500 mb-2 flex items-center gap-1">
+            <ChevronLeft className="w-3 h-3" />
+            <span>Follows:</span>
+            {data.chain.previous_quest_id ? (
+              <Link
+                href={`/dashboard/campaigns/${campaignId}/memory/${data.chain.previous_quest_id}`}
+                className="text-teal-400 hover:text-teal-300 hover:underline"
+              >
+                {data.chain.previous_quest}
+              </Link>
+            ) : (
+              <span className="text-teal-400">{data.chain.previous_quest}</span>
+            )}
           </div>
         )}
 
