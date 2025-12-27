@@ -73,6 +73,11 @@ interface ItemFormData {
     properties: string[];
     is_magical: boolean;
 
+    // Magical Properties
+    ability: string;         // Main magical effect
+    trigger: string;         // Activation condition
+    cost_drawback: string;   // Negative effects or costs
+
     // SRD Reference
     srd_id: string | null;
     srd_name: string | null;
@@ -92,8 +97,8 @@ interface ItemFormData {
     strength_requirement: number;
 
     // Charged items
-    max_charges: number;
-    current_charges: number;
+    max_charges: number | null;
+    current_charges: number | null;
     recharge_rate: string;
 
     // Consumables
@@ -131,9 +136,9 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
 
       soul: {
         description: (soul.description as string) || entity.description || '',
-        origin: (soul.origin as string) || '',
-        visuals: (soul.visuals as string) || '',
-        lore: (soul.lore as string) || '',
+        origin: (soul.origin as string) || (soul.history as string) || '',
+        visuals: (soul.visuals as string) || (soul.visual_details as string) || '',
+        lore: (soul.lore as string) || (soul.legend as string) || '',
       },
 
       brain: {
@@ -149,7 +154,16 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
         requires_attunement: (mechanics.requires_attunement as boolean) || false,
         attunement_requirements: (mechanics.attunement_requirements as string) || '',
         properties: (mechanics.properties as string[]) || [],
-        is_magical: (mechanics.is_magical as boolean) || (attributes.magical_aura as boolean) || false,
+        is_magical: (mechanics.is_magical as boolean) || (attributes.magical_aura as boolean) ||
+          !!(mechanics.ability || mechanics.effect || mechanics.magical_properties) || false,
+
+        // Magical Properties
+        ability: (mechanics.ability as string) || (mechanics.effect as string) ||
+          (mechanics.magical_properties as string) || '',
+        trigger: (mechanics.trigger as string) || (mechanics.trigger_condition as string) ||
+          (mechanics.activation as string) || '',
+        cost_drawback: (mechanics.cost_drawback as string) || (mechanics.drawback as string) ||
+          (mechanics.cost as string) || '',
 
         // SRD Reference
         srd_id: (mechanics.srd_id as string) || null,
@@ -431,6 +445,45 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
             onChange={(val) => updateMechanics('properties', val)}
             placeholder="Add property (Finesse, Light, Versatile...)"
           />
+
+          {/* ========== MAGICAL PROPERTIES SECTION ========== */}
+          {formData.mechanics.is_magical && (
+            <div className="p-4 border border-amber-900/30 bg-amber-950/10 rounded-lg space-y-4">
+              <h3 className="text-amber-400 font-semibold flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Magical Properties
+              </h3>
+
+              <div>
+                <Label>Magical Ability / Effect</Label>
+                <Textarea
+                  value={formData.mechanics.ability}
+                  onChange={(e) => updateMechanics('ability', e.target.value)}
+                  rows={3}
+                  placeholder="Describe the main magical effect or ability..."
+                />
+              </div>
+
+              <div>
+                <Label>Trigger / Activation</Label>
+                <Input
+                  value={formData.mechanics.trigger}
+                  onChange={(e) => updateMechanics('trigger', e.target.value)}
+                  placeholder="How is this ability activated? (command word, action, bonus action...)"
+                />
+              </div>
+
+              <div>
+                <Label>Cost / Drawback</Label>
+                <Textarea
+                  value={formData.mechanics.cost_drawback}
+                  onChange={(e) => updateMechanics('cost_drawback', e.target.value)}
+                  rows={2}
+                  placeholder="Any costs, drawbacks, or negative effects (consumes charge, deals damage to user...)"
+                />
+              </div>
+            </div>
+          )}
 
           {/* ========== WEAPON SECTION ========== */}
           {isWeapon && (
