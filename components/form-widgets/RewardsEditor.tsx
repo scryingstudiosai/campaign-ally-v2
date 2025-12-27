@@ -7,16 +7,39 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Coins, Sparkles, Package, Star, X, Plus } from 'lucide-react';
 
+// Item can be either a string or an object with name/type/rarity
+export interface RewardItem {
+  name: string;
+  type?: string;
+  rarity?: string;
+  description?: string;
+  srd_id?: string;
+  is_custom?: boolean;
+}
+
+export type RewardItemInput = string | RewardItem;
+
 export interface QuestRewards {
   gold?: number;
   xp?: number;
-  items?: string[];
+  items?: RewardItemInput[];
   special?: string;
 }
 
 interface RewardsEditorProps {
   value: QuestRewards;
   onChange: (rewards: QuestRewards) => void;
+}
+
+// Helper to get display name from item (handles both string and object)
+function getItemName(item: RewardItemInput): string {
+  if (typeof item === 'string') return item;
+  return item.name || 'Unknown Item';
+}
+
+// Helper to check if item is an object with properties
+function isItemObject(item: RewardItemInput): item is RewardItem {
+  return typeof item === 'object' && item !== null;
 }
 
 export function RewardsEditor({ value = {}, onChange }: RewardsEditorProps): JSX.Element {
@@ -30,7 +53,9 @@ export function RewardsEditor({ value = {}, onChange }: RewardsEditorProps): JSX
     const trimmed = itemInput.trim();
     if (trimmed) {
       const currentItems = value.items || [];
-      if (!currentItems.includes(trimmed)) {
+      // Check if item name already exists (handle both string and object items)
+      const exists = currentItems.some((item) => getItemName(item) === trimmed);
+      if (!exists) {
         updateField('items', [...currentItems, trimmed]);
         setItemInput('');
       }
@@ -104,22 +129,32 @@ export function RewardsEditor({ value = {}, onChange }: RewardsEditorProps): JSX
         {/* Current Items */}
         {(value.items?.length ?? 0) > 0 && (
           <div className="flex flex-wrap gap-2 p-3 bg-slate-900/50 rounded-lg">
-            {value.items?.map((item, index) => (
-              <Badge
-                key={index}
-                variant="secondary"
-                className="bg-teal-950/50 text-teal-300 border border-teal-800/50 pl-2 pr-1 py-1 flex items-center gap-1"
-              >
-                {item}
-                <button
-                  type="button"
-                  onClick={() => removeItem(index)}
-                  className="ml-1 hover:bg-teal-800/50 rounded p-0.5"
+            {value.items?.map((item, index) => {
+              const itemName = getItemName(item);
+              const itemObj = isItemObject(item) ? item : null;
+
+              return (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="bg-teal-950/50 text-teal-300 border border-teal-800/50 pl-2 pr-1 py-1 flex items-center gap-1"
                 >
-                  <X className="w-3 h-3" />
-                </button>
-              </Badge>
-            ))}
+                  <span>{itemName}</span>
+                  {itemObj?.rarity && (
+                    <span className="text-xs text-purple-400 capitalize">
+                      ({itemObj.rarity})
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeItem(index)}
+                    className="ml-1 hover:bg-teal-800/50 rounded p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              );
+            })}
           </div>
         )}
 

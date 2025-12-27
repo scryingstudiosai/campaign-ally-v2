@@ -5,7 +5,7 @@ import { EditEntityShell } from './EditEntityShell';
 import { TabbedFormLayout } from '@/components/form-widgets/TabbedFormLayout';
 import { StringArrayInput } from '@/components/form-widgets/StringArrayInput';
 import { ObjectivesEditor, type Objective } from '@/components/form-widgets/ObjectivesEditor';
-import { RewardsEditor, type QuestRewards } from '@/components/form-widgets/RewardsEditor';
+import { RewardsEditor, type QuestRewards, type RewardItemInput } from '@/components/form-widgets/RewardsEditor';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -61,20 +61,25 @@ export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Eleme
     // Check attributes first (where forge saves them)
     if (entity.attributes?.rewards) {
       const attrRewards = entity.attributes.rewards as QuestRewards;
+      const items = attrRewards.items || [];
+      console.log('[QuestEditor] Rewards items from attributes:', items);
+      console.log('[QuestEditor] First item type:', typeof items[0], items[0]);
       return {
         gold: attrRewards.gold || 0,
         xp: attrRewards.xp || 0,
-        items: attrRewards.items || [],
+        items: items as RewardItemInput[],
         special: attrRewards.special || '',
       };
     }
     // Fallback to mechanics
     if (entity.mechanics?.rewards) {
       const mechRewards = entity.mechanics.rewards as QuestRewards;
+      const items = mechRewards.items || [];
+      console.log('[QuestEditor] Rewards items from mechanics:', items);
       return {
         gold: mechRewards.gold || 0,
         xp: mechRewards.xp || 0,
-        items: mechRewards.items || [],
+        items: items as RewardItemInput[],
         special: mechRewards.special || '',
       };
     }
