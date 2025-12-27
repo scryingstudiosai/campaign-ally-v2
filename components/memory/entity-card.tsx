@@ -19,6 +19,7 @@ import {
   Sparkles,
   Wand2,
   Trash2,
+  ChevronRight,
 } from 'lucide-react'
 import {
   AlertDialog,
@@ -50,6 +51,11 @@ export interface Entity {
     needs_review?: boolean
     stub_context?: string
     source_entity_name?: string
+    chain?: {
+      arc_id?: string
+      arc_name?: string
+      chain_position?: string
+    }
     [key: string]: unknown
   }
 }
@@ -436,6 +442,14 @@ export function EntityCard({
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <EntityTypeBadge type={entity.entity_type} subtype={entity.sub_type} size="sm" />
                 </div>
+                {/* Quest Chain Breadcrumb (selection mode) */}
+                {entity.entity_type === 'quest' && entity.attributes?.chain?.arc_name && (
+                  <div className="flex items-center gap-1 text-xs mt-2">
+                    <span className="text-amber-400/80">{entity.attributes.chain.arc_name}</span>
+                    <ChevronRight className="w-3 h-3 text-slate-600" />
+                    <span className="text-slate-400">{entity.attributes.chain.chain_position || 'Part 1'}</span>
+                  </div>
+                )}
               </div>
               <div className="pt-0">
                 {entity.summary ? (
@@ -504,6 +518,14 @@ export function EntityCard({
                     </span>
                   )}
                 </div>
+                {/* Quest Chain Breadcrumb */}
+                {entity.entity_type === 'quest' && entity.attributes?.chain?.arc_name && (
+                  <div className="flex items-center gap-1 text-xs mt-2">
+                    <span className="text-amber-400/80">{entity.attributes.chain.arc_name}</span>
+                    <ChevronRight className="w-3 h-3 text-slate-600" />
+                    <span className="text-slate-400">{entity.attributes.chain.chain_position || 'Part 1'}</span>
+                  </div>
+                )}
               </div>
               <div className="pt-0">
                 {isStub && entity.attributes?.source_entity_name ? (

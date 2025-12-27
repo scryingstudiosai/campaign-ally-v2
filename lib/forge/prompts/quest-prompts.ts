@@ -33,6 +33,15 @@ export const QUEST_THEMES = [
   'wilderness_survival',
 ];
 
+// Chain context for sequel quests - anchored to the first quest in the chain
+export interface ChainContext {
+  arc_id: string;
+  arc_name: string;
+  chain_position: string;
+  parent_quest_id: string;
+  parent_quest_name: string;
+}
+
 export interface QuestInput {
   name?: string;
   questType: QuestSubType;
@@ -43,22 +52,53 @@ export interface QuestInput {
   level?: string;
   parentQuest?: { id: string; name: string; summary?: string };
   referencedEntityIds?: string[];
+  chainContext?: ChainContext; // Inherited arc info for sequels
 }
 
 export function buildQuestSystemPrompt(
   campaignContext: string = '',
   entityContext: string = '',
-  parentQuest?: { name: string; summary?: string }
+  parentQuest?: { name: string; summary?: string },
+  inheritedChainContext?: ChainContext
 ): string {
-  const chainContext = parentQuest
-    ? `
+  // Build chain context instructions - critical for maintaining arc consistency
+  let chainInstructions = '';
+
+  if (inheritedChainContext) {
+    // This is a sequel - MUST use inherited arc info
+    chainInstructions = `
+
+## QUEST CHAIN CONTEXT - CRITICAL
+This quest is part of an existing story arc. You MUST respect the arc name.
+
+**Story Arc:** "${inheritedChainContext.arc_name}"
+**Position:** ${inheritedChainContext.chain_position}
+**Previous Quest:** "${inheritedChainContext.parent_quest_name}"
+
+### NAMING RULES - MANDATORY:
+1. Generate a NEW, UNIQUE quest title for the "soul.title" field
+2. The title should NOT include "Part X" - that's tracked in chain.chain_position
+3. The chain.arc_name MUST be EXACTLY: "${inheritedChainContext.arc_name}" (copy this exactly!)
+4. Continue the storyline from the previous quest
+
+### EXAMPLE:
+For a sequel in "The Poisoned Well Saga":
+- soul.title: "The Corruption Spreads" (unique to this quest)
+- chain.arc_name: "The Poisoned Well Saga" (SAME as Part 1 - inherited!)
+- chain.chain_position: "${inheritedChainContext.chain_position}"
+
+DO NOT change the arc_name. It MUST match exactly: "${inheritedChainContext.arc_name}"
+`;
+  } else if (parentQuest) {
+    // Legacy sequel mode without full chain context
+    chainInstructions = `
 
 ## QUEST CHAIN CONTEXT
 This quest is a SEQUEL to "${parentQuest.name}".
 ${parentQuest.summary ? `Previous quest summary: ${parentQuest.summary}` : ''}
 Reference events from that quest and continue the storyline. Build on established plot threads.
-`
-    : '';
+`;
+  }
 
   let prompt = `You are a D&D 5e adventure designer creating engaging, structured quests optimized for DM use at the table.
 
@@ -69,7 +109,7 @@ Your task is to create a quest with:
 - Inventory-compatible rewards with proper item formatting
 - Optional quest chain connectivity
 
-${chainContext}
+${chainInstructions}
 
 ## SOUL (Player-facing information)
 What players learn about this quest:

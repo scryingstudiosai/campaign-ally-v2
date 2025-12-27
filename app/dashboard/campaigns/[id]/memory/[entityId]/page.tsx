@@ -64,6 +64,7 @@ import {
   Wand2,
   Heart,
   Beer,
+  ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { renderWithBold } from '@/lib/text-utils'
@@ -308,6 +309,23 @@ export default async function EntityDetailPage({ params }: PageProps) {
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
+              {/* Quest Chain Breadcrumb - above title for arc context */}
+              {isQuest && questChain?.arc_name && (
+                <div className="flex items-center gap-2 text-sm mb-2">
+                  {questChain.arc_id ? (
+                    <Link
+                      href={`/dashboard/campaigns/${params.id}/memory/${questChain.arc_id}`}
+                      className="text-amber-400 hover:text-amber-300 transition-colors"
+                    >
+                      {questChain.arc_name}
+                    </Link>
+                  ) : (
+                    <span className="text-amber-400">{questChain.arc_name}</span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                  <span className="text-slate-400">{questChain.chain_position || 'Part 1'}</span>
+                </div>
+              )}
               <h1 className="text-3xl font-bold">{entity.name}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-2">
                 <EntityTypeBadge type={entity.entity_type as EntityType} size="lg" />

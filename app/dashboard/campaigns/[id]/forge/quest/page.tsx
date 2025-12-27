@@ -92,6 +92,7 @@ export default function QuestForgePage(): JSX.Element {
             parentQuestId: input.parentQuestId,
             parentQuestName: input.parentQuestName,
             referencedEntityIds: input.referencedEntityIds,
+            chainContext: input.chainContext, // Arc info for sequel quests
           },
         }),
       });
@@ -467,6 +468,31 @@ export default function QuestForgePage(): JSX.Element {
     try {
       const result = await forge.handleGenerate(input);
       if (result.success) {
+        // CRITICAL: If this is a sequel, ensure chain info is correct
+        // The AI was instructed to use the exact arc_name, but we enforce it here as a safeguard
+        if (input.chainContext && forge.output) {
+          const output = forge.output as GeneratedQuest & { chain?: Record<string, unknown> };
+          if (output.chain) {
+            // Enforce inherited arc info - never trust AI to copy exactly
+            output.chain.arc_id = input.chainContext.arc_id;
+            output.chain.arc_name = input.chainContext.arc_name;
+            output.chain.chain_position = input.chainContext.chain_position;
+            output.chain.previous_quest_id = input.chainContext.parent_quest_id;
+            output.chain.previous_quest = input.chainContext.parent_quest_name;
+            console.log('[QuestForge] Enforced inherited chain info:', output.chain);
+          } else {
+            // Create chain if it doesn't exist
+            output.chain = {
+              arc_id: input.chainContext.arc_id,
+              arc_name: input.chainContext.arc_name,
+              chain_position: input.chainContext.chain_position,
+              previous_quest_id: input.chainContext.parent_quest_id,
+              previous_quest: input.chainContext.parent_quest_name,
+              next_quest_hook: null,
+            };
+            console.log('[QuestForge] Created chain with inherited info:', output.chain);
+          }
+        }
         toast.success('Quest generated successfully!');
       }
     } catch (error) {

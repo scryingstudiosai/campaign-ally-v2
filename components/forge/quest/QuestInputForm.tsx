@@ -41,6 +41,15 @@ interface Entity {
   dm_slug?: string;
 }
 
+// Chain context for sequel quests - anchored to the first quest in the chain
+export interface ChainContext {
+  arc_id: string;         // UUID of the first quest (anchor)
+  arc_name: string;       // Story arc name - inherited, never changes
+  chain_position: string; // "Part 2 of 3"
+  parent_quest_id: string;
+  parent_quest_name: string;
+}
+
 export interface QuestInputData extends BaseForgeInput {
   name?: string;
   questType: QuestSubType;
@@ -55,6 +64,7 @@ export interface QuestInputData extends BaseForgeInput {
   parentQuestId?: string;
   parentQuestName?: string;
   referencedEntityIds?: string[];
+  chainContext?: ChainContext; // Arc info for sequel quests
 }
 
 interface QuestInputFormProps {
@@ -105,16 +115,28 @@ export function QuestInputForm({
   const urlParentQuestName = searchParams.get('parentQuestName');
   const urlConcept = searchParams.get('concept');
   const urlChainPosition = searchParams.get('chainPosition');
+  // Arc info - anchored to the first quest in the chain
+  const urlArcId = searchParams.get('arcId');
+  const urlArcName = searchParams.get('arcName');
 
   // Determine if we're in sequel mode
   const isSequelMode = Boolean(urlParentQuestId && urlParentQuestName);
 
+  // Build chain context from URL params if this is a sequel
+  const chainContext: ChainContext | undefined = isSequelMode && urlParentQuestId && urlParentQuestName
+    ? {
+        arc_id: urlArcId || urlParentQuestId, // Default to parent if no arc_id
+        arc_name: urlArcName || urlParentQuestName, // Default to parent name if no arc_name
+        chain_position: urlChainPosition || 'Part 2 of ?',
+        parent_quest_id: urlParentQuestId,
+        parent_quest_name: urlParentQuestName,
+      }
+    : undefined;
+
   // Core fields - pre-fill from URL params if in sequel mode
   const [name, setName] = useState(() => {
-    if (isSequelMode && urlParentQuestName) {
-      // Suggest a sequel name
-      return `${urlParentQuestName} (${urlChainPosition || 'Part 2'})`;
-    }
+    // Don't pre-fill name for sequels - let AI create a unique title
+    // The arc name and position are tracked separately in chainContext
     return initialValues?.name || '';
   });
   const [concept, setConcept] = useState(() => {
@@ -231,6 +253,7 @@ export function QuestInputForm({
       parentQuestId: parentQuest?.id,
       parentQuestName: parentQuest?.name,
       referencedEntityIds: referencedEntities.map((e) => e.id),
+      chainContext, // Include arc info for sequel quests
     });
   };
 
@@ -265,11 +288,17 @@ export function QuestInputForm({
       )}
 
       {/* Sequel Mode Banner */}
-      {isSequelMode && (
+      {isSequelMode && chainContext && (
         <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-          <div className="flex items-center gap-2 text-amber-400 font-medium mb-1">
+          <div className="flex items-center gap-2 text-amber-400 font-medium mb-2">
             <Link2 className="w-4 h-4" />
             <span>Forging Sequel</span>
+          </div>
+          {/* Arc Breadcrumb */}
+          <div className="flex items-center gap-1 text-sm mb-2">
+            <span className="text-amber-400">{chainContext.arc_name}</span>
+            <ChevronRight className="w-3 h-3 text-slate-600" />
+            <span className="text-slate-400">{chainContext.chain_position}</span>
           </div>
           <p className="text-sm text-slate-300">
             Continuing from: <span className="text-cyan-400">{urlParentQuestName}</span>

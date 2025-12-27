@@ -15,6 +15,15 @@ import type {
   QuestNpcSeed,
 } from '@/types/living-entity';
 
+// Chain context for sequel quests - anchored to the first quest in the chain
+interface ChainContext {
+  arc_id: string;
+  arc_name: string;
+  chain_position: string;
+  parent_quest_id: string;
+  parent_quest_name: string;
+}
+
 interface QuestInputRequest {
   name?: string;
   questType: QuestSubType;
@@ -29,6 +38,7 @@ interface QuestInputRequest {
   parentQuestId?: string;
   parentQuestName?: string;
   referencedEntityIds?: string[];
+  chainContext?: ChainContext; // Arc info for sequel quests
 }
 
 interface GeneratedQuest {
@@ -113,8 +123,13 @@ export async function POST(request: NextRequest) {
       parentQuest = { name: inputs.parentQuestName };
     }
 
-    // Build prompts
-    const systemPrompt = buildQuestSystemPrompt(campaignContext, entityContext, parentQuest);
+    // Build prompts - pass chainContext for inherited arc info
+    const systemPrompt = buildQuestSystemPrompt(
+      campaignContext,
+      entityContext,
+      parentQuest,
+      inputs.chainContext // Pass chain context for inherited arc info
+    );
 
     const questInput: QuestInput = {
       name: inputs.name,
@@ -132,6 +147,7 @@ export async function POST(request: NextRequest) {
       level: inputs.level,
       parentQuest: parentQuest ? { id: inputs.parentQuestId || '', name: parentQuest.name, summary: parentQuest.summary } : undefined,
       referencedEntityIds: inputs.referencedEntityIds,
+      chainContext: inputs.chainContext, // Pass chain context
     };
 
     const userPrompt = buildQuestUserPrompt(questInput);

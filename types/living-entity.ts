@@ -576,11 +576,13 @@ export const DEFAULT_QUEST_REWARDS: QuestRewards = {};
 
 // Quest Chain
 export interface QuestChain {
-  chain_position?: string | null;
-  previous_quest?: string | null;
-  previous_quest_id?: string | null;
-  next_quest_hook?: string | null;
-  arc_name?: string | null;
+  arc_id?: string | null;           // UUID of the first quest in the chain (anchor)
+  arc_name?: string | null;          // Overarching story arc name - NEVER changes for sequels
+  chain_position?: string | null;    // "Part 2 of 3"
+  total_parts?: number | null;       // Estimated total parts (can be updated)
+  previous_quest?: string | null;    // Name of the previous quest
+  previous_quest_id?: string | null; // UUID of the previous quest
+  next_quest_hook?: string | null;   // Teaser for next part
 }
 
 export const DEFAULT_QUEST_CHAIN: QuestChain = {};

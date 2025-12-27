@@ -22,22 +22,16 @@ interface SequelInfo {
   name: string;
 }
 
-// Helper to calculate next part number from quest name
-function getNextPosition(currentName: string | null): string {
-  if (!currentName) return 'Part 2';
-  const match = currentName.match(/Part (\d+)/i);
+// Helper to increment chain position (e.g., "Part 1 of 3" -> "Part 2 of 3")
+function incrementChainPosition(current: string | null): string {
+  if (!current) return 'Part 2 of ?';
+  const match = current.match(/Part (\d+)( of (\d+|\?))?/i);
   if (match) {
-    return `Part ${parseInt(match[1]) + 1}`;
+    const part = parseInt(match[1]) + 1;
+    const total = match[3] || '?';
+    return `Part ${part} of ${total}`;
   }
-  // Check for roman numerals
-  const romanMatch = currentName.match(/\b(I{1,3}|IV|V|VI{0,3}|IX|X)\b/);
-  if (romanMatch) {
-    const romanToInt: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10 };
-    const current = romanToInt[romanMatch[1]] || 1;
-    const intToRoman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-    return intToRoman[current] || 'Part 2';
-  }
-  return 'Part 2';
+  return 'Part 2 of ?';
 }
 
 export function QuestChainCard({
@@ -94,11 +88,22 @@ export function QuestChainCard({
 
   // Handle Forge Sequel navigation
   const handleForgeSequel = (): void => {
+    // CRITICAL: Get arc info from chain, or use current quest as anchor if it's Part 1
+    const arcName = chain?.arc_name || questName;
+    // If no arc_id exists in the chain, the current quest IS the arc anchor
+    const arcId = chain?.arc_id || questId;
+    // Calculate next position from current position
+    const currentPosition = chain?.chain_position || 'Part 1 of ?';
+    const nextPosition = incrementChainPosition(currentPosition);
+
     const params = new URLSearchParams({
       concept: nextHook || '',
       parentQuestId: questId,
       parentQuestName: questName,
-      chainPosition: getNextPosition(questName),
+      // Pass the original arc info (inherited from chain origin)
+      arcId: arcId,
+      arcName: arcName,
+      chainPosition: nextPosition,
     });
 
     router.push(`/dashboard/campaigns/${campaignId}/forge/quest?${params.toString()}`);

@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Scroll, Target, Brain, Wrench } from 'lucide-react';
+import { Scroll, Target, Brain, Wrench, BookOpen, ChevronRight } from 'lucide-react';
 
 interface QuestEditorProps {
   entity: {
@@ -240,6 +240,28 @@ export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Eleme
       icon: <Scroll className="w-4 h-4" />,
       content: (
         <div className="space-y-4">
+          {/* Arc Info - Read-Only */}
+          {(() => {
+            const chain = formData.mechanics.chain as { arc_name?: string; chain_position?: string } | undefined;
+            if (!chain?.arc_name) return null;
+            return (
+              <div className="p-3 bg-amber-900/20 border border-amber-700/50 rounded-lg mb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <BookOpen className="w-4 h-4 text-amber-400" />
+                  <span className="text-amber-400 font-medium">Story Arc</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-slate-200">{chain.arc_name}</span>
+                  <ChevronRight className="w-3 h-3 text-slate-600" />
+                  <span className="text-slate-400">{chain.chain_position || 'Part 1'}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  Arc info is inherited from the quest chain and cannot be edited here.
+                </p>
+              </div>
+            );
+          })()}
+
           <p className="text-xs text-slate-500 mb-4">
             Player-facing quest information - what they see in their quest log.
           </p>
