@@ -11,6 +11,7 @@ import { Session } from '@/types/session';
 import { SessionHeader } from './SessionHeader';
 import { SessionPlanner } from './planner/SessionPlanner';
 import { ToolkitPanel } from './toolkit/ToolkitPanel';
+import { StagePanel } from './stage/StagePanel';
 
 interface SessionShellProps {
   session: Session;
@@ -92,40 +93,8 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
 
             {/* Center Panel: The Stage */}
             <ResizablePanel defaultSize={45} minSize={30}>
-              <div className="h-full bg-slate-950 flex flex-col overflow-hidden">
-                <div className="p-4 border-b border-slate-800">
-                  <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${
-                      currentSession.status === 'active' ? 'bg-green-500 animate-pulse' :
-                      currentSession.status === 'review' ? 'bg-amber-500' : 'bg-slate-500'
-                    }`}></span>
-                    {currentSession.status === 'planning' ? 'Session Preview' :
-                     currentSession.status === 'active' ? 'Live Session' :
-                     currentSession.status === 'review' ? 'Session Review' : 'Session Archive'}
-                  </h2>
-                </div>
-                <div className="flex-1 p-4 overflow-y-auto">
-                  <div className="text-slate-500 text-sm text-center py-12">
-                    {currentSession.status === 'planning' && (
-                      <>
-                        <p className="mb-2">📝 Write your session notes in the left panel</p>
-                        <p className="text-xs text-slate-600">The live event log will appear here during the session</p>
-                      </>
-                    )}
-                    {currentSession.status === 'active' && (
-                      <>
-                        <p className="mb-2">🎮 Live event log will appear here</p>
-                        <p className="text-xs text-slate-600">Coming in Phase 3</p>
-                      </>
-                    )}
-                    {currentSession.status === 'review' && (
-                      <>
-                        <p className="mb-2">📊 Review and commit session changes</p>
-                        <p className="text-xs text-slate-600">Coming in Phase 5</p>
-                      </>
-                    )}
-                  </div>
-                </div>
+              <div className="h-full bg-slate-950 overflow-hidden">
+                <StagePanel session={currentSession} campaignId={campaignId} />
               </div>
             </ResizablePanel>
 

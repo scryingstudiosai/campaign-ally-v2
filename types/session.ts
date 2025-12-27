@@ -2,7 +2,7 @@ export type SessionStatus = 'planning' | 'active' | 'review' | 'archived';
 
 export type SessionEventType =
   | 'note' | 'narrative' | 'dialogue'
-  | 'combat_start' | 'combat_end' | 'initiative'
+  | 'roll' | 'combat_start' | 'combat_end' | 'initiative'
   | 'attack' | 'damage' | 'healing' | 'death'
   | 'skill_check' | 'saving_throw' | 'spell_cast'
   | 'item_used' | 'item_acquired' | 'item_given' | 'gold_changed'
