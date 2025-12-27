@@ -63,3 +63,78 @@
     @apply text-foreground antialiased;
   }
 }
+
+/* Tiptap Editor Styles */
+.ProseMirror {
+  min-height: 300px;
+  outline: none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #64748b;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.ProseMirror h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #e2e8f0;
+}
+
+.ProseMirror h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #e2e8f0;
+}
+
+.ProseMirror p {
+  margin-bottom: 0.75rem;
+  color: #cbd5e1;
+}
+
+.ProseMirror ul, .ProseMirror ol {
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.ProseMirror blockquote {
+  border-left: 3px solid #475569;
+  padding-left: 1rem;
+  margin-left: 0;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 1px solid #334155;
+  margin: 1rem 0;
+}
+
+/* Read Aloud Block */
+.ProseMirror [data-read-aloud] {
+  background: rgba(30, 41, 59, 0.5);
+  border-left: 4px solid #14b8a6;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  position: relative;
+}
+
+.ProseMirror [data-read-aloud]::before {
+  content: '📖 Read Aloud';
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.75rem;
+  color: #14b8a6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  font-style: normal;
+}
