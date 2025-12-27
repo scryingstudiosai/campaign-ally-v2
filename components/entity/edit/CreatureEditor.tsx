@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { EditEntityShell } from './EditEntityShell';
 import { TabbedFormLayout } from '@/components/form-widgets/TabbedFormLayout';
 import { StringArrayInput } from '@/components/form-widgets/StringArrayInput';
@@ -118,7 +118,12 @@ export function CreatureEditor({ entity, campaignId }: CreatureEditorProps): JSX
 
     // Helper to extract treasure description - handle multiple data structures
     const extractTreasureDescription = (): string => {
-      // Direct treasure.description (most common)
+      // Check attributes.treasure.treasure_description first (AI storage location)
+      const attrTreasure = attributes.treasure as Record<string, unknown> | undefined;
+      if (attrTreasure?.treasure_description && typeof attrTreasure.treasure_description === 'string') {
+        return attrTreasure.treasure_description;
+      }
+      // Direct treasure.description
       if (typeof treasure.description === 'string') {
         return treasure.description;
       }
@@ -130,34 +135,24 @@ export function CreatureEditor({ entity, campaignId }: CreatureEditorProps): JSX
       if (typeof brain.treasure === 'string') {
         return brain.treasure;
       }
-      // brain.treasure might be an object with description
-      if (brain.treasure && typeof (brain.treasure as Record<string, unknown>).description === 'string') {
-        return (brain.treasure as Record<string, unknown>).description as string;
-      }
       // attributes.treasure might be a string
       if (typeof attributes.treasure === 'string') {
         return attributes.treasure;
-      }
-      // attributes.treasure might be an object with description
-      if (attributes.treasure && typeof (attributes.treasure as Record<string, unknown>).description === 'string') {
-        return (attributes.treasure as Record<string, unknown>).description as string;
       }
       return '';
     };
 
     // Helper to extract treasure items - handle multiple data structures
     const extractTreasureItems = (): string[] => {
+      // Check attributes.treasure.treasure_items first (AI storage location)
+      const attrTreasure = attributes.treasure as Record<string, unknown> | undefined;
+      if (attrTreasure?.treasure_items && Array.isArray(attrTreasure.treasure_items)) {
+        return attrTreasure.treasure_items as string[];
+      }
+      // Direct treasure.items
       if (Array.isArray(treasure.items)) return treasure.items as string[];
+      // brain.treasure_items
       if (Array.isArray(brain.treasure_items)) return brain.treasure_items as string[];
-      // brain.treasure might be an object with items array
-      if (brain.treasure && Array.isArray((brain.treasure as Record<string, unknown>).items)) {
-        return (brain.treasure as Record<string, unknown>).items as string[];
-      }
-      if (Array.isArray(attributes.treasure_items)) return attributes.treasure_items as string[];
-      // attributes.treasure might be an object with items array
-      if (attributes.treasure && Array.isArray((attributes.treasure as Record<string, unknown>).items)) {
-        return (attributes.treasure as Record<string, unknown>).items as string[];
-      }
       return [];
     };
 
@@ -277,44 +272,6 @@ export function CreatureEditor({ entity, campaignId }: CreatureEditorProps): JSX
 
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Debug: Find where treasure data is stored
-  useEffect(() => {
-    console.log('========== CREATURE EDITOR DEBUG ==========');
-    console.log('Full entity:', JSON.stringify(entity, null, 2));
-    console.log('');
-    console.log('--- Checking ALL possible treasure locations ---');
-    console.log('entity.treasure:', entity.treasure);
-    console.log('typeof entity.treasure:', typeof entity.treasure);
-
-    console.log('entity.brain:', entity.brain);
-    console.log('entity.brain?.treasure:', entity.brain?.treasure);
-    console.log('typeof entity.brain?.treasure:', typeof entity.brain?.treasure);
-
-    console.log('entity.attributes:', entity.attributes);
-    console.log('entity.attributes?.treasure:', entity.attributes?.treasure);
-
-    console.log('entity.mechanics?.treasure:', entity.mechanics?.treasure);
-    console.log('entity.soul?.treasure:', entity.soul?.treasure);
-
-    // Check if treasure is nested deeper in brain
-    if (entity.brain) {
-      console.log('--- All brain keys ---');
-      Object.keys(entity.brain).forEach(key => {
-        console.log(`  brain.${key}:`, (entity.brain as Record<string, unknown>)[key]);
-      });
-    }
-
-    // Check all attributes keys
-    if (entity.attributes) {
-      console.log('--- All attributes keys ---');
-      Object.keys(entity.attributes).forEach(key => {
-        console.log(`  attributes.${key}:`, (entity.attributes as Record<string, unknown>)[key]);
-      });
-    }
-
-    console.log('==========================================');
-  }, [entity]);
-
   // Helper functions to update nested state
   const updateBasic = (field: string, value: unknown): void => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -391,7 +348,20 @@ export function CreatureEditor({ entity, campaignId }: CreatureEditorProps): JSX
         traits: formData.mechanics.special_abilities,
       },
 
-      treasure: formData.treasure,
+      // Save treasure to attributes (where AI originally stores it)
+      attributes: {
+        ...entity.attributes,
+        treasure: {
+          treasure_description: formData.treasure.description,
+          treasure_items: formData.treasure.items,
+        },
+      },
+
+      // Also save to treasure field for future consistency
+      treasure: {
+        description: formData.treasure.description,
+        items: formData.treasure.items,
+      },
     };
 
     const response = await fetch(`/api/entities/${entity.id}`, {
