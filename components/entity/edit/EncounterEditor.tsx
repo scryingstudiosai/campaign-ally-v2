@@ -154,17 +154,53 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
       return [];
     };
 
-    // Helper to extract rewards
+    // Helper to extract rewards - check all possible locations
     const extractRewards = (): QuestRewards => {
       const mechRewards = (mechanics.rewards as Record<string, unknown>) || {};
+      const attrRewards = (attributes.rewards as Record<string, unknown>) || {};
+      const mechTreasure = (mechanics.treasure as Record<string, unknown>) || {};
+
       return {
-        xp: (mechRewards.xp as number) || (rewards.xp as number) || 0,
-        gold: (mechRewards.gold as number) || (rewards.gold as number) || 0,
+        xp: (mechRewards.xp as number) ||
+          (rewards.xp as number) ||
+          (mechanics.xp as number) ||
+          (attributes.xp as number) ||
+          0,
+
+        gold: (mechRewards.gold as number) ||
+          (rewards.gold as number) ||
+          (mechanics.gold as number) ||
+          (mechTreasure.gold as number) ||
+          (attributes.gold as number) ||
+          0,
+
         items: (() => {
-          const items = (mechRewards.items as unknown[]) || (rewards.items as unknown[]) || [];
-          return Array.isArray(items) ? items as string[] : [];
+          // Check all possible locations for items
+          const items = (mechRewards.items as unknown[]) ||
+            (rewards.items as unknown[]) ||
+            (mechanics.items as unknown[]) ||
+            (mechanics.loot as unknown[]) ||
+            (mechTreasure.items as unknown[]) ||
+            (mechanics.treasure_items as unknown[]) ||
+            (attrRewards.items as unknown[]) ||
+            [];
+
+          if (!Array.isArray(items)) return [];
+
+          // Normalize items - can be strings or objects
+          return items.map(item => {
+            if (typeof item === 'string') return item;
+            if (typeof item === 'object' && item !== null) {
+              return item as Record<string, unknown>;
+            }
+            return item;
+          }) as (string | Record<string, unknown>)[];
         })(),
-        special: (mechRewards.special as string) || (rewards.special as string) || '',
+
+        special: (mechRewards.special as string) ||
+          (rewards.special as string) ||
+          (mechanics.special_reward as string) ||
+          '',
       };
     };
 
@@ -239,27 +275,27 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
 
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Debug: Find where encounter data is stored
+  // Debug: Find where rewards data is stored
   useEffect(() => {
     console.log('========== ENCOUNTER EDITOR DEBUG ==========');
     console.log('Full entity:', JSON.stringify(entity, null, 2));
     console.log('');
-    console.log('--- MECHANICS ---');
+    console.log('--- REWARDS LOCATIONS ---');
+    console.log('entity.rewards:', entity.rewards);
+    console.log('entity.mechanics?.rewards:', entity.mechanics?.rewards);
+    console.log('entity.attributes?.rewards:', entity.attributes?.rewards);
+    console.log('');
+    console.log('--- INDIVIDUAL REWARD FIELDS ---');
+    console.log('entity.mechanics?.xp:', entity.mechanics?.xp);
+    console.log('entity.mechanics?.gold:', entity.mechanics?.gold);
+    console.log('entity.mechanics?.treasure:', entity.mechanics?.treasure);
+    console.log('entity.mechanics?.items:', entity.mechanics?.items);
+    console.log('entity.mechanics?.loot:', entity.mechanics?.loot);
+    console.log('');
+    console.log('--- ALL MECHANICS KEYS ---');
     if (entity.mechanics) {
       Object.keys(entity.mechanics).forEach(key => {
         console.log(`  mechanics.${key}:`, (entity.mechanics as Record<string, unknown>)[key]);
-      });
-    }
-    console.log('--- BRAIN ---');
-    if (entity.brain) {
-      Object.keys(entity.brain).forEach(key => {
-        console.log(`  brain.${key}:`, (entity.brain as Record<string, unknown>)[key]);
-      });
-    }
-    console.log('--- SOUL ---');
-    if (entity.soul) {
-      Object.keys(entity.soul).forEach(key => {
-        console.log(`  soul.${key}:`, (entity.soul as Record<string, unknown>)[key]);
       });
     }
     console.log('==========================================');
@@ -356,7 +392,24 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
         terrain: formData.terrain,
         hazards: formData.hazards,
         phases: formData.phases,
-        rewards: formData.rewards,
+        // Save rewards nested in mechanics
+        rewards: {
+          xp: formData.rewards.xp,
+          gold: formData.rewards.gold,
+          items: formData.rewards.items,
+          special: formData.rewards.special,
+        },
+        // Also save flat for compatibility
+        xp: formData.rewards.xp,
+        gold: formData.rewards.gold,
+      },
+
+      // Also save to top-level rewards for compatibility
+      rewards: {
+        xp: formData.rewards.xp,
+        gold: formData.rewards.gold,
+        items: formData.rewards.items,
+        special: formData.rewards.special,
       },
     };
 
