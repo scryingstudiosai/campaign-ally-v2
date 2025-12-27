@@ -621,9 +621,13 @@ export default async function EntityDetailPage({ params }: PageProps) {
                 )}
 
                 {/* Quest Chain - Position in quest chain */}
-                {questChain && Object.keys(questChain).length > 0 && (
-                  <QuestChainCard chain={questChain} campaignId={params.id} />
-                )}
+                <QuestChainCard
+                  chain={questChain || {}}
+                  campaignId={params.id}
+                  questId={entity.id}
+                  questName={entity.name}
+                  brainNextHook={(questBrain as Record<string, unknown>)?.next_quest_hook as string | undefined}
+                />
               </>
             )}
 

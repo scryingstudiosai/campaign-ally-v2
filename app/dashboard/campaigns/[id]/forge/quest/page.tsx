@@ -405,6 +405,27 @@ export default function QuestForgePage(): JSX.Element {
       if (result.success && result.entity) {
         const entity = result.entity as { id: string };
 
+        // Get parent quest ID from input if this is a sequel
+        const inputData = forge.input as QuestInputData | null;
+        const parentQuestId = inputData?.parentQuestId;
+
+        // Create "leads_to" relationship if this is a sequel
+        if (parentQuestId) {
+          try {
+            await supabase.from('relationships').insert({
+              campaign_id: campaignId,
+              source_id: parentQuestId,
+              target_id: entity.id,
+              relationship_type: 'leads_to',
+              description: 'Sequel quest',
+              is_bidirectional: false,
+            });
+            console.log('[QuestForge] Created sequel relationship:', parentQuestId, '->', entity.id);
+          } catch (relationshipError) {
+            console.error('Failed to create sequel relationship:', relationshipError);
+          }
+        }
+
         // Auto-create relationships with referenced entities
         if (generationReferencedEntities.length > 0) {
           const relationshipPromises = generationReferencedEntities.map((refEntity) =>

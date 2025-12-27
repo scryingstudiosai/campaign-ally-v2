@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,17 +98,53 @@ export function QuestInputForm({
   campaignId,
   initialValues,
 }: QuestInputFormProps): JSX.Element {
-  // Core fields
-  const [name, setName] = useState(initialValues?.name || '');
-  const [concept, setConcept] = useState(initialValues?.concept || '');
-  const [questType, setQuestType] = useState<QuestSubType>(initialValues?.questType || 'side');
+  const searchParams = useSearchParams();
+
+  // Check for sequel params from URL
+  const urlParentQuestId = searchParams.get('parentQuestId');
+  const urlParentQuestName = searchParams.get('parentQuestName');
+  const urlConcept = searchParams.get('concept');
+  const urlChainPosition = searchParams.get('chainPosition');
+
+  // Determine if we're in sequel mode
+  const isSequelMode = Boolean(urlParentQuestId && urlParentQuestName);
+
+  // Core fields - pre-fill from URL params if in sequel mode
+  const [name, setName] = useState(() => {
+    if (isSequelMode && urlParentQuestName) {
+      // Suggest a sequel name
+      return `${urlParentQuestName} (${urlChainPosition || 'Part 2'})`;
+    }
+    return initialValues?.name || '';
+  });
+  const [concept, setConcept] = useState(() => {
+    if (isSequelMode && urlConcept) {
+      return urlConcept;
+    }
+    return initialValues?.concept || '';
+  });
+  const [questType, setQuestType] = useState<QuestSubType>(() => {
+    // If sequel mode, default to main quest (sequels are usually main quests)
+    if (isSequelMode) return 'main';
+    return initialValues?.questType || 'side';
+  });
   const [level, setLevel] = useState('1-4');
 
   // Linked entities
   const [questGiver, setQuestGiver] = useState<Entity | null>(null);
   const [location, setLocation] = useState<Entity | null>(null);
   const [faction, setFaction] = useState<Entity | null>(null);
-  const [parentQuest, setParentQuest] = useState<Entity | null>(null);
+  const [parentQuest, setParentQuest] = useState<Entity | null>(() => {
+    // Pre-fill parent quest from URL if in sequel mode
+    if (isSequelMode && urlParentQuestId && urlParentQuestName) {
+      return {
+        id: urlParentQuestId,
+        name: urlParentQuestName,
+        entity_type: 'quest',
+      };
+    }
+    return null;
+  });
 
   // Entity search
   const [npcs, setNpcs] = useState<Entity[]>([]);
@@ -225,6 +262,24 @@ export function QuestInputForm({
           onProceedAnyway={onProceedAnyway || (() => {})}
           onDismiss={onDismissValidation || (() => {})}
         />
+      )}
+
+      {/* Sequel Mode Banner */}
+      {isSequelMode && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          <div className="flex items-center gap-2 text-amber-400 font-medium mb-1">
+            <Link2 className="w-4 h-4" />
+            <span>Forging Sequel</span>
+          </div>
+          <p className="text-sm text-slate-300">
+            Continuing from: <span className="text-cyan-400">{urlParentQuestName}</span>
+          </p>
+          {urlConcept && (
+            <p className="text-xs text-slate-400 mt-1 italic">
+              Hook: &quot;{urlConcept.substring(0, 100)}{urlConcept.length > 100 ? '...' : ''}&quot;
+            </p>
+          )}
+        </div>
       )}
 
       {/* Quest Name (Optional) */}
