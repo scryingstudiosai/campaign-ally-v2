@@ -53,6 +53,7 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
 
   // Initialize Tiptap editor
   const editor = useEditor({
+    immediatelyRender: false, // Prevent SSR hydration mismatch
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
