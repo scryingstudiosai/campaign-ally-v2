@@ -159,7 +159,9 @@ export function ObjectivesEditor({ value = [], onChange }: ObjectivesEditorProps
 
                   {/* Hidden Icon */}
                   {objective.type === 'hidden' && (
-                    <EyeOff className="w-4 h-4 text-purple-400 shrink-0 mt-2" title="Hidden objective" />
+                    <span title="Hidden objective">
+                      <EyeOff className="w-4 h-4 text-purple-400 shrink-0 mt-2" />
+                    </span>
                   )}
 
                   {/* Type Select */}
