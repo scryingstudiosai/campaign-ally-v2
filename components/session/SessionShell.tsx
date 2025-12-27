@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 import { Session } from '@/types/session';
 import { SessionHeader } from './SessionHeader';
 import { GripVertical } from 'lucide-react';
+
+import 'react-resizable-panels/styles.css';
 
 interface SessionShellProps {
   session: Session;
@@ -25,7 +27,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
 
       {/* 3-Column Layout - needs flex-1 and min-h-0 for proper sizing */}
       <div className="flex-1 min-h-0">
-        <PanelGroup direction="horizontal" className="h-full">
+        <Group orientation="horizontal" className="h-full">
           {/* Left Panel: The Plan */}
           <Panel defaultSize={25} minSize={15} maxSize={40}>
             <div className="h-full bg-slate-900 border-r border-slate-800 p-4 overflow-y-auto">
@@ -43,10 +45,10 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
             </div>
           </Panel>
 
-          {/* Resize Handle - needs explicit width and cursor */}
-          <PanelResizeHandle className="w-2 bg-slate-800 hover:bg-teal-600 transition-colors cursor-col-resize flex items-center justify-center group data-[resize-handle-active]:bg-teal-500">
+          {/* Resize Handle */}
+          <Separator className="w-2 bg-slate-800 hover:bg-teal-600 transition-colors cursor-col-resize flex items-center justify-center group data-[active]:bg-teal-500">
             <GripVertical className="w-4 h-4 text-slate-600 group-hover:text-white" />
-          </PanelResizeHandle>
+          </Separator>
 
           {/* Center Panel: The Stage */}
           <Panel defaultSize={50} minSize={30}>
@@ -88,9 +90,9 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
           </Panel>
 
           {/* Resize Handle */}
-          <PanelResizeHandle className="w-2 bg-slate-800 hover:bg-teal-600 transition-colors cursor-col-resize flex items-center justify-center group data-[resize-handle-active]:bg-teal-500">
+          <Separator className="w-2 bg-slate-800 hover:bg-teal-600 transition-colors cursor-col-resize flex items-center justify-center group data-[active]:bg-teal-500">
             <GripVertical className="w-4 h-4 text-slate-600 group-hover:text-white" />
-          </PanelResizeHandle>
+          </Separator>
 
           {/* Right Panel: The Toolkit */}
           <Panel defaultSize={25} minSize={15} maxSize={40}>
@@ -127,7 +129,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
               </div>
             </div>
           </Panel>
-        </PanelGroup>
+        </Group>
       </div>
     </div>
   );
