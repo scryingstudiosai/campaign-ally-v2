@@ -167,6 +167,18 @@ export function SelectionPopover({
             >
               Item
             </button>
+            <button
+              onClick={() => handleTypeSelect('creature')}
+              className="px-2 py-1 text-xs font-medium text-red-400 hover:bg-slate-700 rounded transition-colors"
+            >
+              Creature
+            </button>
+            <button
+              onClick={() => handleTypeSelect('faction')}
+              className="px-2 py-1 text-xs font-medium text-blue-400 hover:bg-slate-700 rounded transition-colors"
+            >
+              Faction
+            </button>
           </div>
         )}
       </div>
