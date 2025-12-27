@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { EditEntityShell } from './EditEntityShell';
 import { TabbedFormLayout } from '@/components/form-widgets/TabbedFormLayout';
 import { StringArrayInput } from '@/components/form-widgets/StringArrayInput';
@@ -138,9 +138,14 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
 
       soul: {
         description: (soul.description as string) || (soul.full_description as string) || entity.description || '',
-        origin: (soul.origin as string) || (soul.history as string) || (soul.backstory as string) || (soul.creation as string) || '',
-        visuals: (soul.visuals as string) || (soul.visual_details as string) || (soul.appearance as string) || (soul.physical_description as string) || '',
-        lore: (soul.lore as string) || (soul.legend as string) || (soul.legends as string) || (soul.mythology as string) || '',
+        // Check soul first, then brain for origin
+        origin: (soul.origin as string) || (soul.history as string) || (soul.backstory as string) ||
+          (soul.creation as string) || (brain.origin as string) || '',
+        visuals: (soul.visuals as string) || (soul.visual_details as string) || (soul.appearance as string) ||
+          (soul.physical_description as string) || '',
+        // Check soul first, then brain.history for lore
+        lore: (soul.lore as string) || (soul.legend as string) || (soul.legends as string) ||
+          (soul.mythology as string) || (brain.history as string) || '',
       },
 
       brain: {
@@ -159,14 +164,22 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
         is_magical: (mechanics.is_magical as boolean) || (attributes.magical_aura as boolean) ||
           !!(mechanics.ability || mechanics.effect || mechanics.magical_properties) || false,
 
-        // Magical Properties
+        // Magical Properties - check mechanics first, then abilities array, then brain
         ability: (mechanics.ability as string) || (mechanics.effect as string) ||
           (mechanics.magical_effect as string) || (mechanics.power as string) ||
-          (mechanics.magical_properties as string) || '',
+          (mechanics.magical_properties as string) ||
+          // Check abilities array (AI sometimes stores as array)
+          (Array.isArray(mechanics.abilities) && (mechanics.abilities as Array<{name?: string; description?: string}>)[0]
+            ? `${(mechanics.abilities as Array<{name?: string; description?: string}>)[0].name || ''}: ${(mechanics.abilities as Array<{name?: string; description?: string}>)[0].description || ''}`.trim().replace(/^: |: $/g, '')
+            : '') || '',
+        // Check mechanics first, then brain.trigger
         trigger: (mechanics.trigger as string) || (mechanics.trigger_condition as string) ||
-          (mechanics.activation as string) || (mechanics.activated_by as string) || '',
+          (mechanics.activation as string) || (mechanics.activated_by as string) ||
+          (brain.trigger as string) || '',
+        // Check mechanics first, then brain.cost
         cost_drawback: (mechanics.cost_drawback as string) || (mechanics.drawback as string) ||
-          (mechanics.cost as string) || (brain.cost_drawback as string) || (brain.drawback as string) || '',
+          (mechanics.cost as string) || (brain.cost_drawback as string) || (brain.drawback as string) ||
+          (brain.cost as string) || '',
 
         // SRD Reference
         srd_id: (mechanics.srd_id as string) || null,
@@ -186,10 +199,16 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
         stealth_disadvantage: (mechanics.stealth_disadvantage as boolean) || false,
         strength_requirement: (mechanics.strength_requirement as number) || 0,
 
-        // Charged items
-        max_charges: (mechanics.max_charges as number) ?? (mechanics.charges as number) ?? null,
-        current_charges: (mechanics.current_charges as number) ?? (mechanics.charges as number) ?? null,
-        recharge_rate: (mechanics.recharge_rate as string) || (mechanics.recharge as string) || '',
+        // Charged items - check flat fields first, then nested charges object
+        max_charges: (mechanics.max_charges as number) ??
+          ((mechanics.charges as {max?: number})?.max) ??
+          (typeof mechanics.charges === 'number' ? mechanics.charges : null),
+        current_charges: (mechanics.current_charges as number) ??
+          ((mechanics.charges as {current?: number})?.current) ??
+          (typeof mechanics.charges === 'number' ? mechanics.charges : null),
+        recharge_rate: (mechanics.recharge_rate as string) ||
+          ((mechanics.charges as {recharge?: string})?.recharge) ||
+          (mechanics.recharge as string) || '',
 
         // Consumables
         uses: (mechanics.uses as number) || 1,
@@ -203,45 +222,6 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
   });
 
   const [hasChanges, setHasChanges] = useState(false);
-
-  // Debug logging to see actual field names from AI
-  useEffect(() => {
-    console.log('========== ITEM EDITOR DEBUG ==========');
-    console.log('Full entity:', JSON.stringify(entity, null, 2));
-    console.log('');
-    console.log('--- SOUL fields ---');
-    console.log('entity.soul:', entity.soul);
-    if (entity.soul) {
-      Object.keys(entity.soul).forEach(key => {
-        console.log(`  soul.${key}:`, (entity.soul as Record<string, unknown>)[key]);
-      });
-    }
-    console.log('');
-    console.log('--- MECHANICS fields ---');
-    console.log('entity.mechanics:', entity.mechanics);
-    if (entity.mechanics) {
-      Object.keys(entity.mechanics).forEach(key => {
-        console.log(`  mechanics.${key}:`, (entity.mechanics as Record<string, unknown>)[key]);
-      });
-    }
-    console.log('');
-    console.log('--- BRAIN fields ---');
-    console.log('entity.brain:', entity.brain);
-    if (entity.brain) {
-      Object.keys(entity.brain).forEach(key => {
-        console.log(`  brain.${key}:`, (entity.brain as Record<string, unknown>)[key]);
-      });
-    }
-    console.log('');
-    console.log('--- ATTRIBUTES fields ---');
-    console.log('entity.attributes:', entity.attributes);
-    if (entity.attributes) {
-      Object.keys(entity.attributes).forEach(key => {
-        console.log(`  attributes.${key}:`, (entity.attributes as Record<string, unknown>)[key]);
-      });
-    }
-    console.log('========================================');
-  }, [entity]);
 
   // Helper functions to update nested state
   const updateBasic = (field: string, value: unknown): void => {
