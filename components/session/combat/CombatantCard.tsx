@@ -65,8 +65,10 @@ export function CombatantCard({
   const hpPercentage = (combatant.hp / combatant.maxHp) * 100;
   const hpColor = hpPercentage > 50 ? 'bg-green-500' : hpPercentage > 25 ? 'bg-amber-500' : 'bg-red-500';
 
+  // Handle NPC type with distinct styling
   const TypeIcon = combatant.type === 'player' ? User :
-                   combatant.type === 'ally' ? Users : Skull;
+                   combatant.type === 'ally' ? Users :
+                   combatant.type === 'npc' ? User : Skull;
 
   const handleHpKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && hpInput) {
@@ -74,18 +76,27 @@ export function CombatantCard({
       const input = hpInput.trim();
 
       if (input.startsWith('+')) {
+        // HEAL: +5 means add 5 HP
         const value = parseInt(input.slice(1), 10);
-        if (!isNaN(value)) onHpChange(value, false);
+        if (!isNaN(value) && value > 0) onHpChange(value, false);
       } else if (input.startsWith('-')) {
+        // DAMAGE (explicit): -5 means take 5 damage
         const value = parseInt(input.slice(1), 10);
-        if (!isNaN(value)) onHpChange(-value, true);
+        if (!isNaN(value) && value > 0) onHpChange(-value, true);
       } else if (input.startsWith('=')) {
-        const value = parseInt(input.slice(1), 10);
-        if (!isNaN(value)) onHpChange(value - combatant.hp, value > combatant.hp);
+        // SET: =10 means set HP to exactly 10
+        const targetHp = parseInt(input.slice(1), 10);
+        if (!isNaN(targetHp)) {
+          const change = targetHp - combatant.hp;
+          if (change !== 0) {
+            // isDamage is true if we're reducing HP (change is negative)
+            onHpChange(change, change < 0);
+          }
+        }
       } else {
-        // Just a number = damage
+        // Just a number = DAMAGE by default
         const value = parseInt(input, 10);
-        if (!isNaN(value)) onHpChange(-value, true);
+        if (!isNaN(value) && value > 0) onHpChange(-value, true);
       }
 
       setHpInput('');
@@ -140,11 +151,13 @@ export function CombatantCard({
         {/* Type Icon */}
         <div className={`p-2 rounded-lg ${
           combatant.type === 'player' ? 'bg-blue-900/50' :
-          combatant.type === 'ally' ? 'bg-green-900/50' : 'bg-red-900/50'
+          combatant.type === 'ally' ? 'bg-green-900/50' :
+          combatant.type === 'npc' ? 'bg-purple-900/50' : 'bg-red-900/50'
         }`}>
           <TypeIcon className={`w-5 h-5 ${
             combatant.type === 'player' ? 'text-blue-400' :
-            combatant.type === 'ally' ? 'text-green-400' : 'text-red-400'
+            combatant.type === 'ally' ? 'text-green-400' :
+            combatant.type === 'npc' ? 'text-purple-400' : 'text-red-400'
           }`} />
         </div>
 

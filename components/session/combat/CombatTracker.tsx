@@ -209,18 +209,34 @@ export function CombatTracker({
                     />
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  {(['monster', 'ally', 'npc'] as const).map(type => (
+                <div>
+                  <label className="text-sm text-slate-400 mb-2 block">Type</label>
+                  <div className="flex gap-2">
                     <Button
-                      key={type}
-                      variant={newCombatant.type === type ? 'default' : 'outline'}
+                      variant={newCombatant.type === 'monster' ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setNewCombatant(prev => ({ ...prev, type }))}
-                      className={newCombatant.type === type ? 'bg-slate-700' : 'border-slate-600'}
+                      onClick={() => setNewCombatant(prev => ({ ...prev, type: 'monster' }))}
+                      className={newCombatant.type === 'monster' ? 'bg-red-600 hover:bg-red-700' : 'border-slate-600'}
                     >
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                      Enemy
                     </Button>
-                  ))}
+                    <Button
+                      variant={newCombatant.type === 'ally' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setNewCombatant(prev => ({ ...prev, type: 'ally' }))}
+                      className={newCombatant.type === 'ally' ? 'bg-green-600 hover:bg-green-700' : 'border-slate-600'}
+                    >
+                      Ally
+                    </Button>
+                    <Button
+                      variant={newCombatant.type === 'npc' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setNewCombatant(prev => ({ ...prev, type: 'npc' }))}
+                      className={newCombatant.type === 'npc' ? 'bg-purple-600 hover:bg-purple-700' : 'border-slate-600'}
+                    >
+                      NPC
+                    </Button>
+                  </div>
                 </div>
                 <Button onClick={handleAddCombatant} className="w-full">
                   Add to Combat

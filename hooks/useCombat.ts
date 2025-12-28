@@ -60,9 +60,16 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
     setIsLoading(true);
 
     try {
-      // Fetch party members (players)
-      const partyResponse = await fetch(`/api/entities?campaignId=${campaignId}&type=player`);
-      const players: EntityData[] = partyResponse.ok ? await partyResponse.json() : [];
+      // Fetch party members (players only)
+      const partyResponse = await fetch(`/api/entities?campaignId=${campaignId}&entityType=player`);
+      const allEntities: EntityData[] = partyResponse.ok ? await partyResponse.json() : [];
+
+      // Filter to only players (in case API doesn't filter correctly)
+      const players = allEntities.filter((e) =>
+        (e as unknown as { entity_type: string }).entity_type === 'player'
+      );
+
+      console.log(`[Combat] Loaded ${players.length} players from ${allEntities.length} entities`);
 
       // Initialize combatants array
       const combatants: Combatant[] = [];
@@ -516,7 +523,13 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
   // END COMBAT
   // =========================================
   const endCombat = useCallback(async (generateLoot: boolean = true) => {
-    if (!combatState) return;
+    console.log('[Combat] endCombat called, generateLoot:', generateLoot);
+    console.log('[Combat] Current combat state:', combatState);
+
+    if (!combatState) {
+      console.error('[Combat] No combat state to end!');
+      return;
+    }
 
     setIsLoading(true);
 
@@ -530,15 +543,20 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
         c => c.type === 'monster' && c.isDefeated
       );
 
+      console.log('[Combat] Duration:', duration, 'seconds');
+      console.log('[Combat] Defeated monsters:', defeatedMonsters.length);
+
       // Generate loot if enabled and we have an encounter
       let lootPileId = null;
       if (generateLoot && combatState.encounterId) {
+        console.log('[Combat] Generating loot for encounter:', combatState.encounterId);
         try {
           // Fetch encounter for loot data
           const encounterResponse = await fetch(`/api/entities/${combatState.encounterId}`);
           if (encounterResponse.ok) {
             const encounter: EntityData = await encounterResponse.json();
             const rewards = encounter.mechanics?.rewards || encounter.mechanics?.loot;
+            console.log('[Combat] Encounter rewards:', rewards);
 
             if (rewards) {
               // Create a loot pile entity
@@ -564,15 +582,19 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
               if (lootResponse.ok) {
                 const lootPile = await lootResponse.json();
                 lootPileId = lootPile.id;
+                console.log('[Combat] Created loot pile:', lootPileId);
+              } else {
+                console.error('[Combat] Failed to create loot pile:', await lootResponse.text());
               }
             }
           }
         } catch (error) {
-          console.error('Failed to generate loot:', error);
+          console.error('[Combat] Failed to generate loot:', error);
         }
       }
 
       // Log combat end event
+      console.log('[Combat] Dispatching combat_end event');
       onCombatEvent?.({
         type: 'combat_end',
         title: 'Combat Ended',
@@ -587,20 +609,28 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
 
       // Update player HP in the database (commit combat changes)
       const playerCombatants = combatState.combatants.filter(c => c.type === 'player' && c.entityId);
+      console.log('[Combat] Updating HP for players:', playerCombatants.map(p => p.name));
+
       for (const player of playerCombatants) {
-        await fetch(`/api/entities/${player.entityId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mechanics: {
-              hp_current: player.hp,
-            },
-          }),
-        });
+        try {
+          const response = await fetch(`/api/entities/${player.entityId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              mechanics: {
+                hp_current: player.hp,
+              },
+            }),
+          });
+          console.log(`[Combat] Updated ${player.name} HP:`, response.ok);
+        } catch (err) {
+          console.error(`[Combat] Failed to update ${player.name}:`, err);
+        }
       }
 
       // Clear combat state from session
-      await fetch(`/api/sessions/${sessionId}`, {
+      console.log('[Combat] Clearing combat state from session:', sessionId);
+      const clearResponse = await fetch(`/api/sessions/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -608,10 +638,20 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
         }),
       });
 
+      if (!clearResponse.ok) {
+        const errorText = await clearResponse.text();
+        console.error('[Combat] Failed to clear combat state:', errorText);
+      } else {
+        console.log('[Combat] Session combat_state cleared');
+      }
+
+      // Reset local state
+      console.log('[Combat] Resetting local combat state');
       setCombatState(null);
+      console.log('[Combat] Combat ended successfully!');
 
     } catch (error) {
-      console.error('Failed to end combat:', error);
+      console.error('[Combat] Failed to end combat:', error);
     }
 
     setIsLoading(false);

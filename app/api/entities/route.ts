@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const campaignId = searchParams.get('campaignId');
-  const entityType = searchParams.get('entityType');
+  const entityType = searchParams.get('entityType') || searchParams.get('type'); // Support both params
 
   if (!campaignId) {
     return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
@@ -13,9 +13,10 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
 
+  // Select full entity data including mechanics for combat
   let query = supabase
     .from('entities')
-    .select('id, name, entity_type, sub_type')
+    .select('id, name, entity_type, sub_type, summary, mechanics, brain, soul')
     .eq('campaign_id', campaignId)
     .is('deleted_at', null)
     .order('name');
