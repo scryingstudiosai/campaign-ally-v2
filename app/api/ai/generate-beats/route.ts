@@ -50,6 +50,67 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
     // =========================================
+    // DEBUG: Check database state
+    // =========================================
+
+    // DEBUG: Check what entities exist with "Varis" in the name
+    const { data: varisCheck } = await supabase
+      .from('entities')
+      .select('id, name, entity_type, forge_status, deleted_at')
+      .eq('campaign_id', campaignId)
+      .ilike('name', '%Varis%');
+
+    console.log('=== VARIS CHECK ===');
+    console.log('Entities with "Varis" in name:', varisCheck);
+
+    // DEBUG: Check what relationships exist for this campaign
+    const { data: allRels } = await supabase
+      .from('relationships')
+      .select(`
+        id,
+        relationship_type,
+        description,
+        source_entity_id,
+        target_entity_id
+      `)
+      .limit(20);
+
+    console.log('=== ALL RELATIONSHIPS (first 20) ===');
+    console.log(allRels);
+
+    // Check relationship table structure
+    const { data: campaignRels } = await supabase
+      .from('relationships')
+      .select('*')
+      .limit(5);
+
+    console.log('=== RELATIONSHIP TABLE STRUCTURE ===');
+    console.log('Sample relationship:', campaignRels?.[0]);
+
+    // DEBUG: Check objective text matching
+    console.log('=== OBJECTIVE TEXT MATCHING ===');
+    console.log('Objective:', objective);
+    console.log('Objective lowercase:', objective.toLowerCase());
+
+    // Get ALL npcs for this campaign
+    const { data: allNpcsDebug } = await supabase
+      .from('entities')
+      .select('id, name')
+      .eq('campaign_id', campaignId)
+      .eq('entity_type', 'npc')
+      .is('deleted_at', null);
+
+    console.log('All NPCs in campaign:', allNpcsDebug?.map(n => n.name));
+
+    // Check which ones match
+    allNpcsDebug?.forEach(npc => {
+      const nameInObjective = objective.toLowerCase().includes(npc.name.toLowerCase());
+      if (nameInObjective) {
+        console.log(`MATCH FOUND: "${npc.name}" is in objective!`);
+      }
+    });
+
+    // =========================================
     // STEP 1: Gather Campaign Context
     // =========================================
 
