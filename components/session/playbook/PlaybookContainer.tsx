@@ -64,9 +64,12 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
       if (response.ok) {
         const data = await response.json();
         setBlocks(data.blocks || []);
+      } else {
+        setBlocks([]);
       }
     } catch (error) {
       console.error('Failed to fetch blocks:', error);
+      setBlocks([]);
     } finally {
       setLoading(false);
     }
@@ -254,7 +257,7 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
 
       {/* Blocks list */}
       <div className="flex-1 overflow-y-auto space-y-3 pb-4">
-        {blocks.length === 0 ? (
+        {!blocks?.length ? (
           <div className="text-center py-12">
             <p className="text-slate-500 mb-4">No blocks yet. Add your first block to start planning.</p>
             <AddBlockMenu onAddBlock={handleAddBlock} />
@@ -266,17 +269,17 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={blocks.map(b => b.id)}
+              items={blocks?.map(b => b.id) ?? []}
               strategy={verticalListSortingStrategy}
             >
-              {blocks.map(block => renderBlock(block))}
+              {blocks?.map(block => renderBlock(block))}
             </SortableContext>
           </DndContext>
         )}
       </div>
 
       {/* Add block button at bottom */}
-      {blocks.length > 0 && (
+      {(blocks?.length ?? 0) > 0 && (
         <div className="pt-3 border-t border-slate-800">
           <AddBlockMenu onAddBlock={handleAddBlock} />
         </div>
