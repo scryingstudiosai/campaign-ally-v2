@@ -6,10 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
+import {
   Play, Pause, Square, Clock, Users, Shield, Eye, Heart,
-  ChevronLeft, Pencil, Check, X, Archive
+  ChevronLeft, Pencil, Check, X, Archive, Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
+import { SessionReview } from './review/SessionReview';
 
 interface SessionHeaderProps {
   session: Session;
@@ -33,6 +38,7 @@ export function SessionHeader({ session, campaignId, onSessionUpdate }: SessionH
   const [editedName, setEditedName] = useState(session.name);
   const [players, setPlayers] = useState<PlayerCharacter[]>([]);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [showReview, setShowReview] = useState(false);
 
   // Fetch player characters
   useEffect(() => {
@@ -132,6 +138,11 @@ export function SessionHeader({ session, campaignId, onSessionUpdate }: SessionH
       if (response.ok) {
         const updatedSession = await response.json();
         onSessionUpdate(updatedSession);
+
+        // Open review modal when ending session
+        if (newStatus === 'review') {
+          setShowReview(true);
+        }
       }
     } catch (error) {
       console.error('Failed to update session status:', error);
@@ -242,13 +253,23 @@ export function SessionHeader({ session, campaignId, onSessionUpdate }: SessionH
               </>
             )}
             {session.status === 'review' && (
-              <Button
-                size="sm"
-                onClick={() => handleStatusChange('archived')}
-                className="bg-slate-600 hover:bg-slate-700"
-              >
-                <Archive className="w-4 h-4 mr-1" /> Archive
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => setShowReview(true)}
+                  className="bg-teal-600 hover:bg-teal-700"
+                >
+                  <Sparkles className="w-4 h-4 mr-1" /> Review Session
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleStatusChange('archived')}
+                  variant="outline"
+                  className="border-slate-600 hover:bg-slate-800"
+                >
+                  <Archive className="w-4 h-4 mr-1" /> Archive
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -305,6 +326,21 @@ export function SessionHeader({ session, campaignId, onSessionUpdate }: SessionH
           </div>
         </div>
       </div>
+
+      {/* Session Review Modal */}
+      <Dialog open={showReview} onOpenChange={setShowReview}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-slate-950 border-slate-800 p-6">
+          <SessionReview
+            sessionId={session.id}
+            sessionName={session.name}
+            duration={session.duration_minutes}
+            onClose={() => setShowReview(false)}
+            onComplete={() => {
+              // Optionally refresh session data after applying updates
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
