@@ -10,6 +10,7 @@ import {
 import { Session } from '@/types/session';
 import { SessionHeader } from './SessionHeader';
 import { SessionPlanner } from './planner/SessionPlanner';
+import { PlaybookContainer } from './playbook/PlaybookContainer';
 import { ToolkitPanel } from './toolkit/ToolkitPanel';
 import { StagePanel } from './stage/StagePanel';
 import { Entity } from './toolkit/LibraryPanel';
@@ -24,6 +25,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
   const [currentSession, setCurrentSession] = useState(session);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isCombatActive, setIsCombatActive] = useState(!!session.combat_state);
+  const [usePlaybook, setUsePlaybook] = useState(true); // New block-based playbook
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -177,18 +179,30 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
             {/* Left Panel: The Plan */}
             <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
               <div className="h-full bg-slate-900 border-r border-slate-800 p-4 overflow-hidden flex flex-col">
-                <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                  Session Playbook
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    Session Playbook
+                  </h2>
+                  <button
+                    onClick={() => setUsePlaybook(!usePlaybook)}
+                    className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
+                  >
+                    {usePlaybook ? 'Switch to Notes' : 'Switch to Blocks'}
+                  </button>
+                </div>
                 <div className="flex-1 overflow-hidden">
-                  <SessionPlanner
-                    sessionId={currentSession.id}
-                    initialContent={currentSession.prep_content}
-                    onContentChange={(content) => {
-                      setCurrentSession(prev => ({ ...prev, prep_content: content as Session['prep_content'] }));
-                    }}
-                  />
+                  {usePlaybook ? (
+                    <PlaybookContainer sessionId={currentSession.id} />
+                  ) : (
+                    <SessionPlanner
+                      sessionId={currentSession.id}
+                      initialContent={currentSession.prep_content}
+                      onContentChange={(content) => {
+                        setCurrentSession(prev => ({ ...prev, prep_content: content as Session['prep_content'] }));
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </ResizablePanel>
