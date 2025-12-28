@@ -23,6 +23,8 @@ const FORGE_OPTIONS = [
     icon: Users,
     color: 'bg-blue-600 hover:bg-blue-700',
     placeholder: 'A mysterious merchant with a secret...',
+    generateApi: '/api/generate/npc',
+    inputKey: 'concept',
   },
   {
     type: 'location',
@@ -30,6 +32,8 @@ const FORGE_OPTIONS = [
     icon: MapPin,
     color: 'bg-green-600 hover:bg-green-700',
     placeholder: 'A hidden grove with ancient ruins...',
+    generateApi: '/api/generate/location',
+    inputKey: 'concept',
   },
   {
     type: 'item',
@@ -37,6 +41,8 @@ const FORGE_OPTIONS = [
     icon: Package,
     color: 'bg-amber-600 hover:bg-amber-700',
     placeholder: 'A cursed sword that whispers...',
+    generateApi: '/api/generate/item',
+    inputKey: 'concept',
   },
   {
     type: 'creature',
@@ -44,6 +50,8 @@ const FORGE_OPTIONS = [
     icon: Skull,
     color: 'bg-red-600 hover:bg-red-700',
     placeholder: 'A pack of dire wolves hunting...',
+    generateApi: '/api/generate/creature',
+    inputKey: 'concept',
   },
 ];
 
@@ -67,82 +75,78 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
     setIsForging(selectedType);
     setError(null);
 
+    const option = FORGE_OPTIONS.find(o => o.type === selectedType);
+    if (!option) return;
+
     try {
-      let response;
-      let newEntity;
+      // Build inputs based on entity type
+      const inputs: Record<string, unknown> = {
+        [option.inputKey]: prompt.trim(),
+      };
 
+      // Add type-specific defaults
       if (selectedType === 'npc') {
-        // Use existing NPC generation API
-        response = await fetch('/api/generate/npc', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            campaignId,
-            inputs: {
-              concept: prompt.trim(),
-              combatRole: 'non-combatant',
-            },
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to generate NPC');
-        }
-
-        const data = await response.json();
-
-        // Save the NPC to the database
-        const saveResponse = await fetch('/api/entities', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            campaignId,
-            forgeType: 'npc',
-            output: data.npc,
-          }),
-        });
-
-        if (!saveResponse.ok) {
-          const saveError = await saveResponse.json();
-          throw new Error(saveError.error || 'Failed to save NPC');
-        }
-
-        newEntity = await saveResponse.json();
-      } else {
-        // For other types, create a stub entity that can be expanded later
-        // Extract a reasonable name from the prompt (first few words, capitalized)
-        const words = prompt.trim().split(/\s+/);
-        let name = words.slice(0, 3).join(' ');
-        // Capitalize first letter of each word
-        name = name.replace(/\b\w/g, c => c.toUpperCase());
-
-        response = await fetch('/api/entities', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            campaignId,
-            entity: {
-              name,
-              entity_type: selectedType,
-              summary: prompt.trim(),
-              forge_status: 'stub',
-              attributes: {
-                is_stub: true,
-                needs_review: true,
-                quick_forge_prompt: prompt.trim(),
-              },
-            },
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Failed to create ${selectedType}`);
-        }
-
-        newEntity = await response.json();
+        inputs.combatRole = 'non-combatant';
+      } else if (selectedType === 'location') {
+        inputs.locationType = 'building';
+      } else if (selectedType === 'item') {
+        inputs.itemType = 'wondrous';
+      } else if (selectedType === 'creature') {
+        inputs.creatureType = 'beast';
+        inputs.challengeRating = '1';
       }
+
+      // Call the generation API
+      const response = await fetch(option.generateApi, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          inputs,
+        }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        let errorMessage = `Failed to generate ${selectedType}`;
+        try {
+          const errorData = JSON.parse(text);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = text || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+
+      // Extract the generated content (different APIs return different keys)
+      const generatedContent = data.npc || data.location || data.item || data.creature || data;
+
+      // Save to the database
+      const saveResponse = await fetch('/api/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          forgeType: selectedType,
+          output: generatedContent,
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        const text = await saveResponse.text();
+        let errorMessage = `Failed to save ${selectedType}`;
+        try {
+          const saveError = JSON.parse(text);
+          errorMessage = saveError.error || errorMessage;
+        } catch {
+          errorMessage = text || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const newEntity = await saveResponse.json();
 
       // Notify parent
       onForged?.(newEntity);
@@ -193,7 +197,7 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
       </div>
 
       <p className="text-xs text-slate-600 mt-4 text-center">
-        Instantly generate entities during gameplay
+        AI-powered entity generation
       </p>
 
       {/* Forge Dialog */}
@@ -243,16 +247,9 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
               )}
             </Button>
 
-            {selectedType === 'npc' && (
-              <p className="text-xs text-slate-500 text-center">
-                NPCs are fully generated with personality, voice, and stats
-              </p>
-            )}
-            {selectedType !== 'npc' && (
-              <p className="text-xs text-slate-500 text-center">
-                Creates a stub entity you can expand later in the Forge
-              </p>
-            )}
+            <p className="text-xs text-slate-500 text-center">
+              AI generates a complete {selectedType} with full details
+            </p>
           </div>
         </DialogContent>
       </Dialog>
