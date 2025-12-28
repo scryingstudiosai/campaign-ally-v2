@@ -26,7 +26,7 @@ interface Session {
 export default function SessionsListPage() {
   const params = useParams();
   const router = useRouter();
-  const campaignId = params.campaignId as string;
+  const campaignId = params.id as string;
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
