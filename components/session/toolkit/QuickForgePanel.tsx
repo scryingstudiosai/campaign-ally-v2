@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
-import type { SrdCreature } from '@/types/srd';
 
 interface QuickForgePanelProps {
   campaignId: string;
@@ -27,6 +26,17 @@ interface ForgedEntity {
   name: string;
   summary?: string;
   entity_type?: string;
+}
+
+// SRD creature from external D&D 5e API (list view)
+interface SRDCreatureListItem {
+  index: string;
+  name: string;
+  challenge_rating: number;
+  type: string;
+  size: string;
+  hit_points: number;
+  armor_class: number;
 }
 
 const FORGE_OPTIONS = [
@@ -49,7 +59,7 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
   const [showSuccess, setShowSuccess] = useState(false);
 
   // SRD state
-  const [srdCreatures, setSrdCreatures] = useState<SrdCreature[]>([]);
+  const [srdCreatures, setSrdCreatures] = useState<SRDCreatureListItem[]>([]);
   const [srdSearch, setSrdSearch] = useState('');
   const [isLoadingSRD, setIsLoadingSRD] = useState(false);
   const [creatureMode, setCreatureMode] = useState<'generate' | 'srd'>('generate');
@@ -64,10 +74,11 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
     const searchTimeout = setTimeout(async () => {
       setIsLoadingSRD(true);
       try {
-        const response = await fetch(`/api/srd/search?q=${encodeURIComponent(srdSearch)}&types=creatures&limit=30`);
+        // Use the new external API route
+        const response = await fetch(`/api/srd/creatures?q=${encodeURIComponent(srdSearch)}`);
         if (response.ok) {
           const data = await response.json();
-          setSrdCreatures(data.creatures || []);
+          setSrdCreatures(data || []);
         }
       } catch (error) {
         console.error('Failed to search SRD creatures:', error);
@@ -136,36 +147,153 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
     setIsForging(null);
   };
 
-  const handleImportSRD = async (creature: SrdCreature) => {
+  const handleImportSRD = async (creature: SRDCreatureListItem) => {
     setIsForging('srd');
     setError(null);
 
     try {
-      // Use the existing add-to-memory API
-      const response = await fetch('/api/srd/add-to-memory', {
+      // Fetch full creature data from SRD
+      const response = await fetch(`/api/srd/creatures/${creature.index}`);
+      if (!response.ok) throw new Error('Failed to fetch creature details');
+
+      const srd = await response.json();
+
+      // Build complete mechanics object from SRD data
+      const mechanics = {
+        // Core stats
+        hp: srd.hit_points,
+        hp_max: srd.hit_points,
+        hp_formula: srd.hit_points_roll || srd.hit_dice,
+        ac: srd.armor_class?.[0]?.value || 10,
+        ac_type: srd.armor_class?.[0]?.type || 'natural',
+        cr: String(srd.challenge_rating),
+        xp: srd.xp,
+
+        // Type info
+        size: srd.size?.toLowerCase(),
+        type: srd.type,
+        subtype: srd.subtype,
+        alignment: srd.alignment,
+
+        // Ability scores
+        abilities: {
+          str: srd.strength,
+          dex: srd.dexterity,
+          con: srd.constitution,
+          int: srd.intelligence,
+          wis: srd.wisdom,
+          cha: srd.charisma,
+        },
+
+        // Speed - handle object format
+        speed: srd.speed,
+
+        // Proficiencies (saving throws and skills)
+        proficiencies: srd.proficiencies?.map((p: any) => ({
+          name: p.proficiency?.name || p.name,
+          value: p.value,
+        })),
+
+        // Senses
+        senses: typeof srd.senses === 'object'
+          ? Object.entries(srd.senses)
+              .filter(([, v]) => v)
+              .map(([k, v]) => `${k.replace(/_/g, ' ')} ${v}`)
+              .join(', ')
+          : srd.senses,
+
+        // Languages
+        languages: srd.languages || 'None',
+
+        // Resistances and Immunities
+        damage_vulnerabilities: srd.damage_vulnerabilities || [],
+        damage_resistances: srd.damage_resistances || [],
+        damage_immunities: srd.damage_immunities || [],
+        condition_immunities: srd.condition_immunities?.map((c: any) => c.name || c) || [],
+
+        // Abilities and Actions
+        special_abilities: srd.special_abilities?.map((a: any) => ({
+          name: a.name,
+          desc: a.desc,
+          usage: a.usage,
+          dc: a.dc,
+          damage: a.damage,
+        })) || [],
+
+        actions: srd.actions?.map((a: any) => ({
+          name: a.name,
+          desc: a.desc,
+          attack_bonus: a.attack_bonus,
+          damage: a.damage,
+          dc: a.dc,
+          usage: a.usage,
+          multiattack_type: a.multiattack_type,
+          actions: a.actions,
+        })) || [],
+
+        reactions: srd.reactions?.map((r: any) => ({
+          name: r.name,
+          desc: r.desc,
+        })) || [],
+
+        legendary_actions: srd.legendary_actions?.map((a: any) => ({
+          name: a.name,
+          desc: a.desc,
+          attack_bonus: a.attack_bonus,
+          damage: a.damage,
+        })) || [],
+
+        legendary_desc: srd.legendary_desc,
+
+        // Source tracking
+        srd_index: srd.index,
+        srd_url: srd.url,
+      };
+
+      // Build summary
+      const sizeName = srd.size?.toLowerCase() || 'medium';
+      const typeName = srd.type || 'creature';
+      const alignment = srd.alignment || 'unaligned';
+
+      // Create entity in database
+      const createResponse = await fetch('/api/entities', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          srdEntity: creature,
-          campaignId,
-          srdType: 'creature',
+          campaign_id: campaignId,
+          entity_type: 'creature',
+          name: srd.name,
+          summary: `${sizeName} ${typeName}, ${alignment}, CR ${srd.challenge_rating}`,
+          sub_type: typeName,
+          soul: {
+            read_aloud: `A ${sizeName} ${typeName} stands before you.`,
+            appearance: srd.desc || `A ${sizeName} ${typeName}.`,
+          },
+          brain: {
+            tactics: srd.actions?.[0]?.desc?.substring(0, 200) || 'Attacks aggressively.',
+            motivation: 'Follows its nature.',
+          },
+          mechanics: mechanics,
+          status: 'active',
+          forge_status: 'complete',
+          tags: ['srd', typeName, sizeName],
         }),
       });
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to import creature');
+      if (!createResponse.ok) {
+        const err = await createResponse.json();
+        throw new Error(err.error || 'Failed to create entity');
       }
 
-      const newEntity = await response.json();
+      const newEntity = await createResponse.json();
 
       setForgedEntity(newEntity);
       setShowSuccess(true);
       onForged?.(newEntity);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('SRD import error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to import creature');
+      setError(err.message || 'Failed to import creature');
     }
 
     setIsForging(null);
@@ -349,7 +477,7 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
                     <div className="p-2 space-y-1">
                       {srdCreatures.map(creature => (
                         <button
-                          key={creature.id}
+                          key={creature.index}
                           onClick={() => handleImportSRD(creature)}
                           disabled={isForging === 'srd'}
                           className="w-full flex items-center justify-between p-2 rounded hover:bg-slate-800 transition-colors text-left disabled:opacity-50"
@@ -357,15 +485,15 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
                           <div className="min-w-0">
                             <p className="font-medium text-slate-200 truncate">{creature.name}</p>
                             <p className="text-xs text-slate-500">
-                              {creature.size} {creature.creature_type}
+                              {creature.size} {creature.type}
                             </p>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                             <span className="text-xs px-2 py-0.5 rounded bg-red-900/50 text-red-300">
-                              CR {creature.cr}
+                              CR {creature.challenge_rating}
                             </span>
                             <span className="text-xs text-slate-500">
-                              HP {creature.hp}
+                              HP {creature.hit_points}
                             </span>
                           </div>
                         </button>
