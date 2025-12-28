@@ -28,6 +28,12 @@ interface Entity {
   mechanics?: {
     objectives?: QuestObjective[];
   };
+  brain?: {
+    objectives?: QuestObjective[];
+  };
+  attributes?: {
+    objectives?: QuestObjective[];
+  };
 }
 
 const typeLabels: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -55,19 +61,31 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
         if (response.ok) {
           const basicEntities = await response.json();
 
-          // For quests, fetch full details to get objectives
+          console.log('=== LIBRARY PANEL DEBUG ===');
+          console.log('Basic entities:', basicEntities);
+
+          // For quests, fetch full details to get objectives (case-insensitive)
           const entitiesWithDetails = await Promise.all(
             basicEntities.map(async (entity: Entity) => {
-              if (entity.entity_type === 'quest') {
+              if (entity.entity_type?.toLowerCase() === 'quest') {
+                console.log('Fetching quest details for:', entity.name);
                 const detailResponse = await fetch(`/api/entities/${entity.id}`);
                 if (detailResponse.ok) {
-                  return await detailResponse.json();
+                  const fullQuest = await detailResponse.json();
+                  console.log('Quest full data:', fullQuest);
+                  console.log('Quest objectives locations:', {
+                    'mechanics.objectives': fullQuest.mechanics?.objectives,
+                    'brain.objectives': fullQuest.brain?.objectives,
+                    'attributes.objectives': fullQuest.attributes?.objectives,
+                  });
+                  return fullQuest;
                 }
               }
               return entity;
             })
           );
 
+          console.log('Entities with details:', entitiesWithDetails);
           setEntities(entitiesWithDetails);
         }
       } catch (error) {
@@ -112,7 +130,14 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
   };
 
   const getQuestObjectives = (quest: Entity): QuestObjective[] => {
-    return quest.mechanics?.objectives || [];
+    // Check all possible locations for objectives
+    const objectives = quest.mechanics?.objectives
+      || quest.brain?.objectives
+      || quest.attributes?.objectives
+      || [];
+
+    console.log(`Quest "${quest.name}" objectives:`, objectives);
+    return Array.isArray(objectives) ? objectives : [];
   };
 
   return (
@@ -172,7 +197,7 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
                         {/* The Entity itself */}
                         <div className="flex items-center">
                           {/* Expand button for quests */}
-                          {entity.entity_type === 'quest' && getQuestObjectives(entity).length > 0 && (
+                          {entity.entity_type?.toLowerCase() === 'quest' && getQuestObjectives(entity).length > 0 && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -193,7 +218,7 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
                         </div>
 
                         {/* Quest Objectives (nested) */}
-                        {entity.entity_type === 'quest' && expandedQuests.has(entity.id) && (
+                        {entity.entity_type?.toLowerCase() === 'quest' && expandedQuests.has(entity.id) && (
                           <div className="ml-6 mt-1 space-y-1 border-l-2 border-amber-800/50 pl-2">
                             {getQuestObjectives(entity).map((objective, index) => (
                               <DraggableObjective
