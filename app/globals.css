@@ -102,6 +102,20 @@
   margin-bottom: 0.75rem;
 }
 
+/* Fix Tiptap list bullets and numbers */
+.ProseMirror ul {
+  list-style-type: disc !important;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal !important;
+}
+
+.ProseMirror ul li::marker,
+.ProseMirror ol li::marker {
+  color: #94a3b8; /* slate-400 */
+}
+
 .ProseMirror blockquote {
   border-left: 3px solid #475569;
   padding-left: 1rem;
