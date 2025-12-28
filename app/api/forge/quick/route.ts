@@ -108,7 +108,10 @@ Return valid JSON only:
     "rarity": "uncommon",
     "attunement": false,
     "type": "weapon",
-    "properties": "Game mechanics"
+    "properties": ["Property 1", "Property 2"],
+    "abilities": [
+      { "name": "Ability Name", "description": "What this ability does", "cost": "1 charge" }
+    ]
   }
 }`,
 
