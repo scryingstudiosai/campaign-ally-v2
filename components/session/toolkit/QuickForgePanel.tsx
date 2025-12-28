@@ -3,56 +3,29 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Users, MapPin, Package, Skull, Loader2, Sparkles } from 'lucide-react';
+import {
+  Users, MapPin, Package, Skull, Loader2, Sparkles,
+  CheckCircle, ExternalLink, Swords
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import Link from 'next/link';
 
 interface QuickForgePanelProps {
   campaignId: string;
-  onForged?: (entity: Record<string, unknown>) => void;
+  onForged?: (entity: any) => void;
 }
 
 const FORGE_OPTIONS = [
-  {
-    type: 'npc',
-    label: 'Quick NPC',
-    icon: Users,
-    color: 'bg-blue-600 hover:bg-blue-700',
-    placeholder: 'A mysterious merchant with a secret...',
-    generateApi: '/api/generate/npc',
-    inputKey: 'concept',
-  },
-  {
-    type: 'location',
-    label: 'Quick Location',
-    icon: MapPin,
-    color: 'bg-green-600 hover:bg-green-700',
-    placeholder: 'A hidden grove with ancient ruins...',
-    generateApi: '/api/generate/location',
-    inputKey: 'concept',
-  },
-  {
-    type: 'item',
-    label: 'Quick Item',
-    icon: Package,
-    color: 'bg-amber-600 hover:bg-amber-700',
-    placeholder: 'A cursed sword that whispers...',
-    generateApi: '/api/generate/item',
-    inputKey: 'concept',
-  },
-  {
-    type: 'creature',
-    label: 'Quick Creature',
-    icon: Skull,
-    color: 'bg-red-600 hover:bg-red-700',
-    placeholder: 'A pack of dire wolves hunting...',
-    generateApi: '/api/generate/creature',
-    inputKey: 'concept',
-  },
+  { type: 'creature', label: 'Creature', icon: Skull, color: 'bg-red-600 hover:bg-red-700' },
+  { type: 'encounter', label: 'Encounter', icon: Swords, color: 'bg-orange-600 hover:bg-orange-700' },
+  { type: 'npc', label: 'NPC', icon: Users, color: 'bg-blue-600 hover:bg-blue-700' },
+  { type: 'location', label: 'Location', icon: MapPin, color: 'bg-green-600 hover:bg-green-700' },
+  { type: 'item', label: 'Item', icon: Package, color: 'bg-amber-600 hover:bg-amber-700' },
 ];
 
 export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) {
@@ -62,10 +35,16 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
   const [prompt, setPrompt] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  // Success state
+  const [forgedEntity, setForgedEntity] = useState<any>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+
   const handleOpenForge = (type: string) => {
     setSelectedType(type);
     setPrompt('');
     setError(null);
+    setForgedEntity(null);
+    setShowSuccess(false);
     setShowDialog(true);
   };
 
@@ -75,99 +54,61 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
     setIsForging(selectedType);
     setError(null);
 
-    const option = FORGE_OPTIONS.find(o => o.type === selectedType);
-    if (!option) return;
-
     try {
-      // Build inputs based on entity type
-      const inputs: Record<string, unknown> = {
-        [option.inputKey]: prompt.trim(),
-      };
-
-      // Add type-specific defaults
-      if (selectedType === 'npc') {
-        inputs.combatRole = 'non-combatant';
-      } else if (selectedType === 'location') {
-        inputs.locationType = 'building';
-      } else if (selectedType === 'item') {
-        inputs.itemType = 'wondrous';
-      } else if (selectedType === 'creature') {
-        inputs.creatureType = 'beast';
-        inputs.challengeRating = '1';
-      }
-
-      // Call the generation API
-      const response = await fetch(option.generateApi, {
+      const response = await fetch('/api/forge/quick', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId,
-          inputs,
+          entityType: selectedType,
+          prompt: prompt.trim(),
         }),
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        let errorMessage = `Failed to generate ${selectedType}`;
+        const errorText = await response.text();
+        let errorMessage = 'Forge failed';
         try {
-          const errorData = JSON.parse(text);
-          errorMessage = errorData.error || errorMessage;
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorMessage;
         } catch {
-          errorMessage = text || errorMessage;
+          errorMessage = errorText || errorMessage;
         }
         throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text) throw new Error('Empty response from server');
 
-      // Extract the generated content (different APIs return different keys)
-      const generatedContent = data.npc || data.location || data.item || data.creature || data;
+      const newEntity = JSON.parse(text);
 
-      // Save to the database
-      const saveResponse = await fetch('/api/entities', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId,
-          forgeType: selectedType,
-          output: generatedContent,
-        }),
-      });
+      // Show success state
+      setForgedEntity(newEntity);
+      setShowSuccess(true);
 
-      if (!saveResponse.ok) {
-        const text = await saveResponse.text();
-        let errorMessage = `Failed to save ${selectedType}`;
-        try {
-          const saveError = JSON.parse(text);
-          errorMessage = saveError.error || errorMessage;
-        } catch {
-          errorMessage = text || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const newEntity = await saveResponse.json();
-
-      // Notify parent
+      // Notify parent to refresh library
       onForged?.(newEntity);
 
-      // Close dialog
-      setShowDialog(false);
-      setPrompt('');
-
-      // Dispatch event to add to live log
-      window.dispatchEvent(new CustomEvent('session-forge-complete', {
-        detail: {
-          entity: newEntity,
-          message: `Forged new ${selectedType}: ${newEntity.name}`,
-        },
-      }));
-    } catch (err) {
+    } catch (err: any) {
       console.error('Quick forge error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to forge entity');
+      setError(err.message || 'Failed to forge entity');
     }
 
     setIsForging(null);
+  };
+
+  const handleCreateAnother = () => {
+    setShowSuccess(false);
+    setForgedEntity(null);
+    setPrompt('');
+  };
+
+  const handleClose = () => {
+    setShowDialog(false);
+    setShowSuccess(false);
+    setForgedEntity(null);
+    setPrompt('');
+    setError(null);
   };
 
   const selectedOption = FORGE_OPTIONS.find(o => o.type === selectedType);
@@ -184,73 +125,117 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
             key={type}
             onClick={() => handleOpenForge(type)}
             disabled={isForging !== null}
-            className={`h-20 flex-col gap-2 ${color}`}
+            className={`h-16 flex-col gap-1 ${color}`}
           >
-            {isForging === type ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
-              <Icon className="w-6 h-6" />
-            )}
+            <Icon className="w-5 h-5" />
             <span className="text-xs">{label}</span>
           </Button>
         ))}
       </div>
 
       <p className="text-xs text-slate-600 mt-4 text-center">
-        AI-powered entity generation
+        Instantly generate content during gameplay
       </p>
 
       {/* Forge Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showDialog} onOpenChange={handleClose}>
         <DialogContent className="bg-slate-900 border-slate-700">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-teal-400" />
-              Quick Forge {selectedType?.toUpperCase()}
+              {selectedOption && <selectedOption.icon className="w-5 h-5 text-teal-400" />}
+              Quick Forge {selectedOption?.label}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm text-slate-400 mb-2 block">
-                Describe what you need:
-              </label>
-              <Input
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={selectedOption?.placeholder}
-                className="bg-slate-800 border-slate-600"
-                onKeyDown={(e) => e.key === 'Enter' && !isForging && handleQuickForge()}
-                autoFocus
-              />
-            </div>
+          {showSuccess && forgedEntity ? (
+            // SUCCESS STATE
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 bg-green-900/30 border border-green-700 rounded-lg">
+                <CheckCircle className="w-8 h-8 text-green-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-green-300 font-medium">Created Successfully!</p>
+                  <p className="text-xl text-white font-bold truncate mt-1">{forgedEntity.name}</p>
+                  {forgedEntity.summary && (
+                    <p className="text-sm text-slate-400 mt-2 line-clamp-3">{forgedEntity.summary}</p>
+                  )}
+                </div>
+              </div>
 
-            {error && (
-              <p className="text-sm text-red-400">{error}</p>
-            )}
-
-            <Button
-              onClick={handleQuickForge}
-              disabled={!prompt.trim() || isForging !== null}
-              className="w-full bg-teal-600 hover:bg-teal-700"
-            >
-              {isForging ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Forging...
-                </>
-              ) : (
-                <>
+              <div className="flex gap-2">
+                <Link
+                  href={`/dashboard/campaigns/${campaignId}/memory/${forgedEntity.id}`}
+                  target="_blank"
+                  className="flex-1"
+                >
+                  <Button variant="outline" className="w-full border-slate-600">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    View Details
+                  </Button>
+                </Link>
+                <Button
+                  onClick={handleCreateAnother}
+                  className="flex-1 bg-teal-600 hover:bg-teal-700"
+                >
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Forge {selectedType}
-                </>
-              )}
-            </Button>
+                  Create Another
+                </Button>
+              </div>
 
-            <p className="text-xs text-slate-500 text-center">
-              AI generates a complete {selectedType} with full details
-            </p>
-          </div>
+              <Button
+                variant="ghost"
+                onClick={handleClose}
+                className="w-full text-slate-400"
+              >
+                Done
+              </Button>
+            </div>
+          ) : (
+            // INPUT STATE
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-slate-400 mb-2 block">
+                  Describe what you need:
+                </label>
+                <Input
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder={
+                    selectedType === 'npc' ? 'A mysterious merchant with a secret...' :
+                    selectedType === 'location' ? 'A hidden grove with ancient ruins...' :
+                    selectedType === 'item' ? 'A cursed sword that whispers...' :
+                    selectedType === 'creature' ? 'A pack of dire wolves hunting...' :
+                    selectedType === 'encounter' ? '3 goblins ambush from the trees, medium difficulty...' :
+                    'Describe what you want to create...'
+                  }
+                  className="bg-slate-800 border-slate-600"
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleQuickForge()}
+                  autoFocus
+                />
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-400 bg-red-900/20 p-2 rounded">{error}</p>
+              )}
+
+              <Button
+                onClick={handleQuickForge}
+                disabled={!prompt.trim() || isForging !== null}
+                className="w-full bg-teal-600 hover:bg-teal-700"
+              >
+                {isForging ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Forging...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Forge {selectedOption?.label}
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
