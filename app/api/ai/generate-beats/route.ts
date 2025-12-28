@@ -202,6 +202,33 @@ Return your response as JSON with this exact structure:
 Remember: Use existing NPCs and relationships! Don't invent new characters if the campaign already has someone who fits the role.`;
 
     // =========================================
+    // DEBUG LOGGING
+    // =========================================
+    console.log('========== BEAT GENERATOR DEBUG ==========');
+    console.log('Objective:', objective);
+    console.log('Campaign ID:', campaignId);
+    console.log('');
+    console.log('--- MENTIONED ENTITIES ---');
+    console.log('Potential names found:', potentialNames);
+    console.log('Matched entities:', mentionedEntities?.map(e => ({ name: e.name, type: e.entity_type })));
+    console.log('');
+    console.log('--- RELATIONSHIPS FOUND ---');
+    console.log('Relationship count:', relationships.length);
+    relationships.forEach(r => {
+      console.log(`  ${r.source_entity?.name} --[${r.relationship_type}]--> ${r.target_entity?.name}`);
+    });
+    console.log('');
+    console.log('--- AVAILABLE NPCs ---');
+    console.log(nearbyNpcs?.map(n => n.name));
+    console.log('');
+    console.log('--- SYSTEM PROMPT ---');
+    console.log(systemPrompt);
+    console.log('');
+    console.log('--- USER PROMPT ---');
+    console.log(userPrompt);
+    console.log('==========================================');
+
+    // =========================================
     // STEP 4: Call OpenAI
     // =========================================
 
