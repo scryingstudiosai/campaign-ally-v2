@@ -10,6 +10,7 @@ interface DraggableEntityProps {
     name: string;
     entity_type: string;
     sub_type?: string;
+    mechanics?: Record<string, unknown>;
   };
 }
 
@@ -25,11 +26,13 @@ const typeConfig: Record<string, { icon: React.ComponentType<{ className?: strin
 
 export function DraggableEntity({ entity }: DraggableEntityProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: entity.id,
+    id: `entity-${entity.id}`,
     data: {
+      type: 'entity',
       id: entity.id,
       name: entity.name,
       entityType: entity.entity_type,
+      entity: entity, // Include full entity for combat drops
     },
   });
 

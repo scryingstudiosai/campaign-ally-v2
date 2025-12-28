@@ -37,14 +37,55 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
     })
   );
 
+  // Handle adding entity to combat from library
+  const handleAddEntityToCombat = useCallback((entity: Entity) => {
+    const dex = entity.mechanics?.abilities?.dex || 10;
+    const dexMod = Math.floor((dex - 10) / 2);
+    const initiative = rollInitiative(dexMod);
+    const hp = entity.mechanics?.hp_current || entity.mechanics?.hp_max || entity.mechanics?.hp || 10;
+
+    const combatant = {
+      id: `${entity.entity_type}-${entity.id}-${Date.now()}`,
+      entityId: entity.id,
+      name: entity.name,
+      displayName: entity.name,
+      type: entity.entity_type === 'player' ? 'player' as const :
+            entity.entity_type === 'npc' ? 'npc' as const : 'monster' as const,
+      initiative,
+      initiativeModifier: dexMod,
+      hp,
+      maxHp: entity.mechanics?.hp_max || hp,
+      ac: entity.mechanics?.ac || 10,
+      statBlock: entity.mechanics,
+      fullEntity: entity,
+    };
+
+    // Dispatch event for StagePanel/useCombat to add the combatant
+    window.dispatchEvent(new CustomEvent('add-entity-to-combat', {
+      detail: combatant
+    }));
+  }, []);
+
   // Handle drag end
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
-    if (over?.id === 'session-planner-editor' && active.data.current) {
-      const data = active.data.current;
+    if (!over || !active.data.current) return;
 
+    const data = active.data.current;
+
+    // Check if dropping into combat zone
+    if (over.id === 'combat-drop-zone' && isCombatActive) {
+      const entityType = data.entityType as string;
+      if (data.entity && ['npc', 'creature', 'player'].includes(entityType)) {
+        handleAddEntityToCombat(data.entity as Entity);
+        return;
+      }
+    }
+
+    // Check if dropping into session planner
+    if (over.id === 'session-planner-editor') {
       // Check if this is a quest objective
       if (data.type === 'quest_objective') {
         const insertObjective = (window as Window & {
@@ -81,7 +122,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
         }
       }
     }
-  }, []);
+  }, [isCombatActive, handleAddEntityToCombat]);
 
   const handleDragStart = useCallback((event: { active: { id: string | number } }) => {
     setActiveId(String(event.active.id));
@@ -133,35 +174,6 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
     return () => {
       window.removeEventListener('combat-state-change', handleCombatStateChange);
     };
-  }, []);
-
-  // Handle adding entity to combat from library
-  const handleAddEntityToCombat = useCallback((entity: Entity) => {
-    const dex = entity.mechanics?.abilities?.dex || 10;
-    const dexMod = Math.floor((dex - 10) / 2);
-    const initiative = rollInitiative(dexMod);
-    const hp = entity.mechanics?.hp_current || entity.mechanics?.hp_max || entity.mechanics?.hp || 10;
-
-    const combatant = {
-      id: `${entity.entity_type}-${entity.id}-${Date.now()}`,
-      entityId: entity.id,
-      name: entity.name,
-      displayName: entity.name,
-      type: entity.entity_type === 'player' ? 'player' as const :
-            entity.entity_type === 'npc' ? 'npc' as const : 'monster' as const,
-      initiative,
-      initiativeModifier: dexMod,
-      hp,
-      maxHp: entity.mechanics?.hp_max || hp,
-      ac: entity.mechanics?.ac || 10,
-      statBlock: entity.mechanics,
-      fullEntity: entity,
-    };
-
-    // Dispatch event for StagePanel/useCombat to add the combatant
-    window.dispatchEvent(new CustomEvent('add-entity-to-combat', {
-      detail: combatant
-    }));
   }, []);
 
   return (

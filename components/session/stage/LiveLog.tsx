@@ -87,7 +87,13 @@ export function LiveLog({ sessionId }: LiveLogProps) {
         </div>
       ) : (
         events.map((event) => (
-          <EventCard key={event.id} event={event} />
+          <EventCard
+            key={event.id}
+            event={event}
+            onResumeCombat={event.event_type === 'combat_start' ? () => {
+              window.dispatchEvent(new CustomEvent('resume-combat'));
+            } : undefined}
+          />
         ))
       )}
     </div>

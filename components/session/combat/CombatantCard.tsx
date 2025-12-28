@@ -325,7 +325,7 @@ export function CombatantCard({
 
   // Build class names for the card
   const cardClasses = [
-    'rounded-r-lg border-y border-r transition-all',
+    'rounded-lg border transition-all overflow-hidden',
     combatant.isDefeated
       ? 'border-slate-700 bg-slate-900/50 opacity-60'
       : 'border-slate-700 bg-slate-800/50 hover:bg-slate-800',
@@ -333,17 +333,17 @@ export function CombatantCard({
 
   // Only add active styling if not hidden
   if (isActive && !hideActiveRing) {
-    cardClasses.push('border-amber-500 bg-amber-900/20 ring-2 ring-amber-500/50 scale-[1.02]');
+    cardClasses.push('border-amber-500 bg-amber-900/20 ring-2 ring-amber-500/50');
   }
 
   return (
     <div className={cardClasses.join(' ')}>
       {/* Main Row */}
-      <div className="flex items-center gap-3 p-3">
+      <div className="flex items-center gap-2 p-3 min-h-[60px]">
         {/* Expand Button */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1 hover:bg-slate-700 rounded"
+          className="p-1 hover:bg-slate-700 rounded flex-shrink-0"
         >
           {isExpanded ? (
             <ChevronDown className="w-4 h-4 text-slate-400" />
@@ -352,8 +352,8 @@ export function CombatantCard({
           )}
         </button>
 
-        {/* Initiative */}
-        <div className="w-12 text-center">
+        {/* Initiative - fixed width */}
+        <div className="w-10 flex-shrink-0 text-center">
           <Input
             value={initInput}
             onChange={(e) => setInitInput(e.target.value)}
@@ -362,42 +362,42 @@ export function CombatantCard({
               const value = parseInt(initInput, 10);
               if (!isNaN(value)) onInitiativeChange(value);
             }}
-            className="w-12 h-8 text-center text-lg font-bold bg-slate-900 border-slate-600 p-1"
+            className="w-10 h-8 text-center text-sm font-bold bg-slate-900 border-slate-600 p-1"
           />
         </div>
 
-        {/* Type Icon */}
-        <div className={`p-2 rounded-lg ${
+        {/* Type Icon - fixed width */}
+        <div className={`p-1.5 rounded-lg flex-shrink-0 ${
           combatant.type === 'player' ? 'bg-blue-900/50' :
           combatant.type === 'ally' ? 'bg-green-900/50' :
           combatant.type === 'npc' ? 'bg-purple-900/50' : 'bg-red-900/50'
         }`}>
-          <TypeIcon className={`w-5 h-5 ${
+          <TypeIcon className={`w-4 h-4 ${
             combatant.type === 'player' ? 'text-blue-400' :
             combatant.type === 'ally' ? 'text-green-400' :
             combatant.type === 'npc' ? 'text-purple-400' : 'text-red-400'
           }`} />
         </div>
 
-        {/* Name & Conditions */}
-        <div className="flex-1 min-w-0">
+        {/* Name & Conditions - flexible but truncate */}
+        <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2">
-            <span className={`font-medium truncate ${
+            <span className={`font-medium truncate text-sm ${
               combatant.isDefeated ? 'line-through text-slate-500' : 'text-slate-200'
             }`}>
               {combatant.displayName}
             </span>
             {isActive && (
-              <Badge variant="outline" className="border-amber-500 text-amber-400 text-xs">
+              <Badge variant="outline" className="border-amber-500 text-amber-400 text-xs flex-shrink-0">
                 Active
               </Badge>
             )}
             {!combatant.isVisible && (
-              <EyeOff className="w-4 h-4 text-slate-500" />
+              <EyeOff className="w-4 h-4 text-slate-500 flex-shrink-0" />
             )}
           </div>
 
-          {/* Conditions */}
+          {/* Conditions - wrap if needed */}
           {combatant.conditions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {combatant.conditions.map(condition => (
@@ -413,24 +413,24 @@ export function CombatantCard({
           )}
         </div>
 
-        {/* AC */}
-        <div className="flex items-center gap-1 text-slate-400">
-          <Shield className="w-4 h-4" />
-          <span className="font-mono">{combatant.ac}</span>
+        {/* AC - fixed width */}
+        <div className="flex items-center gap-1 text-slate-400 flex-shrink-0">
+          <Shield className="w-3 h-3" />
+          <span className="font-mono text-sm">{combatant.ac}</span>
         </div>
 
-        {/* HP Bar & Input */}
-        <div className="w-36">
-          <div className="flex items-center gap-2 mb-1">
-            <Heart className={`w-4 h-4 ${combatant.isDefeated ? 'text-slate-500' : 'text-red-400'}`} />
-            <span className="font-mono text-sm">
+        {/* HP Section - fixed width */}
+        <div className="w-28 flex-shrink-0">
+          <div className="flex items-center gap-1 mb-1">
+            <Heart className={`w-3 h-3 ${combatant.isDefeated ? 'text-slate-500' : 'text-red-400'}`} />
+            <span className="font-mono text-xs">
               {combatant.hp}/{combatant.maxHp}
               {combatant.tempHp > 0 && (
                 <span className="text-blue-400"> +{combatant.tempHp}</span>
               )}
             </span>
           </div>
-          <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
             <div
               className={`h-full transition-all ${hpColor}`}
               style={{ width: `${Math.max(0, Math.min(100, hpPercentage))}%` }}
@@ -441,8 +441,8 @@ export function CombatantCard({
             value={hpInput}
             onChange={(e) => setHpInput(e.target.value)}
             onKeyDown={handleHpKeyDown}
-            placeholder="-5, +5, =10"
-            className="mt-1 h-7 text-xs bg-slate-900 border-slate-600"
+            placeholder="-5"
+            className="mt-1 h-6 text-xs bg-slate-900 border-slate-600 px-2"
           />
         </div>
       </div>

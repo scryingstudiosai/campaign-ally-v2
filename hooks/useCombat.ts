@@ -58,7 +58,8 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
   // AUTO-SAVE COMBAT STATE ON CHANGES
   // =========================================
   useEffect(() => {
-    if (!combatState || !sessionId) return;
+    // Only save if we have an active combat
+    if (!combatState || !combatState.isActive || !sessionId) return;
 
     // Debounce the save
     if (saveTimeoutRef.current) {
@@ -67,18 +68,23 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
 
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        await fetch(`/api/sessions/${sessionId}`, {
+        const response = await fetch(`/api/sessions/${sessionId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             combat_state: combatState,
           }),
         });
-        console.log('[Combat] Auto-saved combat state');
+
+        if (response.ok) {
+          console.log('[Combat] Auto-saved combat state');
+        } else {
+          console.error('[Combat] Failed to save combat state:', await response.text());
+        }
       } catch (error) {
         console.error('[Combat] Failed to auto-save:', error);
       }
-    }, 1000); // Save 1 second after last change
+    }, 1500); // Debounce 1.5 seconds
 
     return () => {
       if (saveTimeoutRef.current) {

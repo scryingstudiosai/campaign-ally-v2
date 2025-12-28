@@ -42,45 +42,27 @@ export function SortableCombatantCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative ${isDragging ? 'opacity-50' : ''}`}
+      className={`flex items-stretch ${isDragging ? 'opacity-50' : ''}`}
     >
-      {/* Full-width active indicator - covers entire card including drag handle */}
-      {isActive && (
-        <div className="absolute inset-0 rounded-lg ring-2 ring-amber-500 bg-amber-900/10 pointer-events-none z-0" />
-      )}
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="w-6 flex items-center justify-center cursor-grab active:cursor-grabbing bg-slate-800 hover:bg-slate-700 rounded-l-lg border-y border-l border-slate-700 flex-shrink-0"
+      >
+        <GripVertical className="w-3 h-3 text-slate-500" />
+      </div>
 
-      <div className="relative z-10 flex items-stretch">
-        {/* Drag Handle - visually integrated with the card */}
-        <button
-          {...attributes}
-          {...listeners}
-          className={`
-            flex items-center justify-center w-8 rounded-l-lg
-            cursor-grab active:cursor-grabbing transition-colors
-            ${isActive
-              ? 'bg-amber-800/50 hover:bg-amber-700/50'
-              : isDragging
-                ? 'bg-amber-600'
-                : 'bg-slate-800 hover:bg-slate-700'
-            }
-          `}
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className={`w-4 h-4 ${isActive ? 'text-amber-400' : 'text-slate-500'}`} />
-        </button>
-
-        {/* Combatant Card - pass isActive=false since we handle indicator here */}
-        <div className="flex-1">
-          <CombatantCard
-            combatant={combatant}
-            isActive={isActive}
-            onHpChange={onHpChange}
-            onInitiativeChange={onInitiativeChange}
-            onConditionToggle={onConditionToggle}
-            onRemove={onRemove}
-            hideActiveRing={true}
-          />
-        </div>
+      {/* Card - remove left border radius since handle is there */}
+      <div className="flex-1 [&>div]:rounded-l-none [&>div]:border-l-0">
+        <CombatantCard
+          combatant={combatant}
+          isActive={isActive}
+          onHpChange={onHpChange}
+          onInitiativeChange={onInitiativeChange}
+          onConditionToggle={onConditionToggle}
+          onRemove={onRemove}
+        />
       </div>
     </div>
   );

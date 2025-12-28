@@ -9,6 +9,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -52,6 +53,11 @@ export function CombatTracker({
   onReorderCombatants,
 }: CombatTrackerProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
+
+  // Drop zone for entities from library
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: 'combat-drop-zone',
+  });
 
   const activeCombatant = combatState.combatants[combatState.turnIndex];
   const aliveCount = combatState.combatants.filter(c => !c.isDefeated).length;
@@ -144,8 +150,16 @@ export function CombatTracker({
         )}
       </div>
 
-      {/* Combatant List with DnD */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      {/* Combatant List with DnD and Drop Zone */}
+      <div ref={setDropRef} className={`flex-1 overflow-y-auto p-4 space-y-2 transition-colors ${
+        isOver ? 'bg-green-900/20 ring-2 ring-green-500/50 ring-inset' : ''
+      }`}>
+        {isOver && (
+          <div className="flex items-center justify-center gap-2 py-3 text-green-400 text-sm bg-green-900/30 rounded-lg border-2 border-dashed border-green-500/50 animate-pulse">
+            <Plus className="w-4 h-4" />
+            Drop to add to combat
+          </div>
+        )}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
