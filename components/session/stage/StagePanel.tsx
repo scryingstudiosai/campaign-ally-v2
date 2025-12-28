@@ -17,26 +17,41 @@ export function StagePanel({ session, campaignId }: StagePanelProps) {
     description?: string;
     payload?: Record<string, unknown>;
   }) => {
+    console.log('=== STAGE PANEL DEBUG ===');
+    console.log('Received event:', event);
+    console.log('Session ID:', session.id);
+
     try {
+      const body = {
+        event_type: event.type,
+        title: event.title,
+        description: event.description,
+        payload: event.payload,
+        is_private: event.payload?.isPrivate || false,
+      };
+      console.log('POST body:', body);
+
       const response = await fetch(`/api/sessions/${session.id}/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_type: event.type,
-          title: event.title,
-          description: event.description,
-          payload: event.payload,
-          is_private: event.payload?.isPrivate || false,
-        }),
+        body: JSON.stringify(body),
       });
+
+      console.log('Response status:', response.status);
 
       if (response.ok) {
         const newEvent = await response.json();
+        console.log('New event from API:', newEvent);
         // Add to live log
         const addEvent = (window as Window & { __liveLogAddEvent?: (event: SessionEvent) => void }).__liveLogAddEvent;
         if (addEvent) {
           addEvent(newEvent);
+        } else {
+          console.warn('__liveLogAddEvent not found on window');
         }
+      } else {
+        const errorText = await response.text();
+        console.error('API error:', errorText);
       }
     } catch (error) {
       console.error('Failed to send event:', error);

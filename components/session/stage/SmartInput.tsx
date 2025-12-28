@@ -63,7 +63,15 @@ export function SmartInput({ onSend, disabled }: SmartInputProps) {
   };
 
   const handleSubmit = () => {
-    if (!input.trim() || disabled) return;
+    console.log('=== SMART INPUT DEBUG ===');
+    console.log('Input value:', input);
+    console.log('Trimmed:', input.trim());
+    console.log('Starts with /:', input.trim().startsWith('/'));
+
+    if (!input.trim() || disabled) {
+      console.log('Input empty or disabled, returning');
+      return;
+    }
 
     const trimmed = input.trim();
 
@@ -73,10 +81,15 @@ export function SmartInput({ onSend, disabled }: SmartInputProps) {
       const command = parts[0].toLowerCase();
       const args = parts.slice(1).join(' ');
 
+      console.log('Command:', command);
+      console.log('Args:', args);
+
       switch (command) {
         case '/roll':
+          console.log('Rolling dice with args:', args || '1d20');
           try {
             const result = rollDice(args || '1d20');
+            console.log('Roll result:', result);
             onSend({
               type: 'roll',
               title: `Rolled ${result.expression}`,
@@ -84,6 +97,7 @@ export function SmartInput({ onSend, disabled }: SmartInputProps) {
               payload: result as unknown as Record<string, unknown>,
             });
           } catch (error) {
+            console.error('Roll error:', error);
             onSend({
               type: 'note',
               title: 'Invalid Roll',
