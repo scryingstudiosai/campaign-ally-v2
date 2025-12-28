@@ -244,7 +244,7 @@ Current Status: ${quest.status || 'active'}
       });
 
       // Deduplicate by ID
-      locationNpcs = [...new Map(locationNpcs.map(n => [n.id, n])).values()];
+      locationNpcs = Array.from(new Map(locationNpcs.map(n => [n.id, n])).values());
 
       console.log('=== NPCs IN MENTIONED LOCATIONS ===');
       locationNpcs.forEach(npc => {
@@ -293,7 +293,7 @@ Current Status: ${quest.status || 'active'}
         }
       });
 
-      involvedFactions = [...new Map(involvedFactions.map(f => [f.id, f])).values()];
+      involvedFactions = Array.from(new Map(involvedFactions.map(f => [f.id, f])).values());
 
       console.log('=== FACTIONS INVOLVED ===');
       involvedFactions.forEach(f => console.log(`  ${f.name} - ${f.connection}`));
@@ -343,7 +343,7 @@ Current Status: ${quest.status || 'active'}
         }
       });
 
-      relevantItems = [...new Map(relevantItems.map(i => [i.id, i])).values()];
+      relevantItems = Array.from(new Map(relevantItems.map(i => [i.id, i])).values());
 
       console.log('=== RELEVANT ITEMS ===');
       relevantItems.forEach(i => console.log(`  ${i.name} - ${i.connection}`));

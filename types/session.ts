@@ -22,6 +22,7 @@ export interface Session {
   active_scene_location_id?: string;
   starting_location_id?: string;
   active_quest_ids?: string[];
+  combat_state?: import('@/types/combat').CombatState | null;
   summary?: string;
   ai_summary?: AISummary;
   next_session_hook?: string;

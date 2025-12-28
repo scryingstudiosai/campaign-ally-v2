@@ -13,6 +13,7 @@ interface SmartInputProps {
     description?: string;
     payload?: Record<string, unknown>;
   }) => void;
+  onStartCombat?: () => void;
   disabled?: boolean;
 }
 
@@ -27,11 +28,12 @@ const SLASH_COMMANDS: SlashCommand[] = [
   { command: '/roll', label: 'Roll Dice', icon: Dices, description: '/roll 1d20+5' },
   { command: '/check', label: 'Skill Check', icon: Swords, description: '/check perception' },
   { command: '/save', label: 'Saving Throw', icon: Shield, description: '/save dex' },
+  { command: '/combat', label: 'Start Combat', icon: Swords, description: '/combat' },
   { command: '/forge', label: 'Quick Forge', icon: Sparkles, description: '/forge npc' },
   { command: '/note', label: 'DM Note', icon: MessageSquare, description: '/note (private)' },
 ];
 
-export function SmartInput({ onSend, disabled }: SmartInputProps) {
+export function SmartInput({ onSend, onStartCombat, disabled }: SmartInputProps) {
   const [input, setInput] = useState('');
   const [showCommands, setShowCommands] = useState(false);
   const [showDicePresets, setShowDicePresets] = useState(false);
@@ -122,6 +124,17 @@ export function SmartInput({ onSend, disabled }: SmartInputProps) {
             description: `Requested ${args?.toUpperCase() || 'DEX'} saving throw`,
             payload: { stat: args },
           });
+          break;
+
+        case '/combat':
+          if (onStartCombat) {
+            onStartCombat();
+            onSend({
+              type: 'combat_start',
+              title: 'Combat Started',
+              description: 'Initiative tracker activated',
+            });
+          }
           break;
 
         case '/forge':

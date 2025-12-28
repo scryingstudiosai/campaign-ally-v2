@@ -88,3 +88,37 @@ export const DICE_PRESETS = [
   { label: '4d6', expression: '4d6' },
   { label: '1d100', expression: '1d100' },
 ];
+
+/**
+ * Roll HP from a formula like "2d6+2" or "4d8+12"
+ */
+export function rollHpFormula(formula: string): number {
+  if (!formula) return 0;
+
+  // Parse formula: XdY+Z or XdY-Z or just XdY
+  const match = formula.toLowerCase().match(/^(\d+)d(\d+)([+-]\d+)?$/);
+
+  if (!match) {
+    // Try parsing as just a number
+    const num = parseInt(formula, 10);
+    return isNaN(num) ? 0 : num;
+  }
+
+  const count = parseInt(match[1], 10);
+  const sides = parseInt(match[2], 10);
+  const modifier = parseInt(match[3] || '0', 10);
+
+  let total = 0;
+  for (let i = 0; i < count; i++) {
+    total += Math.floor(Math.random() * sides) + 1;
+  }
+
+  return Math.max(1, total + modifier); // Minimum 1 HP
+}
+
+/**
+ * Roll initiative: 1d20 + modifier
+ */
+export function rollInitiative(modifier: number = 0): number {
+  return Math.floor(Math.random() * 20) + 1 + modifier;
+}
