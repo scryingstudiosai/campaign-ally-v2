@@ -198,7 +198,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
               <div className="h-full bg-slate-900 border-r border-slate-800 p-4 overflow-hidden flex flex-col">
                 <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                  Session Prep
+                  Session Playbook
                 </h2>
                 <div className="flex-1 overflow-hidden">
                   <SessionPlanner
