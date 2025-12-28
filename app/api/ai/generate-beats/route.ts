@@ -10,8 +10,8 @@ interface RelationshipData {
   id: string;
   relationship_type: string;
   description?: string;
-  source_entity?: { id: string; name: string; entity_type: string } | null;
-  target_entity?: { id: string; name: string; entity_type: string } | null;
+  source_entity?: { id: string; name: string; entity_type: string; summary?: string } | null;
+  target_entity?: { id: string; name: string; entity_type: string; summary?: string } | null;
 }
 
 interface EntityData {
@@ -24,9 +24,11 @@ interface EntityData {
     goals?: string;
   };
   mechanics?: Record<string, unknown>;
+  forge_status?: string;
 }
 
 interface CampaignData {
+  id: string;
   name: string;
   codex?: {
     tone?: string;
@@ -51,12 +53,17 @@ export async function POST(request: NextRequest) {
     // STEP 1: Gather Campaign Context
     // =========================================
 
-    // Get campaign codex for world context
-    const { data: campaign } = await supabase
+    // Get campaign with better error handling
+    const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
-      .select('name, codex')
+      .select('id, name, codex')
       .eq('id', campaignId)
       .single() as { data: CampaignData | null; error: unknown };
+
+    if (campaignError) {
+      console.error('Campaign fetch error:', campaignError);
+    }
+    console.log('Campaign:', campaign?.name);
 
     // Get the quest details if we have questId
     let questContext = '';
@@ -77,36 +84,72 @@ Current Status: ${quest.status || 'active'}
     }
 
     // =========================================
-    // STEP 2: Find Related Entities (The Magic!)
+    // STEP 2: Find Related Entities (IMPROVED!)
     // =========================================
 
-    // Parse objective for entity names (simple approach - look for capitalized words)
+    // Method 1: Parse capitalized words from objective
     const potentialNames = objective.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/g) || [];
+    console.log('Regex matched names:', potentialNames);
 
-    // Find entities that might be mentioned
-    const { data: mentionedEntities } = await supabase
+    // Method 2: Also search for ANY campaign entity mentioned in the objective (case-insensitive)
+    const { data: allCampaignEntities } = await supabase
       .from('entities')
       .select('id, name, entity_type, summary, brain, mechanics')
       .eq('campaign_id', campaignId)
-      .in('name', potentialNames.length > 0 ? potentialNames : ['__no_match__']) as { data: EntityData[] | null; error: unknown };
+      .is('deleted_at', null)  // IMPORTANT: Exclude deleted entities!
+      .in('entity_type', ['npc', 'location', 'faction', 'creature']) as { data: EntityData[] | null; error: unknown };
 
-    // Get relationships for mentioned entities
+    console.log('All campaign entities:', allCampaignEntities?.map(e => e.name));
+
+    // Find entities whose names appear anywhere in the objective OR objectiveDescription
+    const objectiveText = `${objective} ${objectiveDescription || ''}`.toLowerCase();
+    const mentionedEntities: EntityData[] = allCampaignEntities?.filter(entity =>
+      objectiveText.includes(entity.name.toLowerCase())
+    ) || [];
+
+    console.log('Entities found in objective text:', mentionedEntities.map(e => e.name));
+
+    // If we still haven't found any, try partial matching
+    if (mentionedEntities.length === 0 && potentialNames.length > 0) {
+      const partialMatches = allCampaignEntities?.filter(entity =>
+        potentialNames.some(name =>
+          entity.name.toLowerCase().includes(name.toLowerCase()) ||
+          name.toLowerCase().includes(entity.name.toLowerCase())
+        )
+      ) || [];
+      mentionedEntities.push(...partialMatches);
+      console.log('Partial matches found:', partialMatches.map(e => e.name));
+    }
+
+    // =========================================
+    // STEP 3: Get ALL Relationships for Found Entities
+    // =========================================
+
     let relationships: RelationshipData[] = [];
-    if (mentionedEntities && mentionedEntities.length > 0) {
+    if (mentionedEntities.length > 0) {
       const entityIds = mentionedEntities.map(e => e.id);
 
-      const { data: rels } = await supabase
+      // Query relationships where these entities are involved
+      const { data: rels, error: relError } = await supabase
         .from('relationships')
         .select(`
           id,
           relationship_type,
           description,
-          source_entity:source_entity_id(id, name, entity_type),
-          target_entity:target_entity_id(id, name, entity_type)
+          source_entity:entities!relationships_source_entity_id_fkey(id, name, entity_type, summary),
+          target_entity:entities!relationships_target_entity_id_fkey(id, name, entity_type, summary)
         `)
         .or(`source_entity_id.in.(${entityIds.join(',')}),target_entity_id.in.(${entityIds.join(',')})`) as { data: RelationshipData[] | null; error: unknown };
 
-      relationships = rels || [];
+      if (relError) {
+        console.error('Relationship query error:', relError);
+      } else {
+        relationships = rels || [];
+        console.log('Relationships found:', relationships.length);
+        relationships.forEach(r => {
+          console.log(`  ${r.source_entity?.name} --[${r.relationship_type}]--> ${r.target_entity?.name}: ${r.description}`);
+        });
+      }
     }
 
     // Get player characters for party context
@@ -114,18 +157,31 @@ Current Status: ${quest.status || 'active'}
       .from('entities')
       .select('id, name, summary, mechanics')
       .eq('campaign_id', campaignId)
-      .eq('entity_type', 'player') as { data: EntityData[] | null; error: unknown };
-
-    // Get NPCs in relevant locations (if location mentioned)
-    const { data: nearbyNpcs } = await supabase
-      .from('entities')
-      .select('id, name, entity_type, summary, brain')
-      .eq('campaign_id', campaignId)
-      .eq('entity_type', 'npc')
-      .limit(10) as { data: EntityData[] | null; error: unknown };
+      .eq('entity_type', 'player')
+      .is('deleted_at', null) as { data: EntityData[] | null; error: unknown };
 
     // =========================================
-    // STEP 3: Build the Context-Rich Prompt
+    // STEP 4: Get NPCs (exclude deleted, exclude stubs without content)
+    // =========================================
+
+    const { data: nearbyNpcs } = await supabase
+      .from('entities')
+      .select('id, name, entity_type, summary, brain, forge_status')
+      .eq('campaign_id', campaignId)
+      .eq('entity_type', 'npc')
+      .is('deleted_at', null)  // Exclude deleted
+      .limit(10) as { data: EntityData[] | null; error: unknown };
+
+    // Filter out stubs that have no useful content
+    const usableNpcs = nearbyNpcs?.filter(npc =>
+      npc.forge_status !== 'stub' || npc.summary || npc.brain?.motivation
+    ) || [];
+
+    console.log('Available NPCs (non-deleted):', nearbyNpcs?.map(n => `${n.name} (${n.forge_status || 'complete'})`));
+    console.log('Usable NPCs (with content):', usableNpcs.map(n => n.name));
+
+    // =========================================
+    // STEP 5: Build the Context-Rich Prompt
     // =========================================
 
     let relationshipContext = '';
@@ -135,16 +191,22 @@ EXISTING RELATIONSHIPS (USE THESE FOR DRAMA!):
 ${relationships.map(r => {
   const source = r.source_entity?.name || 'Unknown';
   const target = r.target_entity?.name || 'Unknown';
-  return `- ${source} is ${r.relationship_type} with ${target}${r.description ? `: ${r.description}` : ''}`;
+  const type = r.relationship_type?.toUpperCase() || 'CONNECTED TO';
+  const desc = r.description ? ` - "${r.description}"` : '';
+  return `- **${source}** is ${type} **${target}**${desc}`;
 }).join('\n')}
+
+⚠️ IMPORTANT: The above relationships are REAL campaign data. Use them to create drama!
       `;
+    } else {
+      console.log('WARNING: No relationships found for mentioned entities');
     }
 
     let npcContext = '';
-    if (nearbyNpcs && nearbyNpcs.length > 0) {
+    if (usableNpcs.length > 0) {
       npcContext = `
 AVAILABLE NPCs (prefer these over inventing new ones):
-${nearbyNpcs.slice(0, 5).map(npc => {
+${usableNpcs.slice(0, 5).map(npc => {
   const motivation = npc.brain?.motivation || npc.brain?.goals || '';
   return `- ${npc.name}: ${npc.summary || 'No description'}${motivation ? `. Motivation: ${motivation}` : ''}`;
 }).join('\n')}
@@ -207,6 +269,7 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
     console.log('========== BEAT GENERATOR DEBUG ==========');
     console.log('Objective:', objective);
     console.log('Campaign ID:', campaignId);
+    console.log('Campaign Name:', campaign?.name);
     console.log('');
     console.log('--- MENTIONED ENTITIES ---');
     console.log('Potential names found:', potentialNames);
@@ -219,7 +282,7 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
     });
     console.log('');
     console.log('--- AVAILABLE NPCs ---');
-    console.log(nearbyNpcs?.map(n => n.name));
+    console.log(usableNpcs?.map(n => n.name));
     console.log('');
     console.log('--- SYSTEM PROMPT ---');
     console.log(systemPrompt);
@@ -229,7 +292,7 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
     console.log('==========================================');
 
     // =========================================
-    // STEP 4: Call OpenAI
+    // STEP 6: Call OpenAI
     // =========================================
 
     const completion = await openai.chat.completions.create({
@@ -253,7 +316,7 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
     const generatedContent = JSON.parse(responseText);
 
     // =========================================
-    // STEP 5: Return the Generated Beats
+    // STEP 7: Return the Generated Beats
     // =========================================
 
     return NextResponse.json({
@@ -263,7 +326,8 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
       hooks: generatedContent.hooks || [],
       context: {
         relationshipsUsed: relationships.length,
-        npcsAvailable: nearbyNpcs?.length || 0,
+        npcsAvailable: usableNpcs?.length || 0,
+        entitiesMatched: mentionedEntities.map(e => e.name),
       },
     });
 
