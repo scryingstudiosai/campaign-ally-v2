@@ -14,6 +14,8 @@ interface LibraryPanelProps {
   campaignId: string;
   isCombatActive?: boolean;
   onAddToCombat?: (entity: Entity) => void;
+  onEntityClick?: (entity: Entity) => void;
+  refreshTrigger?: number;
 }
 
 // Entity group configuration
@@ -93,7 +95,7 @@ export interface Entity {
 // Combat-ready entity types
 const COMBAT_TYPES = ['npc', 'creature', 'player'];
 
-export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat }: LibraryPanelProps) {
+export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat, onEntityClick, refreshTrigger }: LibraryPanelProps) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(
@@ -156,7 +158,7 @@ export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat }: Libr
       setIsLoading(false);
     };
     fetchEntities();
-  }, [campaignId]);
+  }, [campaignId, refreshTrigger]);
 
   // Filter entities by search
   const filteredEntities = entities.filter(e =>
@@ -274,7 +276,14 @@ export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat }: Libr
                     {typeEntities.map((entity) => (
                       <div key={entity.id} className="group">
                         {/* The Entity itself */}
-                        <div className="flex items-center">
+                        <div
+                          className="flex items-center cursor-pointer"
+                          onClick={(e) => {
+                            // Don't trigger if clicking a button
+                            if ((e.target as HTMLElement).closest('button')) return;
+                            onEntityClick?.(entity);
+                          }}
+                        >
                           {/* Expand button for quests */}
                           {entity.entity_type?.toLowerCase() === 'quest' && getQuestObjectives(entity).length > 0 && (
                             <button
@@ -340,8 +349,8 @@ export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat }: Libr
 
       <p className="text-xs text-slate-600 mt-2 text-center">
         {isCombatActive
-          ? 'Click "Add" to add NPCs/Creatures to combat'
-          : 'Drag entities or objectives into your notes'
+          ? 'Click entity for details, or "Add" to add to combat'
+          : 'Click for details, drag into notes'
         }
       </p>
     </div>

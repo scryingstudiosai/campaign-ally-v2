@@ -12,7 +12,6 @@ import { SessionHeader } from './SessionHeader';
 import { SessionPlanner } from './planner/SessionPlanner';
 import { ToolkitPanel } from './toolkit/ToolkitPanel';
 import { StagePanel } from './stage/StagePanel';
-import { EntityQuickView } from './EntityQuickView';
 import { Entity } from './toolkit/LibraryPanel';
 import { rollInitiative } from '@/lib/dice';
 
@@ -24,8 +23,6 @@ interface SessionShellProps {
 export function SessionShell({ session, campaignId }: SessionShellProps) {
   const [currentSession, setCurrentSession] = useState(session);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [quickViewEntityId, setQuickViewEntityId] = useState<string | null>(null);
-  const [showQuickView, setShowQuickView] = useState(false);
   const [isCombatActive, setIsCombatActive] = useState(!!session.combat_state);
 
   // Configure drag sensors
@@ -126,22 +123,6 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
 
   const handleDragStart = useCallback((event: { active: { id: string | number } }) => {
     setActiveId(String(event.active.id));
-  }, []);
-
-  // Listen for entity quick view events
-  useEffect(() => {
-    const handleOpenQuickView = (event: Event) => {
-      const customEvent = event as CustomEvent<{ id: string; name: string; entityType: string }>;
-      const { id } = customEvent.detail;
-      console.log('Opening quick view for entity:', id);
-      setQuickViewEntityId(id);
-      setShowQuickView(true);
-    };
-
-    window.addEventListener('open-entity-quickview', handleOpenQuickView);
-    return () => {
-      window.removeEventListener('open-entity-quickview', handleOpenQuickView);
-    };
   }, []);
 
   // Listen for run-encounter events from prep notes
@@ -254,16 +235,6 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
         ) : null}
       </DragOverlay>
 
-      {/* Entity Quick View Modal */}
-      <EntityQuickView
-        entityId={quickViewEntityId}
-        isOpen={showQuickView}
-        onClose={() => {
-          setShowQuickView(false);
-          setQuickViewEntityId(null);
-        }}
-        campaignId={campaignId}
-      />
     </DndContext>
   );
 }
