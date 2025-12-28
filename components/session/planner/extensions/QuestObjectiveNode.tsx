@@ -91,6 +91,13 @@ const QuestObjectiveNodeView = ({ node, editor }: NodeViewProps) => {
         // Insert all content
         if (contentToInsert.length > 0) {
           editor.chain().focus().insertContentAt(from + 1, contentToInsert).run();
+
+          // IMPORTANT: Trigger save after inserting content
+          // The editor's onUpdate should fire, but dispatch a custom event as backup
+          setTimeout(() => {
+            const content = editor.getJSON();
+            window.dispatchEvent(new CustomEvent('session-planner-save', { detail: content }));
+          }, 100);
         }
       }
     } catch (err) {

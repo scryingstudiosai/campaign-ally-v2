@@ -141,6 +141,22 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
     };
   }, [insertEntity, insertObjective]);
 
+  // Listen for forced save events (e.g., from beat generation)
+  useEffect(() => {
+    const handleForceSave = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail) {
+        console.log('Force save triggered from beat generation');
+        saveContent(customEvent.detail);
+      }
+    };
+
+    window.addEventListener('session-planner-save', handleForceSave);
+    return () => {
+      window.removeEventListener('session-planner-save', handleForceSave);
+    };
+  }, [saveContent]);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
