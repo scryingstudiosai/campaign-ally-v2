@@ -46,13 +46,7 @@ function SidebarContent({
     { label: 'Overview', href: baseUrl, icon: LayoutDashboard, exact: true },
     { label: 'Memory', href: `${baseUrl}/memory`, icon: Brain },
     { label: 'Codex', href: `${baseUrl}/codex`, icon: Book },
-    {
-      label: 'Sessions',
-      href: `${baseUrl}/sessions`,
-      icon: History,
-      disabled: true,
-      badge: 'Soon',
-    },
+    { label: 'Sessions', href: `${baseUrl}/sessions`, icon: History },
   ]
 
   const FORGE_ITEMS = [
@@ -103,23 +97,17 @@ function SidebarContent({
             return (
               <Link
                 key={item.href}
-                href={item.disabled ? '#' : item.href}
-                onClick={item.disabled ? undefined : handleClick}
+                href={item.href}
+                onClick={handleClick}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
                   active
                     ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50',
-                  item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none'
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
                 )}
               >
                 <item.icon className="w-4 h-4 flex-shrink-0" />
                 <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">
-                    {item.badge}
-                  </span>
-                )}
               </Link>
             )
           })}

@@ -10,9 +10,11 @@ import {
 import { Session } from '@/types/session';
 import { SessionHeader } from './SessionHeader';
 import { SessionPlanner } from './planner/SessionPlanner';
+import { PlaybookContainer } from './playbook/PlaybookContainer';
 import { ToolkitPanel } from './toolkit/ToolkitPanel';
 import { StagePanel } from './stage/StagePanel';
-import { EntityQuickView } from './EntityQuickView';
+import { Entity } from './toolkit/LibraryPanel';
+import { rollInitiative } from '@/lib/dice';
 
 interface SessionShellProps {
   session: Session;
@@ -22,8 +24,8 @@ interface SessionShellProps {
 export function SessionShell({ session, campaignId }: SessionShellProps) {
   const [currentSession, setCurrentSession] = useState(session);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [quickViewEntityId, setQuickViewEntityId] = useState<string | null>(null);
-  const [showQuickView, setShowQuickView] = useState(false);
+  const [isCombatActive, setIsCombatActive] = useState(!!session.combat_state);
+  const [usePlaybook, setUsePlaybook] = useState(true); // New block-based playbook
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -34,14 +36,55 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
     })
   );
 
+  // Handle adding entity to combat from library
+  const handleAddEntityToCombat = useCallback((entity: Entity) => {
+    const dex = entity.mechanics?.abilities?.dex || 10;
+    const dexMod = Math.floor((dex - 10) / 2);
+    const initiative = rollInitiative(dexMod);
+    const hp = entity.mechanics?.hp_current || entity.mechanics?.hp_max || entity.mechanics?.hp || 10;
+
+    const combatant = {
+      id: `${entity.entity_type}-${entity.id}-${Date.now()}`,
+      entityId: entity.id,
+      name: entity.name,
+      displayName: entity.name,
+      type: entity.entity_type === 'player' ? 'player' as const :
+            entity.entity_type === 'npc' ? 'npc' as const : 'monster' as const,
+      initiative,
+      initiativeModifier: dexMod,
+      hp,
+      maxHp: entity.mechanics?.hp_max || hp,
+      ac: entity.mechanics?.ac || 10,
+      statBlock: entity.mechanics,
+      fullEntity: entity,
+    };
+
+    // Dispatch event for StagePanel/useCombat to add the combatant
+    window.dispatchEvent(new CustomEvent('add-entity-to-combat', {
+      detail: combatant
+    }));
+  }, []);
+
   // Handle drag end
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
-    if (over?.id === 'session-planner-editor' && active.data.current) {
-      const data = active.data.current;
+    if (!over || !active.data.current) return;
 
+    const data = active.data.current;
+
+    // Check if dropping into combat zone
+    if (over.id === 'combat-drop-zone' && isCombatActive) {
+      const entityType = data.entityType as string;
+      if (data.entity && ['npc', 'creature', 'player'].includes(entityType)) {
+        handleAddEntityToCombat(data.entity as Entity);
+        return;
+      }
+    }
+
+    // Check if dropping into session planner
+    if (over.id === 'session-planner-editor') {
       // Check if this is a quest objective
       if (data.type === 'quest_objective') {
         const insertObjective = (window as Window & {
@@ -78,25 +121,41 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
         }
       }
     }
-  }, []);
+  }, [isCombatActive, handleAddEntityToCombat]);
 
   const handleDragStart = useCallback((event: { active: { id: string | number } }) => {
     setActiveId(String(event.active.id));
   }, []);
 
-  // Listen for entity quick view events
+  // Listen for run-encounter events from prep notes
   useEffect(() => {
-    const handleOpenQuickView = (event: Event) => {
-      const customEvent = event as CustomEvent<{ id: string; name: string; entityType: string }>;
-      const { id } = customEvent.detail;
-      console.log('Opening quick view for entity:', id);
-      setQuickViewEntityId(id);
-      setShowQuickView(true);
+    const handleRunEncounter = (event: Event) => {
+      const customEvent = event as CustomEvent<{ id: string; name: string }>;
+      const { id, name } = customEvent.detail;
+      console.log('Running encounter:', name, 'ID:', id);
+
+      // Dispatch event for StagePanel to start combat with this encounter
+      window.dispatchEvent(new CustomEvent('trigger-start-combat', {
+        detail: { encounterId: id }
+      }));
     };
 
-    window.addEventListener('open-entity-quickview', handleOpenQuickView);
+    window.addEventListener('run-encounter', handleRunEncounter);
     return () => {
-      window.removeEventListener('open-entity-quickview', handleOpenQuickView);
+      window.removeEventListener('run-encounter', handleRunEncounter);
+    };
+  }, []);
+
+  // Listen for combat state changes
+  useEffect(() => {
+    const handleCombatStateChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ isActive: boolean }>;
+      setIsCombatActive(customEvent.detail.isActive);
+    };
+
+    window.addEventListener('combat-state-change', handleCombatStateChange);
+    return () => {
+      window.removeEventListener('combat-state-change', handleCombatStateChange);
     };
   }, []);
 
@@ -120,18 +179,30 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
             {/* Left Panel: The Plan */}
             <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
               <div className="h-full bg-slate-900 border-r border-slate-800 p-4 overflow-hidden flex flex-col">
-                <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                  Session Prep
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    Session Playbook
+                  </h2>
+                  <button
+                    onClick={() => setUsePlaybook(!usePlaybook)}
+                    className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
+                  >
+                    {usePlaybook ? 'Switch to Notes' : 'Switch to Blocks'}
+                  </button>
+                </div>
                 <div className="flex-1 overflow-hidden">
-                  <SessionPlanner
-                    sessionId={currentSession.id}
-                    initialContent={currentSession.prep_content}
-                    onContentChange={(content) => {
-                      setCurrentSession(prev => ({ ...prev, prep_content: content as Session['prep_content'] }));
-                    }}
-                  />
+                  {usePlaybook ? (
+                    <PlaybookContainer sessionId={currentSession.id} />
+                  ) : (
+                    <SessionPlanner
+                      sessionId={currentSession.id}
+                      initialContent={currentSession.prep_content}
+                      onContentChange={(content) => {
+                        setCurrentSession(prev => ({ ...prev, prep_content: content as Session['prep_content'] }));
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </ResizablePanel>
@@ -153,6 +224,8 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
                 <ToolkitPanel
                   campaignId={campaignId}
                   sessionStatus={currentSession.status}
+                  isCombatActive={isCombatActive}
+                  onAddToCombat={handleAddEntityToCombat}
                 />
               </div>
             </ResizablePanel>
@@ -176,16 +249,6 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
         ) : null}
       </DragOverlay>
 
-      {/* Entity Quick View Modal */}
-      <EntityQuickView
-        entityId={quickViewEntityId}
-        isOpen={showQuickView}
-        onClose={() => {
-          setShowQuickView(false);
-          setQuickViewEntityId(null);
-        }}
-        campaignId={campaignId}
-      />
     </DndContext>
   );
 }

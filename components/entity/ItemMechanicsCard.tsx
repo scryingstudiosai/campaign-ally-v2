@@ -84,16 +84,20 @@ export function ItemMechanicsCard({ mechanics, category }: ItemMechanicsCardProp
       </div>
 
       {/* Properties */}
-      {mechanics.properties && mechanics.properties.length > 0 && (
+      {mechanics.properties && (
         <div>
           <span className="text-slate-500 text-xs uppercase block mb-1">Properties</span>
-          <div className="flex flex-wrap gap-1">
-            {mechanics.properties.map((p, i) => (
-              <span key={i} className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-300">
-                {p}
-              </span>
-            ))}
-          </div>
+          {Array.isArray(mechanics.properties) ? (
+            <div className="flex flex-wrap gap-1">
+              {mechanics.properties.map((p, i) => (
+                <span key={i} className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-300">
+                  {p}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-300">{mechanics.properties}</p>
+          )}
         </div>
       )}
 

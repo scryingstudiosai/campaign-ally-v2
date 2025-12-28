@@ -2,16 +2,51 @@
 
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { DraggableEntity } from './DraggableEntity';
 import { DraggableObjective } from './DraggableObjective';
 import {
   Search, Users, MapPin, Package, Skull, Flag, Sword,
-  ChevronDown, ChevronRight, Loader2
+  ChevronDown, ChevronRight, Loader2, Swords, Scroll
 } from 'lucide-react';
 
 interface LibraryPanelProps {
   campaignId: string;
+  isCombatActive?: boolean;
+  onAddToCombat?: (entity: Entity) => void;
+  onEntityClick?: (entity: Entity) => void;
+  refreshTrigger?: number;
 }
+
+// Entity group configuration
+interface EntityGroup {
+  type: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
+
+// Prep mode: NPCs, Locations, Quests first (roleplay/exploration focus)
+const PREP_ORDER: EntityGroup[] = [
+  { type: 'npc', label: 'NPCs', icon: Users, color: 'text-blue-400' },
+  { type: 'location', label: 'Locations', icon: MapPin, color: 'text-green-400' },
+  { type: 'quest', label: 'Quests', icon: Scroll, color: 'text-teal-400' },
+  { type: 'item', label: 'Items', icon: Package, color: 'text-amber-400' },
+  { type: 'creature', label: 'Creatures', icon: Skull, color: 'text-red-400' },
+  { type: 'encounter', label: 'Encounters', icon: Swords, color: 'text-orange-400' },
+  { type: 'faction', label: 'Factions', icon: Flag, color: 'text-purple-400' },
+];
+
+// Combat mode: Creatures, Encounters, NPCs first (combat focus)
+const COMBAT_ORDER: EntityGroup[] = [
+  { type: 'creature', label: 'Creatures', icon: Skull, color: 'text-red-400' },
+  { type: 'encounter', label: 'Encounters', icon: Swords, color: 'text-orange-400' },
+  { type: 'npc', label: 'NPCs', icon: Users, color: 'text-blue-400' },
+  { type: 'location', label: 'Locations', icon: MapPin, color: 'text-green-400' },
+  { type: 'item', label: 'Items', icon: Package, color: 'text-amber-400' },
+  { type: 'faction', label: 'Factions', icon: Flag, color: 'text-purple-400' },
+  { type: 'quest', label: 'Quests', icon: Scroll, color: 'text-teal-400' },
+];
 
 interface QuestObjective {
   id: string;
@@ -20,37 +55,66 @@ interface QuestObjective {
   status?: string;
 }
 
-interface Entity {
+export interface Entity {
   id: string;
   name: string;
   entity_type: string;
   sub_type?: string;
+  summary?: string;
   mechanics?: {
     objectives?: QuestObjective[];
+    abilities?: { str?: number; dex?: number; con?: number; int?: number; wis?: number; cha?: number };
+    hp?: number;
+    hp_max?: number;
+    hp_current?: number;
+    ac?: number;
+    cr?: string;
+    speed?: { walk?: number } | number;
+    actions?: Array<{ name: string; desc?: string; description?: string; attack_bonus?: number; damage?: unknown[] }>;
+    special_abilities?: Array<{ name: string; desc?: string; description?: string }>;
+    legendary_actions?: Array<{ name: string; desc?: string; description?: string }>;
+    saving_throws?: Record<string, number> | Array<{ name: string; value: number }>;
+    skills?: Record<string, number>;
+    damage_resistances?: string[];
+    damage_immunities?: string[];
+    condition_immunities?: string[];
+    senses?: Record<string, number | string> | string;
+    [key: string]: unknown;
   };
   brain?: {
     objectives?: QuestObjective[];
+    tactics?: string;
+    [key: string]: unknown;
   };
+  soul?: Record<string, unknown>;
   attributes?: {
     objectives?: QuestObjective[];
   };
 }
 
-const typeLabels: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-  npc: { label: 'NPCs', icon: Users },
-  location: { label: 'Locations', icon: MapPin },
-  item: { label: 'Items', icon: Package },
-  creature: { label: 'Creatures', icon: Skull },
-  faction: { label: 'Factions', icon: Flag },
-  quest: { label: 'Quests', icon: Sword },
-};
+// Combat-ready entity types
+const COMBAT_TYPES = ['npc', 'creature', 'player'];
 
-export function LibraryPanel({ campaignId }: LibraryPanelProps) {
+export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat, onEntityClick, refreshTrigger }: LibraryPanelProps) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(['npc', 'quest']));
+  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(
+    new Set(isCombatActive ? ['creature', 'encounter', 'npc'] : ['npc', 'location', 'quest'])
+  );
   const [expandedQuests, setExpandedQuests] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+
+  // Select entity order based on combat state
+  const ENTITY_GROUPS = isCombatActive ? COMBAT_ORDER : PREP_ORDER;
+
+  // Update expanded groups when combat state changes
+  useEffect(() => {
+    if (isCombatActive) {
+      setExpandedTypes(new Set(['creature', 'encounter', 'npc']));
+    } else {
+      setExpandedTypes(new Set(['npc', 'location', 'quest']));
+    }
+  }, [isCombatActive]);
 
   // Fetch entities - include full data for quests
   useEffect(() => {
@@ -94,7 +158,7 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
       setIsLoading(false);
     };
     fetchEntities();
-  }, [campaignId]);
+  }, [campaignId, refreshTrigger]);
 
   // Filter entities by search
   const filteredEntities = entities.filter(e =>
@@ -140,11 +204,28 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
     return Array.isArray(objectives) ? objectives : [];
   };
 
+  const canAddToCombat = (entity: Entity) => {
+    return COMBAT_TYPES.includes(entity.entity_type?.toLowerCase()) || entity.mechanics?.ac;
+  };
+
+  const handleAddToCombat = (entity: Entity, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAddToCombat?.(entity);
+  };
+
   return (
     <div className="h-full flex flex-col">
       <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
         Entity Library
       </h3>
+
+      {/* Combat Mode Indicator */}
+      {isCombatActive && (
+        <div className="flex items-center gap-2 mb-3 px-2 py-1.5 bg-red-900/30 border border-red-700/50 rounded-lg">
+          <Swords className="w-4 h-4 text-red-400" />
+          <span className="text-xs text-red-300 font-medium">COMBAT MODE</span>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative mb-3">
@@ -168,7 +249,7 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
             {searchQuery ? 'No matching entities' : 'No entities yet'}
           </p>
         ) : (
-          Object.entries(typeLabels).map(([type, { label, icon: Icon }]) => {
+          ENTITY_GROUPS.map(({ type, label, icon: Icon, color }) => {
             const typeEntities = groupedEntities[type] || [];
             if (typeEntities.length === 0) return null;
 
@@ -185,7 +266,7 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
                   ) : (
                     <ChevronRight className="w-4 h-4 text-slate-500" />
                   )}
-                  <Icon className="w-4 h-4 text-slate-400" />
+                  <Icon className={`w-4 h-4 ${color}`} />
                   <span className="text-sm text-slate-300">{label}</span>
                   <span className="text-xs text-slate-500 ml-auto">{typeEntities.length}</span>
                 </button>
@@ -193,9 +274,16 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
                 {isExpanded && (
                   <div className="ml-4 space-y-1 mt-1">
                     {typeEntities.map((entity) => (
-                      <div key={entity.id}>
+                      <div key={entity.id} className="group">
                         {/* The Entity itself */}
-                        <div className="flex items-center">
+                        <div
+                          className="flex items-center cursor-pointer"
+                          onClick={(e) => {
+                            // Don't trigger if clicking a button
+                            if ((e.target as HTMLElement).closest('button')) return;
+                            onEntityClick?.(entity);
+                          }}
+                        >
                           {/* Expand button for quests */}
                           {entity.entity_type?.toLowerCase() === 'quest' && getQuestObjectives(entity).length > 0 && (
                             <button
@@ -215,6 +303,20 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
                           <div className="flex-1">
                             <DraggableEntity entity={entity} />
                           </div>
+
+                          {/* Add to Combat button */}
+                          {isCombatActive && canAddToCombat(entity) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => handleAddToCombat(entity, e)}
+                              className="opacity-0 group-hover:opacity-100 h-6 px-2 text-xs bg-red-900/50 hover:bg-red-800 text-red-300 ml-1"
+                              title="Add to Combat"
+                            >
+                              <Swords className="w-3 h-3 mr-1" />
+                              Add
+                            </Button>
+                          )}
                         </div>
 
                         {/* Quest Objectives (nested) */}
@@ -246,7 +348,10 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
       </div>
 
       <p className="text-xs text-slate-600 mt-2 text-center">
-        Drag entities or objectives into your notes
+        {isCombatActive
+          ? 'Click entity for details, or "Add" to add to combat'
+          : 'Click for details, drag into notes'
+        }
       </p>
     </div>
   );

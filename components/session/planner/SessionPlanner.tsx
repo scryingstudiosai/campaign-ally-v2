@@ -5,7 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useDroppable } from '@dnd-kit/core';
-import { EntityNode, ReadAloudNode, QuestObjectiveNode } from './extensions';
+import { EntityNode, ReadAloudNode, QuestObjectiveNode, EncounterNode } from './extensions';
 import { EditorToolbar } from './EditorToolbar';
 import { Loader2 } from 'lucide-react';
 
@@ -64,6 +64,7 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       EntityNode,
       ReadAloudNode,
       QuestObjectiveNode,
+      EncounterNode,
     ],
     content: (initialContent as object) || { type: 'doc', content: [] },
     editorProps: {

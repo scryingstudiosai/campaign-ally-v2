@@ -1,24 +1,33 @@
 'use client';
 
 import { useState } from 'react';
-import { CombatState, Condition, CombatantType } from '@/types/combat';
-import { CombatantCard } from './CombatantCard';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  useDroppable,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CombatState, Condition, Combatant } from '@/types/combat';
+import { SortableCombatantCard } from './SortableCombatantCard';
+import { AddCombatantDialog, NewCombatantData } from './AddCombatantDialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Swords, SkipForward, SkipBack, Flag, Plus,
   Trophy, Scroll, Users
 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 
 interface CombatTrackerProps {
   combatState: CombatState;
+  campaignId: string;
   onNextTurn: () => void;
   onPreviousTurn: () => void;
   onEndCombat: (generateLoot: boolean) => void;
@@ -27,21 +36,12 @@ interface CombatTrackerProps {
   onConditionToggle: (combatantId: string, condition: Condition) => void;
   onAddCombatant: (combatant: NewCombatantData) => void;
   onRemoveCombatant: (combatantId: string) => void;
-}
-
-interface NewCombatantData {
-  id?: string;
-  name: string;
-  displayName?: string;
-  type: CombatantType;
-  initiative: number;
-  hp: number;
-  maxHp?: number;
-  ac: number;
+  onReorderCombatants: (combatants: Combatant[]) => void;
 }
 
 export function CombatTracker({
   combatState,
+  campaignId,
   onNextTurn,
   onPreviousTurn,
   onEndCombat,
@@ -50,20 +50,13 @@ export function CombatTracker({
   onConditionToggle,
   onAddCombatant,
   onRemoveCombatant,
+  onReorderCombatants,
 }: CombatTrackerProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [newCombatant, setNewCombatant] = useState<{
-    name: string;
-    type: CombatantType;
-    initiative: number;
-    hp: number;
-    ac: number;
-  }>({
-    name: '',
-    type: 'monster',
-    initiative: 10,
-    hp: 10,
-    ac: 10,
+
+  // Drop zone for entities from library
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: 'combat-drop-zone',
   });
 
   const activeCombatant = combatState.combatants[combatState.turnIndex];
@@ -71,15 +64,32 @@ export function CombatTracker({
   const monstersAlive = combatState.combatants.filter(c => c.type === 'monster' && !c.isDefeated).length;
   const playersAlive = combatState.combatants.filter(c => c.type === 'player' && !c.isDefeated).length;
 
-  const handleAddCombatant = () => {
-    onAddCombatant({
-      ...newCombatant,
-      id: `added-${Date.now()}`,
-      displayName: newCombatant.name,
-      maxHp: newCombatant.hp,
-    });
-    setNewCombatant({ name: '', type: 'monster', initiative: 10, hp: 10, ac: 10 });
-    setShowAddDialog(false);
+  // DnD Kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Prevent accidental drags
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = combatState.combatants.findIndex(c => c.id === active.id);
+      const newIndex = combatState.combatants.findIndex(c => c.id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newCombatants = [...combatState.combatants];
+        const [removed] = newCombatants.splice(oldIndex, 1);
+        newCombatants.splice(newIndex, 0, removed);
+        onReorderCombatants(newCombatants);
+      }
+    }
   };
 
   return (
@@ -140,94 +150,52 @@ export function CombatTracker({
         )}
       </div>
 
-      {/* Combatant List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {combatState.combatants.map((combatant, index) => (
-          <CombatantCard
-            key={combatant.id}
-            combatant={combatant}
-            isActive={index === combatState.turnIndex}
-            onHpChange={(change, isDamage) => onHpChange(combatant.id, change, isDamage)}
-            onInitiativeChange={(value) => onInitiativeChange(combatant.id, value)}
-            onConditionToggle={(condition) => onConditionToggle(combatant.id, condition)}
-            onRemove={() => onRemoveCombatant(combatant.id)}
-          />
-        ))}
+      {/* Combatant List with DnD and Drop Zone */}
+      <div ref={setDropRef} className={`flex-1 overflow-y-auto p-4 space-y-2 transition-colors ${
+        isOver ? 'bg-green-900/20 ring-2 ring-green-500/50 ring-inset' : ''
+      }`}>
+        {isOver && (
+          <div className="flex items-center justify-center gap-2 py-3 text-green-400 text-sm bg-green-900/30 rounded-lg border-2 border-dashed border-green-500/50 animate-pulse">
+            <Plus className="w-4 h-4" />
+            Drop to add to combat
+          </div>
+        )}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={combatState.combatants.map(c => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {combatState.combatants.map((combatant, index) => (
+              <SortableCombatantCard
+                key={combatant.id}
+                combatant={combatant}
+                isActive={index === combatState.turnIndex}
+                onHpChange={(change, isDamage) => onHpChange(combatant.id, change, isDamage)}
+                onInitiativeChange={(value) => onInitiativeChange(combatant.id, value)}
+                onConditionToggle={(condition) => onConditionToggle(combatant.id, condition)}
+                onRemove={() => onRemoveCombatant(combatant.id)}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Combat Footer */}
       <div className="border-t border-slate-800 bg-slate-900 p-4">
         <div className="flex items-center justify-between">
           {/* Add Combatant */}
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="border-slate-600">
-                <Plus className="w-4 h-4 mr-1" />
-                Add Combatant
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-slate-900 border-slate-700">
-              <DialogHeader>
-                <DialogTitle>Add Combatant</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm text-slate-400">Name</label>
-                  <Input
-                    value={newCombatant.name}
-                    onChange={(e) => setNewCombatant(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Goblin Reinforcement"
-                    className="bg-slate-800 border-slate-600"
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="text-sm text-slate-400">Initiative</label>
-                    <Input
-                      type="number"
-                      value={newCombatant.initiative}
-                      onChange={(e) => setNewCombatant(prev => ({ ...prev, initiative: parseInt(e.target.value) || 0 }))}
-                      className="bg-slate-800 border-slate-600"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-slate-400">HP</label>
-                    <Input
-                      type="number"
-                      value={newCombatant.hp}
-                      onChange={(e) => setNewCombatant(prev => ({ ...prev, hp: parseInt(e.target.value) || 1 }))}
-                      className="bg-slate-800 border-slate-600"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-slate-400">AC</label>
-                    <Input
-                      type="number"
-                      value={newCombatant.ac}
-                      onChange={(e) => setNewCombatant(prev => ({ ...prev, ac: parseInt(e.target.value) || 10 }))}
-                      className="bg-slate-800 border-slate-600"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {(['monster', 'ally', 'npc'] as const).map(type => (
-                    <Button
-                      key={type}
-                      variant={newCombatant.type === type ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setNewCombatant(prev => ({ ...prev, type }))}
-                      className={newCombatant.type === type ? 'bg-slate-700' : 'border-slate-600'}
-                    >
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </Button>
-                  ))}
-                </div>
-                <Button onClick={handleAddCombatant} className="w-full">
-                  Add to Combat
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button
+            variant="outline"
+            onClick={() => setShowAddDialog(true)}
+            className="border-slate-600"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Combatant
+          </Button>
 
           {/* Combat Log Toggle */}
           <Button variant="ghost" className="text-slate-400">
@@ -255,6 +223,17 @@ export function CombatTracker({
           </div>
         </div>
       </div>
+
+      {/* Add Combatant Dialog */}
+      <AddCombatantDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        campaignId={campaignId}
+        onAddCombatant={(data) => {
+          onAddCombatant(data);
+          // Keep dialog open for adding more
+        }}
+      />
     </div>
   );
 }

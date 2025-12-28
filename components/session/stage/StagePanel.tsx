@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Session, SessionEvent } from '@/types/session';
 import { LiveLog } from './LiveLog';
 import { SmartInput } from './SmartInput';
 import { CombatTracker } from '../combat/CombatTracker';
 import { useCombat } from '@/hooks/useCombat';
+import { CombatState } from '@/types/combat';
 
 interface StagePanelProps {
   session: Session;
@@ -13,6 +14,8 @@ interface StagePanelProps {
 }
 
 export function StagePanel({ session, campaignId }: StagePanelProps) {
+  const [hasLoadedCombat, setHasLoadedCombat] = useState(false);
+
   const {
     combatState,
     isLoading,
@@ -26,18 +29,48 @@ export function StagePanel({ session, campaignId }: StagePanelProps) {
     toggleCondition,
     addCombatant,
     removeCombatant,
+    reorderCombatants,
   } = useCombat({
     sessionId: session.id,
     campaignId,
     onCombatEvent: handleCombatEvent,
   });
 
-  // Load existing combat state from session
+  // Load existing combat state from session on mount
   useEffect(() => {
-    if (session.combat_state && !combatState) {
-      loadCombat(session.combat_state);
+    if (session.combat_state && !hasLoadedCombat && !combatState) {
+      console.log('Loading saved combat state from session');
+      loadCombat(session.combat_state as CombatState);
+      setHasLoadedCombat(true);
     }
-  }, [session.combat_state, combatState, loadCombat]);
+  }, [session.combat_state, hasLoadedCombat, combatState, loadCombat]);
+
+  // Listen for resume-combat events
+  useEffect(() => {
+    const handleResumeCombat = () => {
+      if (session.combat_state) {
+        loadCombat(session.combat_state as CombatState);
+      }
+    };
+
+    window.addEventListener('resume-combat', handleResumeCombat);
+    return () => window.removeEventListener('resume-combat', handleResumeCombat);
+  }, [session.combat_state, loadCombat]);
+
+  // Listen for trigger-start-combat events from encounter nodes
+  useEffect(() => {
+    const handleTriggerCombat = (event: Event) => {
+      const customEvent = event as CustomEvent<{ encounterId: string }>;
+      const { encounterId } = customEvent.detail;
+      console.log('Starting combat with encounter:', encounterId);
+      startCombat(encounterId);
+    };
+
+    window.addEventListener('trigger-start-combat', handleTriggerCombat);
+    return () => {
+      window.removeEventListener('trigger-start-combat', handleTriggerCombat);
+    };
+  }, [startCombat]);
 
   // Handle combat events (log to session_events)
   function handleCombatEvent(event: { type: string; title: string; description: string; payload: Record<string, unknown> }) {
@@ -113,6 +146,7 @@ export function StagePanel({ session, campaignId }: StagePanelProps) {
     return (
       <CombatTracker
         combatState={combatState}
+        campaignId={campaignId}
         onNextTurn={nextTurn}
         onPreviousTurn={previousTurn}
         onEndCombat={endCombat}
@@ -121,6 +155,7 @@ export function StagePanel({ session, campaignId }: StagePanelProps) {
         onConditionToggle={toggleCondition}
         onAddCombatant={addCombatant}
         onRemoveCombatant={removeCombatant}
+        onReorderCombatants={reorderCombatants}
       />
     );
   }

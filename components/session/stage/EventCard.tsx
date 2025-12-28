@@ -3,12 +3,14 @@
 import { SessionEvent } from '@/types/session';
 import { Dices, MessageSquare, Swords, Shield, Info } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { Button } from '@/components/ui/button';
 
 interface EventCardProps {
   event: SessionEvent;
+  onResumeCombat?: () => void;
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, onResumeCombat }: EventCardProps) {
   const renderContent = () => {
     switch (event.event_type) {
       case 'roll':
@@ -22,7 +24,7 @@ export function EventCard({ event }: EventCardProps) {
         return <CheckCard event={event} />;
       case 'combat_start':
       case 'combat_end':
-        return <CombatCard event={event} />;
+        return <CombatCard event={event} onResumeCombat={onResumeCombat} />;
       default:
         return <DefaultCard event={event} />;
     }
@@ -116,8 +118,28 @@ function CheckCard({ event }: { event: SessionEvent }) {
   );
 }
 
-function CombatCard({ event }: { event: SessionEvent }) {
+function CombatCard({ event, onResumeCombat }: { event: SessionEvent; onResumeCombat?: () => void }) {
   const isStart = event.event_type === 'combat_start';
+
+  if (isStart && onResumeCombat) {
+    return (
+      <div
+        onClick={onResumeCombat}
+        className="cursor-pointer hover:ring-2 hover:ring-orange-500/50 transition-all"
+      >
+        <div className="flex items-center gap-3 p-4 bg-orange-900/30 border border-orange-700 rounded-lg">
+          <Swords className="w-6 h-6 text-orange-400" />
+          <div className="flex-1">
+            <p className="font-medium text-orange-300">⚔️ COMBAT STARTED</p>
+            <p className="text-sm text-slate-400">{event.description || 'Initiative tracker activated'}</p>
+          </div>
+          <Button size="sm" variant="outline" className="border-orange-600 text-orange-400 hover:bg-orange-900/30">
+            Resume
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`p-3 rounded-lg text-center ${
