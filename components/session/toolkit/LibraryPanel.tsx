@@ -7,7 +7,7 @@ import { DraggableEntity } from './DraggableEntity';
 import { DraggableObjective } from './DraggableObjective';
 import {
   Search, Users, MapPin, Package, Skull, Flag, Sword,
-  ChevronDown, ChevronRight, Loader2, Swords
+  ChevronDown, ChevronRight, Loader2, Swords, Scroll
 } from 'lucide-react';
 
 interface LibraryPanelProps {
@@ -15,6 +15,36 @@ interface LibraryPanelProps {
   isCombatActive?: boolean;
   onAddToCombat?: (entity: Entity) => void;
 }
+
+// Entity group configuration
+interface EntityGroup {
+  type: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
+
+// Prep mode: NPCs, Locations, Quests first (roleplay/exploration focus)
+const PREP_ORDER: EntityGroup[] = [
+  { type: 'npc', label: 'NPCs', icon: Users, color: 'text-blue-400' },
+  { type: 'location', label: 'Locations', icon: MapPin, color: 'text-green-400' },
+  { type: 'quest', label: 'Quests', icon: Scroll, color: 'text-teal-400' },
+  { type: 'item', label: 'Items', icon: Package, color: 'text-amber-400' },
+  { type: 'creature', label: 'Creatures', icon: Skull, color: 'text-red-400' },
+  { type: 'encounter', label: 'Encounters', icon: Swords, color: 'text-orange-400' },
+  { type: 'faction', label: 'Factions', icon: Flag, color: 'text-purple-400' },
+];
+
+// Combat mode: Creatures, Encounters, NPCs first (combat focus)
+const COMBAT_ORDER: EntityGroup[] = [
+  { type: 'creature', label: 'Creatures', icon: Skull, color: 'text-red-400' },
+  { type: 'encounter', label: 'Encounters', icon: Swords, color: 'text-orange-400' },
+  { type: 'npc', label: 'NPCs', icon: Users, color: 'text-blue-400' },
+  { type: 'location', label: 'Locations', icon: MapPin, color: 'text-green-400' },
+  { type: 'item', label: 'Items', icon: Package, color: 'text-amber-400' },
+  { type: 'faction', label: 'Factions', icon: Flag, color: 'text-purple-400' },
+  { type: 'quest', label: 'Quests', icon: Scroll, color: 'text-teal-400' },
+];
 
 interface QuestObjective {
   id: string;
@@ -60,24 +90,29 @@ export interface Entity {
   };
 }
 
-const typeLabels: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-  npc: { label: 'NPCs', icon: Users },
-  location: { label: 'Locations', icon: MapPin },
-  item: { label: 'Items', icon: Package },
-  creature: { label: 'Creatures', icon: Skull },
-  faction: { label: 'Factions', icon: Flag },
-  quest: { label: 'Quests', icon: Sword },
-};
-
 // Combat-ready entity types
 const COMBAT_TYPES = ['npc', 'creature', 'player'];
 
 export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat }: LibraryPanelProps) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(['npc', 'quest']));
+  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(
+    new Set(isCombatActive ? ['creature', 'encounter', 'npc'] : ['npc', 'location', 'quest'])
+  );
   const [expandedQuests, setExpandedQuests] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+
+  // Select entity order based on combat state
+  const ENTITY_GROUPS = isCombatActive ? COMBAT_ORDER : PREP_ORDER;
+
+  // Update expanded groups when combat state changes
+  useEffect(() => {
+    if (isCombatActive) {
+      setExpandedTypes(new Set(['creature', 'encounter', 'npc']));
+    } else {
+      setExpandedTypes(new Set(['npc', 'location', 'quest']));
+    }
+  }, [isCombatActive]);
 
   // Fetch entities - include full data for quests
   useEffect(() => {
@@ -180,10 +215,15 @@ export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat }: Libr
     <div className="h-full flex flex-col">
       <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
         Entity Library
-        {isCombatActive && (
-          <span className="ml-2 text-red-400">(Combat Mode)</span>
-        )}
       </h3>
+
+      {/* Combat Mode Indicator */}
+      {isCombatActive && (
+        <div className="flex items-center gap-2 mb-3 px-2 py-1.5 bg-red-900/30 border border-red-700/50 rounded-lg">
+          <Swords className="w-4 h-4 text-red-400" />
+          <span className="text-xs text-red-300 font-medium">COMBAT MODE</span>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative mb-3">
@@ -207,7 +247,7 @@ export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat }: Libr
             {searchQuery ? 'No matching entities' : 'No entities yet'}
           </p>
         ) : (
-          Object.entries(typeLabels).map(([type, { label, icon: Icon }]) => {
+          ENTITY_GROUPS.map(({ type, label, icon: Icon, color }) => {
             const typeEntities = groupedEntities[type] || [];
             if (typeEntities.length === 0) return null;
 
@@ -224,7 +264,7 @@ export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat }: Libr
                   ) : (
                     <ChevronRight className="w-4 h-4 text-slate-500" />
                   )}
-                  <Icon className="w-4 h-4 text-slate-400" />
+                  <Icon className={`w-4 h-4 ${color}`} />
                   <span className="text-sm text-slate-300">{label}</span>
                   <span className="text-xs text-slate-500 ml-auto">{typeEntities.length}</span>
                 </button>

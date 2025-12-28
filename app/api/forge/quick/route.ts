@@ -1,124 +1,191 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getOpenAIClient } from '@/lib/openai';
+import OpenAI from 'openai';
 
-interface QuickForgeRequest {
-  campaignId: string;
-  entityType: 'npc' | 'creature' | 'location' | 'item' | 'encounter';
-  prompt: string;
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-const TYPE_PROMPTS: Record<string, string> = {
-  npc: `You are a D&D 5e NPC generator. Create a memorable NPC based on the user's prompt.
-Return JSON with:
+const SYSTEM_PROMPTS: Record<string, string> = {
+  npc: `You are a D&D 5e NPC generator. Create a detailed NPC.
+Return valid JSON only:
 {
-  "name": "Full name",
+  "name": "NPC Name",
+  "summary": "One sentence description",
   "sub_type": "Role/occupation",
-  "summary": "2-3 sentence description for quick reference",
-  "appearance": "Physical description",
-  "personality": "Key personality traits",
-  "motivation": "What drives them",
-  "secret": "A hidden truth",
-  "voice": "Speech patterns and mannerisms",
+  "soul": {
+    "read_aloud": "2-3 sentences when players meet them",
+    "personality": "Traits",
+    "appearance": "Physical description",
+    "voice": "How they speak"
+  },
+  "brain": {
+    "motivation": "What they want",
+    "secrets": "Hidden info",
+    "tactics": "Conflict behavior"
+  },
   "mechanics": {
-    "ac": 10,
     "hp": 10,
+    "ac": 10,
+    "cr": "0",
     "abilities": { "str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10 }
-  },
-  "tags": ["tag1", "tag2"]
+  }
 }`,
 
-  creature: `You are a D&D 5e creature generator. Create a unique creature based on the user's prompt.
-Return JSON with:
+  creature: `You are a D&D 5e creature generator. Create a monster/creature.
+Return valid JSON only:
 {
-  "name": "Creature name",
-  "sub_type": "Creature type (e.g., beast, monstrosity, undead)",
-  "summary": "2-3 sentence description for quick reference",
-  "description": "Full description and behavior",
-  "tactics": "How it fights",
-  "lair": "Where it lives",
+  "name": "Creature Name",
+  "summary": "One sentence description",
+  "sub_type": "beast/monstrosity/undead/etc",
+  "soul": {
+    "read_aloud": "Description when encountered",
+    "appearance": "Physical details",
+    "behavior": "How it acts"
+  },
+  "brain": {
+    "motivation": "What drives it",
+    "tactics": "Combat behavior",
+    "lair": "Where it lives"
+  },
   "mechanics": {
-    "cr": "1",
+    "hp": 15,
     "ac": 12,
-    "hp": 22,
+    "cr": "1",
+    "size": "medium",
+    "type": "beast",
     "speed": { "walk": 30 },
-    "abilities": { "str": 14, "dex": 12, "con": 13, "int": 3, "wis": 12, "cha": 6 },
-    "attacks": [{ "name": "Bite", "bonus": 4, "damage": "1d8+2 piercing" }]
+    "abilities": { "str": 12, "dex": 14, "con": 12, "int": 4, "wis": 10, "cha": 6 },
+    "actions": [
+      {
+        "name": "Bite",
+        "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) piercing damage.",
+        "attack_bonus": 4
+      }
+    ]
+  }
+}`,
+
+  location: `You are a D&D 5e location generator.
+Return valid JSON only:
+{
+  "name": "Location Name",
+  "summary": "One sentence description",
+  "sub_type": "tavern/dungeon/forest/etc",
+  "soul": {
+    "read_aloud": "2-3 evocative sentences",
+    "sights": ["Visual 1", "Visual 2"],
+    "sounds": ["Sound 1"],
+    "smells": ["Smell 1"]
   },
-  "tags": ["tag1", "tag2"]
-}`,
-
-  location: `You are a D&D 5e location generator. Create an interesting location based on the user's prompt.
-Return JSON with:
-{
-  "name": "Location name",
-  "sub_type": "Location type (e.g., tavern, dungeon, forest)",
-  "summary": "2-3 sentence description for quick reference",
-  "description": "Full description - sights, sounds, smells",
-  "features": ["Notable feature 1", "Notable feature 2"],
-  "npcs": ["NPC that might be here"],
-  "secrets": ["Hidden thing about this place"],
-  "hooks": ["Adventure hook related to this location"],
-  "tags": ["tag1", "tag2"]
-}`,
-
-  item: `You are a D&D 5e magic item generator. Create an interesting item based on the user's prompt.
-Return JSON with:
-{
-  "name": "Item name",
-  "sub_type": "Item type (e.g., weapon, armor, wondrous item)",
-  "summary": "2-3 sentence description for quick reference",
-  "description": "Full description and appearance",
-  "rarity": "common|uncommon|rare|very rare|legendary",
-  "requires_attunement": false,
+  "brain": {
+    "purpose": "What it's used for",
+    "secrets": "Hidden info",
+    "history": "Brief background"
+  },
   "mechanics": {
-    "properties": "Mechanical properties and effects",
-    "charges": null,
-    "value_gp": 100
-  },
-  "history": "Brief history or origin",
-  "quirk": "An interesting quirk or side effect",
-  "tags": ["tag1", "tag2"]
+    "hazards": [],
+    "treasure": []
+  }
 }`,
 
-  encounter: `You are a D&D 5e encounter generator. Create a combat encounter based on the user's prompt.
-Return JSON with:
+  item: `You are a D&D 5e magic item generator.
+Return valid JSON only:
 {
-  "name": "Encounter name/title",
+  "name": "Item Name",
+  "summary": "One sentence description",
+  "sub_type": "weapon/armor/wondrous/etc",
+  "soul": {
+    "read_aloud": "Description when examined",
+    "appearance": "Physical details",
+    "history": "How it was created"
+  },
+  "brain": {
+    "purpose": "What it does",
+    "secrets": "Hidden properties"
+  },
+  "mechanics": {
+    "rarity": "uncommon",
+    "attunement": false,
+    "type": "weapon",
+    "properties": "Game mechanics"
+  }
+}`,
+
+  encounter: `You are a D&D 5e encounter designer.
+CRITICAL: Each creature MUST have a "count" field.
+Return valid JSON only:
+{
+  "name": "Encounter Name",
+  "summary": "Brief scenario description",
   "sub_type": "encounter",
-  "summary": "2-3 sentence description for quick reference",
-  "description": "Setup and context for the encounter",
-  "difficulty": "easy|medium|hard|deadly",
-  "enemies": [
-    { "name": "Enemy name", "count": 2, "cr": "1/2", "notes": "Tactical notes" }
-  ],
-  "terrain": "Battlefield description and features",
-  "tactics": "How enemies behave in combat",
-  "treasure": ["Loot from this encounter"],
-  "complications": ["Possible twists or complications"],
-  "tags": ["tag1", "tag2"]
+  "soul": {
+    "read_aloud": "Combat start description",
+    "setup": "Tactical setup",
+    "terrain": "Environmental features"
+  },
+  "brain": {
+    "tactics": "How enemies fight",
+    "morale": "When they flee",
+    "complications": "What could go wrong"
+  },
+  "mechanics": {
+    "difficulty": "medium",
+    "xp": 200,
+    "creatures": [
+      { "name": "Goblin", "count": 3, "hp": 7, "ac": 15 }
+    ],
+    "rewards": {
+      "gold": 25,
+      "items": ["Item 1"]
+    }
+  }
 }`,
 };
 
 export async function POST(request: NextRequest) {
+  console.log('=== Quick Forge API Called ===');
+
   try {
-    const supabase = createClient();
+    // Check API key first
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY not configured');
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    const body = await request.json();
+    const { campaignId, entityType, prompt } = body;
+
+    console.log('Request:', { campaignId, entityType, prompt: prompt?.substring(0, 50) });
+
+    if (!campaignId || !entityType || !prompt) {
+      return NextResponse.json(
+        { error: 'Missing required fields: campaignId, entityType, prompt' },
+        { status: 400 }
+      );
+    }
+
+    const systemPrompt = SYSTEM_PROMPTS[entityType];
+    if (!systemPrompt) {
+      return NextResponse.json(
+        { error: `Unknown entity type: ${entityType}` },
+        { status: 400 }
+      );
+    }
+
+    // Create Supabase client
+    const supabase = await createClient();
+
+    // Verify auth
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { campaignId, entityType, prompt } = body as QuickForgeRequest;
-
-    if (!campaignId || !entityType || !prompt) {
-      return NextResponse.json(
-        { error: 'Campaign ID, entity type, and prompt are required' },
-        { status: 400 }
-      );
     }
 
     // Verify campaign ownership
@@ -134,72 +201,73 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
 
-    const systemPrompt = TYPE_PROMPTS[entityType];
-    if (!systemPrompt) {
-      return NextResponse.json(
-        { error: `Invalid entity type: ${entityType}` },
-        { status: 400 }
-      );
-    }
+    console.log('Generating for campaign:', campaign.name);
 
     // Call OpenAI
-    const completion = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o',
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Create a ${entityType} based on this description: ${prompt}` },
+        { role: 'user', content: `Campaign: ${campaign.name}\n\nCreate: ${prompt}` },
       ],
-      response_format: { type: 'json_object' },
       temperature: 0.8,
-      max_tokens: 2000,
+      response_format: { type: 'json_object' },
     });
 
-    const responseContent = completion.choices[0]?.message?.content;
-    if (!responseContent) {
-      throw new Error('No response from OpenAI');
+    const content = completion.choices[0]?.message?.content;
+    console.log('OpenAI response received');
+
+    if (!content) {
+      return NextResponse.json({ error: 'No content generated' }, { status: 500 });
     }
 
-    const generatedData = JSON.parse(responseContent);
+    let generated;
+    try {
+      generated = JSON.parse(content);
+      console.log('Generated:', generated.name);
+    } catch {
+      console.error('JSON parse error:', content);
+      return NextResponse.json({ error: 'Invalid AI response' }, { status: 500 });
+    }
 
-    // Save to database
-    const entityData = {
-      campaign_id: campaignId,
-      user_id: user.id,
-      entity_type: entityType,
-      name: generatedData.name,
-      sub_type: generatedData.sub_type || entityType,
-      summary: generatedData.summary,
-      description: generatedData.description || generatedData.appearance || '',
-      mechanics: generatedData.mechanics || null,
-      tags: generatedData.tags || [],
-      facts: [],
-      metadata: {
-        generated_at: new Date().toISOString(),
-        prompt: prompt,
-        ...generatedData,
-      },
-    };
-
+    // Insert into database with correct entity schema
     const { data: entity, error: insertError } = await supabase
       .from('entities')
-      .insert(entityData)
-      .select('id, name, summary, entity_type, sub_type')
+      .insert({
+        campaign_id: campaignId,
+        entity_type: entityType,
+        name: generated.name,
+        sub_type: generated.sub_type || entityType,
+        summary: generated.summary,
+        soul: generated.soul,
+        brain: generated.brain,
+        mechanics: generated.mechanics,
+        status: 'active',
+        forge_status: 'complete',
+      })
+      .select()
       .single();
 
     if (insertError) {
-      console.error('Failed to save entity:', insertError);
-      throw new Error('Failed to save generated entity');
+      console.error('Insert error:', insertError);
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
-    // Track generation
-    await supabase.from('generations').insert({
-      user_id: user.id,
-      campaign_id: campaignId,
-      forge_type: entityType,
-      input_summary: `Quick Forge: ${prompt.substring(0, 100)}`,
-      tokens_used: completion.usage?.total_tokens || 0,
-      was_saved: true,
-    });
+    console.log('Created entity:', entity.id);
+
+    // Track generation (optional - don't fail if this errors)
+    try {
+      await supabase.from('generations').insert({
+        user_id: user.id,
+        campaign_id: campaignId,
+        forge_type: entityType,
+        input_summary: `Quick Forge: ${prompt.substring(0, 100)}`,
+        tokens_used: completion.usage?.total_tokens || 0,
+        was_saved: true,
+      });
+    } catch (genError) {
+      console.error('Failed to track generation:', genError);
+    }
 
     return NextResponse.json({
       id: entity.id,
@@ -209,9 +277,9 @@ export async function POST(request: NextRequest) {
       sub_type: entity.sub_type,
     });
   } catch (error) {
-    console.error('Quick forge error:', error);
+    console.error('Quick Forge Error:', error);
     return NextResponse.json(
-      { error: 'Failed to forge entity. Please try again.' },
+      { error: error instanceof Error ? error.message : 'Failed to generate' },
       { status: 500 }
     );
   }
