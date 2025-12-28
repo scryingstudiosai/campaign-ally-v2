@@ -5,6 +5,41 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// GET /api/entities/[id] - Get a single entity by ID
+export async function GET(
+  request: NextRequest,
+  { params }: RouteParams
+): Promise<NextResponse> {
+  const { id } = await params;
+
+  if (!id) {
+    return NextResponse.json({ error: 'Entity ID required' }, { status: 400 });
+  }
+
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('entities')
+      .select('*')
+      .eq('id', id)
+      .is('deleted_at', null)
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: 'Entity not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[API GET] Exception:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch entity' },
+      { status: 500 }
+    );
+  }
+}
+
 // Deep merge helper - merges nested objects without losing data
 function deepMerge(
   target: Record<string, unknown>,
