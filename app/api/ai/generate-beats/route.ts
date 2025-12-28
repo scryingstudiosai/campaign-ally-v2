@@ -32,9 +32,6 @@ interface EntityData {
 interface CampaignData {
   id: string;
   name: string;
-  codex?: {
-    tone?: string;
-  };
 }
 
 export async function POST(request: NextRequest) {
@@ -121,7 +118,7 @@ export async function POST(request: NextRequest) {
     // Get campaign with better error handling
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
-      .select('id, name, codex')
+      .select('id, name')
       .eq('id', campaignId)
       .single() as { data: CampaignData | null; error: unknown };
 
@@ -321,8 +318,7 @@ ${players.map(p => `- ${p.name}: ${p.summary || 'Adventurer'}`).join('\n')}
     const systemPrompt = `You are an expert Dungeon Master assistant for D&D 5e campaigns.
 Your job is to help the DM prepare engaging, personalized scenes that leverage EXISTING campaign elements.
 
-CAMPAIGN: ${campaign?.name || 'Unknown'}
-WORLD CONTEXT: ${campaign?.codex?.tone || 'High fantasy adventure'}
+CAMPAIGN: ${campaign?.name || 'Unknown Campaign'}
 
 ${questContext}
 
@@ -369,7 +365,6 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
     console.log('Campaign Name:', campaign?.name);
     console.log('');
     console.log('--- MENTIONED ENTITIES ---');
-    console.log('Potential names found:', potentialNames);
     console.log('Matched entities:', mentionedEntities?.map(e => ({ name: e.name, type: e.entity_type })));
     console.log('');
     console.log('--- RELATIONSHIPS FOUND ---');
