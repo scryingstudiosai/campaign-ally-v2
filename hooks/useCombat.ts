@@ -520,6 +520,24 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
   }, []);
 
   // =========================================
+  // REORDER COMBATANTS (drag-and-drop)
+  // =========================================
+  const reorderCombatants = useCallback((newCombatants: Combatant[]) => {
+    setCombatState(prev => {
+      if (!prev) return prev;
+
+      // Find the new index of the active combatant
+      const activeIndex = newCombatants.findIndex(c => c.isActive);
+
+      return {
+        ...prev,
+        combatants: newCombatants,
+        turnIndex: activeIndex >= 0 ? activeIndex : 0,
+      };
+    });
+  }, []);
+
+  // =========================================
   // END COMBAT
   // =========================================
   const endCombat = useCallback(async (generateLoot: boolean = true) => {
@@ -677,5 +695,6 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
     toggleCondition,
     addCombatant,
     removeCombatant,
+    reorderCombatants,
   };
 }

@@ -26,6 +26,7 @@ export function StagePanel({ session, campaignId }: StagePanelProps) {
     toggleCondition,
     addCombatant,
     removeCombatant,
+    reorderCombatants,
   } = useCombat({
     sessionId: session.id,
     campaignId,
@@ -38,6 +39,21 @@ export function StagePanel({ session, campaignId }: StagePanelProps) {
       loadCombat(session.combat_state);
     }
   }, [session.combat_state, combatState, loadCombat]);
+
+  // Listen for trigger-start-combat events from encounter nodes
+  useEffect(() => {
+    const handleTriggerCombat = (event: Event) => {
+      const customEvent = event as CustomEvent<{ encounterId: string }>;
+      const { encounterId } = customEvent.detail;
+      console.log('Starting combat with encounter:', encounterId);
+      startCombat(encounterId);
+    };
+
+    window.addEventListener('trigger-start-combat', handleTriggerCombat);
+    return () => {
+      window.removeEventListener('trigger-start-combat', handleTriggerCombat);
+    };
+  }, [startCombat]);
 
   // Handle combat events (log to session_events)
   function handleCombatEvent(event: { type: string; title: string; description: string; payload: Record<string, unknown> }) {
@@ -113,6 +129,7 @@ export function StagePanel({ session, campaignId }: StagePanelProps) {
     return (
       <CombatTracker
         combatState={combatState}
+        campaignId={campaignId}
         onNextTurn={nextTurn}
         onPreviousTurn={previousTurn}
         onEndCombat={endCombat}
@@ -121,6 +138,7 @@ export function StagePanel({ session, campaignId }: StagePanelProps) {
         onConditionToggle={toggleCondition}
         onAddCombatant={addCombatant}
         onRemoveCombatant={removeCombatant}
+        onReorderCombatants={reorderCombatants}
       />
     );
   }

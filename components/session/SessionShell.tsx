@@ -100,6 +100,25 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
     };
   }, []);
 
+  // Listen for run-encounter events from prep notes
+  useEffect(() => {
+    const handleRunEncounter = (event: Event) => {
+      const customEvent = event as CustomEvent<{ id: string; name: string }>;
+      const { id, name } = customEvent.detail;
+      console.log('Running encounter:', name, 'ID:', id);
+
+      // Dispatch event for StagePanel to start combat with this encounter
+      window.dispatchEvent(new CustomEvent('trigger-start-combat', {
+        detail: { encounterId: id }
+      }));
+    };
+
+    window.addEventListener('run-encounter', handleRunEncounter);
+    return () => {
+      window.removeEventListener('run-encounter', handleRunEncounter);
+    };
+  }, []);
+
   return (
     <DndContext
       sensors={sensors}
