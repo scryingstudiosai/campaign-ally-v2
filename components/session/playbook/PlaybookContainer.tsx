@@ -63,7 +63,10 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
       const response = await fetch(`/api/sessions/${sessionId}/blocks`);
       if (response.ok) {
         const data = await response.json();
-        setBlocks(data.blocks || []);
+        // API returns array directly, not { blocks: [...] }
+        const blocksArray = Array.isArray(data) ? data : (data.blocks || []);
+        // Filter out any blocks without valid IDs
+        setBlocks(blocksArray.filter((b: PlaybookBlock) => b && b.id));
       } else {
         setBlocks([]);
       }
@@ -98,7 +101,11 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
 
       if (response.ok) {
         const data = await response.json();
-        setBlocks([...blocks, data.block]);
+        // API returns block directly, not { block: {...} }
+        const newBlock = data.block || data;
+        if (newBlock && newBlock.id) {
+          setBlocks(prev => [...prev, newBlock]);
+        }
       }
     } catch (error) {
       console.error('Failed to add block:', error);
@@ -162,11 +169,15 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
 
       if (response.ok) {
         const data = await response.json();
-        // Insert after the original
-        const index = blocks.findIndex(b => b.id === blockId);
-        const newBlocks = [...blocks];
-        newBlocks.splice(index + 1, 0, data.block);
-        setBlocks(newBlocks);
+        // API returns block directly, not { block: {...} }
+        const newBlock = data.block || data;
+        if (newBlock && newBlock.id) {
+          // Insert after the original
+          const index = blocks.findIndex(b => b.id === blockId);
+          const newBlocks = [...blocks];
+          newBlocks.splice(index + 1, 0, newBlock);
+          setBlocks(newBlocks);
+        }
       }
     } catch (error) {
       console.error('Failed to duplicate block:', error);
@@ -269,10 +280,10 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={blocks?.map(b => b.id) ?? []}
+              items={blocks.filter(b => b && b.id).map(b => b.id)}
               strategy={verticalListSortingStrategy}
             >
-              {blocks?.map(block => renderBlock(block))}
+              {blocks.filter(b => b && b.id).map(block => renderBlock(block))}
             </SortableContext>
           </DndContext>
         )}
