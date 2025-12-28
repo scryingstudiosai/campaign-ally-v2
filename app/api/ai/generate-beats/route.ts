@@ -10,6 +10,8 @@ interface RelationshipData {
   id: string;
   relationship_type: string;
   description?: string;
+  surface_description?: string;
+  intensity?: string;
   source_entity?: { id: string; name: string; entity_type: string; summary?: string } | null;
   target_entity?: { id: string; name: string; entity_type: string; summary?: string } | null;
 }
@@ -70,9 +72,11 @@ export async function POST(request: NextRequest) {
         id,
         relationship_type,
         description,
-        source_entity_id,
-        target_entity_id
+        source_id,
+        target_id
       `)
+      .eq('campaign_id', campaignId)
+      .is('deleted_at', null)
       .limit(20);
 
     console.log('=== ALL RELATIONSHIPS (first 20) ===');
@@ -145,42 +149,59 @@ Current Status: ${quest.status || 'active'}
     }
 
     // =========================================
-    // STEP 2: Find Related Entities (IMPROVED!)
+    // STEP 2: Find Related Entities (IMPROVED MATCHING)
     // =========================================
 
-    // Method 1: Parse capitalized words from objective
-    const potentialNames = objective.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/g) || [];
-    console.log('Regex matched names:', potentialNames);
-
-    // Method 2: Also search for ANY campaign entity mentioned in the objective (case-insensitive)
+    // Get ALL NPCs and locations for this campaign (excluding deleted)
     const { data: allCampaignEntities } = await supabase
       .from('entities')
       .select('id, name, entity_type, summary, brain, mechanics')
       .eq('campaign_id', campaignId)
-      .is('deleted_at', null)  // IMPORTANT: Exclude deleted entities!
+      .is('deleted_at', null)
       .in('entity_type', ['npc', 'location', 'faction', 'creature']) as { data: EntityData[] | null; error: unknown };
 
-    console.log('All campaign entities:', allCampaignEntities?.map(e => e.name));
+    console.log('=== ENTITY MATCHING ===');
+    console.log('Objective text:', objective);
+    console.log('All campaign entities:', allCampaignEntities?.length);
 
-    // Find entities whose names appear anywhere in the objective OR objectiveDescription
-    const objectiveText = `${objective} ${objectiveDescription || ''}`.toLowerCase();
-    const mentionedEntities: EntityData[] = allCampaignEntities?.filter(entity =>
-      objectiveText.includes(entity.name.toLowerCase())
-    ) || [];
+    // Combine objective and description for matching
+    const searchText = `${objective} ${objectiveDescription || ''}`.toLowerCase();
 
-    console.log('Entities found in objective text:', mentionedEntities.map(e => e.name));
+    // Find entities where:
+    // 1. Entity name appears in the search text, OR
+    // 2. Any significant part of entity name appears in search text
+    const mentionedEntities: EntityData[] = allCampaignEntities?.filter(entity => {
+      const entityNameLower = entity.name.toLowerCase();
+      const entityNameParts = entityNameLower.split(' ');
 
-    // If we still haven't found any, try partial matching
-    if (mentionedEntities.length === 0 && potentialNames.length > 0) {
-      const partialMatches = allCampaignEntities?.filter(entity =>
-        potentialNames.some(name =>
-          entity.name.toLowerCase().includes(name.toLowerCase()) ||
-          name.toLowerCase().includes(entity.name.toLowerCase())
-        )
-      ) || [];
-      mentionedEntities.push(...partialMatches);
-      console.log('Partial matches found:', partialMatches.map(e => e.name));
-    }
+      // Check if search text contains the full entity name
+      if (searchText.includes(entityNameLower)) {
+        console.log(`MATCH (full name): "${entity.name}" found in objective`);
+        return true;
+      }
+
+      // Check if search text contains significant parts of entity name (2+ word match)
+      for (let i = 0; i < entityNameParts.length - 1; i++) {
+        const twoWordCombo = `${entityNameParts[i]} ${entityNameParts[i + 1]}`;
+        if (twoWordCombo.length > 5 && searchText.includes(twoWordCombo)) {
+          console.log(`MATCH (partial): "${twoWordCombo}" from "${entity.name}" found in objective`);
+          return true;
+        }
+      }
+
+      // Check if entity's first two words match (for "Sage Varis" matching "Sage Varis Windwhisper")
+      if (entityNameParts.length >= 2) {
+        const firstTwoWords = entityNameParts.slice(0, 2).join(' ');
+        if (firstTwoWords.length > 5 && searchText.includes(firstTwoWords)) {
+          console.log(`MATCH (first words): "${firstTwoWords}" from "${entity.name}" found in objective`);
+          return true;
+        }
+      }
+
+      return false;
+    }) || [];
+
+    console.log('Matched entities:', mentionedEntities.map(e => e.name));
 
     // =========================================
     // STEP 3: Get ALL Relationships for Found Entities
@@ -190,27 +211,37 @@ Current Status: ${quest.status || 'active'}
     if (mentionedEntities.length > 0) {
       const entityIds = mentionedEntities.map(e => e.id);
 
-      // Query relationships where these entities are involved
+      console.log('Looking for relationships for entity IDs:', entityIds);
+
+      // FIXED: Use correct column names (source_id and target_id, NOT source_entity_id)
       const { data: rels, error: relError } = await supabase
         .from('relationships')
         .select(`
           id,
           relationship_type,
           description,
-          source_entity:entities!relationships_source_entity_id_fkey(id, name, entity_type, summary),
-          target_entity:entities!relationships_target_entity_id_fkey(id, name, entity_type, summary)
+          surface_description,
+          intensity,
+          source_entity:source_id(id, name, entity_type, summary),
+          target_entity:target_id(id, name, entity_type, summary)
         `)
-        .or(`source_entity_id.in.(${entityIds.join(',')}),target_entity_id.in.(${entityIds.join(',')})`) as { data: RelationshipData[] | null; error: unknown };
+        .eq('campaign_id', campaignId)
+        .is('deleted_at', null)
+        .or(`source_id.in.(${entityIds.join(',')}),target_id.in.(${entityIds.join(',')})`) as { data: RelationshipData[] | null; error: unknown };
 
       if (relError) {
         console.error('Relationship query error:', relError);
       } else {
         relationships = rels || [];
-        console.log('Relationships found:', relationships.length);
+        console.log('=== RELATIONSHIPS FOUND ===');
+        console.log('Count:', relationships.length);
         relationships.forEach(r => {
-          console.log(`  ${r.source_entity?.name} --[${r.relationship_type}]--> ${r.target_entity?.name}: ${r.description}`);
+          console.log(`  ${r.source_entity?.name} --[${r.relationship_type}]--> ${r.target_entity?.name}`);
+          console.log(`    Description: ${r.description || 'none'}`);
         });
       }
+    } else {
+      console.log('No mentioned entities found to look up relationships for');
     }
 
     // Get player characters for party context
@@ -248,18 +279,23 @@ Current Status: ${quest.status || 'active'}
     let relationshipContext = '';
     if (relationships.length > 0) {
       relationshipContext = `
-EXISTING RELATIONSHIPS (USE THESE FOR DRAMA!):
+
+🔥 EXISTING RELATIONSHIPS - USE THESE FOR DRAMA! 🔥
 ${relationships.map(r => {
   const source = r.source_entity?.name || 'Unknown';
   const target = r.target_entity?.name || 'Unknown';
   const type = r.relationship_type?.toUpperCase() || 'CONNECTED TO';
-  const desc = r.description ? ` - "${r.description}"` : '';
-  return `- **${source}** is ${type} **${target}**${desc}`;
+  const desc = r.description || r.surface_description || '';
+  const intensity = r.intensity ? ` [${r.intensity} intensity]` : '';
+  return `• ${source} is ${type} ${target}${intensity}
+  ${desc ? `  → "${desc}"` : ''}`;
 }).join('\n')}
 
-⚠️ IMPORTANT: The above relationships are REAL campaign data. Use them to create drama!
-      `;
+⚠️ CRITICAL INSTRUCTION: You MUST incorporate at least one of these relationships into your beats!
+If there's a RIVAL or ENEMY, they should interfere or complicate the objective.
+`;
     } else {
+      relationshipContext = '\n(No direct relationships found for mentioned entities)\n';
       console.log('WARNING: No relationships found for mentioned entities');
     }
 
