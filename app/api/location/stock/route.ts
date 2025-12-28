@@ -54,6 +54,10 @@ export async function POST(request: NextRequest) {
 
     const mechanics = (location.mechanics as Record<string, unknown>) || {};
 
+    console.log('[Stock Route] Location:', location.name);
+    console.log('[Stock Route] Sub-type:', location.sub_type);
+    console.log('[Stock Route] Mechanics:', JSON.stringify(mechanics, null, 2));
+
     // Use provided inventory data or infer from location
     let shopType: string;
     let priceModifier: number;
@@ -66,13 +70,18 @@ export async function POST(request: NextRequest) {
       priceModifier = inventoryData.price_modifier;
       specialty = inventoryData.specialty;
       srdItems = inventoryData.suggested_srd_stock;
+      console.log('[Stock Route] Using provided inventory data');
     } else {
       // Infer from location (for manual "Stock Shelves" button)
       shopType = (mechanics.shop_type as string) || inferShopType(location);
       priceModifier = (mechanics.price_modifier as number) || 1.0;
       specialty = mechanics.specialty as string | undefined;
       srdItems = getSrdItemsForShopType(shopType);
+      console.log('[Stock Route] Inferred from location');
     }
+
+    console.log('[Stock Route] Shop type:', shopType);
+    console.log('[Stock Route] SRD items to stock:', srdItems);
 
     // Stock the shop using our helper
     const result = await stockShopInventory(campaignId, locationId, {

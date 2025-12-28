@@ -26,8 +26,8 @@ const ENTITY_TYPES: { value: EntityType; label: string }[] = [
   { value: 'npc', label: 'NPC' },
   { value: 'location', label: 'Location' },
   { value: 'item', label: 'Item' },
+  { value: 'creature', label: 'Creature' },
   { value: 'faction', label: 'Faction' },
-  { value: 'quest', label: 'Quest' },
   { value: 'other', label: 'Other' },
 ]
 

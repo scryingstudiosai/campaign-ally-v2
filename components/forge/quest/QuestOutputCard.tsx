@@ -1,19 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InteractiveText } from '@/components/forge/InteractiveText';
 import { SelectionPopover } from '@/components/forge/SelectionPopover';
-import { toast } from 'sonner';
 import {
   Scroll,
   Brain,
   ListChecks,
   Gift,
-  Swords,
   Users,
   Clock,
   AlertTriangle,
@@ -21,11 +20,13 @@ import {
   Eye,
   EyeOff,
   ChevronRight,
+  ChevronLeft,
   Sparkles,
   Target,
   Lightbulb,
   Map,
   MessageSquare,
+  Swords,
 } from 'lucide-react';
 import type { ScanResult, Discovery } from '@/types/forge';
 import type {
@@ -33,7 +34,6 @@ import type {
   QuestBrain,
   QuestObjective,
   QuestRewards,
-  QuestRewardItem,
   QuestChain,
   QuestMechanics,
   QuestEncounterSeed,
@@ -63,7 +63,6 @@ interface QuestOutputCardProps {
   onManualDiscovery?: (discovery: Partial<Discovery>) => void;
   onLinkExisting?: (discoveryId: string) => void;
   existingEntities?: Array<{ id: string; name: string; entity_type: string }>;
-  onForgeReward?: (item: QuestRewardItem) => void;
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -89,9 +88,9 @@ export function QuestOutputCard({
   onManualDiscovery,
   onLinkExisting,
   existingEntities,
-  onForgeReward,
 }: QuestOutputCardProps): JSX.Element {
-  const [showLocked, setShowLocked] = useState(false);
+  // DM sees all objectives by default in Forge preview
+  const [showLocked, setShowLocked] = useState(true);
   const [selection, setSelection] = useState<{
     text: string;
     range: Range;
@@ -107,39 +106,6 @@ export function QuestOutputCard({
   const clearSelection = (): void => {
     setSelection(null);
     window.getSelection()?.removeAllRanges();
-  };
-
-  // Forge & Stash a reward item
-  const handleForgeReward = async (item: QuestRewardItem): Promise<void> => {
-    try {
-      const response = await fetch('/api/generate/item', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId,
-          inputs: {
-            name: item.name,
-            dmSlug: item.description || `Reward from quest: ${data.soul?.title || data.name}`,
-            itemType: 'standard',
-            category: item.type || 'let_ai_decide',
-            rarity: item.rarity || 'let_ai_decide',
-            magicalAura: 'let_ai_decide',
-            state: 'stashed',
-            isIdentified: true,
-          },
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to forge item');
-
-      const itemData = await response.json();
-      toast.success(`${item.name} forged and ready to stash!`);
-
-      if (onForgeReward) onForgeReward(item);
-    } catch (error) {
-      toast.error('Failed to forge reward item');
-      console.error('Forge error:', error);
-    }
   };
 
   // Get objective counts
@@ -165,9 +131,19 @@ export function QuestOutputCard({
           </div>
         )}
         {data.chain?.previous_quest && (
-          <div className="text-xs text-slate-500 mb-2">
-            <ChevronRight className="w-3 h-3 inline" /> Follows:{' '}
-            <span className="text-teal-400">{data.chain.previous_quest}</span>
+          <div className="text-xs text-slate-500 mb-2 flex items-center gap-1">
+            <ChevronLeft className="w-3 h-3" />
+            <span>Follows:</span>
+            {data.chain.previous_quest_id ? (
+              <Link
+                href={`/dashboard/campaigns/${campaignId}/memory/${data.chain.previous_quest_id}`}
+                className="text-teal-400 hover:text-teal-300 hover:underline"
+              >
+                {data.chain.previous_quest}
+              </Link>
+            ) : (
+              <span className="text-teal-400">{data.chain.previous_quest}</span>
+            )}
           </div>
         )}
 
@@ -280,7 +256,7 @@ export function QuestOutputCard({
               ) : (
                 <EyeOff className="w-4 h-4 mr-1" />
               )}
-              {showLocked ? 'Showing Locked' : 'Hiding Locked'}
+              {showLocked ? 'All Visible' : 'Player View'}
             </Button>
           </div>
 
@@ -565,7 +541,7 @@ export function QuestOutputCard({
             )}
           </div>
 
-          {/* Item Rewards with Forge & Stash */}
+          {/* Item Rewards - Auto-added on save */}
           {data.rewards?.items && data.rewards.items.length > 0 && (
             <div>
               <h4 className="text-sm font-medium text-slate-400 mb-2">
@@ -606,19 +582,17 @@ export function QuestOutputCard({
                       </div>
                     </div>
 
-                    {/* Forge & Stash Button */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-purple-600 text-purple-400 hover:bg-purple-900/30"
-                      onClick={() => handleForgeReward(item)}
-                    >
-                      <Swords className="w-4 h-4 mr-1" />
-                      Forge & Stash
-                    </Button>
+                    {/* Auto-added indicator */}
+                    <span className="text-xs text-teal-400">
+                      Added on save
+                    </span>
                   </div>
                 ))}
               </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Item rewards will be added to the quest&apos;s inventory when saved.
+                You can then transfer them to players when the quest is completed.
+              </p>
             </div>
           )}
 

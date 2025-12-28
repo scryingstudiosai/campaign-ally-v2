@@ -92,6 +92,8 @@ export default function QuestForgePage(): JSX.Element {
             parentQuestId: input.parentQuestId,
             parentQuestName: input.parentQuestName,
             referencedEntityIds: input.referencedEntityIds,
+            chainContext: input.chainContext, // Arc info for sequel quests
+            arcPlanning: input.arcPlanning,   // Arc planning for new arcs (Part 1)
           },
         }),
       });
@@ -403,7 +405,53 @@ export default function QuestForgePage(): JSX.Element {
       });
 
       if (result.success && result.entity) {
-        const entity = result.entity as { id: string };
+        const entity = result.entity as { id: string; attributes?: Record<string, unknown> };
+
+        // Get input data for arc/chain context
+        const inputData = forge.input as QuestInputData | null;
+        const parentQuestId = inputData?.parentQuestId;
+
+        // CRITICAL: If this is Part 1 of a new arc, set arc_id to this quest's ID
+        // The arc_id wasn't set during generation because we didn't have the ID yet
+        if (inputData?.arcPlanning && !inputData?.chainContext) {
+          try {
+            const existingAttributes = entity.attributes || {};
+            const existingChain = (existingAttributes.chain as Record<string, unknown>) || {};
+
+            await supabase
+              .from('entities')
+              .update({
+                attributes: {
+                  ...existingAttributes,
+                  chain: {
+                    ...existingChain,
+                    arc_id: entity.id, // This quest IS the arc anchor
+                  },
+                },
+              })
+              .eq('id', entity.id);
+            console.log('[QuestForge] Set arc_id for Part 1:', entity.id);
+          } catch (arcError) {
+            console.error('Failed to set arc_id:', arcError);
+          }
+        }
+
+        // Create "leads_to" relationship if this is a sequel
+        if (parentQuestId) {
+          try {
+            await supabase.from('relationships').insert({
+              campaign_id: campaignId,
+              source_id: parentQuestId,
+              target_id: entity.id,
+              relationship_type: 'leads_to',
+              description: 'Sequel quest',
+              is_bidirectional: false,
+            });
+            console.log('[QuestForge] Created sequel relationship:', parentQuestId, '->', entity.id);
+          } catch (relationshipError) {
+            console.error('Failed to create sequel relationship:', relationshipError);
+          }
+        }
 
         // Auto-create relationships with referenced entities
         if (generationReferencedEntities.length > 0) {
@@ -444,8 +492,56 @@ export default function QuestForgePage(): JSX.Element {
     setReviewConflicts([]);
 
     try {
+      console.log('[QuestForge] Input arcPlanning:', input.arcPlanning);
+      console.log('[QuestForge] Input chainContext:', input.chainContext);
+
       const result = await forge.handleGenerate(input);
       if (result.success) {
+        // CRITICAL: If this is a sequel, ensure chain info is correct
+        // The AI was instructed to use the exact arc_name, but we enforce it here as a safeguard
+        if (input.chainContext && forge.output) {
+          const output = forge.output as GeneratedQuest & { chain?: Record<string, unknown> };
+          if (output.chain) {
+            // Enforce inherited arc info - never trust AI to copy exactly
+            output.chain.arc_id = input.chainContext.arc_id;
+            output.chain.arc_name = input.chainContext.arc_name;
+            output.chain.chain_position = input.chainContext.chain_position;
+            output.chain.previous_quest_id = input.chainContext.parent_quest_id;
+            output.chain.previous_quest = input.chainContext.parent_quest_name;
+            console.log('[QuestForge] Enforced inherited chain info:', output.chain);
+          } else {
+            // Create chain if it doesn't exist
+            output.chain = {
+              arc_id: input.chainContext.arc_id,
+              arc_name: input.chainContext.arc_name,
+              chain_position: input.chainContext.chain_position,
+              previous_quest_id: input.chainContext.parent_quest_id,
+              previous_quest: input.chainContext.parent_quest_name,
+              next_quest_hook: null,
+            };
+            console.log('[QuestForge] Created chain with inherited info:', output.chain);
+          }
+        }
+
+        // CRITICAL: If this is Part 1 of a new arc, enforce arc planning values
+        // The API should have set these, but we double-check here as a safeguard
+        if (input.arcPlanning && !input.chainContext && forge.output) {
+          const output = forge.output as GeneratedQuest & { chain?: Record<string, unknown> };
+          if (!output.chain) {
+            output.chain = {};
+          }
+          // Enforce user's arc name if provided
+          if (input.arcPlanning.arc_name) {
+            output.chain.arc_name = input.arcPlanning.arc_name;
+          }
+          // Enforce chain position from arc planning
+          output.chain.chain_position = `Part ${input.arcPlanning.current_part} of ${input.arcPlanning.total_parts}`;
+          output.chain.total_parts = input.arcPlanning.total_parts;
+          output.chain.previous_quest = null;
+          output.chain.previous_quest_id = null;
+          console.log('[QuestForge] Enforced arc planning values:', output.chain);
+        }
+
         toast.success('Quest generated successfully!');
       }
     } catch (error) {

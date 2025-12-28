@@ -15,6 +15,24 @@ import type {
   QuestNpcSeed,
 } from '@/types/living-entity';
 
+// Chain context for sequel quests - anchored to the first quest in the chain
+interface ChainContext {
+  arc_id: string;
+  arc_name: string;
+  chain_position: string;
+  parent_quest_id: string;
+  parent_quest_name: string;
+}
+
+// Arc planning for new arcs (Part 1)
+interface ArcPlanning {
+  arc_name: string | null;
+  total_parts: number;
+  current_part: number;
+  arc_beat: string;
+  arc_beat_description: string;
+}
+
 interface QuestInputRequest {
   name?: string;
   questType: QuestSubType;
@@ -29,6 +47,8 @@ interface QuestInputRequest {
   parentQuestId?: string;
   parentQuestName?: string;
   referencedEntityIds?: string[];
+  chainContext?: ChainContext; // Arc info for sequel quests
+  arcPlanning?: ArcPlanning;   // Arc planning for new arcs (Part 1)
 }
 
 interface GeneratedQuest {
@@ -57,6 +77,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { campaignId, inputs } = body as { campaignId: string; inputs: QuestInputRequest };
+
+    // Debug: Log incoming arc planning data
+    console.log('[Quest API] Received arcPlanning:', inputs?.arcPlanning);
+    console.log('[Quest API] Received chainContext:', inputs?.chainContext);
 
     if (!campaignId || !inputs?.concept) {
       return NextResponse.json(
@@ -113,8 +137,13 @@ export async function POST(request: NextRequest) {
       parentQuest = { name: inputs.parentQuestName };
     }
 
-    // Build prompts
-    const systemPrompt = buildQuestSystemPrompt(campaignContext, entityContext, parentQuest);
+    // Build prompts - pass chainContext for inherited arc info
+    const systemPrompt = buildQuestSystemPrompt(
+      campaignContext,
+      entityContext,
+      parentQuest,
+      inputs.chainContext // Pass chain context for inherited arc info
+    );
 
     const questInput: QuestInput = {
       name: inputs.name,
@@ -132,6 +161,7 @@ export async function POST(request: NextRequest) {
       level: inputs.level,
       parentQuest: parentQuest ? { id: inputs.parentQuestId || '', name: parentQuest.name, summary: parentQuest.summary } : undefined,
       referencedEntityIds: inputs.referencedEntityIds,
+      chainContext: inputs.chainContext, // Pass chain context
     };
 
     const userPrompt = buildQuestUserPrompt(questInput);
@@ -154,6 +184,38 @@ export async function POST(request: NextRequest) {
     }
 
     const generatedQuest: GeneratedQuest = JSON.parse(responseContent);
+
+    // CRITICAL: Enforce chain context for sequel quests
+    // The AI may not include the exact arc_id/previous_quest_id, so we enforce it here
+    if (inputs.chainContext) {
+      if (!generatedQuest.chain) {
+        generatedQuest.chain = {} as QuestChain;
+      }
+      // Enforce all inherited chain data
+      generatedQuest.chain.arc_id = inputs.chainContext.arc_id;
+      generatedQuest.chain.arc_name = inputs.chainContext.arc_name;
+      generatedQuest.chain.chain_position = inputs.chainContext.chain_position;
+      generatedQuest.chain.previous_quest_id = inputs.chainContext.parent_quest_id;
+      generatedQuest.chain.previous_quest = inputs.chainContext.parent_quest_name;
+      console.log('[Quest API] Enforced chain context:', generatedQuest.chain);
+    }
+
+    // CRITICAL: Set up chain data for new arcs (Part 1)
+    // When arcPlanning is provided, this is the first quest in a planned arc
+    if (inputs.arcPlanning && !inputs.chainContext) {
+      if (!generatedQuest.chain) {
+        generatedQuest.chain = {} as QuestChain;
+      }
+      // Set arc info - arc_id will be set to the quest's ID when saved
+      // For now, we mark it as needing the arc_id to be set on save
+      generatedQuest.chain.arc_name = inputs.arcPlanning.arc_name || generatedQuest.soul?.title || generatedQuest.name;
+      generatedQuest.chain.chain_position = `Part ${inputs.arcPlanning.current_part} of ${inputs.arcPlanning.total_parts}`;
+      generatedQuest.chain.total_parts = inputs.arcPlanning.total_parts;
+      // No previous quest for Part 1
+      generatedQuest.chain.previous_quest = null;
+      generatedQuest.chain.previous_quest_id = null;
+      console.log('[Quest API] Set up new arc chain data:', generatedQuest.chain);
+    }
 
     // Track generation in database (for analytics)
     const { error: genError } = await supabase.from('generations').insert({

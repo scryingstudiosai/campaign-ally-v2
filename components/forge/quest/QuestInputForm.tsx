@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,9 @@ import {
   Link2,
   X,
   ChevronRight,
+  BookOpen,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import type { PreValidationResult, BaseForgeInput } from '@/types/forge';
 import type { QuestSubType } from '@/types/living-entity';
 import { PreValidationAlert } from '@/components/forge/PreValidationAlert';
@@ -38,6 +41,24 @@ interface Entity {
   entity_type: string;
   summary?: string;
   dm_slug?: string;
+}
+
+// Chain context for sequel quests - anchored to the first quest in the chain
+export interface ChainContext {
+  arc_id: string;         // UUID of the first quest (anchor)
+  arc_name: string;       // Story arc name - inherited, never changes
+  chain_position: string; // "Part 2 of 3"
+  parent_quest_id: string;
+  parent_quest_name: string;
+}
+
+// Arc planning for new arcs (Part 1)
+export interface ArcPlanning {
+  arc_name: string | null;  // User-provided or AI-generated
+  total_parts: number;
+  current_part: number;
+  arc_beat: string;
+  arc_beat_description: string;
 }
 
 export interface QuestInputData extends BaseForgeInput {
@@ -54,6 +75,8 @@ export interface QuestInputData extends BaseForgeInput {
   parentQuestId?: string;
   parentQuestName?: string;
   referencedEntityIds?: string[];
+  chainContext?: ChainContext; // Arc info for sequel quests
+  arcPlanning?: ArcPlanning;   // Arc planning for new arcs
 }
 
 interface QuestInputFormProps {
@@ -88,6 +111,57 @@ const CONCEPT_SEEDS = [
   'Escort a prisoner to justice',
 ];
 
+// Helper functions for arc structure
+function getArcBeatName(part: number, total: number): string {
+  if (total === 3) {
+    return ['Setup', 'Confrontation', 'Resolution'][part - 1] || `Part ${part}`;
+  }
+  if (total === 5) {
+    return ['Exposition', 'Rising Action', 'Climax', 'Falling Action', 'Resolution'][part - 1] || `Part ${part}`;
+  }
+  // Generic for custom
+  if (part === 1) return 'Beginning';
+  if (part === total) return 'Finale';
+  if (part === Math.ceil(total / 2)) return 'Midpoint';
+  return `Part ${part}`;
+}
+
+function getArcBeatDescription(part: number, total: number): string {
+  if (total === 3) {
+    const descriptions = [
+      'Introduce the conflict, establish stakes, and hook the players into the story.',
+      'Escalate the conflict, introduce complications, and raise the stakes dramatically.',
+      'Bring the story to its climax and provide a satisfying resolution.',
+    ];
+    return descriptions[part - 1] || '';
+  }
+  if (total === 5) {
+    const descriptions = [
+      'Introduce characters, setting, and plant the seeds of conflict.',
+      'Complications arise as heroes pursue their goal. Stakes increase.',
+      'The turning point — highest tension, major confrontation or revelation.',
+      'Consequences of the climax unfold. The path to resolution becomes clear.',
+      'Final confrontation and conclusion. Resolve the central conflict.',
+    ];
+    return descriptions[part - 1] || '';
+  }
+  // Generic
+  const percentage = part / total;
+  if (percentage <= 0.2) return 'Early arc — focus on setup and introducing the conflict.';
+  if (percentage <= 0.4) return 'Rising action — escalate stakes and introduce complications.';
+  if (percentage <= 0.6) return 'Midpoint — major turning point or revelation.';
+  if (percentage <= 0.8) return 'Falling action — consequences unfold, building to finale.';
+  return 'Resolution — bring the arc to a satisfying conclusion.';
+}
+
+function parsePosition(position: string): { part: number; total: number } {
+  const match = position?.match(/Part (\d+) of (\d+)/);
+  if (match) {
+    return { part: parseInt(match[1]), total: parseInt(match[2]) };
+  }
+  return { part: 1, total: 3 };
+}
+
 export function QuestInputForm({
   onSubmit,
   isLocked,
@@ -97,17 +171,65 @@ export function QuestInputForm({
   campaignId,
   initialValues,
 }: QuestInputFormProps): JSX.Element {
-  // Core fields
-  const [name, setName] = useState(initialValues?.name || '');
-  const [concept, setConcept] = useState(initialValues?.concept || '');
-  const [questType, setQuestType] = useState<QuestSubType>(initialValues?.questType || 'side');
+  const searchParams = useSearchParams();
+
+  // Check for sequel params from URL
+  const urlParentQuestId = searchParams.get('parentQuestId');
+  const urlParentQuestName = searchParams.get('parentQuestName');
+  const urlConcept = searchParams.get('concept');
+  const urlChainPosition = searchParams.get('chainPosition');
+  // Arc info - anchored to the first quest in the chain
+  const urlArcId = searchParams.get('arcId');
+  const urlArcName = searchParams.get('arcName');
+
+  // Determine if we're in sequel mode
+  const isSequelMode = Boolean(urlParentQuestId && urlParentQuestName);
+
+  // Build chain context from URL params if this is a sequel
+  const chainContext: ChainContext | undefined = isSequelMode && urlParentQuestId && urlParentQuestName
+    ? {
+        arc_id: urlArcId || urlParentQuestId, // Default to parent if no arc_id
+        arc_name: urlArcName || urlParentQuestName, // Default to parent name if no arc_name
+        chain_position: urlChainPosition || 'Part 2 of ?',
+        parent_quest_id: urlParentQuestId,
+        parent_quest_name: urlParentQuestName,
+      }
+    : undefined;
+
+  // Core fields - pre-fill from URL params if in sequel mode
+  const [name, setName] = useState(() => {
+    // Don't pre-fill name for sequels - let AI create a unique title
+    // The arc name and position are tracked separately in chainContext
+    return initialValues?.name || '';
+  });
+  const [concept, setConcept] = useState(() => {
+    if (isSequelMode && urlConcept) {
+      return urlConcept;
+    }
+    return initialValues?.concept || '';
+  });
+  const [questType, setQuestType] = useState<QuestSubType>(() => {
+    // If sequel mode, default to main quest (sequels are usually main quests)
+    if (isSequelMode) return 'main';
+    return initialValues?.questType || 'side';
+  });
   const [level, setLevel] = useState('1-4');
 
   // Linked entities
   const [questGiver, setQuestGiver] = useState<Entity | null>(null);
   const [location, setLocation] = useState<Entity | null>(null);
   const [faction, setFaction] = useState<Entity | null>(null);
-  const [parentQuest, setParentQuest] = useState<Entity | null>(null);
+  const [parentQuest, setParentQuest] = useState<Entity | null>(() => {
+    // Pre-fill parent quest from URL if in sequel mode
+    if (isSequelMode && urlParentQuestId && urlParentQuestName) {
+      return {
+        id: urlParentQuestId,
+        name: urlParentQuestName,
+        entity_type: 'quest',
+      };
+    }
+    return null;
+  });
 
   // Entity search
   const [npcs, setNpcs] = useState<Entity[]>([]);
@@ -124,6 +246,36 @@ export function QuestInputForm({
 
   // Context tracking
   const [referencedEntities, setReferencedEntities] = useState<{ id: string; name: string }[]>([]);
+
+  // Arc planning state (for new arcs, not sequels)
+  const [isPartOfArc, setIsPartOfArc] = useState(false);
+  const [arcName, setArcName] = useState('');
+  const [arcStructure, setArcStructure] = useState<'3' | '5' | 'custom'>('3');
+  const [customParts, setCustomParts] = useState(3);
+  const [isGeneratingArcName, setIsGeneratingArcName] = useState(false);
+
+  // Generate arc name from AI
+  const handleGenerateArcName = async (): Promise<void> => {
+    if (!concept) return;
+
+    setIsGeneratingArcName(true);
+    try {
+      const response = await fetch('/api/generate/arc-name', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ concept }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setArcName(data.arcName);
+      }
+    } catch (error) {
+      console.error('Failed to generate arc name:', error);
+    } finally {
+      setIsGeneratingArcName(false);
+    }
+  };
 
   // Fetch entities
   useEffect(() => {
@@ -180,6 +332,18 @@ export function QuestInputForm({
     e.preventDefault();
     if (!concept.trim()) return;
 
+    // Calculate arc planning info if starting a new arc
+    const totalParts = arcStructure === 'custom' ? customParts : parseInt(arcStructure);
+    const arcPlanningData: ArcPlanning | undefined = isPartOfArc && !isSequelMode
+      ? {
+          arc_name: arcName.trim() || null,
+          total_parts: totalParts,
+          current_part: 1,
+          arc_beat: getArcBeatName(1, totalParts),
+          arc_beat_description: getArcBeatDescription(1, totalParts),
+        }
+      : undefined;
+
     onSubmit({
       name: name.trim() || undefined,
       questType,
@@ -194,6 +358,8 @@ export function QuestInputForm({
       parentQuestId: parentQuest?.id,
       parentQuestName: parentQuest?.name,
       referencedEntityIds: referencedEntities.map((e) => e.id),
+      chainContext, // Include arc info for sequel quests
+      arcPlanning: arcPlanningData, // Include arc planning for new arcs
     });
   };
 
@@ -225,6 +391,30 @@ export function QuestInputForm({
           onProceedAnyway={onProceedAnyway || (() => {})}
           onDismiss={onDismissValidation || (() => {})}
         />
+      )}
+
+      {/* Sequel Mode Banner */}
+      {isSequelMode && chainContext && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          <div className="flex items-center gap-2 text-amber-400 font-medium mb-2">
+            <Link2 className="w-4 h-4" />
+            <span>Forging Sequel</span>
+          </div>
+          {/* Arc Breadcrumb */}
+          <div className="flex items-center gap-1 text-sm mb-2">
+            <span className="text-amber-400">{chainContext.arc_name}</span>
+            <ChevronRight className="w-3 h-3 text-slate-600" />
+            <span className="text-slate-400">{chainContext.chain_position}</span>
+          </div>
+          <p className="text-sm text-slate-300">
+            Continuing from: <span className="text-cyan-400">{urlParentQuestName}</span>
+          </p>
+          {urlConcept && (
+            <p className="text-xs text-slate-400 mt-1 italic">
+              Hook: &quot;{urlConcept.substring(0, 100)}{urlConcept.length > 100 ? '...' : ''}&quot;
+            </p>
+          )}
+        </div>
       )}
 
       {/* Quest Name (Optional) */}
@@ -497,6 +687,140 @@ export function QuestInputForm({
           Describe the core idea, hook, or situation for this quest
         </p>
       </div>
+
+      {/* Arc Structure Planning - Only show when starting new arc (not sequel) */}
+      {!isSequelMode && (
+        <div className="space-y-4 p-4 border border-amber-700/30 bg-amber-950/10 rounded-lg">
+          <h3 className="text-amber-400 font-medium flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Story Arc Planning
+          </h3>
+
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={isPartOfArc}
+              onCheckedChange={setIsPartOfArc}
+              disabled={isLocked}
+            />
+            <Label>This quest starts a story arc</Label>
+          </div>
+
+          {isPartOfArc && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+              {/* Arc Name with Generate Button */}
+              <div>
+                <Label>Arc Name</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={arcName}
+                    onChange={(e) => setArcName(e.target.value)}
+                    placeholder="The Dragon's Conspiracy, The Lost Kingdom..."
+                    className="bg-slate-900/50 border-slate-700 flex-1"
+                    disabled={isLocked}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateArcName}
+                    disabled={isGeneratingArcName || !concept || isLocked}
+                    className="border-amber-700 text-amber-400 hover:bg-amber-900/20"
+                    title={!concept ? 'Enter a quest concept first' : 'Generate arc name'}
+                  >
+                    {isGeneratingArcName ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  This name will carry through all quests in the arc
+                </p>
+              </div>
+
+              {/* Arc Structure */}
+              <div>
+                <Label>Arc Structure</Label>
+                <Select
+                  value={arcStructure}
+                  onValueChange={(v) => setArcStructure(v as '3' | '5' | 'custom')}
+                  disabled={isLocked}
+                >
+                  <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">3-Act Structure</span>
+                        <span className="text-xs text-slate-500">Setup → Confrontation → Resolution</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="5">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">5-Act Structure</span>
+                        <span className="text-xs text-slate-500">Exposition → Rising → Climax → Falling → Resolution</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="custom">
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">Custom Length</span>
+                        <span className="text-xs text-slate-500">Choose your own number of parts</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Custom Parts Input */}
+              {arcStructure === 'custom' && (
+                <div>
+                  <Label>Number of Parts</Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={10}
+                    value={customParts}
+                    onChange={(e) => setCustomParts(Math.max(2, Math.min(10, parseInt(e.target.value) || 3)))}
+                    className="bg-slate-900/50 border-slate-700 w-24"
+                    disabled={isLocked}
+                  />
+                </div>
+              )}
+
+              {/* Arc Beat Preview */}
+              <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                <p className="text-xs text-slate-400 mb-2">This quest will be:</p>
+                <p className="text-amber-400 font-medium">
+                  Part 1 of {arcStructure === 'custom' ? customParts : arcStructure} — {getArcBeatName(1, arcStructure === 'custom' ? customParts : parseInt(arcStructure))}
+                </p>
+                <p className="text-sm text-slate-300 mt-2">
+                  {getArcBeatDescription(1, arcStructure === 'custom' ? customParts : parseInt(arcStructure))}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* For sequels, show inherited arc info (read-only) */}
+      {isSequelMode && chainContext && (
+        <div className="p-4 border border-amber-700/30 bg-amber-950/10 rounded-lg">
+          <h3 className="text-amber-400 font-medium flex items-center gap-2 mb-2">
+            <BookOpen className="w-4 h-4" />
+            Continuing Story Arc
+          </h3>
+          <p className="text-slate-200 font-medium">{chainContext.arc_name}</p>
+          <p className="text-amber-400 text-sm mt-1">{chainContext.chain_position}</p>
+          <p className="text-sm text-slate-400 mt-2">
+            {getArcBeatDescription(
+              parsePosition(chainContext.chain_position).part,
+              parsePosition(chainContext.chain_position).total
+            )}
+          </p>
+        </div>
+      )}
 
       {/* Quick Reference */}
       <QuickReference

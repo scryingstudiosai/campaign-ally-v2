@@ -9,6 +9,8 @@ import type {
   HistoryEntry,
 } from '@/types/forge'
 import type { ForgeFactOutput } from '@/types/living-entity'
+// Import pure helper functions (no server imports) for shop detection
+import { isLikelyShop, inferShopType } from '@/lib/srd/shop-helpers'
 
 export interface StubCreationResult {
   discoveryId: string
@@ -433,6 +435,40 @@ export async function saveForgedEntity(
     } else {
       console.log('[EntityMinter] No NPC stubs found, skipping NPC reference update')
     }
+
+    // For location forge, check if this is a shop and mark it in mechanics
+    const locationData = {
+      name: savedEntity.name as string | undefined,
+      sub_type: (output.sub_type as string) || undefined,
+      mechanics: (output.mechanics as Record<string, unknown>) || undefined,
+    }
+
+    if (isLikelyShop(locationData)) {
+      console.log('[EntityMinter] Location detected as shop, marking in mechanics...')
+      const shopType = inferShopType(locationData)
+      const priceModifier = (locationData.mechanics?.price_modifier as number) || 1.0
+
+      console.log('[EntityMinter] Shop type:', shopType)
+
+      // Mark the location as a shop in its mechanics
+      // Note: DM can use "Stock Shelves" button on the entity page to add inventory
+      const existingMechanics = (savedEntity.mechanics as Record<string, unknown>) || {}
+      await supabase
+        .from('entities')
+        .update({
+          mechanics: {
+            ...existingMechanics,
+            is_shop: true,
+            shop_type: shopType,
+            price_modifier: priceModifier,
+          },
+        })
+        .eq('id', savedEntity.id)
+
+      console.log('[EntityMinter] Marked location as shop - DM can use Stock Shelves button to add inventory')
+    } else {
+      console.log('[EntityMinter] Location is not a shop, skipping shop marking')
+    }
   } else {
     console.log('[EntityMinter] Not a location forge, skipping NPC reference update')
   }
@@ -461,6 +497,129 @@ export async function saveForgedEntity(
       }
     } else {
       console.log('[EntityMinter] No treasure items to process')
+    }
+  }
+
+  // For quest forge, process reward items into inventory
+  if (forgeType === 'quest') {
+    console.log('[EntityMinter] Quest forge detected, checking for reward items...')
+    console.log('[EntityMinter] Full output.rewards:', JSON.stringify(output.rewards, null, 2))
+
+    // Rewards can be in output.rewards or in attributes.rewards
+    const rewards = (output.rewards || (savedEntity.attributes as Record<string, unknown>)?.rewards) as {
+      items?: Array<{ name: string; type?: string; rarity?: string; description?: string; quantity?: number }>
+    } | undefined
+    const rewardItems = rewards?.items || []
+    console.log('[EntityMinter] Reward items to process:', rewardItems)
+
+    if (rewardItems.length > 0) {
+      const questTitle = (output.soul as Record<string, unknown>)?.title as string || savedEntity.name as string
+      console.log('[EntityMinter] Quest title for rewards:', questTitle)
+
+      // Process each reward item individually for better error isolation
+      let srdCount = 0
+      let customCount = 0
+      const errors: string[] = []
+
+      for (const rewardItem of rewardItems) {
+        const itemName = rewardItem.name
+        const quantity = rewardItem.quantity || 1
+        console.log(`[EntityMinter] Processing reward: ${itemName} (x${quantity})`)
+
+        try {
+          // Try SRD match first using the same logic as processLootToInventory
+          const { data: srdMatch } = await supabase
+            .from('srd_items')
+            .select('id, name, rarity, value_gp, item_type')
+            .ilike('name', itemName)
+            .limit(1)
+            .single()
+
+          if (srdMatch) {
+            console.log(`[EntityMinter] SRD match found: ${srdMatch.name}`)
+            const { error: insertError } = await supabase.from('inventory_instances').insert({
+              campaign_id: campaignId,
+              srd_item_id: srdMatch.id,
+              owner_type: 'quest',
+              owner_id: savedEntity.id,
+              quantity: quantity,
+              acquired_from: `Reward: ${questTitle}`,
+              notes: rewardItem.description || null,
+            })
+
+            if (insertError) {
+              console.error(`[EntityMinter] Insert error for ${itemName}:`, insertError)
+              errors.push(`${itemName}: ${insertError.message}`)
+            } else {
+              srdCount++
+              console.log(`[EntityMinter] ✅ SRD item ${srdMatch.name} added to quest inventory`)
+            }
+          } else {
+            // Create custom item entity as stub
+            console.log(`[EntityMinter] No SRD match, creating custom item: ${itemName}`)
+            const { data: itemEntity, error: entityError } = await supabase
+              .from('entities')
+              .insert({
+                campaign_id: campaignId,
+                name: itemName,
+                entity_type: 'item',
+                sub_type: rewardItem.type || 'wondrous item',
+                forge_status: 'stub',
+                summary: rewardItem.description || 'Quest reward item',
+                mechanics: {
+                  rarity: rewardItem.rarity || 'uncommon',
+                  quest_reward: true,
+                  source_quest_id: savedEntity.id,
+                },
+                attributes: {
+                  is_stub: true,
+                  needs_review: true,
+                  source_entity_id: savedEntity.id,
+                  source_entity_name: questTitle,
+                  stub_context: rewardItem.description || `Quest reward from ${questTitle}`,
+                },
+              })
+              .select('id')
+              .single()
+
+            if (entityError) {
+              console.error(`[EntityMinter] Entity creation error for ${itemName}:`, entityError)
+              errors.push(`${itemName}: ${entityError.message}`)
+              continue
+            }
+
+            if (itemEntity) {
+              const { error: instanceError } = await supabase.from('inventory_instances').insert({
+                campaign_id: campaignId,
+                custom_entity_id: itemEntity.id,
+                owner_type: 'quest',
+                owner_id: savedEntity.id,
+                quantity: quantity,
+                acquired_from: `Reward: ${questTitle}`,
+                notes: rewardItem.description || null,
+              })
+
+              if (instanceError) {
+                console.error(`[EntityMinter] Inventory instance error for ${itemName}:`, instanceError)
+                errors.push(`${itemName}: ${instanceError.message}`)
+              } else {
+                customCount++
+                console.log(`[EntityMinter] ✅ Custom item ${itemName} created and added to quest inventory`)
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`[EntityMinter] Exception processing ${itemName}:`, err)
+          errors.push(`${itemName}: ${String(err)}`)
+        }
+      }
+
+      console.log(`[EntityMinter] Quest reward processing complete: ${srdCount} SRD, ${customCount} custom items`)
+      if (errors.length > 0) {
+        console.error('[EntityMinter] Quest reward errors:', errors)
+      }
+    } else {
+      console.log('[EntityMinter] No reward items to process (rewards.items is empty or undefined)')
     }
   }
 
@@ -667,6 +826,9 @@ function buildEntityData(
     case 'quest':
       return {
         ...baseData,
+        // Use soul.title for the unique quest name (arc name is in chain.arc_name)
+        name: (output.soul as Record<string, unknown>)?.title as string ||
+          output.name as string || 'Untitled Quest',
         // Brain/Soul/Mechanics architecture columns
         sub_type: (output.sub_type as string) || 'side',
         brain: output.brain || {},
@@ -884,7 +1046,7 @@ export async function processLootToInventory(
   ownerId: string,
   ownerName: string,
   loot: LootItem[] | string[],
-  ownerType: 'npc' | 'creature' = 'npc'
+  ownerType: 'npc' | 'creature' | 'quest' = 'npc'
 ): Promise<LootProcessingResult> {
   const result: LootProcessingResult = { srdItems: 0, customItems: 0, errors: [] }
 

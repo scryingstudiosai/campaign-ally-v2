@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 
+// Re-export pure helper functions for backward compatibility
+export { isLikelyShop, inferShopType, getSrdItemsForShopType } from './shop-helpers';
+
 export interface SrdItemBasic {
   id: string;
   name: string;
@@ -9,131 +12,90 @@ export interface SrdItemBasic {
   weight: number | null;
 }
 
+// Rarities to exclude when looking for mundane items
+const RARE_RARITIES = ['rare', 'very rare', 'legendary', 'artifact'];
+
 /**
  * Find an SRD item by name (case-insensitive)
+ * Prefers exact matches, then shortest fuzzy match (to avoid "Oil" matching "Oil of Etherealness")
+ *
+ * @param name - The item name to search for
+ * @param options.excludeRare - If true, exclude rare, very rare, legendary, and artifact items
  */
-export async function findSrdItemByName(name: string): Promise<SrdItemBasic | null> {
+export async function findSrdItemByName(
+  name: string,
+  options?: { excludeRare?: boolean }
+): Promise<SrdItemBasic | null> {
   const supabase = await createClient();
+  const excludeRare = options?.excludeRare ?? false;
 
   // Try exact match first (case-insensitive)
-  const { data: exactMatch } = await supabase
+  let exactQuery = supabase
     .from('srd_items')
     .select('id, name, item_type, rarity, value_gp, weight')
-    .ilike('name', name)
-    .limit(1)
-    .single();
+    .ilike('name', name);
 
-  if (exactMatch) return exactMatch;
-
-  // Try fuzzy match (contains)
-  const { data: fuzzyMatch } = await supabase
-    .from('srd_items')
-    .select('id, name, item_type, rarity, value_gp, weight')
-    .ilike('name', `%${name}%`)
-    .limit(1)
-    .single();
-
-  return fuzzyMatch || null;
-}
-
-/**
- * Get default SRD items for a shop type
- */
-export function getSrdItemsForShopType(shopType: string): string[] {
-  const normalizedType = shopType.toLowerCase();
-
-  const shopInventories: Record<string, string[]> = {
-    blacksmith: [
-      'Longsword', 'Shortsword', 'Dagger', 'Handaxe', 'Greataxe',
-      'Chain Mail', 'Scale Mail', 'Shield', 'Warhammer', 'Mace'
-    ],
-    weaponsmith: [
-      'Longsword', 'Greatsword', 'Rapier', 'Scimitar', 'Shortbow',
-      'Longbow', 'Crossbow, Light', 'Crossbow, Heavy', 'Javelin', 'Spear'
-    ],
-    armorer: [
-      'Chain Mail', 'Scale Mail', 'Plate', 'Leather', 'Studded Leather',
-      'Shield', 'Half Plate', 'Breastplate', 'Ring Mail', 'Hide'
-    ],
-    apothecary: [
-      'Potion of Healing', 'Antitoxin', "Healer's Kit", 'Herbalism Kit',
-      'Component Pouch', 'Vial'
-    ],
-    alchemist: [
-      'Potion of Healing', "Alchemist's Fire", 'Acid', 'Antitoxin',
-      'Oil', 'Holy Water', "Alchemist's Supplies"
-    ],
-    general: [
-      'Backpack', 'Bedroll', 'Rope, Hempen (50 feet)', 'Torch',
-      'Rations (1 day)', 'Waterskin', 'Tinderbox', 'Lantern, Hooded', 'Oil'
-    ],
-    tavern: [
-      'Rations (1 day)', 'Waterskin', 'Wine, Common', 'Ale'
-    ],
-    magic: [
-      'Potion of Healing', 'Component Pouch', 'Spellbook',
-      'Arcane Focus', 'Crystal', 'Orb'
-    ],
-    jeweler: [
-      'Ring', 'Amulet', 'Fine Clothes', 'Signet Ring'
-    ],
-    fletcher: [
-      'Shortbow', 'Longbow', 'Crossbow, Light', 'Crossbow, Heavy',
-      'Arrows (20)', 'Crossbow Bolts (20)', 'Quiver'
-    ],
-    provisioner: [
-      'Rations (1 day)', 'Waterskin', 'Tinderbox', 'Torch',
-      'Rope, Hempen (50 feet)', 'Grappling Hook', 'Piton'
-    ],
-  };
-
-  // Find matching shop type
-  for (const [key, items] of Object.entries(shopInventories)) {
-    if (normalizedType.includes(key) || key.includes(normalizedType)) {
-      return items;
-    }
+  if (excludeRare) {
+    // Exclude rare+ items and magic item indicators
+    exactQuery = exactQuery
+      .not('rarity', 'in', `(${RARE_RARITIES.map(r => `"${r}"`).join(',')})`)
+      .not('name', 'ilike', '%+1%')
+      .not('name', 'ilike', '%+2%')
+      .not('name', 'ilike', '%+3%');
   }
 
-  // Default to general store items
-  return shopInventories.general;
+  const { data: exactMatch } = await exactQuery.limit(1).single();
+
+  if (exactMatch) {
+    console.log(`[SRD Lookup] Exact match for "${name}":`, exactMatch.name, `(${exactMatch.rarity})`);
+    return exactMatch;
+  }
+
+  // Try fuzzy match (contains) - get multiple matches and prefer shortest name
+  // This prevents "Oil" from matching "Oil of Etherealness" when "Oil (flask)" exists
+  let fuzzyQuery = supabase
+    .from('srd_items')
+    .select('id, name, item_type, rarity, value_gp, weight')
+    .ilike('name', `%${name}%`);
+
+  if (excludeRare) {
+    // Exclude rare+ items and magic item indicators
+    fuzzyQuery = fuzzyQuery
+      .not('rarity', 'in', `(${RARE_RARITIES.map(r => `"${r}"`).join(',')})`)
+      .not('name', 'ilike', '%+1%')
+      .not('name', 'ilike', '%+2%')
+      .not('name', 'ilike', '%+3%')
+      .not('name', 'ilike', '% of %'); // Exclude "X of Y" pattern (often magic items)
+  }
+
+  const { data: fuzzyMatches } = await fuzzyQuery.limit(20);
+
+  if (fuzzyMatches && fuzzyMatches.length > 0) {
+    // Sort by name length (prefer shorter/simpler matches) and return the best match
+    // Also prefer items that start with the search term
+    // Also prefer common/uncommon items over rare ones
+    fuzzyMatches.sort((a, b) => {
+      // Prefer items that start with the search term
+      const aStartsWith = a.name.toLowerCase().startsWith(name.toLowerCase()) ? 0 : 1;
+      const bStartsWith = b.name.toLowerCase().startsWith(name.toLowerCase()) ? 0 : 1;
+      if (aStartsWith !== bStartsWith) return aStartsWith - bStartsWith;
+
+      // Prefer common/no rarity items
+      const aIsCommon = !a.rarity || a.rarity === 'common' ? 0 : 1;
+      const bIsCommon = !b.rarity || b.rarity === 'common' ? 0 : 1;
+      if (aIsCommon !== bIsCommon) return aIsCommon - bIsCommon;
+
+      // Prefer shorter names (simpler items)
+      return a.name.length - b.name.length;
+    });
+
+    const selected = fuzzyMatches[0];
+    console.log(`[SRD Lookup] Fuzzy match for "${name}":`, selected.name, `(${selected.rarity})`,
+      `- had ${fuzzyMatches.length} candidates`);
+    return selected;
+  }
+
+  console.log(`[SRD Lookup] No match found for "${name}" (excludeRare: ${excludeRare})`);
+  return null;
 }
 
-/**
- * Infer shop type from location name/sub_type
- */
-export function inferShopType(location: { name?: string; sub_type?: string }): string {
-  const text = `${location.name || ''} ${location.sub_type || ''}`.toLowerCase();
-
-  if (text.includes('blacksmith') || text.includes('forge') || text.includes('smith')) return 'blacksmith';
-  if (text.includes('apothecary') || text.includes('potion') || text.includes('herb')) return 'apothecary';
-  if (text.includes('alchemist')) return 'alchemist';
-  if (text.includes('armor')) return 'armorer';
-  if (text.includes('weapon')) return 'weaponsmith';
-  if (text.includes('magic') || text.includes('arcane') || text.includes('wizard')) return 'magic';
-  if (text.includes('jewel') || text.includes('gem')) return 'jeweler';
-  if (text.includes('tavern') || text.includes('inn') || text.includes('pub')) return 'tavern';
-  if (text.includes('fletcher') || text.includes('bow') || text.includes('arrow')) return 'fletcher';
-  if (text.includes('provision') || text.includes('supply') || text.includes('outfitter')) return 'provisioner';
-
-  return 'general';
-}
-
-/**
- * Check if a location is likely a shop based on keywords
- */
-export function isLikelyShop(location: { name?: string; sub_type?: string; mechanics?: Record<string, unknown> }): boolean {
-  // If explicitly marked as shop
-  if (location.mechanics?.is_shop) return true;
-
-  const shopKeywords = [
-    'shop', 'store', 'merchant', 'market', 'tavern', 'inn', 'smithy',
-    'blacksmith', 'apothecary', 'armorer', 'weaponsmith', 'general store',
-    'magic shop', 'alchemist', 'herbalist', 'jeweler', 'trader', 'vendor',
-    'emporium', 'bazaar', 'trading post', 'provisioner', 'outfitter',
-    'fletcher', 'bowyer', 'tanner', 'leatherworker', 'tailor'
-  ];
-
-  const text = `${location.name || ''} ${location.sub_type || ''}`.toLowerCase();
-
-  return shopKeywords.some(keyword => text.includes(keyword));
-}

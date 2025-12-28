@@ -38,6 +38,7 @@ import { QuestBrainCard } from '@/components/entity/QuestBrainCard'
 import { QuestObjectivesCard } from '@/components/entity/QuestObjectivesCard'
 import { QuestRewardsCard } from '@/components/entity/QuestRewardsCard'
 import { QuestChainCard } from '@/components/entity/QuestChainCard'
+import { TavernMenuCard } from '@/components/entity/TavernMenuCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
 import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, NpcMechanics, QuestBrain, QuestSoul, QuestObjective, QuestRewards, QuestChain, isNpcBrain } from '@/types/living-entity'
@@ -62,9 +63,16 @@ import {
   Calendar,
   Wand2,
   Heart,
+  Beer,
+  ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { renderWithBold } from '@/lib/text-utils'
+
+// Disable all caching - always fetch fresh data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 interface PageProps {
   params: { id: string; entityId: string }
@@ -128,6 +136,15 @@ export default async function EntityDetailPage({ params }: PageProps) {
   if (entityError || !entity) {
     notFound()
   }
+
+  // DEBUG: Log what we fetched from database
+  console.log('=== DETAIL PAGE DEBUG ===');
+  console.log('entity.id:', entity.id);
+  console.log('entity.name:', entity.name);
+  console.log('entity.summary:', entity.summary);
+  console.log('entity.dm_slug:', entity.dm_slug);
+  console.log('entity.description:', entity.description?.slice(0, 100));
+  console.log('Timestamp:', new Date().toISOString());
 
   // Fetch relationships
   const { data: rawRelationships } = await supabase
@@ -292,6 +309,23 @@ export default async function EntityDetailPage({ params }: PageProps) {
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
+              {/* Quest Chain Breadcrumb - above title for arc context */}
+              {isQuest && questChain?.arc_name && (
+                <div className="flex items-center gap-2 text-sm mb-2">
+                  {questChain.arc_id ? (
+                    <Link
+                      href={`/dashboard/campaigns/${params.id}/memory/${questChain.arc_id}`}
+                      className="text-amber-400 hover:text-amber-300 transition-colors"
+                    >
+                      {questChain.arc_name}
+                    </Link>
+                  ) : (
+                    <span className="text-amber-400">{questChain.arc_name}</span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                  <span className="text-slate-400">{questChain.chain_position || 'Part 1'}</span>
+                </div>
+              )}
               <h1 className="text-3xl font-bold">{entity.name}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-2">
                 <EntityTypeBadge type={entity.entity_type as EntityType} size="lg" />
@@ -324,9 +358,9 @@ export default async function EntityDetailPage({ params }: PageProps) {
                 )}
               </div>
               {/* Summary as subtitle - the quick reference */}
-              {(entity.dm_slug || entity.summary) && (
+              {(entity.summary || entity.dm_slug) && (
                 <p className="text-slate-400 italic mt-3">
-                  {entity.dm_slug || entity.summary}
+                  {entity.summary || entity.dm_slug}
                 </p>
               )}
             </div>
@@ -503,6 +537,28 @@ export default async function EntityDetailPage({ params }: PageProps) {
                 {locationMechanics && Object.keys(locationMechanics).length > 0 && (
                   <LocationMechanicsCard mechanics={locationMechanics} />
                 )}
+
+                {/* Tavern/Inn Menu & Services - Room rates, drinks, meals */}
+                {locationMechanics && (locationMechanics.is_tavern || locationMechanics.lodging || locationMechanics.menu) && (
+                  <div className="ca-panel p-4">
+                    <h3 className="text-lg font-semibold text-amber-400 mb-3 flex items-center gap-2">
+                      <Beer className="w-5 h-5" />
+                      Menu & Services
+                    </h3>
+                    <TavernMenuCard mechanics={locationMechanics as {
+                      establishment_quality?: string;
+                      lodging?: {
+                        available: boolean;
+                        rooms: Array<{ type: string; price_per_night: number; description: string }>;
+                      };
+                      menu?: {
+                        drinks: Array<{ name: string; price: number; description: string }>;
+                        meals: Array<{ name: string; price: number; description: string }>;
+                        specialty?: { name: string; price: number; description: string };
+                      };
+                    }} />
+                  </div>
+                )}
               </>
             )}
 
@@ -566,18 +622,30 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
                 {/* Quest Objectives - Interactive objective tracker */}
                 {questObjectives && questObjectives.length > 0 && (
-                  <QuestObjectivesCard objectives={questObjectives} />
+                  <QuestObjectivesCard
+                    objectives={questObjectives}
+                    questId={entity.id}
+                    campaignId={params.id}
+                  />
                 )}
 
                 {/* Quest Rewards - XP, gold, items, reputation */}
                 {questRewards && Object.keys(questRewards).length > 0 && (
-                  <QuestRewardsCard rewards={questRewards} />
+                  <QuestRewardsCard
+                    rewards={questRewards}
+                    questId={entity.id}
+                    campaignId={params.id}
+                  />
                 )}
 
                 {/* Quest Chain - Position in quest chain */}
-                {questChain && Object.keys(questChain).length > 0 && (
-                  <QuestChainCard chain={questChain} campaignId={params.id} />
-                )}
+                <QuestChainCard
+                  chain={questChain || {}}
+                  campaignId={params.id}
+                  questId={entity.id}
+                  questName={entity.name}
+                  brainNextHook={(questBrain as Record<string, unknown>)?.next_quest_hook as string | undefined}
+                />
               </>
             )}
 

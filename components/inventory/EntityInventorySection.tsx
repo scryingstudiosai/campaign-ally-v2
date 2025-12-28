@@ -93,7 +93,7 @@ export function EntityInventorySection({
 
   // Determine if this is a shop
   // Check: mechanics.is_shop, sub_type, or name/sub_type contains shop keywords
-  const shopKeywords = /shop|store|merchant|market|smithy|blacksmith|apothecary|armorer|armourer|weaponsmith|fletcher|tannery|jeweler|jeweller|emporium|bazaar|trading post|general store/i;
+  const shopKeywords = /shop|store|merchant|market|smithy|blacksmith|armorer|armourer|weaponsmith|apothecary|alchemist|tavern|inn|general\s*store|trading\s*post|bazaar|emporium|boutique|vendor|supplier|forge|foundry|leather\s*worker|jeweler|jeweller|herbalist|potion|scroll|magic\s*shop|arcane|enchanter|fletcher|tannery|bowyer|outfitter|provisioner|trader/i;
   const isShop = entityType === 'location' && (
     Boolean(mechanics?.is_shop) ||
     subType === 'shop' ||
