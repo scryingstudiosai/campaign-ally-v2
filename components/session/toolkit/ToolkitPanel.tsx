@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LibraryPanel } from './LibraryPanel';
+import { LibraryPanel, Entity } from './LibraryPanel';
 import { QuickForgePanel } from './QuickForgePanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,11 @@ import { rollDice, DICE_PRESETS, DiceResult } from '@/lib/dice';
 interface ToolkitPanelProps {
   campaignId: string;
   sessionStatus: string;
+  isCombatActive?: boolean;
+  onAddToCombat?: (entity: Entity) => void;
 }
 
-export function ToolkitPanel({ campaignId }: ToolkitPanelProps) {
+export function ToolkitPanel({ campaignId, isCombatActive, onAddToCombat }: ToolkitPanelProps) {
   const [lastRoll, setLastRoll] = useState<DiceResult | null>(null);
 
   const handleQuickRoll = (expression: string) => {
@@ -44,7 +46,11 @@ export function ToolkitPanel({ campaignId }: ToolkitPanelProps) {
         </TabsList>
 
         <TabsContent value="library" className="flex-1 mt-4 overflow-hidden">
-          <LibraryPanel campaignId={campaignId} />
+          <LibraryPanel
+            campaignId={campaignId}
+            isCombatActive={isCombatActive}
+            onAddToCombat={onAddToCombat}
+          />
         </TabsContent>
 
         <TabsContent value="dice" className="flex-1 mt-4">

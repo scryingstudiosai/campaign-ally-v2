@@ -4,7 +4,8 @@ import { useState, useRef, KeyboardEvent } from 'react';
 import { Combatant, Condition } from '@/types/combat';
 import {
   ChevronDown, ChevronRight, Heart, Shield, Skull,
-  EyeOff, Zap, User, Users
+  EyeOff, Zap, User, Users, Footprints, Target,
+  Swords, Sparkles, Brain
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ interface CombatantCardProps {
   onInitiativeChange: (value: number) => void;
   onConditionToggle: (condition: Condition) => void;
   onRemove: () => void;
+  hideActiveRing?: boolean;
 }
 
 const CONDITION_COLORS: Record<Condition, string> = {
@@ -48,6 +50,214 @@ const ALL_CONDITIONS: Condition[] = [
   'concentrating', 'hidden', 'dodging', 'raging',
 ];
 
+// Helper function to get ability modifier
+function getMod(score: number): string {
+  const mod = Math.floor((score - 10) / 2);
+  return mod >= 0 ? `+${mod}` : `${mod}`;
+}
+
+// Stat block display component
+function CombatStatBlock({ combatant }: { combatant: Combatant }) {
+  const stats = combatant.statBlock;
+  const fullEntity = (combatant as { fullEntity?: Record<string, unknown> }).fullEntity;
+
+  if (!stats && !fullEntity) {
+    return (
+      <p className="text-slate-500 text-sm italic">No stat block available</p>
+    );
+  }
+
+  // Merge stats from statBlock and fullEntity
+  const mechanics = (stats || fullEntity?.mechanics || {}) as Record<string, unknown>;
+  const brain = (fullEntity?.brain || {}) as Record<string, unknown>;
+
+  // Parse abilities
+  const abilities = (mechanics.abilities || {}) as Record<string, number>;
+  const getAbility = (key: string): number => {
+    const val = abilities[key] ?? mechanics[key];
+    return typeof val === 'number' ? val : 10;
+  };
+  const abilityScores: { name: string; value: number }[] = [
+    { name: 'STR', value: getAbility('str') },
+    { name: 'DEX', value: getAbility('dex') },
+    { name: 'CON', value: getAbility('con') },
+    { name: 'INT', value: getAbility('int') },
+    { name: 'WIS', value: getAbility('wis') },
+    { name: 'CHA', value: getAbility('cha') },
+  ];
+
+  const speed = mechanics.speed as { walk?: number | string } | number | string;
+  const speedValue = typeof speed === 'object' ? speed?.walk : speed;
+
+  // Pre-extract arrays with proper type guards to avoid 'unknown' issues
+  const damageResistances: string[] = Array.isArray(mechanics.damage_resistances)
+    ? mechanics.damage_resistances as string[] : [];
+  const damageImmunities: string[] = Array.isArray(mechanics.damage_immunities)
+    ? mechanics.damage_immunities as string[] : [];
+  const specialAbilities = (Array.isArray(mechanics.special_abilities) ? mechanics.special_abilities :
+    Array.isArray(mechanics.traits) ? mechanics.traits : []) as Array<{ name: string; desc?: string; description?: string }>;
+  const actions = (Array.isArray(mechanics.actions) ? mechanics.actions : []) as Array<{
+    name: string;
+    desc?: string;
+    description?: string;
+    attack_bonus?: number;
+    damage?: Array<{ damage_dice: string; damage_type?: { name?: string } | string }>
+  }>;
+  const legendaryActions = (Array.isArray(mechanics.legendary_actions) ? mechanics.legendary_actions : []) as Array<{
+    name: string;
+    desc?: string;
+    description?: string
+  }>;
+  const tactics = typeof brain.tactics === 'string' ? brain.tactics : null;
+
+  return (
+    <div className="space-y-3 text-sm">
+      {/* Quick Stats Row */}
+      <div className="flex items-center gap-4 p-2 bg-slate-800/50 rounded-lg flex-wrap">
+        <div className="flex items-center gap-1">
+          <Heart className="w-4 h-4 text-red-400" />
+          <span>{combatant.hp}/{combatant.maxHp}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Shield className="w-4 h-4 text-blue-400" />
+          <span>AC {combatant.ac}</span>
+        </div>
+        {speedValue != null ? (
+          <div className="flex items-center gap-1">
+            <Footprints className="w-4 h-4 text-green-400" />
+            <span>{String(speedValue)} ft</span>
+          </div>
+        ) : null}
+        {mechanics.cr != null ? (
+          <div className="flex items-center gap-1">
+            <Target className="w-4 h-4 text-amber-400" />
+            <span>CR {String(mechanics.cr)}</span>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Ability Scores */}
+      <div className="grid grid-cols-6 gap-2">
+        {abilityScores.map(({ name, value }) => (
+          <div key={name} className="text-center p-2 bg-slate-800 rounded">
+            <p className="text-xs text-slate-500">{name}</p>
+            <p className="font-bold">{value}</p>
+            <p className="text-xs text-slate-400">{getMod(value)}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Skills */}
+      {(() => {
+        const skills = mechanics.skills as Record<string, number> | undefined;
+        if (!skills || Object.keys(skills).length === 0) return null;
+        return (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Skills</p>
+            <p className="text-slate-300 text-xs">
+              {Object.entries(skills).map(([skill, value]) =>
+                `${skill} +${value}`
+              ).join(', ')}
+            </p>
+          </div>
+        );
+      })()}
+
+      {/* Damage Resistances/Immunities */}
+      {damageResistances.length > 0 ? (
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Damage Resistances</p>
+          <p className="text-slate-300 text-xs">{damageResistances.join(', ')}</p>
+        </div>
+      ) : null}
+
+      {damageImmunities.length > 0 ? (
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Damage Immunities</p>
+          <p className="text-slate-300 text-xs">{damageImmunities.join(', ')}</p>
+        </div>
+      ) : null}
+
+      {/* Special Abilities / Traits */}
+      {specialAbilities.length > 0 ? (
+        <div>
+          <p className="text-xs text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            Special Abilities
+          </p>
+          <div className="space-y-2">
+            {specialAbilities.slice(0, 3).map((ability, i) => (
+              <div key={i} className="bg-slate-800/50 p-2 rounded">
+                <p className="font-medium text-amber-300 text-xs">{ability.name}</p>
+                <p className="text-slate-400 text-xs mt-1 line-clamp-2">{ability.desc || ability.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Actions */}
+      {actions.length > 0 ? (
+        <div>
+          <p className="text-xs text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <Swords className="w-3 h-3" />
+            Actions
+          </p>
+          <div className="space-y-2">
+            {actions.slice(0, 4).map((action, i) => (
+              <div key={i} className="bg-red-900/20 border border-red-900/30 p-2 rounded">
+                <div className="flex items-start justify-between">
+                  <p className="font-medium text-red-300 text-xs">{action.name}</p>
+                  {action.attack_bonus !== undefined && (
+                    <Badge variant="outline" className="text-xs border-red-700 text-red-400 h-5">
+                      +{action.attack_bonus} hit
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-slate-400 text-xs mt-1 line-clamp-2">{action.desc || action.description}</p>
+                {action.damage && action.damage.length > 0 && (
+                  <p className="text-xs text-red-400 mt-1">
+                    {action.damage.map(d => `${d.damage_dice} ${typeof d.damage_type === 'object' ? d.damage_type?.name : d.damage_type || ''}`).join(' + ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Legendary Actions */}
+      {legendaryActions.length > 0 ? (
+        <div>
+          <p className="text-xs text-purple-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            Legendary Actions
+          </p>
+          <div className="space-y-2">
+            {legendaryActions.slice(0, 3).map((action, i) => (
+              <div key={i} className="bg-purple-900/20 border border-purple-900/30 p-2 rounded">
+                <p className="font-medium text-purple-300 text-xs">{action.name}</p>
+                <p className="text-slate-400 text-xs mt-1 line-clamp-2">{action.desc || action.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Brain - Tactics (for DM reference) */}
+      {tactics !== null ? (
+        <div className="border-t border-slate-700 pt-3">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+            <Brain className="w-3 h-3" />
+            Tactics (DM Only)
+          </p>
+          <p className="text-slate-400 text-xs italic">{tactics}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function CombatantCard({
   combatant,
   isActive,
@@ -55,6 +265,7 @@ export function CombatantCard({
   onInitiativeChange,
   onConditionToggle,
   onRemove,
+  hideActiveRing = false,
 }: CombatantCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showConditions, setShowConditions] = useState(false);
@@ -112,14 +323,21 @@ export function CombatantCard({
     }
   };
 
+  // Build class names for the card
+  const cardClasses = [
+    'rounded-r-lg border-y border-r transition-all',
+    combatant.isDefeated
+      ? 'border-slate-700 bg-slate-900/50 opacity-60'
+      : 'border-slate-700 bg-slate-800/50 hover:bg-slate-800',
+  ];
+
+  // Only add active styling if not hidden
+  if (isActive && !hideActiveRing) {
+    cardClasses.push('border-amber-500 bg-amber-900/20 ring-2 ring-amber-500/50 scale-[1.02]');
+  }
+
   return (
-    <div className={`rounded-lg border transition-all ${
-      isActive
-        ? 'border-amber-500 bg-amber-900/20 ring-2 ring-amber-500/50 scale-[1.02]'
-        : combatant.isDefeated
-          ? 'border-slate-700 bg-slate-900/50 opacity-60'
-          : 'border-slate-700 bg-slate-800/50 hover:bg-slate-800'
-    }`}>
+    <div className={cardClasses.join(' ')}>
       {/* Main Row */}
       <div className="flex items-center gap-3 p-3">
         {/* Expand Button */}
@@ -232,6 +450,11 @@ export function CombatantCard({
       {/* Expanded Content */}
       {isExpanded && (
         <div className="border-t border-slate-700 p-3 space-y-3">
+          {/* Quick Combat Stats */}
+          <div className="flex items-center gap-4 text-sm text-slate-400">
+            <span>Init Mod: <span className="text-white">+{String(combatant.initiativeModifier || 0)}</span></span>
+          </div>
+
           {/* Condition Picker */}
           <div>
             <button
@@ -261,30 +484,18 @@ export function CombatantCard({
             )}
           </div>
 
-          {/* Stat Block Preview */}
-          {combatant.statBlock && (
-            <div className="bg-slate-900 rounded p-3 text-sm">
-              <p className="text-slate-400">
-                <strong>Speed:</strong> {(combatant.statBlock as { speed?: { walk?: string } }).speed?.walk || '30'} ft
-              </p>
-              {(combatant.statBlock as { actions?: Array<{ name: string; desc?: string }> }).actions && (
-                <div className="mt-2">
-                  <p className="text-slate-300 font-medium">Actions:</p>
-                  {((combatant.statBlock as { actions?: Array<{ name: string; desc?: string }> }).actions || []).slice(0, 3).map((action, i: number) => (
-                    <p key={i} className="text-slate-400 text-xs mt-1">
-                      <strong>{action.name}:</strong> {action.desc?.slice(0, 100)}...
-                    </p>
-                  ))}
-                </div>
-              )}
+          {/* Full Stat Block */}
+          {(combatant.statBlock || (combatant as { fullEntity?: unknown }).fullEntity) ? (
+            <div className="bg-slate-900 rounded-lg p-3 max-h-80 overflow-y-auto">
+              <CombatStatBlock combatant={combatant} />
             </div>
-          )}
+          ) : null}
 
           {/* Death Saves (for players at 0 HP) */}
           {combatant.type === 'player' && combatant.isDefeated && combatant.deathSaves && (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 p-2 bg-slate-800 rounded">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-green-400">Successes:</span>
+                <span className="text-sm text-green-400">Saves:</span>
                 {[0, 1, 2].map(i => (
                   <div
                     key={`success-${i}`}
@@ -297,7 +508,7 @@ export function CombatantCard({
                 ))}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-red-400">Failures:</span>
+                <span className="text-sm text-red-400">Fails:</span>
                 {[0, 1, 2].map(i => (
                   <div
                     key={`failure-${i}`}

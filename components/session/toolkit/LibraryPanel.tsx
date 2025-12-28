@@ -2,15 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { DraggableEntity } from './DraggableEntity';
 import { DraggableObjective } from './DraggableObjective';
 import {
   Search, Users, MapPin, Package, Skull, Flag, Sword,
-  ChevronDown, ChevronRight, Loader2
+  ChevronDown, ChevronRight, Loader2, Swords
 } from 'lucide-react';
 
 interface LibraryPanelProps {
   campaignId: string;
+  isCombatActive?: boolean;
+  onAddToCombat?: (entity: Entity) => void;
 }
 
 interface QuestObjective {
@@ -20,17 +23,38 @@ interface QuestObjective {
   status?: string;
 }
 
-interface Entity {
+export interface Entity {
   id: string;
   name: string;
   entity_type: string;
   sub_type?: string;
+  summary?: string;
   mechanics?: {
     objectives?: QuestObjective[];
+    abilities?: { str?: number; dex?: number; con?: number; int?: number; wis?: number; cha?: number };
+    hp?: number;
+    hp_max?: number;
+    hp_current?: number;
+    ac?: number;
+    cr?: string;
+    speed?: { walk?: number } | number;
+    actions?: Array<{ name: string; desc?: string; description?: string; attack_bonus?: number; damage?: unknown[] }>;
+    special_abilities?: Array<{ name: string; desc?: string; description?: string }>;
+    legendary_actions?: Array<{ name: string; desc?: string; description?: string }>;
+    saving_throws?: Record<string, number> | Array<{ name: string; value: number }>;
+    skills?: Record<string, number>;
+    damage_resistances?: string[];
+    damage_immunities?: string[];
+    condition_immunities?: string[];
+    senses?: Record<string, number | string> | string;
+    [key: string]: unknown;
   };
   brain?: {
     objectives?: QuestObjective[];
+    tactics?: string;
+    [key: string]: unknown;
   };
+  soul?: Record<string, unknown>;
   attributes?: {
     objectives?: QuestObjective[];
   };
@@ -45,7 +69,10 @@ const typeLabels: Record<string, { label: string; icon: React.ComponentType<{ cl
   quest: { label: 'Quests', icon: Sword },
 };
 
-export function LibraryPanel({ campaignId }: LibraryPanelProps) {
+// Combat-ready entity types
+const COMBAT_TYPES = ['npc', 'creature', 'player'];
+
+export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat }: LibraryPanelProps) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(['npc', 'quest']));
@@ -140,10 +167,22 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
     return Array.isArray(objectives) ? objectives : [];
   };
 
+  const canAddToCombat = (entity: Entity) => {
+    return COMBAT_TYPES.includes(entity.entity_type?.toLowerCase()) || entity.mechanics?.ac;
+  };
+
+  const handleAddToCombat = (entity: Entity, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAddToCombat?.(entity);
+  };
+
   return (
     <div className="h-full flex flex-col">
       <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
         Entity Library
+        {isCombatActive && (
+          <span className="ml-2 text-red-400">(Combat Mode)</span>
+        )}
       </h3>
 
       {/* Search */}
@@ -193,7 +232,7 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
                 {isExpanded && (
                   <div className="ml-4 space-y-1 mt-1">
                     {typeEntities.map((entity) => (
-                      <div key={entity.id}>
+                      <div key={entity.id} className="group">
                         {/* The Entity itself */}
                         <div className="flex items-center">
                           {/* Expand button for quests */}
@@ -215,6 +254,20 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
                           <div className="flex-1">
                             <DraggableEntity entity={entity} />
                           </div>
+
+                          {/* Add to Combat button */}
+                          {isCombatActive && canAddToCombat(entity) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => handleAddToCombat(entity, e)}
+                              className="opacity-0 group-hover:opacity-100 h-6 px-2 text-xs bg-red-900/50 hover:bg-red-800 text-red-300 ml-1"
+                              title="Add to Combat"
+                            >
+                              <Swords className="w-3 h-3 mr-1" />
+                              Add
+                            </Button>
+                          )}
                         </div>
 
                         {/* Quest Objectives (nested) */}
@@ -246,7 +299,10 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
       </div>
 
       <p className="text-xs text-slate-600 mt-2 text-center">
-        Drag entities or objectives into your notes
+        {isCombatActive
+          ? 'Click "Add" to add NPCs/Creatures to combat'
+          : 'Drag entities or objectives into your notes'
+        }
       </p>
     </div>
   );

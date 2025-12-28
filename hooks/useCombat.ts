@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { CombatState, Combatant, CombatLogEntry, Condition } from '@/types/combat';
 import { rollHpFormula, rollInitiative } from '@/lib/dice';
 import { v4 as uuidv4 } from 'uuid';
@@ -52,6 +52,107 @@ interface SrdCreature {
 export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatProps) {
   const [combatState, setCombatState] = useState<CombatState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // =========================================
+  // AUTO-SAVE COMBAT STATE ON CHANGES
+  // =========================================
+  useEffect(() => {
+    if (!combatState || !sessionId) return;
+
+    // Debounce the save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await fetch(`/api/sessions/${sessionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            combat_state: combatState,
+          }),
+        });
+        console.log('[Combat] Auto-saved combat state');
+      } catch (error) {
+        console.error('[Combat] Failed to auto-save:', error);
+      }
+    }, 1000); // Save 1 second after last change
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [combatState, sessionId]);
+
+  // =========================================
+  // DISPATCH COMBAT STATE CHANGES
+  // =========================================
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('combat-state-change', {
+      detail: { isActive: combatState?.isActive ?? false }
+    }));
+  }, [combatState?.isActive]);
+
+  // =========================================
+  // LISTEN FOR ADD-ENTITY-TO-COMBAT EVENTS
+  // =========================================
+  useEffect(() => {
+    const handleAddEntity = (event: Event) => {
+      const customEvent = event as CustomEvent<Partial<Combatant>>;
+      if (combatState?.isActive) {
+        const combatant = customEvent.detail;
+        setCombatState(prev => {
+          if (!prev) return prev;
+
+          const newCombatant: Combatant = {
+            id: combatant.id || uuidv4(),
+            name: combatant.name || 'Unknown',
+            displayName: combatant.displayName || combatant.name || 'Unknown',
+            type: combatant.type || 'monster',
+            initiative: combatant.initiative || 10,
+            initiativeModifier: combatant.initiativeModifier || 0,
+            hp: combatant.hp || 10,
+            maxHp: combatant.maxHp || combatant.hp || 10,
+            tempHp: 0,
+            ac: combatant.ac || 10,
+            conditions: [],
+            isActive: false,
+            isVisible: true,
+            isDefeated: false,
+            entityId: combatant.entityId,
+            statBlock: combatant.statBlock,
+            ...combatant,
+          };
+
+          const combatants = [...prev.combatants, newCombatant];
+          combatants.sort((a, b) => b.initiative - a.initiative);
+
+          const activeIndex = combatants.findIndex(c => c.isActive);
+
+          return {
+            ...prev,
+            combatants,
+            turnIndex: activeIndex >= 0 ? activeIndex : prev.turnIndex,
+            combatLog: [...prev.combatLog, {
+              id: uuidv4(),
+              timestamp: new Date().toISOString(),
+              round: prev.round,
+              type: 'custom',
+              description: `${newCombatant.displayName} joins the battle!`,
+            }],
+          };
+        });
+      }
+    };
+
+    window.addEventListener('add-entity-to-combat', handleAddEntity);
+    return () => {
+      window.removeEventListener('add-entity-to-combat', handleAddEntity);
+    };
+  }, [combatState?.isActive]);
 
   // =========================================
   // START COMBAT

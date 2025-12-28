@@ -13,6 +13,8 @@ import { SessionPlanner } from './planner/SessionPlanner';
 import { ToolkitPanel } from './toolkit/ToolkitPanel';
 import { StagePanel } from './stage/StagePanel';
 import { EntityQuickView } from './EntityQuickView';
+import { Entity } from './toolkit/LibraryPanel';
+import { rollInitiative } from '@/lib/dice';
 
 interface SessionShellProps {
   session: Session;
@@ -24,6 +26,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [quickViewEntityId, setQuickViewEntityId] = useState<string | null>(null);
   const [showQuickView, setShowQuickView] = useState(false);
+  const [isCombatActive, setIsCombatActive] = useState(!!session.combat_state);
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -119,6 +122,48 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
     };
   }, []);
 
+  // Listen for combat state changes
+  useEffect(() => {
+    const handleCombatStateChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ isActive: boolean }>;
+      setIsCombatActive(customEvent.detail.isActive);
+    };
+
+    window.addEventListener('combat-state-change', handleCombatStateChange);
+    return () => {
+      window.removeEventListener('combat-state-change', handleCombatStateChange);
+    };
+  }, []);
+
+  // Handle adding entity to combat from library
+  const handleAddEntityToCombat = useCallback((entity: Entity) => {
+    const dex = entity.mechanics?.abilities?.dex || 10;
+    const dexMod = Math.floor((dex - 10) / 2);
+    const initiative = rollInitiative(dexMod);
+    const hp = entity.mechanics?.hp_current || entity.mechanics?.hp_max || entity.mechanics?.hp || 10;
+
+    const combatant = {
+      id: `${entity.entity_type}-${entity.id}-${Date.now()}`,
+      entityId: entity.id,
+      name: entity.name,
+      displayName: entity.name,
+      type: entity.entity_type === 'player' ? 'player' as const :
+            entity.entity_type === 'npc' ? 'npc' as const : 'monster' as const,
+      initiative,
+      initiativeModifier: dexMod,
+      hp,
+      maxHp: entity.mechanics?.hp_max || hp,
+      ac: entity.mechanics?.ac || 10,
+      statBlock: entity.mechanics,
+      fullEntity: entity,
+    };
+
+    // Dispatch event for StagePanel/useCombat to add the combatant
+    window.dispatchEvent(new CustomEvent('add-entity-to-combat', {
+      detail: combatant
+    }));
+  }, []);
+
   return (
     <DndContext
       sensors={sensors}
@@ -172,6 +217,8 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
                 <ToolkitPanel
                   campaignId={campaignId}
                   sessionStatus={currentSession.status}
+                  isCombatActive={isCombatActive}
+                  onAddToCombat={handleAddEntityToCombat}
                 />
               </div>
             </ResizablePanel>

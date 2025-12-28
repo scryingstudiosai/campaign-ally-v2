@@ -35,7 +35,6 @@ export function SortableCombatantCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 1000 : 'auto',
   };
 
@@ -43,33 +42,45 @@ export function SortableCombatantCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-stretch gap-0"
+      className={`relative ${isDragging ? 'opacity-50' : ''}`}
     >
-      {/* Drag Handle */}
-      <button
-        {...attributes}
-        {...listeners}
-        className={`
-          flex items-center justify-center w-6 -mr-1 rounded-l-lg
-          cursor-grab active:cursor-grabbing
-          ${isDragging ? 'bg-amber-600' : 'bg-slate-700 hover:bg-slate-600'}
-          transition-colors
-        `}
-        aria-label="Drag to reorder"
-      >
-        <GripVertical className="w-4 h-4 text-slate-400" />
-      </button>
+      {/* Full-width active indicator - covers entire card including drag handle */}
+      {isActive && (
+        <div className="absolute inset-0 rounded-lg ring-2 ring-amber-500 bg-amber-900/10 pointer-events-none z-0" />
+      )}
 
-      {/* Existing Combatant Card */}
-      <div className="flex-1">
-        <CombatantCard
-          combatant={combatant}
-          isActive={isActive}
-          onHpChange={onHpChange}
-          onInitiativeChange={onInitiativeChange}
-          onConditionToggle={onConditionToggle}
-          onRemove={onRemove}
-        />
+      <div className="relative z-10 flex items-stretch">
+        {/* Drag Handle - visually integrated with the card */}
+        <button
+          {...attributes}
+          {...listeners}
+          className={`
+            flex items-center justify-center w-8 rounded-l-lg
+            cursor-grab active:cursor-grabbing transition-colors
+            ${isActive
+              ? 'bg-amber-800/50 hover:bg-amber-700/50'
+              : isDragging
+                ? 'bg-amber-600'
+                : 'bg-slate-800 hover:bg-slate-700'
+            }
+          `}
+          aria-label="Drag to reorder"
+        >
+          <GripVertical className={`w-4 h-4 ${isActive ? 'text-amber-400' : 'text-slate-500'}`} />
+        </button>
+
+        {/* Combatant Card - pass isActive=false since we handle indicator here */}
+        <div className="flex-1">
+          <CombatantCard
+            combatant={combatant}
+            isActive={isActive}
+            onHpChange={onHpChange}
+            onInitiativeChange={onInitiativeChange}
+            onConditionToggle={onConditionToggle}
+            onRemove={onRemove}
+            hideActiveRing={true}
+          />
+        </div>
       </div>
     </div>
   );
