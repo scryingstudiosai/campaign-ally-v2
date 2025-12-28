@@ -5,7 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useDroppable } from '@dnd-kit/core';
-import { EntityNode, ReadAloudNode } from './extensions';
+import { EntityNode, ReadAloudNode, QuestObjectiveNode } from './extensions';
 import { EditorToolbar } from './EditorToolbar';
 import { Loader2 } from 'lucide-react';
 
@@ -63,6 +63,7 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       }),
       EntityNode,
       ReadAloudNode,
+      QuestObjectiveNode,
     ],
     content: (initialContent as object) || { type: 'doc', content: [] },
     editorProps: {
@@ -94,17 +95,51 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       .run();
   }, [editor]);
 
-  // Expose insertEntity for drag-drop handler
+  // Insert quest objective when dropped
+  const insertObjective = useCallback((objective: {
+    id: string;
+    title: string;
+    description?: string;
+    questId: string;
+    questName: string;
+  }) => {
+    if (!editor) return;
+
+    editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: 'questObjective',
+        attrs: {
+          id: objective.id,
+          title: objective.title,
+          description: objective.description || '',
+          questId: objective.questId,
+          questName: objective.questName,
+        },
+      })
+      .run();
+  }, [editor]);
+
+  // Expose insert functions for drag-drop handler
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as Window & { __sessionPlannerInsertEntity?: typeof insertEntity }).__sessionPlannerInsertEntity = insertEntity;
+      (window as Window & {
+        __sessionPlannerInsertEntity?: typeof insertEntity;
+        __sessionPlannerInsertObjective?: typeof insertObjective;
+      }).__sessionPlannerInsertEntity = insertEntity;
+      (window as Window & {
+        __sessionPlannerInsertEntity?: typeof insertEntity;
+        __sessionPlannerInsertObjective?: typeof insertObjective;
+      }).__sessionPlannerInsertObjective = insertObjective;
     }
     return () => {
       if (typeof window !== 'undefined') {
         delete (window as Window & { __sessionPlannerInsertEntity?: typeof insertEntity }).__sessionPlannerInsertEntity;
+        delete (window as Window & { __sessionPlannerInsertObjective?: typeof insertObjective }).__sessionPlannerInsertObjective;
       }
     };
-  }, [insertEntity]);
+  }, [insertEntity, insertObjective]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

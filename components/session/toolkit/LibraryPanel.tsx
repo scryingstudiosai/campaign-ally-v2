@@ -3,10 +3,21 @@
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { DraggableEntity } from './DraggableEntity';
-import { Search, Users, MapPin, Package, Skull, Flag, Sword, ChevronDown, ChevronRight } from 'lucide-react';
+import { DraggableObjective } from './DraggableObjective';
+import {
+  Search, Users, MapPin, Package, Skull, Flag, Sword,
+  ChevronDown, ChevronRight, Loader2
+} from 'lucide-react';
 
 interface LibraryPanelProps {
   campaignId: string;
+}
+
+interface QuestObjective {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
 }
 
 interface Entity {
@@ -14,6 +25,9 @@ interface Entity {
   name: string;
   entity_type: string;
   sub_type?: string;
+  mechanics?: {
+    objectives?: QuestObjective[];
+  };
 }
 
 const typeLabels: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -28,17 +42,33 @@ const typeLabels: Record<string, { label: string; icon: React.ComponentType<{ cl
 export function LibraryPanel({ campaignId }: LibraryPanelProps) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(['npc', 'location']));
+  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(['npc', 'quest']));
+  const [expandedQuests, setExpandedQuests] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch entities
+  // Fetch entities - include full data for quests
   useEffect(() => {
     const fetchEntities = async () => {
       try {
+        // Fetch basic entity list
         const response = await fetch(`/api/entities?campaignId=${campaignId}`);
         if (response.ok) {
-          const data = await response.json();
-          setEntities(data);
+          const basicEntities = await response.json();
+
+          // For quests, fetch full details to get objectives
+          const entitiesWithDetails = await Promise.all(
+            basicEntities.map(async (entity: Entity) => {
+              if (entity.entity_type === 'quest') {
+                const detailResponse = await fetch(`/api/entities/${entity.id}`);
+                if (detailResponse.ok) {
+                  return await detailResponse.json();
+                }
+              }
+              return entity;
+            })
+          );
+
+          setEntities(entitiesWithDetails);
         }
       } catch (error) {
         console.error('Failed to fetch entities:', error);
@@ -71,6 +101,20 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
     setExpandedTypes(newExpanded);
   };
 
+  const toggleQuest = (questId: string) => {
+    const newExpanded = new Set(expandedQuests);
+    if (newExpanded.has(questId)) {
+      newExpanded.delete(questId);
+    } else {
+      newExpanded.add(questId);
+    }
+    setExpandedQuests(newExpanded);
+  };
+
+  const getQuestObjectives = (quest: Entity): QuestObjective[] => {
+    return quest.mechanics?.objectives || [];
+  };
+
   return (
     <div className="h-full flex flex-col">
       <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
@@ -91,7 +135,9 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
       {/* Entity List */}
       <div className="flex-1 overflow-y-auto space-y-2">
         {isLoading ? (
-          <p className="text-xs text-slate-500 text-center py-4">Loading...</p>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+          </div>
         ) : Object.keys(groupedEntities).length === 0 ? (
           <p className="text-xs text-slate-500 text-center py-4">
             {searchQuery ? 'No matching entities' : 'No entities yet'}
@@ -122,7 +168,49 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
                 {isExpanded && (
                   <div className="ml-4 space-y-1 mt-1">
                     {typeEntities.map((entity) => (
-                      <DraggableEntity key={entity.id} entity={entity} />
+                      <div key={entity.id}>
+                        {/* The Entity itself */}
+                        <div className="flex items-center">
+                          {/* Expand button for quests */}
+                          {entity.entity_type === 'quest' && getQuestObjectives(entity).length > 0 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleQuest(entity.id);
+                              }}
+                              className="p-1 hover:bg-slate-700 rounded mr-1"
+                            >
+                              {expandedQuests.has(entity.id) ? (
+                                <ChevronDown className="w-3 h-3 text-slate-500" />
+                              ) : (
+                                <ChevronRight className="w-3 h-3 text-slate-500" />
+                              )}
+                            </button>
+                          )}
+                          <div className="flex-1">
+                            <DraggableEntity entity={entity} />
+                          </div>
+                        </div>
+
+                        {/* Quest Objectives (nested) */}
+                        {entity.entity_type === 'quest' && expandedQuests.has(entity.id) && (
+                          <div className="ml-6 mt-1 space-y-1 border-l-2 border-amber-800/50 pl-2">
+                            {getQuestObjectives(entity).map((objective, index) => (
+                              <DraggableObjective
+                                key={objective.id || index}
+                                objective={{
+                                  id: objective.id || `${entity.id}-obj-${index}`,
+                                  title: objective.title,
+                                  description: objective.description,
+                                  status: objective.status,
+                                  questId: entity.id,
+                                  questName: entity.name,
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -133,7 +221,7 @@ export function LibraryPanel({ campaignId }: LibraryPanelProps) {
       </div>
 
       <p className="text-xs text-slate-600 mt-2 text-center">
-        Drag entities into your notes
+        Drag entities or objectives into your notes
       </p>
     </div>
   );

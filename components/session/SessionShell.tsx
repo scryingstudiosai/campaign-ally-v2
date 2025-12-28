@@ -37,14 +37,42 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
     setActiveId(null);
 
     if (over?.id === 'session-planner-editor' && active.data.current) {
-      // Insert entity into editor
-      const insertEntity = (window as Window & { __sessionPlannerInsertEntity?: (entity: { id: string; name: string; entityType: string }) => void }).__sessionPlannerInsertEntity;
-      if (insertEntity) {
-        insertEntity({
-          id: active.data.current.id as string,
-          name: active.data.current.name as string,
-          entityType: active.data.current.entityType as string,
-        });
+      const data = active.data.current;
+
+      // Check if this is a quest objective
+      if (data.type === 'quest_objective') {
+        const insertObjective = (window as Window & {
+          __sessionPlannerInsertObjective?: (objective: {
+            id: string;
+            title: string;
+            description?: string;
+            questId: string;
+            questName: string;
+          }) => void;
+        }).__sessionPlannerInsertObjective;
+
+        if (insertObjective) {
+          insertObjective({
+            id: data.id as string,
+            title: data.title as string,
+            description: data.description as string | undefined,
+            questId: data.questId as string,
+            questName: data.questName as string,
+          });
+        }
+      } else {
+        // Regular entity
+        const insertEntity = (window as Window & {
+          __sessionPlannerInsertEntity?: (entity: { id: string; name: string; entityType: string }) => void;
+        }).__sessionPlannerInsertEntity;
+
+        if (insertEntity) {
+          insertEntity({
+            id: data.id as string,
+            name: data.name as string,
+            entityType: data.entityType as string,
+          });
+        }
       }
     }
   }, []);
@@ -116,8 +144,15 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
       {/* Drag Overlay */}
       <DragOverlay>
         {activeId ? (
-          <div className="bg-slate-800 border border-teal-500 rounded-lg px-3 py-2 shadow-lg">
-            <span className="text-sm text-slate-200">Dragging entity...</span>
+          <div className={`rounded-lg px-3 py-2 shadow-lg border ${
+            activeId.toString().startsWith('objective-')
+              ? 'bg-amber-900/90 border-amber-500 text-amber-200'
+              : 'bg-slate-800 border-teal-500 text-slate-200'
+          }`}>
+            <span className="text-sm">
+              {activeId.toString().startsWith('objective-') ? '🎯 ' : ''}
+              Dragging...
+            </span>
           </div>
         ) : null}
       </DragOverlay>
