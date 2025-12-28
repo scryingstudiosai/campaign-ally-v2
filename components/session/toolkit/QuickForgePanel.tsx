@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Users, MapPin, Package, Skull, Loader2, Sparkles,
-  CheckCircle, ExternalLink, Swords
+  CheckCircle, ExternalLink, Swords, Search, BookOpen
 } from 'lucide-react';
 import {
   Dialog,
@@ -13,19 +13,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
+import type { SrdCreature } from '@/types/srd';
 
 interface QuickForgePanelProps {
   campaignId: string;
-  onForged?: (entity: any) => void;
+  onForged?: (entity: ForgedEntity) => void;
+}
+
+interface ForgedEntity {
+  id: string;
+  name: string;
+  summary?: string;
+  entity_type?: string;
 }
 
 const FORGE_OPTIONS = [
-  { type: 'creature', label: 'Creature', icon: Skull, color: 'bg-red-600 hover:bg-red-700' },
-  { type: 'encounter', label: 'Encounter', icon: Swords, color: 'bg-orange-600 hover:bg-orange-700' },
-  { type: 'npc', label: 'NPC', icon: Users, color: 'bg-blue-600 hover:bg-blue-700' },
-  { type: 'location', label: 'Location', icon: MapPin, color: 'bg-green-600 hover:bg-green-700' },
-  { type: 'item', label: 'Item', icon: Package, color: 'bg-amber-600 hover:bg-amber-700' },
+  { type: 'creature', label: 'Creature', icon: Skull, color: 'bg-red-600 hover:bg-red-700', hasSRD: true },
+  { type: 'encounter', label: 'Encounter', icon: Swords, color: 'bg-orange-600 hover:bg-orange-700', hasSRD: false },
+  { type: 'npc', label: 'NPC', icon: Users, color: 'bg-blue-600 hover:bg-blue-700', hasSRD: false },
+  { type: 'location', label: 'Location', icon: MapPin, color: 'bg-green-600 hover:bg-green-700', hasSRD: false },
+  { type: 'item', label: 'Item', icon: Package, color: 'bg-amber-600 hover:bg-amber-700', hasSRD: false },
 ];
 
 export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) {
@@ -36,15 +45,48 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
   const [error, setError] = useState<string | null>(null);
 
   // Success state
-  const [forgedEntity, setForgedEntity] = useState<any>(null);
+  const [forgedEntity, setForgedEntity] = useState<ForgedEntity | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // SRD state
+  const [srdCreatures, setSrdCreatures] = useState<SrdCreature[]>([]);
+  const [srdSearch, setSrdSearch] = useState('');
+  const [isLoadingSRD, setIsLoadingSRD] = useState(false);
+  const [creatureMode, setCreatureMode] = useState<'generate' | 'srd'>('generate');
+
+  // Search SRD creatures when search query changes
+  useEffect(() => {
+    if (creatureMode !== 'srd' || srdSearch.length < 2) {
+      if (srdSearch.length < 2) setSrdCreatures([]);
+      return;
+    }
+
+    const searchTimeout = setTimeout(async () => {
+      setIsLoadingSRD(true);
+      try {
+        const response = await fetch(`/api/srd/search?q=${encodeURIComponent(srdSearch)}&types=creatures&limit=30`);
+        if (response.ok) {
+          const data = await response.json();
+          setSrdCreatures(data.creatures || []);
+        }
+      } catch (error) {
+        console.error('Failed to search SRD creatures:', error);
+      }
+      setIsLoadingSRD(false);
+    }, 300); // Debounce
+
+    return () => clearTimeout(searchTimeout);
+  }, [srdSearch, creatureMode]);
 
   const handleOpenForge = (type: string) => {
     setSelectedType(type);
     setPrompt('');
+    setSrdSearch('');
+    setSrdCreatures([]);
     setError(null);
     setForgedEntity(null);
     setShowSuccess(false);
+    setCreatureMode('generate');
     setShowDialog(true);
   };
 
@@ -82,16 +124,48 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
 
       const newEntity = JSON.parse(text);
 
-      // Show success state
       setForgedEntity(newEntity);
       setShowSuccess(true);
-
-      // Notify parent to refresh library
       onForged?.(newEntity);
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Quick forge error:', err);
-      setError(err.message || 'Failed to forge entity');
+      setError(err instanceof Error ? err.message : 'Failed to forge entity');
+    }
+
+    setIsForging(null);
+  };
+
+  const handleImportSRD = async (creature: SrdCreature) => {
+    setIsForging('srd');
+    setError(null);
+
+    try {
+      // Use the existing add-to-memory API
+      const response = await fetch('/api/srd/add-to-memory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          srdEntity: creature,
+          campaignId,
+          srdType: 'creature',
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to import creature');
+      }
+
+      const newEntity = await response.json();
+
+      setForgedEntity(newEntity);
+      setShowSuccess(true);
+      onForged?.(newEntity);
+
+    } catch (err) {
+      console.error('SRD import error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to import creature');
     }
 
     setIsForging(null);
@@ -101,6 +175,8 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
     setShowSuccess(false);
     setForgedEntity(null);
     setPrompt('');
+    setSrdSearch('');
+    setSrdCreatures([]);
   };
 
   const handleClose = () => {
@@ -108,6 +184,8 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
     setShowSuccess(false);
     setForgedEntity(null);
     setPrompt('');
+    setSrdSearch('');
+    setSrdCreatures([]);
     setError(null);
   };
 
@@ -139,7 +217,7 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
 
       {/* Forge Dialog */}
       <Dialog open={showDialog} onOpenChange={handleClose}>
-        <DialogContent className="bg-slate-900 border-slate-700">
+        <DialogContent className="bg-slate-900 border-slate-700 max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedOption && <selectedOption.icon className="w-5 h-5 text-teal-400" />}
@@ -189,8 +267,123 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
                 Done
               </Button>
             </div>
+          ) : selectedType === 'creature' ? (
+            // CREATURE MODE - Tabs for Generate vs SRD
+            <Tabs value={creatureMode} onValueChange={(v) => setCreatureMode(v as 'generate' | 'srd')}>
+              <TabsList className="grid w-full grid-cols-2 bg-slate-800">
+                <TabsTrigger value="generate" className="text-xs gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  Generate New
+                </TabsTrigger>
+                <TabsTrigger value="srd" className="text-xs gap-1">
+                  <BookOpen className="w-3 h-3" />
+                  SRD Monster
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="generate" className="space-y-4 mt-4">
+                <div>
+                  <label className="text-sm text-slate-400 mb-2 block">
+                    Describe the creature:
+                  </label>
+                  <Input
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="A pack of dire wolves hunting in the snow..."
+                    className="bg-slate-800 border-slate-600"
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleQuickForge()}
+                    autoFocus
+                  />
+                </div>
+
+                {error && (
+                  <p className="text-sm text-red-400 bg-red-900/20 p-2 rounded">{error}</p>
+                )}
+
+                <Button
+                  onClick={handleQuickForge}
+                  disabled={!prompt.trim() || isForging !== null}
+                  className="w-full bg-teal-600 hover:bg-teal-700"
+                >
+                  {isForging ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Forging...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate Creature
+                    </>
+                  )}
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="srd" className="space-y-4 mt-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Input
+                    value={srdSearch}
+                    onChange={(e) => setSrdSearch(e.target.value)}
+                    placeholder="Search monsters (goblin, dragon, wolf...)"
+                    className="pl-10 bg-slate-800 border-slate-600"
+                    autoFocus
+                  />
+                </div>
+
+                {error && (
+                  <p className="text-sm text-red-400 bg-red-900/20 p-2 rounded">{error}</p>
+                )}
+
+                <div className="h-64 border border-slate-700 rounded-lg overflow-y-auto">
+                  {isLoadingSRD ? (
+                    <div className="flex items-center justify-center py-8 text-slate-500">
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      Searching...
+                    </div>
+                  ) : srdCreatures.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                      {srdSearch.length < 2 ? 'Type at least 2 characters to search' : 'No monsters found'}
+                    </div>
+                  ) : (
+                    <div className="p-2 space-y-1">
+                      {srdCreatures.map(creature => (
+                        <button
+                          key={creature.id}
+                          onClick={() => handleImportSRD(creature)}
+                          disabled={isForging === 'srd'}
+                          className="w-full flex items-center justify-between p-2 rounded hover:bg-slate-800 transition-colors text-left disabled:opacity-50"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-200 truncate">{creature.name}</p>
+                            <p className="text-xs text-slate-500">
+                              {creature.size} {creature.creature_type}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                            <span className="text-xs px-2 py-0.5 rounded bg-red-900/50 text-red-300">
+                              CR {creature.cr}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              HP {creature.hp}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {isForging === 'srd' && (
+                  <div className="flex items-center justify-center gap-2 text-teal-400">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Importing creature...
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           ) : (
-            // INPUT STATE
+            // OTHER ENTITY TYPES - Standard Generate
             <div className="space-y-4">
               <div>
                 <label className="text-sm text-slate-400 mb-2 block">
@@ -203,7 +396,6 @@ export function QuickForgePanel({ campaignId, onForged }: QuickForgePanelProps) 
                     selectedType === 'npc' ? 'A mysterious merchant with a secret...' :
                     selectedType === 'location' ? 'A hidden grove with ancient ruins...' :
                     selectedType === 'item' ? 'A cursed sword that whispers...' :
-                    selectedType === 'creature' ? 'A pack of dire wolves hunting...' :
                     selectedType === 'encounter' ? '3 goblins ambush from the trees, medium difficulty...' :
                     'Describe what you want to create...'
                   }
