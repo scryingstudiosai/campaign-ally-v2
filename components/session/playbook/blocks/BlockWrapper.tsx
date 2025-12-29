@@ -93,6 +93,7 @@ export function BlockWrapper({
     <div
       ref={setNodeRef}
       style={style}
+      data-playbook-block
       className={`rounded-lg border transition-all ${STATUS_STYLES[status]} ${isEditing ? 'ring-2 ring-blue-500/50' : ''}`}
     >
       {/* Header */}

@@ -78,7 +78,7 @@ export function LiveLog({ sessionId }: LiveLogProps) {
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto p-4 space-y-3"
+      className="group/log flex-1 overflow-y-auto p-4 space-y-3"
     >
       {events.length === 0 ? (
         <div className="text-center py-12 text-slate-500">
@@ -86,15 +86,27 @@ export function LiveLog({ sessionId }: LiveLogProps) {
           <p className="text-xs">Start the session and use the input below to log events</p>
         </div>
       ) : (
-        events.map((event) => (
-          <EventCard
-            key={event.id}
-            event={event}
-            onResumeCombat={event.event_type === 'combat_start' ? () => {
-              window.dispatchEvent(new CustomEvent('resume-combat'));
-            } : undefined}
-          />
-        ))
+        events.map((event, index) => {
+          // Last 3 entries are "fresh", older ones fade
+          const isOld = index < events.length - 3;
+          return (
+            <div
+              key={event.id}
+              className={`transition-all duration-300 ${
+                isOld
+                  ? 'opacity-50 grayscale-[0.3] group-hover/log:opacity-85 group-hover/log:grayscale-0'
+                  : ''
+              }`}
+            >
+              <EventCard
+                event={event}
+                onResumeCombat={event.event_type === 'combat_start' ? () => {
+                  window.dispatchEvent(new CustomEvent('resume-combat'));
+                } : undefined}
+              />
+            </div>
+          );
+        })
       )}
     </div>
   );
