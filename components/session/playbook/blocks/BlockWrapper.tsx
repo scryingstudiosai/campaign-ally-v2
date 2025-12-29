@@ -17,6 +17,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface BlockWrapperProps {
   id: string;
@@ -65,6 +75,7 @@ export function BlockWrapper({
   isRunnable = false,
 }: BlockWrapperProps) {
   const [isExpanded, setIsExpanded] = useState(status === 'active' || isEditing);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const {
     attributes,
@@ -210,7 +221,7 @@ export function BlockWrapper({
                 Duplicate
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={onDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="text-red-400 focus:text-red-400"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -227,6 +238,29 @@ export function BlockWrapper({
           {children}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="bg-slate-900 border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete this block?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will permanently remove &quot;{title || 'Untitled Block'}&quot; from your session prep. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 border-white/10 text-slate-300 hover:bg-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Block
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
