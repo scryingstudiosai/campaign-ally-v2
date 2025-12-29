@@ -17,13 +17,14 @@ const MaterialCard = forwardRef<HTMLDivElement, MaterialCardProps>(
         className={cn(
           // Base styles
           "relative overflow-hidden rounded-xl",
-          "bg-slate-900",
+          // Gradient background for depth (carved stone effect)
+          "bg-gradient-to-br from-slate-800/80 to-slate-900/95",
           // Etched border effect
           "border-t border-l border-b border-r",
           "border-t-white/[0.08] border-l-white/[0.05]",
           "border-b-black/45 border-r-black/35",
-          // Shadow
-          "shadow-card",
+          // Carved stone shadow (light from top-left)
+          "shadow-[0_4px_6px_-1px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.05)]",
           // Inner polish gradient (using pseudo-element)
           "before:absolute before:inset-0 before:pointer-events-none before:rounded-xl",
           "before:bg-gradient-to-b before:from-white/[0.03] before:via-transparent before:to-black/[0.15]",

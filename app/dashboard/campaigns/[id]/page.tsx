@@ -157,11 +157,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Beings */}
+            {/* NPC Forge - Teal */}
             <Link href={`/dashboard/campaigns/${params.id}/forge/npc`} className="block">
-              <div className="ca-card ca-card--npc ca-card-interactive p-4">
+              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-teal-500/30 hover:shadow-[0_0_20px_rgba(45,212,191,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className="flex items-center gap-2 mb-2">
-                  <User className="w-4 h-4 text-primary" />
+                  <User className="w-4 h-4 text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]" />
                   <h3 className="text-base font-semibold text-slate-100">NPC Forge</h3>
                 </div>
                 <p className="text-sm text-slate-400">
@@ -170,10 +170,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
+            {/* Creature Forge - Rose */}
             <Link href={`/dashboard/campaigns/${params.id}/forge/creature`} className="block">
-              <div className="ca-card ca-card--creature ca-card-interactive p-4">
+              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-rose-500/30 hover:shadow-[0_0_20px_rgba(244,63,94,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className="flex items-center gap-2 mb-2">
-                  <Bug className="w-4 h-4 text-rose-400" />
+                  <Bug className="w-4 h-4 text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
                   <h3 className="text-base font-semibold text-slate-100">Creature Forge</h3>
                 </div>
                 <p className="text-sm text-slate-400">
@@ -182,11 +183,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Places */}
+            {/* Location Forge - Emerald */}
             <Link href={`/dashboard/campaigns/${params.id}/forge/location`} className="block">
-              <div className="ca-card ca-card--location ca-card-interactive p-4">
+              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-emerald-500/30 hover:shadow-[0_0_20px_rgba(52,211,153,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="w-4 h-4 text-primary" />
+                  <MapPin className="w-4 h-4 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
                   <h3 className="text-base font-semibold text-slate-100">Location Forge</h3>
                 </div>
                 <p className="text-sm text-slate-400">
@@ -195,11 +196,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Things */}
+            {/* Item Forge - Blue */}
             <Link href={`/dashboard/campaigns/${params.id}/forge/item`} className="block">
-              <div className="ca-card ca-card--item ca-card-interactive p-4">
+              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-blue-500/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className="flex items-center gap-2 mb-2">
-                  <Gem className="w-4 h-4 text-primary" />
+                  <Gem className="w-4 h-4 text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                   <h3 className="text-base font-semibold text-slate-100">Item Forge</h3>
                 </div>
                 <p className="text-sm text-slate-400">
@@ -208,11 +209,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Groups */}
+            {/* Faction Forge - Orange */}
             <Link href={`/dashboard/campaigns/${params.id}/forge/faction`} className="block">
-              <div className="ca-card ca-card--faction ca-card-interactive p-4">
+              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-orange-500/30 hover:shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className="flex items-center gap-2 mb-2">
-                  <Flag className="w-4 h-4 text-orange-400" />
+                  <Flag className="w-4 h-4 text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
                   <h3 className="text-base font-semibold text-slate-100">Faction Forge</h3>
                 </div>
                 <p className="text-sm text-slate-400">
@@ -221,11 +222,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Events */}
+            {/* Encounter Forge - Amber */}
             <Link href={`/dashboard/campaigns/${params.id}/forge/encounter`} className="block">
-              <div className="ca-card ca-card--encounter ca-card-interactive p-4">
+              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-amber-500/30 hover:shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className="flex items-center gap-2 mb-2">
-                  <Swords className="w-4 h-4 text-primary" />
+                  <Swords className="w-4 h-4 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
                   <h3 className="text-base font-semibold text-slate-100">Encounter Forge</h3>
                 </div>
                 <p className="text-sm text-slate-400">
@@ -234,11 +235,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               </div>
             </Link>
 
-            {/* Adventures */}
+            {/* Quest Forge - Purple */}
             <Link href={`/dashboard/campaigns/${params.id}/forge/quest`} className="block">
-              <div className="ca-card ca-card--quest ca-card-interactive p-4">
+              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-purple-500/30 hover:shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className="flex items-center gap-2 mb-2">
-                  <Scroll className="w-4 h-4 text-amber-400" />
+                  <Scroll className="w-4 h-4 text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
                   <h3 className="text-base font-semibold text-slate-100">Quest Forge</h3>
                 </div>
                 <p className="text-sm text-slate-400">

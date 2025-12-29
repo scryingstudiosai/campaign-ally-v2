@@ -54,10 +54,22 @@ export function SessionsList({ campaignId }: SessionsListProps): JSX.Element {
   };
 
   const statusConfig: Record<SessionStatus, { color: string; label: string }> = {
-    planning: { color: 'bg-blue-900/50 text-blue-400', label: 'Planning' },
-    active: { color: 'bg-green-900/50 text-green-400', label: 'Live' },
-    review: { color: 'bg-amber-900/50 text-amber-400', label: 'Review' },
-    archived: { color: 'bg-slate-800 text-slate-400', label: 'Archived' },
+    planning: {
+      color: 'bg-teal-500/20 text-teal-400 border border-teal-500/30 shadow-[0_0_10px_rgba(45,212,191,0.2)]',
+      label: 'Planning'
+    },
+    active: {
+      color: 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.3)]',
+      label: 'Live'
+    },
+    review: {
+      color: 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_10px_rgba(251,191,36,0.2)]',
+      label: 'Review'
+    },
+    archived: {
+      color: 'bg-slate-500/20 text-slate-400 border border-slate-500/30',
+      label: 'Archived'
+    },
   };
 
   const formatDuration = (minutes?: number): string | null => {
@@ -106,7 +118,7 @@ export function SessionsList({ campaignId }: SessionsListProps): JSX.Element {
               <div
                 key={session.id}
                 onClick={() => router.push(`/dashboard/campaigns/${campaignId}/sessions/${session.id}`)}
-                className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors group"
+                className="flex items-center justify-between p-4 bg-slate-900/50 border border-white/5 rounded-lg hover:bg-slate-800/80 hover:border-teal-500/30 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer transition-all duration-200 group"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="min-w-0">
