@@ -18,10 +18,17 @@ import {
   Swords,
   Bug,
   Scroll,
+  Search,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface CampaignSidebarProps {
   campaignId: string
@@ -143,6 +150,37 @@ function SidebarContent({
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-800 space-y-3">
+        {/* Search Hint */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => {
+                  // Trigger the command menu
+                  const event = new KeyboardEvent('keydown', {
+                    key: 'k',
+                    metaKey: true,
+                    bubbles: true,
+                  })
+                  document.dispatchEvent(event)
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-500 border border-white/5 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 hover:text-slate-400 hover:border-white/10 transition-all cursor-pointer"
+              >
+                <Search className="w-3 h-3" />
+                <span>Search</span>
+                <div className="ml-auto flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 text-[10px] bg-slate-700 rounded border border-white/10">⌘K</kbd>
+                  <span className="text-slate-600">/</span>
+                  <kbd className="px-1.5 py-0.5 text-[10px] bg-slate-700 rounded border border-white/10">Ctrl+K</kbd>
+                </div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-slate-800 border-slate-700">
+              <p>Search entities, navigate, and roll dice</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold">
             DM

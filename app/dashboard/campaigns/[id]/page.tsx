@@ -12,7 +12,6 @@ import {
   Book,
   Database,
   Pencil,
-  Search,
   Sparkles,
 } from 'lucide-react'
 
@@ -194,13 +193,6 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                   </div>
                 </Link>
               </div>
-            </div>
-
-            {/* Search Hint */}
-            <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-500 border border-white/5 rounded-lg bg-slate-800/30">
-              <Search className="w-3 h-3" />
-              <span>Search</span>
-              <kbd className="ml-auto px-1.5 py-0.5 text-[10px] bg-slate-700 rounded border border-white/10">⌘K</kbd>
             </div>
           </div>
         </div>
