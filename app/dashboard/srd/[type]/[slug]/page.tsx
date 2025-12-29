@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowLeft, Heart, Shield, Zap, Eye, Languages, Skull, Sparkles, Sword, Coins, Weight, Star, BookOpen } from 'lucide-react'
+import { Heart, Shield, Zap, Eye, Languages, Skull, Sparkles, Sword, Coins, Weight, Star } from 'lucide-react'
 import { MaterialCard } from '@/components/ui/material-card'
 import { SrdBadge } from '@/components/srd/SrdBadge'
+import { BackButton } from '@/components/ui/back-button'
 import type { SrdCreature, SrdItem, SrdSpell } from '@/types/srd'
 
 // Map URL types to table names
@@ -45,13 +45,7 @@ export default async function SRDEntityPage({ params }: PageProps) {
     <div className="min-h-screen bg-slate-950 p-6">
       <div className="max-w-4xl mx-auto">
         {/* Back Navigation */}
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Dashboard
-        </Link>
+        <BackButton />
 
         {/* SRD Badge */}
         <div className="flex items-center gap-2 mb-4">
