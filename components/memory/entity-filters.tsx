@@ -93,7 +93,7 @@ export function EntityFiltersBar({
           value={filters.entityType}
           onValueChange={(v) => updateFilter('entityType', v as EntityType | 'all')}
         >
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-[130px] h-9 rounded-lg bg-slate-800/50 border-slate-700 text-sm">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -113,7 +113,7 @@ export function EntityFiltersBar({
           value={filters.status}
           onValueChange={(v) => updateFilter('status', v as EntityFilters['status'])}
         >
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-[130px] h-9 rounded-lg bg-slate-800/50 border-slate-700 text-sm">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -130,7 +130,7 @@ export function EntityFiltersBar({
           value={filters.importance}
           onValueChange={(v) => updateFilter('importance', v as EntityFilters['importance'])}
         >
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-[130px] h-9 rounded-lg bg-slate-800/50 border-slate-700 text-sm">
             <SelectValue placeholder="Importance" />
           </SelectTrigger>
           <SelectContent>
@@ -146,7 +146,7 @@ export function EntityFiltersBar({
           value={filters.visibility}
           onValueChange={(v) => updateFilter('visibility', v as EntityFilters['visibility'])}
         >
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-[130px] h-9 rounded-lg bg-slate-800/50 border-slate-700 text-sm">
             <SelectValue placeholder="Visibility" />
           </SelectTrigger>
           <SelectContent>
@@ -158,9 +158,9 @@ export function EntityFiltersBar({
         </Select>
 
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-9 text-sm text-muted-foreground hover:text-foreground">
             <X className="w-3 h-3" />
-            Clear
+            Clear filters
           </Button>
         )}
       </div>

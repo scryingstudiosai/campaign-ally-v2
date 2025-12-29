@@ -262,37 +262,37 @@ export function MemoryPageClient({
         {entities.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6 text-sm">
             {typeCounts.npc && (
-              <span className="px-3 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/30">
+              <span className="px-3 py-1 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30">
                 {typeCounts.npc} NPCs
               </span>
             )}
             {typeCounts.location && (
-              <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/30">
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                 {typeCounts.location} Locations
               </span>
             )}
             {typeCounts.item && (
-              <span className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/30">
+              <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
                 {typeCounts.item} Items
               </span>
             )}
             {typeCounts.faction && (
-              <span className="px-3 py-1 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/30">
+              <span className="px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
                 {typeCounts.faction} Factions
               </span>
             )}
             {typeCounts.quest && (
-              <span className="px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
+              <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
                 {typeCounts.quest} Quests
               </span>
             )}
             {typeCounts.encounter && (
-              <span className="px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/30">
+              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                 {typeCounts.encounter} Encounters
               </span>
             )}
             {typeCounts.creature && (
-              <span className="px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30">
+              <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
                 {typeCounts.creature} Creatures
               </span>
             )}
@@ -359,8 +359,8 @@ export function MemoryPageClient({
         ) : (
           <Card className="overflow-hidden">
             <EntityListHeader selectionMode={selectionMode} />
-            <div className="divide-y divide-border">
-              {filteredEntities.map((entity) => (
+            <div>
+              {filteredEntities.map((entity, index) => (
                 <EntityListItem
                   key={entity.id}
                   entity={entity}
@@ -369,6 +369,7 @@ export function MemoryPageClient({
                   selectionMode={selectionMode}
                   isSelected={selectedIds.has(entity.id)}
                   onToggleSelect={() => toggleSelection(entity.id)}
+                  isEven={index % 2 === 0}
                 />
               ))}
             </div>
