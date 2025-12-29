@@ -37,6 +37,7 @@ type EntityResult = {
 
 type SrdCreatureResult = {
   id: string
+  slug: string
   name: string
   creature_type: string | null
   cr: string | null
@@ -129,7 +130,7 @@ export function CommandMenu(): JSX.Element {
         // Search SRD creatures (always available)
         const { data: srdData, error: srdError } = await supabase
           .from('srd_creatures')
-          .select('id, name, creature_type, cr')
+          .select('id, slug, name, creature_type, cr')
           .ilike('name', `%${q}%`)
           .limit(5)
 
@@ -230,13 +231,13 @@ export function CommandMenu(): JSX.Element {
                 key={creature.id}
                 onSelect={() =>
                   runCommand(() =>
-                    router.push(`/dashboard/codex/creatures/${creature.id}`)
+                    router.push(`/dashboard/srd/creature/${creature.slug}`)
                   )
                 }
               >
-                <Bug className="mr-2 h-4 w-4 text-rose-400" />
+                <BookOpen className="mr-2 h-4 w-4 text-amber-400" />
                 <span>{creature.name}</span>
-                <span className="ml-auto text-xs text-slate-500">
+                <span className="ml-auto text-xs text-amber-500">
                   {creature.creature_type && `${creature.creature_type} · `}
                   {creature.cr && `CR ${creature.cr}`}
                 </span>
