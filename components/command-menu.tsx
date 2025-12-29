@@ -35,10 +35,18 @@ type EntityResult = {
   entity_type: string
 }
 
+type SrdCreatureResult = {
+  id: string
+  name: string
+  creature_type: string | null
+  cr: string | null
+}
+
 export function CommandMenu(): JSX.Element {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [entities, setEntities] = useState<EntityResult[]>([])
+  const [srdCreatures, setSrdCreatures] = useState<SrdCreatureResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   const router = useRouter()
@@ -71,6 +79,7 @@ export function CommandMenu(): JSX.Element {
     if (!open) {
       setQuery('')
       setEntities([])
+      setSrdCreatures([])
       setIsLoading(false)
     }
   }, [open])
@@ -78,19 +87,20 @@ export function CommandMenu(): JSX.Element {
   // Debounced search with cache and race-condition protection
   useEffect(() => {
     const q = query.trim()
-    if (!campaignId || q.length < 2) {
+    if (q.length < 2) {
       setEntities([])
+      setSrdCreatures([])
       setIsLoading(false)
       return
     }
 
     // Check cache first
-    const cacheKey = `${campaignId}:${q.toLowerCase()}`
+    const cacheKey = `${campaignId || 'global'}:${q.toLowerCase()}`
     const cached = cacheRef.current.get(cacheKey)
     if (cached) {
       setEntities(cached)
       setIsLoading(false)
-      return
+      // Don't return - still need to search SRD
     }
 
     const requestId = ++latestRequestRef.current
@@ -98,25 +108,38 @@ export function CommandMenu(): JSX.Element {
 
     const timer = setTimeout(async () => {
       try {
-        const { data, error } = await supabase
-          .from('entities')
-          .select('id, name, entity_type')
-          .eq('campaign_id', campaignId)
-          .is('deleted_at', null)
+        // Search campaign entities (if in a campaign)
+        if (campaignId && !cached) {
+          const { data, error } = await supabase
+            .from('entities')
+            .select('id, name, entity_type')
+            .eq('campaign_id', campaignId)
+            .is('deleted_at', null)
+            .ilike('name', `%${q}%`)
+            .limit(10)
+
+          if (requestId !== latestRequestRef.current) return
+          if (!error) {
+            const results = (data ?? []) as EntityResult[]
+            cacheRef.current.set(cacheKey, results)
+            setEntities(results)
+          }
+        }
+
+        // Search SRD creatures (always available)
+        const { data: srdData, error: srdError } = await supabase
+          .from('srd_creatures')
+          .select('id, name, creature_type, cr')
           .ilike('name', `%${q}%`)
-          .limit(10)
+          .limit(5)
 
-        // Ignore stale responses
         if (requestId !== latestRequestRef.current) return
-        if (error) throw error
-
-        const results = (data ?? []) as EntityResult[]
-        cacheRef.current.set(cacheKey, results)
-        setEntities(results)
+        if (!srdError) {
+          setSrdCreatures((srdData ?? []) as SrdCreatureResult[])
+        }
       } catch (err) {
         if (requestId !== latestRequestRef.current) return
         console.error('Omni-search error:', err)
-        setEntities([])
       } finally {
         if (requestId === latestRequestRef.current) setIsLoading(false)
       }
@@ -161,7 +184,7 @@ export function CommandMenu(): JSX.Element {
   }
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={open} onOpenChange={setOpen} shouldFilter={false}>
       <CommandInput
         placeholder="Search entities, navigate, or roll dice..."
         value={query}
@@ -196,6 +219,29 @@ export function CommandMenu(): JSX.Element {
                 </CommandItem>
               )
             })}
+          </CommandGroup>
+        )}
+
+        {/* SRD Creature Search Results */}
+        {srdCreatures.length > 0 && (
+          <CommandGroup heading="SRD Reference">
+            {srdCreatures.map((creature) => (
+              <CommandItem
+                key={creature.id}
+                onSelect={() =>
+                  runCommand(() =>
+                    router.push(`/dashboard/codex/creatures/${creature.id}`)
+                  )
+                }
+              >
+                <Bug className="mr-2 h-4 w-4 text-rose-400" />
+                <span>{creature.name}</span>
+                <span className="ml-auto text-xs text-slate-500">
+                  {creature.creature_type && `${creature.creature_type} · `}
+                  {creature.cr && `CR ${creature.cr}`}
+                </span>
+              </CommandItem>
+            ))}
           </CommandGroup>
         )}
 
