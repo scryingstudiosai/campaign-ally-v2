@@ -4,7 +4,22 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { DeleteCampaignButton } from '@/components/campaigns/delete-campaign-button'
 import { SessionsList } from '@/components/dashboard/SessionsList'
-import { ArrowLeft, BookOpen, Brain, Pencil, Sparkles, User, MapPin, Swords, Gem, Bug, Flag, Scroll } from 'lucide-react'
+import { MaterialCard } from '@/components/ui/material-card'
+import { ForgeButton } from '@/components/ui/forge-button'
+import { ManaBar } from '@/components/ui/mana-bar'
+import {
+  ArrowLeft,
+  Brain,
+  Book,
+  Pencil,
+  User,
+  MapPin,
+  Swords,
+  Package,
+  Bug,
+  Users,
+  Scroll,
+} from 'lucide-react'
 
 interface PageProps {
   params: { id: string }
@@ -53,6 +68,12 @@ export default async function CampaignDetailPage({ params }: PageProps) {
     .eq('campaign_id', params.id)
     .is('deleted_at', null)
 
+  // Get session count for progress
+  const { count: sessionCount } = await supabase
+    .from('sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('campaign_id', params.id)
+
   const gameSystemLabel = campaign.game_system
     ? GAME_SYSTEM_LABELS[campaign.game_system] || campaign.game_system
     : 'Not specified'
@@ -61,192 +82,152 @@ export default async function CampaignDetailPage({ params }: PageProps) {
     : 'Not specified'
 
   return (
-    <div className="min-h-screen text-foreground p-8" style={{ backgroundColor: 'var(--ca-bg-base)' }}>
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <Button variant="ghost" asChild className="mb-4">
-            <Link href="/dashboard">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Link>
-          </Button>
+    <div className="min-h-screen text-foreground p-6" style={{ backgroundColor: 'var(--ca-bg-base)' }}>
+      <div className="max-w-7xl mx-auto">
+        {/* Back Button */}
+        <Button variant="ghost" asChild className="mb-4">
+          <Link href="/dashboard">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Link>
+        </Button>
 
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-100">{campaign.name}</h1>
-              {campaign.description && (
-                <p className="text-slate-400 mt-2 max-w-2xl">
-                  {campaign.description}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-2 mt-4 text-sm">
-                <span className="ca-inset text-primary">
-                  {genreLabel}
-                </span>
-                <span className="ca-inset text-slate-300">
-                  {gameSystemLabel}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/dashboard/campaigns/${params.id}/edit`}>
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </Link>
-              </Button>
-              <DeleteCampaignButton campaignId={campaign.id} campaignName={campaign.name} />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="ca-card ca-card-interactive p-6">
-            <Link href={`/dashboard/campaigns/${params.id}/codex`} className="block h-full">
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-semibold text-slate-100">Codex</h3>
-              </div>
-              <p className="text-sm text-slate-400 mb-4">
-                Your campaign&apos;s world bible and lore
-              </p>
-              <span className="ca-btn ca-btn-primary w-full text-center block">
-                View Codex
-              </span>
-            </Link>
-          </div>
-
-          <div className="ca-card ca-card-interactive p-6">
-            <Link href={`/dashboard/campaigns/${params.id}/memory`} className="block h-full">
-              <div className="flex items-center gap-2 mb-2">
-                <Brain className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-semibold text-slate-100">Memory</h3>
-                {entityCount !== null && entityCount > 0 && (
-                  <span className="ca-inset ml-auto text-xs">
-                    {entityCount}
-                  </span>
+        {/* Bento Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* LEFT COLUMN (Spans 2 cols) - Campaign Header & Sessions */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Campaign Header */}
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="font-display text-2xl font-bold text-white">{campaign.name}</h1>
+                {campaign.description && (
+                  <p className="text-slate-400 mt-2 max-w-2xl">
+                    {campaign.description}
+                  </p>
                 )}
+                <div className="flex flex-wrap gap-2 mt-3 text-sm">
+                  <span className="ca-inset text-primary">
+                    {genreLabel}
+                  </span>
+                  <span className="ca-inset text-slate-300">
+                    {gameSystemLabel}
+                  </span>
+                </div>
               </div>
-              <p className="text-sm text-slate-400 mb-4">
-                NPCs, locations, items, and factions
-              </p>
-              <span className="ca-btn ca-btn-primary w-full text-center block">
-                View Memory
-              </span>
-            </Link>
-          </div>
 
-          <div className="lg:col-span-3">
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/dashboard/campaigns/${params.id}/edit`}>
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </Link>
+                </Button>
+                <DeleteCampaignButton campaignId={campaign.id} campaignName={campaign.name} />
+              </div>
+            </div>
+
+            {/* Sessions List */}
             <SessionsList campaignId={params.id} />
           </div>
-        </div>
 
-        {/* AI Forges Section */}
-        <div className="mt-12">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(180deg, rgba(45, 212, 191, 0.2) 0%, rgba(45, 212, 191, 0.1) 100%)' }}>
-              <Sparkles className="w-5 h-5 text-primary" />
+          {/* RIGHT COLUMN - Tools & Quick Access */}
+          <div className="space-y-6">
+            {/* Codex & Memory - Compact Tiles */}
+            <div className="grid grid-cols-2 gap-4">
+              <Link href={`/dashboard/campaigns/${params.id}/codex`}>
+                <MaterialCard hoverable className="p-4 text-center h-full">
+                  <Book className="w-6 h-6 text-teal-400 mx-auto mb-2" />
+                  <div className="font-semibold text-slate-200 text-sm">Codex</div>
+                  <p className="text-xs text-slate-500 mt-1">World lore</p>
+                </MaterialCard>
+              </Link>
+
+              <Link href={`/dashboard/campaigns/${params.id}/memory`}>
+                <MaterialCard hoverable className="p-4 text-center h-full">
+                  <Brain className="w-6 h-6 text-purple-400 mx-auto mb-2" />
+                  <div className="font-semibold text-slate-200 text-sm">Memory</div>
+                  {entityCount !== null && entityCount > 0 ? (
+                    <p className="text-xs text-slate-500 mt-1">{entityCount} entities</p>
+                  ) : (
+                    <p className="text-xs text-slate-500 mt-1">NPCs & more</p>
+                  )}
+                </MaterialCard>
+              </Link>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-100">AI Forges</h2>
-              <p className="text-sm text-slate-400">
-                Generate content powered by your campaign&apos;s Codex
-              </p>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* NPC Forge - Teal */}
-            <Link href={`/dashboard/campaigns/${params.id}/forge/npc`} className="block">
-              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-teal-500/30 hover:shadow-[0_0_20px_rgba(45,212,191,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="w-4 h-4 text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]" />
-                  <h3 className="text-base font-semibold text-slate-100">NPC Forge</h3>
-                </div>
-                <p className="text-sm text-slate-400">
-                  Generate memorable NPCs with personalities, secrets, and hooks
-                </p>
+            {/* Quick Forge - Compact Grid */}
+            <MaterialCard className="p-4">
+              <h3 className="text-xs font-mono uppercase text-slate-500 mb-4 tracking-wider">
+                Quick Forge
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/npc`}
+                  icon={User}
+                  label="NPC"
+                  glowColor="teal"
+                />
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/creature`}
+                  icon={Bug}
+                  label="Creature"
+                  glowColor="rose"
+                />
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/location`}
+                  icon={MapPin}
+                  label="Location"
+                  glowColor="emerald"
+                />
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/item`}
+                  icon={Package}
+                  label="Item"
+                  glowColor="blue"
+                />
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/faction`}
+                  icon={Users}
+                  label="Faction"
+                  glowColor="orange"
+                />
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/encounter`}
+                  icon={Swords}
+                  label="Encounter"
+                  glowColor="amber"
+                />
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/quest`}
+                  icon={Scroll}
+                  label="Quest"
+                  glowColor="purple"
+                />
               </div>
-            </Link>
+            </MaterialCard>
 
-            {/* Creature Forge - Rose */}
-            <Link href={`/dashboard/campaigns/${params.id}/forge/creature`} className="block">
-              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-rose-500/30 hover:shadow-[0_0_20px_rgba(244,63,94,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
-                <div className="flex items-center gap-2 mb-2">
-                  <Bug className="w-4 h-4 text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
-                  <h3 className="text-base font-semibold text-slate-100">Creature Forge</h3>
-                </div>
-                <p className="text-sm text-slate-400">
-                  Design monsters and beasts with full stat blocks
-                </p>
+            {/* Campaign Progress */}
+            <MaterialCard className="p-4">
+              <h3 className="text-xs font-mono uppercase text-slate-500 mb-3 tracking-wider">
+                Progress
+              </h3>
+              <div className="space-y-3">
+                <ManaBar
+                  value={sessionCount || 0}
+                  max={Math.max(sessionCount || 0, 10)}
+                  variant="arcane"
+                  label="Sessions"
+                  showValue
+                />
+                <ManaBar
+                  value={entityCount || 0}
+                  max={Math.max(entityCount || 0, 20)}
+                  variant="gold"
+                  label="Entities"
+                  showValue
+                />
               </div>
-            </Link>
-
-            {/* Location Forge - Emerald */}
-            <Link href={`/dashboard/campaigns/${params.id}/forge/location`} className="block">
-              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-emerald-500/30 hover:shadow-[0_0_20px_rgba(52,211,153,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="w-4 h-4 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                  <h3 className="text-base font-semibold text-slate-100">Location Forge</h3>
-                </div>
-                <p className="text-sm text-slate-400">
-                  Create immersive locations with atmosphere and secrets
-                </p>
-              </div>
-            </Link>
-
-            {/* Item Forge - Blue */}
-            <Link href={`/dashboard/campaigns/${params.id}/forge/item`} className="block">
-              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-blue-500/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
-                <div className="flex items-center gap-2 mb-2">
-                  <Gem className="w-4 h-4 text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                  <h3 className="text-base font-semibold text-slate-100">Item Forge</h3>
-                </div>
-                <p className="text-sm text-slate-400">
-                  Generate unique items with dual player/DM descriptions
-                </p>
-              </div>
-            </Link>
-
-            {/* Faction Forge - Orange */}
-            <Link href={`/dashboard/campaigns/${params.id}/forge/faction`} className="block">
-              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-orange-500/30 hover:shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
-                <div className="flex items-center gap-2 mb-2">
-                  <Flag className="w-4 h-4 text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
-                  <h3 className="text-base font-semibold text-slate-100">Faction Forge</h3>
-                </div>
-                <p className="text-sm text-slate-400">
-                  Create organizations with goals, resources, and influence
-                </p>
-              </div>
-            </Link>
-
-            {/* Encounter Forge - Amber */}
-            <Link href={`/dashboard/campaigns/${params.id}/forge/encounter`} className="block">
-              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-amber-500/30 hover:shadow-[0_0_20px_rgba(251,191,36,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
-                <div className="flex items-center gap-2 mb-2">
-                  <Swords className="w-4 h-4 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
-                  <h3 className="text-base font-semibold text-slate-100">Encounter Forge</h3>
-                </div>
-                <p className="text-sm text-slate-400">
-                  Create dynamic combat, social, and exploration encounters
-                </p>
-              </div>
-            </Link>
-
-            {/* Quest Forge - Purple */}
-            <Link href={`/dashboard/campaigns/${params.id}/forge/quest`} className="block">
-              <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/95 rounded-xl p-4 border border-purple-500/30 hover:shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
-                <div className="flex items-center gap-2 mb-2">
-                  <Scroll className="w-4 h-4 text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
-                  <h3 className="text-base font-semibold text-slate-100">Quest Forge</h3>
-                </div>
-                <p className="text-sm text-slate-400">
-                  Design quests with objectives, chains, and rewards
-                </p>
-              </div>
-            </Link>
+            </MaterialCard>
           </div>
         </div>
       </div>
