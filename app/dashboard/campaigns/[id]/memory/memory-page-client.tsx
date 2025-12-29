@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2, User, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 
 const STORAGE_KEY = 'memory-view-mode'
@@ -311,37 +311,39 @@ export function MemoryPageClient({
 
         {/* Entity Display */}
         {filteredEntities.length === 0 ? (
-          <Card className="p-12 text-center">
-            <Database className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            {entities.length === 0 ? (
-              <>
-                <h3 className="text-lg font-semibold mb-2">No entities yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Start building your campaign memory by adding NPCs, locations, items, and more.
-                </p>
-                <div className="flex flex-wrap justify-center gap-3">
-                  <Button asChild>
-                    <Link href={`/dashboard/campaigns/${campaignId}/memory/new`}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Entity Manually
-                    </Link>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link href={`/dashboard/campaigns/${campaignId}/forge/npc`}>
-                      Generate with NPC Forge
-                    </Link>
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3 className="text-lg font-semibold mb-2">No matching entities</h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your filters or search terms.
-                </p>
-              </>
-            )}
-          </Card>
+          entities.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4">
+                <Brain className="w-8 h-8 text-slate-500" />
+              </div>
+              <h3 className="text-xl font-display text-slate-300 mb-2">Your world awaits</h3>
+              <p className="text-sm text-slate-500 mb-6 max-w-md">
+                Entities you create in the Forges will appear here. Build NPCs, locations, items, and more to populate your campaign.
+              </p>
+              <div className="flex gap-3">
+                <Button asChild className="bg-teal-600 hover:bg-teal-700">
+                  <Link href={`/dashboard/campaigns/${campaignId}/forge/npc`}>
+                    <User className="w-4 h-4 mr-2" />
+                    Create NPC
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href={`/dashboard/campaigns/${campaignId}/forge/location`}>
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Create Location
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Card className="p-12 text-center">
+              <Database className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No matching entities</h3>
+              <p className="text-muted-foreground">
+                Try adjusting your filters or search terms.
+              </p>
+            </Card>
+          )
         ) : viewMode === 'card' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredEntities.map((entity) => (
