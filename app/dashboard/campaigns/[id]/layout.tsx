@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { CampaignSidebar, MobileMenuButton } from '@/components/layout/CampaignSidebar'
+import { CommandMenu } from '@/components/command-menu'
 
 interface CampaignLayoutProps {
   children: React.ReactNode
@@ -28,6 +29,9 @@ export default async function CampaignLayout({ children, params }: CampaignLayou
 
       {/* Main Content */}
       <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
+
+      {/* Global Command Menu (Cmd+K) */}
+      <CommandMenu />
     </div>
   )
 }
