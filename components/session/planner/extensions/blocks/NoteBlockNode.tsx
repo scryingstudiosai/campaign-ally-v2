@@ -108,7 +108,13 @@ export const NoteBlockNode = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div[data-note-block]' }]
+    return [{
+      tag: 'div[data-note-block]',
+      getAttrs: (element) => {
+        if (typeof element === 'string') return false
+        return element.hasAttribute('data-note-block') ? {} : false
+      },
+    }]
   },
 
   renderHTML({ HTMLAttributes }) {

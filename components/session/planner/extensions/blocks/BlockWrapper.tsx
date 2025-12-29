@@ -70,21 +70,21 @@ export function BlockWrapper({
 
   // Update status without adding to undo history
   const updateStatus = (newStatus: BlockStatus) => {
-    editor.commands.command(({ tr }) => {
-      const pos = editor.state.selection.from
-      tr.setNodeAttribute(pos - 1, 'status', newStatus)
-      tr.setMeta('addToHistory', false)
-      return true
-    })
-    // Fallback: direct update
-    updateAttributes({ status: newStatus })
+    if (!editor || !editor.isEditable) {
+      console.warn('Editor not ready for status change')
+      return
+    }
+
+    try {
+      // Use updateAttributes directly - it's safer and handles the node position correctly
+      updateAttributes({ status: newStatus })
+    } catch (error) {
+      console.error('Failed to update status:', error)
+    }
   }
 
   const toggleCollapse = () => {
-    editor.commands.command(({ tr }) => {
-      tr.setMeta('addToHistory', false)
-      return true
-    })
+    if (!editor || !editor.isEditable) return
     updateAttributes({ isCollapsed: !isCollapsed })
   }
 

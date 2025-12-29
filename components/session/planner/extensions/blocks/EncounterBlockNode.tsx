@@ -280,7 +280,13 @@ export const EncounterBlockNode = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div[data-encounter-block]' }]
+    return [{
+      tag: 'div[data-encounter-block]',
+      getAttrs: (element) => {
+        if (typeof element === 'string') return false
+        return element.hasAttribute('data-encounter-block') ? {} : false
+      },
+    }]
   },
 
   renderHTML({ HTMLAttributes }) {

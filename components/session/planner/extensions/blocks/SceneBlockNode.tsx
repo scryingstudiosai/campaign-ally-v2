@@ -203,7 +203,13 @@ export const SceneBlockNode = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div[data-scene-block]' }]
+    return [{
+      tag: 'div[data-scene-block]',
+      getAttrs: (element) => {
+        if (typeof element === 'string') return false
+        return element.hasAttribute('data-scene-block') ? {} : false
+      },
+    }]
   },
 
   renderHTML({ HTMLAttributes }) {

@@ -241,7 +241,13 @@ export const QuestBlockNode = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div[data-quest-block]' }]
+    return [{
+      tag: 'div[data-quest-block]',
+      getAttrs: (element) => {
+        if (typeof element === 'string') return false
+        return element.hasAttribute('data-quest-block') ? {} : false
+      },
+    }]
   },
 
   renderHTML({ HTMLAttributes }) {
