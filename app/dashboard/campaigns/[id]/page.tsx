@@ -80,41 +80,40 @@ export default async function CampaignDetailPage({ params }: PageProps) {
           </Link>
         </Button>
 
-        {/* Bento Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT COLUMN (Spans 2 cols) - Campaign Header & Sessions */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Campaign Header */}
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="font-display text-2xl font-bold text-white">{campaign.name}</h1>
-                {campaign.description && (
-                  <p className="text-slate-400 mt-2 max-w-2xl">
-                    {campaign.description}
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2 mt-3 text-sm">
-                  <span className="ca-inset text-primary">
-                    {genreLabel}
-                  </span>
-                  <span className="ca-inset text-slate-300">
-                    {gameSystemLabel}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/dashboard/campaigns/${params.id}/edit`}>
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Edit
-                  </Link>
-                </Button>
-                <DeleteCampaignButton campaignId={campaign.id} campaignName={campaign.name} />
-              </div>
+        {/* Campaign Header - Full Width */}
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h1 className="font-display text-2xl font-bold text-white">{campaign.name}</h1>
+            {campaign.description && (
+              <p className="text-slate-400 mt-2 max-w-2xl">
+                {campaign.description}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2 mt-3 text-sm">
+              <span className="ca-inset text-primary">
+                {genreLabel}
+              </span>
+              <span className="ca-inset text-slate-300">
+                {gameSystemLabel}
+              </span>
             </div>
+          </div>
 
-            {/* Sessions List */}
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/dashboard/campaigns/${params.id}/edit`}>
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+            <DeleteCampaignButton campaignId={campaign.id} campaignName={campaign.name} />
+          </div>
+        </div>
+
+        {/* Bento Grid Layout - Sessions & Sidebar aligned */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* LEFT COLUMN (Spans 2 cols) - Sessions */}
+          <div className="lg:col-span-2">
             <SessionsList campaignId={params.id} />
           </div>
 
@@ -167,29 +166,31 @@ export default async function CampaignDetailPage({ params }: PageProps) {
 
             {/* Campaign Data - Codex & Memory */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-3">
                 <Database className="w-5 h-5 text-slate-400" />
                 <h2 className="text-lg font-display text-white">Campaign Data</h2>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <Link href={`/dashboard/campaigns/${params.id}/codex`}>
-                  <MaterialCard hoverable className="p-4 text-center h-full">
-                    <Book className="w-6 h-6 text-teal-400 mx-auto mb-2" />
-                    <div className="font-semibold text-slate-200 text-sm">Codex</div>
-                    <p className="text-xs text-slate-500 mt-1">World lore</p>
-                  </MaterialCard>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 border border-white/5 hover:border-teal-500/30 hover:bg-slate-800 transition-all">
+                    <Book className="w-5 h-5 text-teal-400 shrink-0" />
+                    <div>
+                      <div className="text-sm font-medium text-white">Codex</div>
+                      <div className="text-xs text-slate-500">World lore</div>
+                    </div>
+                  </div>
                 </Link>
 
                 <Link href={`/dashboard/campaigns/${params.id}/memory`}>
-                  <MaterialCard hoverable className="p-4 text-center h-full">
-                    <Brain className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-                    <div className="font-semibold text-slate-200 text-sm">Memory</div>
-                    {entityCount !== null && entityCount > 0 ? (
-                      <p className="text-xs text-slate-500 mt-1">{entityCount} entities</p>
-                    ) : (
-                      <p className="text-xs text-slate-500 mt-1">NPCs & more</p>
-                    )}
-                  </MaterialCard>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 border border-white/5 hover:border-purple-500/30 hover:bg-slate-800 transition-all">
+                    <Brain className="w-5 h-5 text-purple-400 shrink-0" />
+                    <div>
+                      <div className="text-sm font-medium text-white">Memory</div>
+                      <div className="text-xs text-slate-500">
+                        {entityCount !== null && entityCount > 0 ? `${entityCount} entities` : 'NPCs & more'}
+                      </div>
+                    </div>
+                  </div>
                 </Link>
               </div>
             </div>
