@@ -21,6 +21,7 @@ import {
   Heart,
   Lock,
 } from 'lucide-react'
+import { MaterialCard } from '@/components/ui/material-card'
 
 interface BrainCardProps {
   brain: NpcBrain | VillainBrain | HeroBrain
@@ -35,13 +36,15 @@ export function BrainCard({
   if (viewMode === 'player') return null
 
   return (
-    <div className="ca-card p-4 space-y-3">
-      <div className="flex items-center gap-2 text-amber-400 font-medium">
-        <Brain className="w-5 h-5" />
-        <span>NPC Brain</span>
+    <MaterialCard entityType="npc" className="p-0">
+      <div className="p-4 pb-2 border-b border-white/5">
+        <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+          <Brain className="w-5 h-5 text-purple" />
+          NPC Brain
+        </h3>
       </div>
-
-      <div className="space-y-2">
+      <div className="p-4 space-y-3">
+        <div className="space-y-2">
         <div className="flex gap-3">
           <Target className="w-4 h-4 text-teal-400 mt-1 shrink-0" />
           <div>
@@ -188,7 +191,8 @@ export function BrainCard({
             </div>
           </>
         )}
+        </div>
       </div>
-    </div>
+    </MaterialCard>
   )
 }

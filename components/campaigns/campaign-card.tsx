@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { MaterialCard } from '@/components/ui/material-card'
 
 interface Campaign {
   id: string
@@ -40,30 +40,32 @@ export function CampaignCard({ campaign }: CampaignCardProps): JSX.Element {
 
   return (
     <Link href={`/dashboard/campaigns/${campaign.id}`}>
-      <Card className="h-full transition-colors hover:border-primary/50 hover:bg-accent/5 cursor-pointer">
-        <CardHeader>
-          <CardTitle className="text-lg">{campaign.name}</CardTitle>
+      <MaterialCard hoverable entityType="quest" className="h-full p-0">
+        <div className="p-4 pb-2">
+          <h3 className="font-display text-lg font-semibold text-white tracking-wide">
+            {campaign.name}
+          </h3>
           {campaign.description && (
-            <CardDescription className="line-clamp-2">
+            <p className="text-sm text-ash line-clamp-2 mt-1">
               {campaign.description}
-            </CardDescription>
+            </p>
           )}
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-4 pt-2">
           <div className="flex flex-wrap gap-2 text-xs">
             {genreLabel && (
-              <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">
+              <span className="badge-arcane">
                 {genreLabel}
               </span>
             )}
             {gameSystemLabel && (
-              <span className="px-2 py-1 rounded-full bg-secondary text-secondary-foreground">
+              <span className="px-2 py-1 rounded-full bg-stone-light text-bone">
                 {gameSystemLabel}
               </span>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </MaterialCard>
     </Link>
   )
 }

@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { MaterialCard } from '@/components/ui/material-card'
 import { Sparkles, Palette, Globe, BookOpen, HelpCircle, Check, Users } from 'lucide-react'
 
 interface Codex {
@@ -95,39 +95,39 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
     <div className="space-y-6">
       {/* Premise - Full Width */}
       {codex.premise && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <BookOpen className="w-5 h-5 text-primary" />
+        <MaterialCard entityType="quest" className="p-0">
+          <div className="p-4 pb-2 border-b border-white/5">
+            <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+              <BookOpen className="w-5 h-5 text-gold" />
               Campaign Premise
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{codex.premise}</p>
-          </CardContent>
-        </Card>
+            </h3>
+          </div>
+          <div className="p-4">
+            <p className="text-sm text-ash whitespace-pre-wrap">{codex.premise}</p>
+          </div>
+        </MaterialCard>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* World Foundation */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="w-5 h-5 text-primary" />
+        <MaterialCard entityType="location" className="p-0">
+          <div className="p-4 pb-2 border-b border-white/5">
+            <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+              <Sparkles className="w-5 h-5 text-emerald" />
               World Foundation
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </h3>
+          </div>
+          <div className="p-4 space-y-4">
             {codex.world_name && (
               <div>
-                <p className="text-sm text-muted-foreground">World Name</p>
-                <p className="font-medium">{codex.world_name}</p>
+                <p className="text-xs text-smoke uppercase tracking-wider">World Name</p>
+                <p className="font-medium text-bone">{codex.world_name}</p>
               </div>
             )}
 
             {codex.pillars && codex.pillars.length > 0 && (
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Campaign Pillars</p>
+                <p className="text-xs text-smoke uppercase tracking-wider mb-2">Campaign Pillars</p>
                 <div className="flex flex-wrap gap-1">
                   {codex.pillars.map((p) => (
                     <Badge key={p} variant="default">
@@ -140,7 +140,7 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
 
             {codex.tone && codex.tone.length > 0 && (
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Tone</p>
+                <p className="text-xs text-smoke uppercase tracking-wider mb-2">Tone</p>
                 <div className="flex flex-wrap gap-1">
                   {codex.tone.map((t) => (
                     <Badge key={t} variant="secondary">
@@ -154,21 +154,21 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
             <div className="grid grid-cols-2 gap-4">
               {magicLabel && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Magic Level</p>
-                  <p className="font-medium">{magicLabel}</p>
+                  <p className="text-xs text-smoke uppercase tracking-wider">Magic Level</p>
+                  <p className="font-medium text-bone">{magicLabel}</p>
                 </div>
               )}
               {techLabel && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Tech Level</p>
-                  <p className="font-medium">{techLabel}</p>
+                  <p className="text-xs text-smoke uppercase tracking-wider">Tech Level</p>
+                  <p className="font-medium text-bone">{techLabel}</p>
                 </div>
               )}
             </div>
 
             {codex.themes && codex.themes.length > 0 && (
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Themes</p>
+                <p className="text-xs text-smoke uppercase tracking-wider mb-2">Themes</p>
                 <div className="flex flex-wrap gap-1">
                   {codex.themes.map((theme) => (
                     <Badge key={theme} variant="outline">
@@ -178,28 +178,28 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </MaterialCard>
 
         {/* Style Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Palette className="w-5 h-5 text-primary" />
+        <MaterialCard entityType="quest" className="p-0">
+          <div className="p-4 pb-2 border-b border-white/5">
+            <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+              <Palette className="w-5 h-5 text-gold" />
               Style Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </h3>
+          </div>
+          <div className="p-4 space-y-4">
             {narrativeLabel && (
               <div>
-                <p className="text-sm text-muted-foreground">Narrative Voice</p>
-                <p className="font-medium">{narrativeLabel}</p>
+                <p className="text-xs text-smoke uppercase tracking-wider">Narrative Voice</p>
+                <p className="font-medium text-bone">{narrativeLabel}</p>
               </div>
             )}
 
             {codex.content_warnings && codex.content_warnings.length > 0 && (
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Content Warnings</p>
+                <p className="text-xs text-smoke uppercase tracking-wider mb-2">Content Warnings</p>
                 <div className="flex flex-wrap gap-1">
                   {codex.content_warnings.map((warning) => (
                     <Badge key={warning} variant="destructive">
@@ -211,23 +211,23 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
             )}
 
             {(!narrativeLabel && (!codex.content_warnings || codex.content_warnings.length === 0)) && (
-              <p className="text-sm text-muted-foreground italic">No style settings configured</p>
+              <p className="text-sm text-ash italic">No style settings configured</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </MaterialCard>
 
         {/* World Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Globe className="w-5 h-5 text-primary" />
+        <MaterialCard entityType="location" className="p-0">
+          <div className="p-4 pb-2 border-b border-white/5">
+            <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+              <Globe className="w-5 h-5 text-emerald" />
               World Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </h3>
+          </div>
+          <div className="p-4 space-y-4">
             {codex.languages && codex.languages.length > 0 && (
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Languages</p>
+                <p className="text-xs text-smoke uppercase tracking-wider mb-2">Languages</p>
                 <div className="flex flex-wrap gap-1">
                   {codex.languages.map((lang) => (
                     <Badge key={lang} variant="secondary">
@@ -240,41 +240,41 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
 
             {codex.calendar_system && (
               <div>
-                <p className="text-sm text-muted-foreground">Calendar System</p>
-                <p className="font-medium">{codex.calendar_system}</p>
+                <p className="text-xs text-smoke uppercase tracking-wider">Calendar System</p>
+                <p className="font-medium text-bone">{codex.calendar_system}</p>
               </div>
             )}
 
             {codex.current_game_date && (
               <div>
-                <p className="text-sm text-muted-foreground">Current Game Date</p>
-                <p className="font-medium">{codex.current_game_date}</p>
+                <p className="text-xs text-smoke uppercase tracking-wider">Current Game Date</p>
+                <p className="font-medium text-bone">{codex.current_game_date}</p>
               </div>
             )}
 
             {codex.geography_notes && (
               <div>
-                <p className="text-sm text-muted-foreground">Geography</p>
-                <p className="text-sm whitespace-pre-wrap">{codex.geography_notes}</p>
+                <p className="text-xs text-smoke uppercase tracking-wider">Geography</p>
+                <p className="text-sm text-ash whitespace-pre-wrap">{codex.geography_notes}</p>
               </div>
             )}
 
             {(!codex.languages?.length && !codex.calendar_system && !codex.current_game_date && !codex.geography_notes) && (
-              <p className="text-sm text-muted-foreground italic">No world details configured</p>
+              <p className="text-sm text-ash italic">No world details configured</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </MaterialCard>
 
         {/* Established Names */}
         {codex.proper_nouns && codex.proper_nouns.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Users className="w-5 h-5 text-primary" />
+          <MaterialCard entityType="npc" className="p-0">
+            <div className="p-4 pb-2 border-b border-white/5">
+              <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+                <Users className="w-5 h-5 text-purple" />
                 Established Names
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </h3>
+            </div>
+            <div className="p-4">
               <div className="flex flex-wrap gap-2">
                 {codex.proper_nouns.map((noun) => (
                   <Badge key={noun} variant="secondary">
@@ -282,54 +282,54 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
                   </Badge>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </MaterialCard>
         )}
 
         {/* Open Questions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <HelpCircle className="w-5 h-5 text-primary" />
+        <MaterialCard className="p-0">
+          <div className="p-4 pb-2 border-b border-white/5">
+            <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+              <HelpCircle className="w-5 h-5 text-arcane" />
               Open Questions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-4">
             {codex.open_questions && codex.open_questions.length > 0 ? (
               <div className="space-y-2">
                 {codex.open_questions.map((question, index) => (
                   <div key={index} className="flex items-start gap-2">
-                    <span className="text-muted-foreground">•</span>
-                    <p className="text-sm">{question}</p>
+                    <span className="text-smoke">•</span>
+                    <p className="text-sm text-ash">{question}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic">No open questions</p>
+              <p className="text-sm text-ash italic">No open questions</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </MaterialCard>
 
         {/* Established Facts */}
         {codex.resolved_questions && codex.resolved_questions.length > 0 && (
-          <Card className="border-green-500/30">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg text-green-500">
+          <MaterialCard className="p-0 border-emerald/30">
+            <div className="p-4 pb-2 border-b border-emerald/10">
+              <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-emerald">
                 <Check className="w-5 h-5" />
                 Established Facts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </h3>
+            </div>
+            <div className="p-4">
               <div className="space-y-2">
                 {codex.resolved_questions.map((fact, index) => (
                   <div key={index} className="flex items-start gap-2">
-                    <span className="text-green-500">✓</span>
-                    <p className="text-sm">{fact}</p>
+                    <span className="text-emerald">✓</span>
+                    <p className="text-sm text-ash">{fact}</p>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </MaterialCard>
         )}
       </div>
     </div>
