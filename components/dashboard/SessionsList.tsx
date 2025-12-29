@@ -104,12 +104,19 @@ export function SessionsList({ campaignId }: SessionsListProps): JSX.Element {
         {isLoading ? (
           <div className="text-slate-500 text-sm text-center py-8">Loading sessions...</div>
         ) : sessions.length === 0 ? (
-          <div className="text-center py-8">
-            <Calendar className="w-12 h-12 text-slate-700 mx-auto mb-3" />
-            <p className="text-slate-400 mb-1">No sessions yet</p>
-            <p className="text-slate-600 text-sm mb-4">Start your first session to begin tracking your campaign</p>
-            <Button onClick={handleNewSession} disabled={isCreating}>
-              <Plus className="w-4 h-4 mr-1" /> Start First Session
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-4">
+              <Calendar className="w-6 h-6 text-slate-500" />
+            </div>
+            <h3 className="text-lg font-medium text-slate-300 mb-2">No sessions yet</h3>
+            <p className="text-sm text-slate-500 mb-4">Create your first session to start your adventure</p>
+            <Button
+              onClick={handleNewSession}
+              disabled={isCreating}
+              className="bg-teal-600 hover:bg-teal-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Session
             </Button>
           </div>
         ) : (
