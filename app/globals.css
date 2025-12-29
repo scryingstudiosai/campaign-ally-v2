@@ -2,7 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Material System Design Tokens & Components */
+/* Arcane Artifact Design System */
+@import '../styles/arcane-tokens.css';
 @import '../styles/tokens.css';
 @import '../styles/materials.css';
 
@@ -151,4 +152,24 @@
   letter-spacing: 0.05em;
   font-weight: 600;
   font-style: normal;
+}
+
+/* ═══════════════════════════════════════════
+   ARCANE ARTIFACT DESIGN SYSTEM
+   Noise Texture Overlay for tactile feel
+═══════════════════════════════════════════ */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Void background for body */
+body {
+  background-color: var(--void);
 }

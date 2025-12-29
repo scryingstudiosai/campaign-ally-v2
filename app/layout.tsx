@@ -1,7 +1,27 @@
 import type { Metadata } from 'next'
+import { Cinzel, DM_Sans, JetBrains_Mono } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/auth-context'
 import './globals.css'
+
+// Arcane Artifact Design System fonts
+const cinzel = Cinzel({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+})
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-body',
+  display: 'swap',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Campaign Ally - AI Co-Pilot for Dungeon Masters',
@@ -18,8 +38,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="font-sans antialiased">
+    <html lang="en" className={`dark ${cinzel.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}>
+      <body className="font-body antialiased">
         <AuthProvider>
           {children}
           <Toaster

@@ -1,0 +1,147 @@
+:root {
+  /* ═══════════════════════════════════════════
+     VOID & STONE PALETTE
+     The darkness between stars and ancient rock
+  ═══════════════════════════════════════════ */
+
+  /* Backgrounds - Deep to Surface */
+  --void: rgb(2, 6, 23);              /* The abyss - deepest background */
+  --void-soft: rgb(5, 10, 25);        /* Slightly lifted void */
+  --stone: rgb(15, 23, 42);           /* Primary surface - slate-900 */
+  --stone-light: rgb(30, 41, 59);     /* Elevated surface - slate-800 */
+  --stone-lighter: rgb(51, 65, 85);   /* Highest surface - slate-700 */
+
+  /* Recessed areas */
+  --carved: rgba(0, 0, 0, 0.4);       /* Inset/sunken areas */
+  --carved-deep: rgba(0, 0, 0, 0.6);  /* Deeper recesses */
+
+  /* ═══════════════════════════════════════════
+     ARCANE ACCENT COLORS
+     Each with dim, standard, and bright variants
+  ═══════════════════════════════════════════ */
+
+  /* Arcane Teal - Primary action, active states */
+  --arcane-dim: rgb(13, 148, 136);    /* teal-600 */
+  --arcane: rgb(45, 212, 191);        /* teal-400 */
+  --arcane-bright: rgb(94, 234, 212); /* teal-300 */
+
+  /* Gold - Rewards, loot, premium */
+  --gold-dim: rgb(180, 140, 20);
+  --gold: rgb(251, 191, 36);          /* amber-400 */
+  --gold-bright: rgb(253, 224, 71);   /* yellow-300 */
+
+  /* Blood - Damage, danger, combat */
+  --blood-dim: rgb(190, 50, 75);
+  --blood: rgb(244, 63, 94);          /* rose-500 */
+  --blood-bright: rgb(251, 113, 133); /* rose-400 */
+
+  /* Emerald - Success, healing, nature */
+  --emerald-dim: rgb(20, 160, 120);
+  --emerald: rgb(52, 211, 153);       /* emerald-400 */
+  --emerald-bright: rgb(110, 231, 183);
+
+  /* Purple - Magic, mystery, secrets */
+  --purple-dim: rgb(126, 58, 200);
+  --purple: rgb(168, 85, 247);        /* purple-500 */
+  --purple-bright: rgb(192, 132, 252);
+
+  /* Orange - Encounters, warnings */
+  --orange-dim: rgb(194, 90, 20);
+  --orange: rgb(249, 115, 22);        /* orange-500 */
+  --orange-bright: rgb(251, 146, 60);
+
+  /* Blue - Scenes, information */
+  --blue-dim: rgb(37, 99, 180);
+  --blue: rgb(59, 130, 246);          /* blue-500 */
+  --blue-bright: rgb(96, 165, 250);
+
+  /* ═══════════════════════════════════════════
+     TEXT HIERARCHY
+     From brightest to most muted
+  ═══════════════════════════════════════════ */
+  --text-white: rgb(255, 255, 255);
+  --text-bone: rgb(226, 232, 240);    /* slate-200 - Primary text */
+  --text-ash: rgb(148, 163, 184);     /* slate-400 - Secondary text */
+  --text-smoke: rgb(100, 116, 139);   /* slate-500 - Muted text */
+  --text-ghost: rgb(71, 85, 105);     /* slate-600 - Disabled text */
+
+  /* ═══════════════════════════════════════════
+     BORDER SYSTEM
+     Etched effect: light top/left, dark bottom/right
+  ═══════════════════════════════════════════ */
+  --border-highlight: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-shadow: rgba(0, 0, 0, 0.45);
+  --border-shadow-deep: rgba(0, 0, 0, 0.6);
+
+  /* ═══════════════════════════════════════════
+     SHADOW SYSTEM
+     Layered shadows for physical depth
+  ═══════════════════════════════════════════ */
+
+  /* Etched inset effect (for all raised surfaces) */
+  --shadow-etched:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+
+  /* Elevation shadows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
+
+  /* Card shadow (combines elevation + subtle outer glow) */
+  --shadow-card:
+    0 25px 50px -12px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+
+  /* Inset shadow for carved areas */
+  --shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+
+  /* ═══════════════════════════════════════════
+     GLOW EFFECTS
+     Luminescent magic auras
+  ═══════════════════════════════════════════ */
+  --glow-arcane: 0 0 20px rgba(45, 212, 191, 0.15);
+  --glow-arcane-strong: 0 0 30px rgba(45, 212, 191, 0.3);
+  --glow-arcane-intense: 0 0 40px rgba(45, 212, 191, 0.4);
+
+  --glow-gold: 0 0 20px rgba(251, 191, 36, 0.15);
+  --glow-gold-strong: 0 0 30px rgba(251, 191, 36, 0.3);
+
+  --glow-blood: 0 0 20px rgba(244, 63, 94, 0.15);
+  --glow-blood-strong: 0 0 30px rgba(244, 63, 94, 0.3);
+
+  --glow-purple: 0 0 20px rgba(168, 85, 247, 0.15);
+  --glow-purple-strong: 0 0 30px rgba(168, 85, 247, 0.3);
+
+  --glow-emerald: 0 0 20px rgba(52, 211, 153, 0.15);
+  --glow-emerald-strong: 0 0 30px rgba(52, 211, 153, 0.3);
+
+  /* ═══════════════════════════════════════════
+     TYPOGRAPHY
+  ═══════════════════════════════════════════ */
+  --font-display: 'Cinzel', serif;    /* Headers, titles - inscribed feel */
+  --font-body: 'DM Sans', sans-serif; /* Body text - clean readability */
+  --font-mono: 'JetBrains Mono', monospace; /* Stats, dice, code */
+
+  /* ═══════════════════════════════════════════
+     SPACING & RADII
+  ═══════════════════════════════════════════ */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* ═══════════════════════════════════════════
+     TRANSITIONS
+  ═══════════════════════════════════════════ */
+  --ease-snap: cubic-bezier(0.2, 0, 0, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 400ms;
+}
