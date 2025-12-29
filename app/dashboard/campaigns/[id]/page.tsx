@@ -12,13 +12,6 @@ import {
   Brain,
   Book,
   Pencil,
-  User,
-  MapPin,
-  Swords,
-  Package,
-  Bug,
-  Users,
-  Scroll,
 } from 'lucide-react'
 
 interface PageProps {
@@ -163,45 +156,38 @@ export default async function CampaignDetailPage({ params }: PageProps) {
               <div className="grid grid-cols-2 gap-2">
                 <ForgeButton
                   href={`/dashboard/campaigns/${params.id}/forge/npc`}
-                  icon={User}
+                  forgeType="npc"
                   label="NPC"
-                  glowColor="teal"
                 />
                 <ForgeButton
                   href={`/dashboard/campaigns/${params.id}/forge/creature`}
-                  icon={Bug}
+                  forgeType="creature"
                   label="Creature"
-                  glowColor="rose"
                 />
                 <ForgeButton
                   href={`/dashboard/campaigns/${params.id}/forge/location`}
-                  icon={MapPin}
+                  forgeType="location"
                   label="Location"
-                  glowColor="emerald"
                 />
                 <ForgeButton
                   href={`/dashboard/campaigns/${params.id}/forge/item`}
-                  icon={Package}
+                  forgeType="item"
                   label="Item"
-                  glowColor="blue"
                 />
                 <ForgeButton
                   href={`/dashboard/campaigns/${params.id}/forge/faction`}
-                  icon={Users}
+                  forgeType="faction"
                   label="Faction"
-                  glowColor="orange"
                 />
                 <ForgeButton
                   href={`/dashboard/campaigns/${params.id}/forge/encounter`}
-                  icon={Swords}
+                  forgeType="encounter"
                   label="Encounter"
-                  glowColor="amber"
                 />
                 <ForgeButton
                   href={`/dashboard/campaigns/${params.id}/forge/quest`}
-                  icon={Scroll}
+                  forgeType="quest"
                   label="Quest"
-                  glowColor="purple"
                 />
               </div>
             </MaterialCard>
