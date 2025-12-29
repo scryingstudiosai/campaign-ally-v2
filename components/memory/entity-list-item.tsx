@@ -27,6 +27,7 @@ import {
   Swords,
   Bug,
   HelpCircle,
+  Wand2,
 } from 'lucide-react'
 import {
   AlertDialog,
@@ -106,6 +107,7 @@ export function EntityListItem({
   const importanceConfig = IMPORTANCE_CONFIG[entity.importance_tier]
   const entityTypeIcon = ENTITY_TYPE_ICONS[entity.entity_type] || ENTITY_TYPE_ICONS.other
   const EntityIcon = entityTypeIcon.icon
+  const isStub = entity.attributes?.is_stub || entity.attributes?.needs_review
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -210,7 +212,8 @@ export function EntityListItem({
             className={cn(
               'flex items-center gap-4 p-3 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border/50',
               isSelected && 'bg-teal-500/10',
-              !isSelected && isEven && 'bg-slate-900/30'
+              !isSelected && isEven && 'bg-slate-900/30',
+              isStub && 'border-l-2 border-l-amber-500 bg-amber-500/5'
             )}
             onClick={handleRowClick}
           >
@@ -223,7 +226,12 @@ export function EntityListItem({
 
             {/* Status */}
             <div className="w-24 flex-shrink-0 hidden md:block">
-              {statusConfig && (
+              {isStub ? (
+                <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">
+                  <Wand2 className="w-3 h-3" />
+                  Stub
+                </span>
+              ) : statusConfig && (
                 <Badge variant="outline" className={cn('text-xs', statusConfig.color)}>
                   {statusConfig.label}
                 </Badge>
@@ -232,7 +240,7 @@ export function EntityListItem({
 
             {/* Importance */}
             <div className="w-24 flex-shrink-0 hidden lg:flex items-center gap-1">
-              {importanceConfig && (
+              {importanceConfig && !isStub && (
                 <>
                   <importanceConfig.icon className={cn('w-3 h-3', importanceConfig.color)} />
                   <span className={cn('text-xs', importanceConfig.color)}>
@@ -256,7 +264,8 @@ export function EntityListItem({
             href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}
             className={cn(
               'flex items-center gap-4 p-3 hover:bg-muted/50 transition-colors border-b border-border/50',
-              isEven && 'bg-slate-900/30'
+              isEven && 'bg-slate-900/30',
+              isStub && 'border-l-2 border-l-amber-500 bg-amber-500/5'
             )}
           >
             {/* Entity Icon */}
@@ -288,7 +297,12 @@ export function EntityListItem({
 
           {/* Status */}
           <div className="w-24 flex-shrink-0 hidden md:block">
-            {statusConfig && (
+            {isStub ? (
+              <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">
+                <Wand2 className="w-3 h-3" />
+                Stub
+              </span>
+            ) : statusConfig && (
               <Badge variant="outline" className={cn('text-xs', statusConfig.color)}>
                 {statusConfig.label}
               </Badge>
@@ -297,7 +311,7 @@ export function EntityListItem({
 
           {/* Importance */}
           <div className="w-24 flex-shrink-0 hidden lg:flex items-center gap-1">
-            {importanceConfig && (
+            {importanceConfig && !isStub && (
               <>
                 <importanceConfig.icon className={cn('w-3 h-3', importanceConfig.color)} />
                 <span className={cn('text-xs', importanceConfig.color)}>
