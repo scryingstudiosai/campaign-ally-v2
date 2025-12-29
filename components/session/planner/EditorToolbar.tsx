@@ -3,9 +3,17 @@
 import { Editor } from '@tiptap/react';
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered,
-  Quote, BookOpen, Undo, Redo, Minus
+  Quote, BookOpen, Undo, Redo, Minus, Plus,
+  Clapperboard, Swords, Flag, StickyNote
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -116,6 +124,56 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         <BookOpen className="h-4 w-4 mr-1" />
         Read Aloud
       </Button>
+
+      {/* Insert Block Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="ml-2 h-8 px-3 border-slate-600 text-slate-300 hover:bg-slate-700"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Block
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="bg-slate-900 border-slate-700">
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().insertSceneBlock().run()}
+            className="gap-2"
+          >
+            <Clapperboard className="h-4 w-4 text-blue-400" />
+            <span>Scene</span>
+            <span className="ml-auto text-xs text-slate-500">Roleplay / Exploration</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().insertEncounterBlock().run()}
+            className="gap-2"
+          >
+            <Swords className="h-4 w-4 text-orange-400" />
+            <span>Encounter</span>
+            <span className="ml-auto text-xs text-slate-500">Combat</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().insertQuestBlock().run()}
+            className="gap-2"
+          >
+            <Flag className="h-4 w-4 text-purple-400" />
+            <span>Quest</span>
+            <span className="ml-auto text-xs text-slate-500">Objectives</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="bg-slate-700" />
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().insertNoteBlock().run()}
+            className="gap-2"
+          >
+            <StickyNote className="h-4 w-4 text-slate-400" />
+            <span>Note</span>
+            <span className="ml-auto text-xs text-slate-500">DM Notes</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <div className="flex-1" />
 

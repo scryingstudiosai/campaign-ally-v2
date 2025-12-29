@@ -85,6 +85,8 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
 
     // Check if dropping into session planner
     if (over.id === 'session-planner-editor') {
+      const entityType = (data.entityType as string)?.toLowerCase();
+
       // Check if this is a quest objective
       if (data.type === 'quest_objective') {
         const insertObjective = (window as Window & {
@@ -106,8 +108,51 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
             questName: data.questName as string,
           });
         }
+      } else if (entityType === 'encounter') {
+        // Insert encounter as a block
+        const insertEncounterBlock = (window as Window & {
+          __sessionPlannerInsertEncounterBlock?: (encounter: {
+            id: string;
+            name: string;
+            creatures?: Array<{ name: string; count: number; cr?: string }>;
+            difficulty?: string;
+          }) => void;
+        }).__sessionPlannerInsertEncounterBlock;
+
+        if (insertEncounterBlock && data.entity) {
+          const entity = data.entity as Entity;
+          insertEncounterBlock({
+            id: entity.id,
+            name: entity.name,
+            creatures: entity.mechanics?.creatures as Array<{ name: string; count: number; cr?: string }> || [],
+            difficulty: entity.mechanics?.difficulty as string || 'medium',
+          });
+        }
+      } else if (entityType === 'quest') {
+        // Insert quest as a block
+        const insertQuestBlock = (window as Window & {
+          __sessionPlannerInsertQuestBlock?: (quest: {
+            id: string;
+            name: string;
+            objectives?: Array<{ id: string; text: string; completed?: boolean }>;
+          }) => void;
+        }).__sessionPlannerInsertQuestBlock;
+
+        if (insertQuestBlock && data.entity) {
+          const entity = data.entity as Entity;
+          const objectives = entity.mechanics?.objectives || entity.brain?.objectives || [];
+          insertQuestBlock({
+            id: entity.id,
+            name: entity.name,
+            objectives: (objectives as Array<{ id?: string; title?: string; text?: string; status?: string }>).map(obj => ({
+              id: obj.id || crypto.randomUUID(),
+              text: obj.title || obj.text || '',
+              completed: obj.status === 'complete',
+            })),
+          });
+        }
       } else {
-        // Regular entity
+        // Regular entity - insert as inline mention
         const insertEntity = (window as Window & {
           __sessionPlannerInsertEntity?: (entity: { id: string; name: string; entityType: string }) => void;
         }).__sessionPlannerInsertEntity;
