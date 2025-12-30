@@ -2,17 +2,24 @@
 
 import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer, NodeViewProps } from '@tiptap/react'
-import { Clapperboard, MapPin, Users, X, Plus } from 'lucide-react'
-import { useState } from 'react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Clapperboard, MapPin, Users, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { BlockWrapper } from './BlockWrapper'
 import { generateBlockId, parseJsonAttr, stringifyJsonAttr } from './shared'
+import { EntityTypeahead, EntityOption } from '@/components/ui/entity-typeahead'
+import { EntityMultiTypeahead, EntitySelection } from '@/components/ui/entity-multi-typeahead'
 
 interface LinkedNpc {
   id?: string
   name: string
+}
+
+// Get campaign ID from URL
+function getCampaignIdFromUrl(): string | null {
+  if (typeof window === 'undefined') return null
+  const pathParts = window.location.pathname.split('/')
+  const campaignIndex = pathParts.indexOf('campaigns')
+  return campaignIndex !== -1 ? pathParts[campaignIndex + 1] : null
 }
 
 // React component for the scene block
@@ -21,33 +28,36 @@ function SceneBlockComponent({ node, updateAttributes, deleteNode, editor }: Nod
   const locationName = node.attrs.locationName as string | null
   const locationId = node.attrs.locationId as string | null
   const npcs = parseJsonAttr<LinkedNpc[]>(node.attrs.npcs, [])
-  const status = node.attrs.status as string
 
-  const [isEditingLocation, setIsEditingLocation] = useState(false)
-  const [locationInput, setLocationInput] = useState(locationName || '')
-  const [isAddingNpc, setIsAddingNpc] = useState(false)
-  const [npcInput, setNpcInput] = useState('')
+  const campaignId = getCampaignIdFromUrl()
 
-  const updateNpcs = (newNpcs: LinkedNpc[]) => {
-    updateAttributes({ npcs: stringifyJsonAttr(newNpcs) })
+  // Convert stored location to EntityOption format
+  const locationValue: EntityOption | null = locationId || locationName
+    ? {
+        id: locationId || '',
+        name: locationName || '',
+        entityType: 'location',
+      }
+    : null
+
+  // Convert stored NPCs to EntitySelection format
+  const npcValues: EntitySelection[] = npcs.map((npc, index) => ({
+    id: npc.id || `temp-${index}`,
+    name: npc.name,
+    entityType: 'npc' as const,
+  }))
+
+  const handleLocationChange = (location: EntityOption | null) => {
+    updateAttributes({
+      locationId: location?.id || null,
+      locationName: location?.name || null,
+    })
   }
 
-  const handleLocationSubmit = () => {
-    updateAttributes({ locationName: locationInput || null })
-    setIsEditingLocation(false)
-  }
-
-  const handleAddNpc = () => {
-    if (npcInput.trim()) {
-      updateNpcs([...npcs, { name: npcInput.trim() }])
-      setNpcInput('')
-      setIsAddingNpc(false)
-    }
-  }
-
-  const handleRemoveNpc = (index: number) => {
-    const newNpcs = npcs.filter((_, i) => i !== index)
-    updateNpcs(newNpcs)
+  const handleNpcsChange = (newNpcs: EntitySelection[]) => {
+    updateAttributes({
+      npcs: stringifyJsonAttr(newNpcs.map(n => ({ id: n.id, name: n.name }))),
+    })
   }
 
   const handleRun = () => {
@@ -69,83 +79,48 @@ function SceneBlockComponent({ node, updateAttributes, deleteNode, editor }: Nod
       metadataBar={
         <>
           {/* Location */}
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-green-400" />
-            {isEditingLocation ? (
-              <div className="flex items-center gap-1">
-                <Input
-                  value={locationInput}
-                  onChange={(e) => setLocationInput(e.target.value)}
-                  placeholder="Location name..."
-                  className="h-6 w-40 bg-slate-800 border-slate-700 text-xs"
-                  autoFocus
-                  onBlur={handleLocationSubmit}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleLocationSubmit()
-                    if (e.key === 'Escape') {
-                      setLocationInput(locationName || '')
-                      setIsEditingLocation(false)
-                    }
-                  }}
-                />
-              </div>
+          <div className="flex items-center gap-2" contentEditable={false}>
+            <MapPin className="w-4 h-4 text-green-400 flex-shrink-0" />
+            {campaignId ? (
+              <EntityTypeahead
+                value={locationValue}
+                onChange={handleLocationChange}
+                campaignId={campaignId}
+                entityTypes={['location']}
+                includeSrd={false}
+                placeholder="Select location..."
+                className="h-7 w-48 text-xs"
+              />
             ) : (
-              <button
-                onClick={() => setIsEditingLocation(true)}
-                className="text-slate-400 hover:text-slate-200 text-sm"
-              >
-                {locationName || 'Add location...'}
-              </button>
+              <span className="text-sm text-slate-500">{locationName || 'No location'}</span>
             )}
           </div>
 
           {/* NPCs */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Users className="w-4 h-4 text-blue-400" />
-            {npcs.map((npc, index) => (
-              <Badge
-                key={index}
-                variant="outline"
-                className="border-blue-800 text-blue-300 group"
-              >
-                {npc.name}
-                <button
-                  onClick={() => handleRemoveNpc(index)}
-                  className="ml-1 opacity-0 group-hover:opacity-100 hover:text-red-400"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </Badge>
-            ))}
-            {isAddingNpc ? (
-              <Input
-                value={npcInput}
-                onChange={(e) => setNpcInput(e.target.value)}
-                placeholder="NPC name..."
-                className="h-6 w-28 bg-slate-800 border-slate-700 text-xs"
-                autoFocus
-                onBlur={() => {
-                  if (npcInput.trim()) handleAddNpc()
-                  else setIsAddingNpc(false)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAddNpc()
-                  if (e.key === 'Escape') {
-                    setNpcInput('')
-                    setIsAddingNpc(false)
-                  }
-                }}
+          <div className="flex items-center gap-2" contentEditable={false}>
+            <Users className="w-4 h-4 text-blue-400 flex-shrink-0" />
+            {campaignId ? (
+              <EntityMultiTypeahead
+                values={npcValues}
+                onChange={handleNpcsChange}
+                campaignId={campaignId}
+                entityTypes={['npc', 'player']}
+                includeSrd={false}
+                showCount={false}
+                placeholder="Add NPCs..."
               />
             ) : (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs text-slate-500 hover:text-slate-300"
-                onClick={() => setIsAddingNpc(true)}
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                NPC
-              </Button>
+              <div className="flex flex-wrap gap-1">
+                {npcs.map((npc, index) => (
+                  <Badge
+                    key={index}
+                    variant="outline"
+                    className="border-blue-800 text-blue-300"
+                  >
+                    {npc.name}
+                  </Badge>
+                ))}
+              </div>
             )}
           </div>
         </>

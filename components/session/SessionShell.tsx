@@ -87,6 +87,31 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
     if (over.id === 'session-planner-editor') {
       const entityType = (data.entityType as string)?.toLowerCase();
 
+      // Get editor to check cursor depth
+      type EditorInstance = {
+        state: {
+          selection: { from: number };
+          doc: { resolve: (pos: number) => { depth: number } };
+        };
+      };
+      const editor = (window as Window & {
+        __sessionPlannerEditor?: EditorInstance;
+      }).__sessionPlannerEditor;
+
+      // Check if cursor is at root level (not inside a block)
+      // depth 0 = doc, depth 1 = direct child of doc (root level)
+      let isAtRootLevel = true;
+      if (editor?.state) {
+        try {
+          const { from } = editor.state.selection;
+          const $pos = editor.state.doc.resolve(from);
+          isAtRootLevel = $pos.depth <= 1;
+        } catch {
+          // If we can't determine depth, assume root level
+          isAtRootLevel = true;
+        }
+      }
+
       // Check if this is a quest objective
       if (data.type === 'quest_objective') {
         const insertObjective = (window as Window & {
@@ -109,47 +134,79 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
           });
         }
       } else if (entityType === 'encounter') {
-        // Insert encounter as a block
-        const insertEncounterBlock = (window as Window & {
-          __sessionPlannerInsertEncounterBlock?: (encounter: {
-            id: string;
-            name: string;
-            creatures?: Array<{ name: string; count: number; cr?: string }>;
-            difficulty?: string;
-          }) => void;
-        }).__sessionPlannerInsertEncounterBlock;
+        if (isAtRootLevel) {
+          // Insert encounter as a block at root level
+          const insertEncounterBlock = (window as Window & {
+            __sessionPlannerInsertEncounterBlock?: (encounter: {
+              id: string;
+              name: string;
+              creatures?: Array<{ name: string; count: number; cr?: string }>;
+              difficulty?: string;
+            }) => void;
+          }).__sessionPlannerInsertEncounterBlock;
 
-        if (insertEncounterBlock && data.entity) {
-          const entity = data.entity as Entity;
-          insertEncounterBlock({
-            id: entity.id,
-            name: entity.name,
-            creatures: entity.mechanics?.creatures as Array<{ name: string; count: number; cr?: string }> || [],
-            difficulty: entity.mechanics?.difficulty as string || 'medium',
-          });
+          if (insertEncounterBlock && data.entity) {
+            const entity = data.entity as Entity;
+            insertEncounterBlock({
+              id: entity.id,
+              name: entity.name,
+              creatures: entity.mechanics?.creatures as Array<{ name: string; count: number; cr?: string }> || [],
+              difficulty: entity.mechanics?.difficulty as string || 'medium',
+            });
+          }
+        } else {
+          // Inside a block - insert as entity mention
+          const insertEntity = (window as Window & {
+            __sessionPlannerInsertEntity?: (entity: { id: string; name: string; entityType: string }) => void;
+          }).__sessionPlannerInsertEntity;
+
+          if (insertEntity && data.entity) {
+            const entity = data.entity as Entity;
+            insertEntity({
+              id: entity.id,
+              name: entity.name,
+              entityType: 'encounter',
+            });
+          }
         }
       } else if (entityType === 'quest') {
-        // Insert quest as a block
-        const insertQuestBlock = (window as Window & {
-          __sessionPlannerInsertQuestBlock?: (quest: {
-            id: string;
-            name: string;
-            objectives?: Array<{ id: string; text: string; completed?: boolean }>;
-          }) => void;
-        }).__sessionPlannerInsertQuestBlock;
+        if (isAtRootLevel) {
+          // Insert quest as a block at root level
+          const insertQuestBlock = (window as Window & {
+            __sessionPlannerInsertQuestBlock?: (quest: {
+              id: string;
+              name: string;
+              objectives?: Array<{ id: string; text: string; completed?: boolean }>;
+            }) => void;
+          }).__sessionPlannerInsertQuestBlock;
 
-        if (insertQuestBlock && data.entity) {
-          const entity = data.entity as Entity;
-          const objectives = entity.mechanics?.objectives || entity.brain?.objectives || [];
-          insertQuestBlock({
-            id: entity.id,
-            name: entity.name,
-            objectives: (objectives as Array<{ id?: string; title?: string; text?: string; status?: string }>).map(obj => ({
-              id: obj.id || crypto.randomUUID(),
-              text: obj.title || obj.text || '',
-              completed: obj.status === 'complete',
-            })),
-          });
+          if (insertQuestBlock && data.entity) {
+            const entity = data.entity as Entity;
+            const objectives = entity.mechanics?.objectives || entity.brain?.objectives || [];
+            insertQuestBlock({
+              id: entity.id,
+              name: entity.name,
+              objectives: (objectives as Array<{ id?: string; title?: string; text?: string; status?: string }>).map(obj => ({
+                id: obj.id || crypto.randomUUID(),
+                text: obj.title || obj.text || '',
+                completed: obj.status === 'complete',
+              })),
+            });
+          }
+        } else {
+          // Inside a block - insert as entity mention
+          const insertEntity = (window as Window & {
+            __sessionPlannerInsertEntity?: (entity: { id: string; name: string; entityType: string }) => void;
+          }).__sessionPlannerInsertEntity;
+
+          if (insertEntity && data.entity) {
+            const entity = data.entity as Entity;
+            insertEntity({
+              id: entity.id,
+              name: entity.name,
+              entityType: 'quest',
+            });
+          }
         }
       } else {
         // Regular entity - insert as inline mention

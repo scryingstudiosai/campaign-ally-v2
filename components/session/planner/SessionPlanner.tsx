@@ -10,6 +10,7 @@ import {
   ReadAloudNode,
   QuestObjectiveNode,
   EncounterNode,
+  EntityMention,
   NoteBlockNode,
   SceneBlockNode,
   EncounterBlockNode,
@@ -68,12 +69,13 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
         heading: { levels: [1, 2, 3] },
       }),
       Placeholder.configure({
-        placeholder: 'Start planning your session... Drag entities from the library →',
+        placeholder: 'Start planning your session... Type @ to mention entities →',
       }),
       EntityNode,
       ReadAloudNode,
       QuestObjectiveNode,
       EncounterNode,
+      EntityMention,
       // Collapsible blocks
       NoteBlockNode,
       SceneBlockNode,
@@ -174,15 +176,17 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
     }).run();
   }, [editor]);
 
-  // Expose insert functions for drag-drop handler
+  // Expose editor and insert functions for drag-drop handler
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const win = window as Window & {
+        __sessionPlannerEditor?: typeof editor;
         __sessionPlannerInsertEntity?: typeof insertEntity;
         __sessionPlannerInsertObjective?: typeof insertObjective;
         __sessionPlannerInsertEncounterBlock?: typeof insertEncounterBlock;
         __sessionPlannerInsertQuestBlock?: typeof insertQuestBlock;
       };
+      win.__sessionPlannerEditor = editor;
       win.__sessionPlannerInsertEntity = insertEntity;
       win.__sessionPlannerInsertObjective = insertObjective;
       win.__sessionPlannerInsertEncounterBlock = insertEncounterBlock;
@@ -191,18 +195,20 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
     return () => {
       if (typeof window !== 'undefined') {
         const win = window as Window & {
+          __sessionPlannerEditor?: typeof editor;
           __sessionPlannerInsertEntity?: typeof insertEntity;
           __sessionPlannerInsertObjective?: typeof insertObjective;
           __sessionPlannerInsertEncounterBlock?: typeof insertEncounterBlock;
           __sessionPlannerInsertQuestBlock?: typeof insertQuestBlock;
         };
+        delete win.__sessionPlannerEditor;
         delete win.__sessionPlannerInsertEntity;
         delete win.__sessionPlannerInsertObjective;
         delete win.__sessionPlannerInsertEncounterBlock;
         delete win.__sessionPlannerInsertQuestBlock;
       }
     };
-  }, [insertEntity, insertObjective, insertEncounterBlock, insertQuestBlock]);
+  }, [editor, insertEntity, insertObjective, insertEncounterBlock, insertQuestBlock]);
 
   // Listen for forced save events (e.g., from beat generation)
   useEffect(() => {

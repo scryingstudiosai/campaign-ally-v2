@@ -173,3 +173,87 @@ body::after {
 body {
   background-color: var(--void);
 }
+
+/* ═══════════════════════════════════════════
+   Entity Mention Styles
+   @ mention inline styles
+═══════════════════════════════════════════ */
+.entity-mention {
+  @apply inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-sm font-medium cursor-pointer transition-all;
+  @apply bg-slate-800/70 border border-slate-700 text-slate-300;
+}
+
+.entity-mention:hover {
+  @apply bg-slate-700 border-slate-600 ring-1 ring-white/20;
+}
+
+.entity-mention--npc {
+  @apply bg-blue-900/50 border-blue-700 text-blue-300;
+}
+.entity-mention--npc:hover {
+  @apply bg-blue-800/50 border-blue-600;
+}
+
+.entity-mention--player {
+  @apply bg-green-900/50 border-green-700 text-green-300;
+}
+.entity-mention--player:hover {
+  @apply bg-green-800/50 border-green-600;
+}
+
+.entity-mention--location {
+  @apply bg-emerald-900/50 border-emerald-700 text-emerald-300;
+}
+.entity-mention--location:hover {
+  @apply bg-emerald-800/50 border-emerald-600;
+}
+
+.entity-mention--item {
+  @apply bg-amber-900/50 border-amber-700 text-amber-300;
+}
+.entity-mention--item:hover {
+  @apply bg-amber-800/50 border-amber-600;
+}
+
+.entity-mention--creature {
+  @apply bg-red-900/50 border-red-700 text-red-300;
+}
+.entity-mention--creature:hover {
+  @apply bg-red-800/50 border-red-600;
+}
+
+.entity-mention--faction {
+  @apply bg-purple-900/50 border-purple-700 text-purple-300;
+}
+.entity-mention--faction:hover {
+  @apply bg-purple-800/50 border-purple-600;
+}
+
+.entity-mention--quest {
+  @apply bg-teal-900/50 border-teal-700 text-teal-300;
+}
+.entity-mention--quest:hover {
+  @apply bg-teal-800/50 border-teal-600;
+}
+
+.entity-mention--encounter {
+  @apply bg-orange-900/50 border-orange-700 text-orange-300;
+}
+.entity-mention--encounter:hover {
+  @apply bg-orange-800/50 border-orange-600;
+}
+
+/* Tippy.js mention popup styling */
+.tippy-box[data-theme~='dark'] {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+
+.tippy-box[data-theme~='dark'] > .tippy-content {
+  padding: 0;
+}
+
+.tippy-box[data-theme~='dark'] > .tippy-arrow::before {
+  display: none;
+}
