@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react'
 import { InteractiveText } from '@/components/forge/InteractiveText'
-import { SelectionPopover } from '@/components/forge/SelectionPopover'
+import { InteractiveText as UniversalInteractiveText, EntityType, TextRange } from '@/components/ui/interactive-text'
 import { BrainCard } from '@/components/entity/BrainCard'
 import { VoiceCard } from '@/components/entity/VoiceCard'
 import { NpcMechanicsCard } from '@/components/entity/NpcMechanicsCard'
@@ -82,6 +82,13 @@ export function NpcOutputCard({
   const [viewMode, setViewMode] = useState<'player' | 'dm'>('dm')
   const contentRef = useRef<HTMLDivElement>(null)
 
+  // Handle manual text selection to create discovery
+  const handleManualSelect = (text: string, type: EntityType, _range: TextRange) => {
+    if (onManualDiscovery) {
+      onManualDiscovery(text, type)
+    }
+  }
+
   // Render text with interactive links if scan result available, otherwise bold
   const renderText = (text: string | undefined): React.ReactNode => {
     if (!text) return null
@@ -93,6 +100,35 @@ export function NpcOutputCard({
           scanResult={scanResult}
           campaignId={campaignId}
           onDiscoveryAction={onDiscoveryAction}
+        />
+      )
+    }
+
+    return renderWithBold(text)
+  }
+
+  // Render text with manual selection enabled (for when no scan result yet)
+  const renderSelectableText = (text: string | undefined): React.ReactNode => {
+    if (!text) return null
+
+    // If we have a scan result, use the specialized InteractiveText with tooltips
+    if (scanResult) {
+      return (
+        <InteractiveText
+          text={text}
+          scanResult={scanResult}
+          campaignId={campaignId}
+          onDiscoveryAction={onDiscoveryAction}
+        />
+      )
+    }
+
+    // Otherwise use universal component with manual selection enabled
+    if (onManualDiscovery) {
+      return (
+        <UniversalInteractiveText
+          content={text}
+          onManualSelect={handleManualSelect}
         />
       )
     }
@@ -163,7 +199,7 @@ export function NpcOutputCard({
             <span>Appearance</span>
           </div>
           <div className="text-sm text-slate-300 leading-relaxed">
-            {renderText(data.appearance)}
+            {renderSelectableText(data.appearance)}
           </div>
         </div>
 
@@ -173,7 +209,7 @@ export function NpcOutputCard({
             <span>Personality</span>
           </div>
           <div className="text-sm text-slate-300 leading-relaxed">
-            {renderText(data.personality)}
+            {renderSelectableText(data.personality)}
           </div>
         </div>
       </div>
@@ -218,7 +254,7 @@ export function NpcOutputCard({
             <span>Voice & Mannerisms</span>
           </div>
           <div className="text-sm text-slate-300">
-            {renderText(data.voiceAndMannerisms)}
+            {renderSelectableText(data.voiceAndMannerisms)}
           </div>
           {data.voiceReference && (
             <div className="mt-2 pt-2 border-t border-white/5">
@@ -258,7 +294,7 @@ export function NpcOutputCard({
             <span>Motivation</span>
           </div>
           <div className="text-sm text-slate-300">
-            {renderText(data.motivation)}
+            {renderSelectableText(data.motivation)}
           </div>
         </div>
 
@@ -277,7 +313,7 @@ export function NpcOutputCard({
                 </span>
               </div>
               <div className="text-sm text-slate-300">
-                {renderText(data.secret)}
+                {renderSelectableText(data.secret)}
               </div>
             </div>
 
@@ -293,7 +329,7 @@ export function NpcOutputCard({
                 </span>
               </div>
               <div className="text-sm text-slate-300">
-                {renderText(data.plotHook)}
+                {renderSelectableText(data.plotHook)}
               </div>
             </div>
           </>
@@ -313,21 +349,12 @@ export function NpcOutputCard({
               className="text-sm text-slate-300 flex items-start gap-2"
             >
               <span className="text-primary font-bold">{index + 1}.</span>
-              <span>{renderText(hook)}</span>
+              <span>{renderSelectableText(hook)}</span>
             </li>
           ))}
         </ul>
       </div>
 
-      {/* Selection Popover for manual discovery creation */}
-      {onManualDiscovery && (
-        <SelectionPopover
-          containerRef={contentRef}
-          onCreateDiscovery={onManualDiscovery}
-          onSearchExisting={onLinkExisting || (() => {})}
-          existingEntities={existingEntities}
-        />
-      )}
     </div>
   )
 }

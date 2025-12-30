@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { SuggestionEditModal } from './suggestion-edit-modal';
+import { InteractiveText, TextHighlight, EntityType, TextRange } from '@/components/ui/interactive-text';
 
 interface Suggestion {
   id: string;
@@ -96,6 +97,50 @@ export function StagingArea({ campaignId, batchId, onCommitComplete, onCancel }:
     }
   };
 
+  // Handle manual text selection to create a new suggestion
+  const handleManualSelect = async (text: string, type: EntityType, range: TextRange) => {
+    try {
+      const content = batch?.source_doc?.content || '';
+      const response = await fetch('/api/import/suggestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batchId,
+          campaignId,
+          entityName: text,
+          entityType: type,
+          textStartIndex: range.start,
+          textEndIndex: range.end,
+          snippet: content.slice(
+            Math.max(0, range.start - 50),
+            Math.min(content.length, range.end + 50)
+          ),
+          confidenceScore: 1.0, // Manual = 100% confidence
+          status: 'pending',
+        }),
+      });
+
+      if (response.ok) {
+        fetchBatch(); // Refresh to show new card
+      }
+    } catch (error) {
+      console.error('Failed to create suggestion:', error);
+    }
+  };
+
+  // Convert suggestions to highlights format for InteractiveText
+  const highlights: TextHighlight[] = (batch?.suggestions || [])
+    .filter(s => s.text_start_index != null)
+    .map(s => ({
+      id: s.id,
+      text: s.entity_name,
+      startIndex: s.text_start_index,
+      endIndex: s.text_end_index,
+      confidence: s.confidence_score,
+      type: s.entity_type as EntityType,
+      status: s.status,
+    }));
+
   // Update suggestion status
   const updateSuggestion = async (id: string, action: string, mergeTargetId?: string) => {
     try {
@@ -141,69 +186,6 @@ export function StagingArea({ campaignId, batchId, onCommitComplete, onCancel }:
     if (card) {
       card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  };
-
-  // Render highlighted text
-  const renderHighlightedText = () => {
-    if (!batch?.source_doc?.content || !batch.suggestions) {
-      return batch?.source_doc?.content || '';
-    }
-
-    const text = batch.source_doc.content;
-    const highlights = batch.suggestions
-      .filter(s => s.status !== 'rejected' && s.text_start_index != null)
-      .sort((a, b) => a.text_start_index - b.text_start_index);
-
-    if (highlights.length === 0) {
-      return <span className="whitespace-pre-wrap">{text}</span>;
-    }
-
-    const parts: JSX.Element[] = [];
-    let lastEnd = 0;
-
-    highlights.forEach((suggestion, index) => {
-      // Add text before highlight
-      if (suggestion.text_start_index > lastEnd) {
-        parts.push(
-          <span key={`text-${index}`} className="whitespace-pre-wrap">
-            {text.slice(lastEnd, suggestion.text_start_index)}
-          </span>
-        );
-      }
-
-      // Add highlighted text
-      const isHighConfidence = suggestion.confidence_score >= 0.8;
-      const isSelected = selectedSuggestion === suggestion.id;
-
-      parts.push(
-        <mark
-          key={`highlight-${suggestion.id}`}
-          onClick={() => scrollToCard(suggestion.id)}
-          className={cn(
-            'cursor-pointer rounded px-0.5 transition-all',
-            isHighConfidence
-              ? 'bg-green-500/30 hover:bg-green-500/50'
-              : 'bg-yellow-500/30 hover:bg-yellow-500/50',
-            isSelected && 'ring-2 ring-white'
-          )}
-        >
-          {text.slice(suggestion.text_start_index, suggestion.text_end_index)}
-        </mark>
-      );
-
-      lastEnd = suggestion.text_end_index;
-    });
-
-    // Add remaining text
-    if (lastEnd < text.length) {
-      parts.push(
-        <span key="text-end" className="whitespace-pre-wrap">
-          {text.slice(lastEnd)}
-        </span>
-      );
-    }
-
-    return parts;
   };
 
   // Stats
@@ -276,12 +258,18 @@ export function StagingArea({ campaignId, batchId, onCommitComplete, onCancel }:
           <div className="flex items-center gap-2 mb-4 text-sm text-slate-400">
             <FileText className="w-4 h-4" />
             Source Document
+            <span className="text-xs text-slate-600">
+              (Select text to manually tag entities)
+            </span>
           </div>
-          <div
-            className="prose prose-invert prose-sm max-w-none font-mono text-sm leading-relaxed text-slate-300"
-          >
-            {renderHighlightedText()}
-          </div>
+
+          <InteractiveText
+            content={batch?.source_doc?.content || ''}
+            highlights={highlights}
+            selectedHighlightId={selectedSuggestion || undefined}
+            onHighlightClick={(h) => scrollToCard(h.id!)}
+            onManualSelect={handleManualSelect}
+          />
         </div>
 
         {/* Right: Suggestion Cards */}
