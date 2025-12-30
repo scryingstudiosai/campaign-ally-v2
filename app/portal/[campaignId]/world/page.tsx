@@ -24,7 +24,7 @@ export default async function WorldPage({ params }: Props) {
       entity:entities!entity_id (
         id,
         name,
-        type,
+        type:entity_type,
         sub_type,
         description,
         soul,

@@ -15,7 +15,8 @@ export default async function CharacterPage({ params }: Props) {
   if (!user) redirect('/login');
 
   // Get membership with character
-  const { data: membership } = await supabase
+  // Note: entity_type is aliased as 'type' for the CharacterSheet component
+  const { data: membership, error: membershipError } = await supabase
     .from('campaign_members')
     .select(`
       id,
@@ -24,7 +25,7 @@ export default async function CharacterPage({ params }: Props) {
       character:entities!character_entity_id (
         id,
         name,
-        type,
+        type:entity_type,
         sub_type,
         description,
         soul,
@@ -36,6 +37,11 @@ export default async function CharacterPage({ params }: Props) {
     .eq('campaign_id', campaignId)
     .eq('user_id', user.id)
     .single();
+
+  // Debug logging for portal redirect issue
+  if (membershipError) {
+    console.error('Character Page - membership error:', membershipError.message);
+  }
 
   // Get campaign info
   const { data: campaign } = await supabase
