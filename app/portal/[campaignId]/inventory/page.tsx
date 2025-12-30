@@ -1,60 +1,91 @@
-import { Package, Coins, Sword, Scroll } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { InventoryView } from '@/components/portal/InventoryView';
 
 interface InventoryPageProps {
   params: Promise<{ campaignId: string }>;
 }
 
+interface CharacterMechanics {
+  currency?: {
+    gold?: number;
+    silver?: number;
+    copper?: number;
+  };
+  gold?: number;
+  silver?: number;
+  copper?: number;
+}
+
 export default async function InventoryPage({ params }: InventoryPageProps) {
-  // We'll fetch inventory data in Sprint 2
+  const { campaignId } = await params;
+  const supabase = await createClient();
+
+  // 1. Auth Check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  // 2. Get Character Link
+  const { data: membership } = await supabase
+    .from('campaign_members')
+    .select('character_entity_id')
+    .eq('campaign_id', campaignId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (!membership?.character_entity_id) {
+    redirect(`/portal/${campaignId}`);
+  }
+
+  // 3. Fetch Inventory with correct joins
+  const { data: inventoryItems, error } = await supabase
+    .from('inventory_instances')
+    .select(`
+      id,
+      quantity,
+      charges,
+      max_charges,
+      is_equipped,
+      is_attuned,
+      is_identified,
+      notes,
+      acquired_from,
+      srd_item:srd_items!srd_item_id (
+        id, name, item_type, subtype, rarity,
+        description, mechanics, value_gp, weight,
+        requires_attunement
+      ),
+      custom_item:entities!custom_entity_id (
+        id, name, sub_type, description, mechanics, image_url
+      )
+    `)
+    .eq('owner_id', membership.character_entity_id)
+    .eq('owner_type', 'player')
+    .order('sort_order', { ascending: true, nullsFirst: false });
+
+  if (error) {
+    console.error('Inventory fetch error:', error);
+  }
+
+  // 4. Fetch Character for currency
+  const { data: character } = await supabase
+    .from('entities')
+    .select('mechanics')
+    .eq('id', membership.character_entity_id)
+    .single();
+
+  const mechanics = (character?.mechanics || {}) as CharacterMechanics;
+  const currency = mechanics.currency || {
+    gold: mechanics.gold || 0,
+    silver: mechanics.silver || 0,
+    copper: mechanics.copper || 0,
+  };
 
   return (
-    <div className="p-4 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-display text-white">Inventory</h2>
-        <div className="flex items-center gap-2 text-amber-400">
-          <Coins className="w-4 h-4" />
-          <span className="font-display">0 GP</span>
-        </div>
-      </div>
-
-      {/* Placeholder content */}
-      <div className="space-y-4">
-        {/* Weapons Section */}
-        <div className="bg-slate-900/50 rounded-xl p-4 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <Sword className="w-4 h-4 text-red-400" />
-            <h3 className="text-sm text-slate-400 uppercase tracking-wider">Weapons</h3>
-          </div>
-          <p className="text-slate-500 text-sm italic">No weapons equipped</p>
-        </div>
-
-        {/* Items Section */}
-        <div className="bg-slate-900/50 rounded-xl p-4 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <Package className="w-4 h-4 text-amber-400" />
-            <h3 className="text-sm text-slate-400 uppercase tracking-wider">Items</h3>
-          </div>
-          <p className="text-slate-500 text-sm italic">Your bag is empty</p>
-        </div>
-
-        {/* Scrolls & Spells Section */}
-        <div className="bg-slate-900/50 rounded-xl p-4 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <Scroll className="w-4 h-4 text-purple-400" />
-            <h3 className="text-sm text-slate-400 uppercase tracking-wider">Scrolls & Spells</h3>
-          </div>
-          <p className="text-slate-500 text-sm italic">No scrolls or spell components</p>
-        </div>
-      </div>
-
-      {/* Coming Soon Notice */}
-      <div className="text-center py-8">
-        <div className="inline-flex items-center gap-2 text-slate-500 text-sm bg-slate-900/50 px-4 py-2 rounded-full">
-          <Package className="w-4 h-4" />
-          Inventory management coming in Sprint 2
-        </div>
-      </div>
-    </div>
+    <InventoryView
+      items={inventoryItems || []}
+      currency={currency}
+      characterId={membership.character_entity_id}
+    />
   );
 }
