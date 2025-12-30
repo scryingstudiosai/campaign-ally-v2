@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { CampaignSidebar, MobileMenuButton } from '@/components/layout/CampaignSidebar'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 interface CampaignLayoutProps {
   children: React.ReactNode
@@ -27,7 +28,9 @@ export default async function CampaignLayout({ children, params }: CampaignLayou
       <MobileMenuButton campaignId={params.id} campaignName={campaign?.name} />
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        <ErrorBoundary>{children}</ErrorBoundary>
+      </main>
     </div>
   )
 }
