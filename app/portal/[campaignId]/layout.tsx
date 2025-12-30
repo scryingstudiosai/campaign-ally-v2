@@ -11,10 +11,14 @@ export default async function PortalLayout({ children, params }: PortalLayoutPro
   const { campaignId } = await params;
   const supabase = await createClient();
 
+  console.log('Portal Layout - campaignId:', campaignId);
+
   // Get current user
   const { data: { user } } = await supabase.auth.getUser();
+  console.log('Portal Layout - user:', user?.id || 'NO USER');
 
   if (!user) {
+    console.log('Portal Layout - No user, redirecting to login');
     redirect('/login');
   }
 
@@ -39,7 +43,11 @@ export default async function PortalLayout({ children, params }: PortalLayoutPro
     .eq('user_id', user.id)
     .single();
 
+  console.log('Portal Layout - membership:', membership);
+  console.log('Portal Layout - membershipError:', membershipError);
+
   if (membershipError || !membership) {
+    console.log('Portal Layout - No membership, redirecting to home');
     // Not a member - redirect to join or home
     redirect('/');
   }
