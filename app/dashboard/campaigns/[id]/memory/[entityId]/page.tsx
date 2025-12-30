@@ -41,6 +41,7 @@ import { QuestChainCard } from '@/components/entity/QuestChainCard'
 import { TavernMenuCard } from '@/components/entity/TavernMenuCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
+import { LocationDetailWrapper } from '@/components/entity/LocationDetailWrapper'
 import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, NpcMechanics, QuestBrain, QuestSoul, QuestObjective, QuestRewards, QuestChain, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
@@ -390,6 +391,13 @@ export default async function EntityDetailPage({ params }: PageProps) {
         {/* === MASTER DASHBOARD LAYOUT === */}
         {/* Left (2/3): "The Stage" - Player-facing content */}
         {/* Right (1/3): "The Script" - DM-facing content */}
+        {/* For locations, wrap in LocationDetailWrapper for Atlas tab */}
+        <LocationDetailWrapper
+          campaignId={params.id}
+          locationId={entity.id}
+          mapImageUrl={locationSoul?.map_url as string | undefined}
+          isLocation={isLocation}
+        >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
 
           {/* === LEFT COLUMN (The Stage) - What players see/experience === */}
@@ -835,6 +843,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
             </Card>
           </div>
         </div>
+        </LocationDetailWrapper>
       </div>
     </div>
   )
