@@ -114,24 +114,44 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
 
       // Check if this is a quest objective
       if (data.type === 'quest_objective') {
-        const insertObjective = (window as Window & {
-          __sessionPlannerInsertObjective?: (objective: {
-            id: string;
-            title: string;
-            description?: string;
-            questId: string;
-            questName: string;
-          }) => void;
-        }).__sessionPlannerInsertObjective;
+        const objectiveData = {
+          id: data.id as string,
+          title: data.title as string,
+          description: data.description as string | undefined,
+          questId: data.questId as string,
+          questName: data.questName as string,
+        };
 
-        if (insertObjective) {
-          insertObjective({
-            id: data.id as string,
-            title: data.title as string,
-            description: data.description as string | undefined,
-            questId: data.questId as string,
-            questName: data.questName as string,
-          });
+        if (isAtRootLevel) {
+          // At root level - create a QuestBlock with the objective inside
+          const insertQuestBlockWithObjective = (window as Window & {
+            __sessionPlannerInsertQuestBlockWithObjective?: (objective: {
+              id: string;
+              title: string;
+              description?: string;
+              questId: string;
+              questName: string;
+            }) => void;
+          }).__sessionPlannerInsertQuestBlockWithObjective;
+
+          if (insertQuestBlockWithObjective) {
+            insertQuestBlockWithObjective(objectiveData);
+          }
+        } else {
+          // Inside a block - just insert the objective node
+          const insertObjective = (window as Window & {
+            __sessionPlannerInsertObjective?: (objective: {
+              id: string;
+              title: string;
+              description?: string;
+              questId: string;
+              questName: string;
+            }) => void;
+          }).__sessionPlannerInsertObjective;
+
+          if (insertObjective) {
+            insertObjective(objectiveData);
+          }
         }
       } else if (entityType === 'encounter') {
         if (isAtRootLevel) {
@@ -231,14 +251,25 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
 
   // Listen for run-encounter events from prep notes
   useEffect(() => {
+    interface EncounterCreature {
+      srdId?: string;
+      entityId?: string;
+      name: string;
+      count: number;
+    }
+
     const handleRunEncounter = (event: Event) => {
-      const customEvent = event as CustomEvent<{ id: string; name: string }>;
-      const { id, name } = customEvent.detail;
-      console.log('Running encounter:', name, 'ID:', id);
+      const customEvent = event as CustomEvent<{
+        id: string;
+        name: string;
+        creatures?: EncounterCreature[];
+      }>;
+      const { id, name, creatures } = customEvent.detail;
+      console.log('Running encounter:', name, 'ID:', id, 'Creatures:', creatures);
 
       // Dispatch event for StagePanel to start combat with this encounter
       window.dispatchEvent(new CustomEvent('trigger-start-combat', {
-        detail: { encounterId: id }
+        detail: { encounterId: id, creatures }
       }));
     };
 

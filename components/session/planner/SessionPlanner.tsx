@@ -176,6 +176,42 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
     }).run();
   }, [editor]);
 
+  // Insert quest block with a specific objective/beat as initial content
+  const insertQuestBlockWithObjective = useCallback((objective: {
+    id: string;
+    title: string;
+    description?: string;
+    questId: string;
+    questName: string;
+  }) => {
+    if (!editor) return;
+
+    editor.chain().focus().insertContent({
+      type: 'questBlock',
+      attrs: {
+        id: crypto.randomUUID(),
+        title: objective.questName,
+        entityId: objective.questId,
+        milestones: '[]',
+        status: 'pending',
+        isCollapsed: false,
+      },
+      content: [
+        {
+          type: 'questObjective',
+          attrs: {
+            id: objective.id,
+            title: objective.title,
+            description: objective.description || '',
+            questId: objective.questId,
+            questName: objective.questName,
+          },
+        },
+        { type: 'paragraph' },
+      ],
+    }).run();
+  }, [editor]);
+
   // Expose editor and insert functions for drag-drop handler
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -185,12 +221,14 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
         __sessionPlannerInsertObjective?: typeof insertObjective;
         __sessionPlannerInsertEncounterBlock?: typeof insertEncounterBlock;
         __sessionPlannerInsertQuestBlock?: typeof insertQuestBlock;
+        __sessionPlannerInsertQuestBlockWithObjective?: typeof insertQuestBlockWithObjective;
       };
       win.__sessionPlannerEditor = editor;
       win.__sessionPlannerInsertEntity = insertEntity;
       win.__sessionPlannerInsertObjective = insertObjective;
       win.__sessionPlannerInsertEncounterBlock = insertEncounterBlock;
       win.__sessionPlannerInsertQuestBlock = insertQuestBlock;
+      win.__sessionPlannerInsertQuestBlockWithObjective = insertQuestBlockWithObjective;
     }
     return () => {
       if (typeof window !== 'undefined') {
@@ -200,15 +238,17 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
           __sessionPlannerInsertObjective?: typeof insertObjective;
           __sessionPlannerInsertEncounterBlock?: typeof insertEncounterBlock;
           __sessionPlannerInsertQuestBlock?: typeof insertQuestBlock;
+          __sessionPlannerInsertQuestBlockWithObjective?: typeof insertQuestBlockWithObjective;
         };
         delete win.__sessionPlannerEditor;
         delete win.__sessionPlannerInsertEntity;
         delete win.__sessionPlannerInsertObjective;
         delete win.__sessionPlannerInsertEncounterBlock;
         delete win.__sessionPlannerInsertQuestBlock;
+        delete win.__sessionPlannerInsertQuestBlockWithObjective;
       }
     };
-  }, [editor, insertEntity, insertObjective, insertEncounterBlock, insertQuestBlock]);
+  }, [editor, insertEntity, insertObjective, insertEncounterBlock, insertQuestBlock, insertQuestBlockWithObjective]);
 
   // Listen for forced save events (e.g., from beat generation)
   useEffect(() => {

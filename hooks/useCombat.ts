@@ -163,7 +163,7 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
   // =========================================
   // START COMBAT
   // =========================================
-  const startCombat = useCallback(async (encounterId?: string) => {
+  const startCombat = useCallback(async (encounterId?: string, inlineCreatures?: EncounterCreature[]) => {
     setIsLoading(true);
 
     try {
@@ -203,77 +203,81 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
         });
       });
 
-      // If we have an encounter, fetch and add creatures
-      if (encounterId) {
+      // Get creatures from inline data or fetch from encounter entity
+      let creatures: EncounterCreature[] = inlineCreatures || [];
+
+      // If no inline creatures but we have an encounter ID, try to fetch from entity
+      if (creatures.length === 0 && encounterId) {
         const encounterResponse = await fetch(`/api/entities/${encounterId}`);
         if (encounterResponse.ok) {
           const encounter: EntityData = await encounterResponse.json();
-          const creatures = encounter.mechanics?.creatures || [];
+          creatures = encounter.mechanics?.creatures || [];
+        }
+      }
 
-          for (const creature of creatures) {
-            const count = creature.count || 1;
+      // Add creatures to combat
+      for (const creature of creatures) {
+        const count = creature.count || 1;
 
-            // Try to get stats from SRD or entity
-            let statBlock: Record<string, unknown> | null = null;
-            let baseHp = 10;
-            let baseAc = 10;
-            let dexMod = 0;
-            let hpFormula = creature.hpFormula;
+        // Try to get stats from SRD or entity
+        let statBlock: Record<string, unknown> | null = null;
+        let baseHp = 10;
+        let baseAc = 10;
+        let dexMod = 0;
+        let hpFormula = creature.hpFormula;
 
-            if (creature.srdId) {
-              // Fetch from SRD
-              const srdResponse = await fetch(`/api/srd/creatures/${creature.srdId}`);
-              if (srdResponse.ok) {
-                const srdData: SrdCreature = await srdResponse.json();
-                statBlock = srdData as Record<string, unknown>;
-                baseHp = srdData.hit_points || 10;
-                baseAc = Array.isArray(srdData.armor_class)
-                  ? srdData.armor_class[0]?.value || 10
-                  : (srdData.armor_class as number) || 10;
-                dexMod = Math.floor(((srdData.dexterity || 10) - 10) / 2);
-                hpFormula = srdData.hit_points_roll || hpFormula;
-              }
-            } else if (creature.entityId) {
-              // Fetch from campaign entity
-              const entityResponse = await fetch(`/api/entities/${creature.entityId}`);
-              if (entityResponse.ok) {
-                const entity: EntityData = await entityResponse.json();
-                statBlock = entity.mechanics?.statBlock || entity.mechanics as Record<string, unknown>;
-                baseHp = entity.mechanics?.hp || 10;
-                baseAc = entity.mechanics?.ac || 10;
-                dexMod = Math.floor(((entity.mechanics?.abilities?.dex || 10) - 10) / 2);
-              }
-            }
-
-            // Roll initiative once for the group
-            const groupInitiative = rollInitiative(dexMod);
-
-            // Add individual creatures
-            for (let i = 0; i < count; i++) {
-              // Roll individual HP if we have a formula
-              const rolledHp = hpFormula ? rollHpFormula(hpFormula) : baseHp;
-
-              combatants.push({
-                id: `monster-${creature.srdId || creature.entityId || creature.name}-${i + 1}`,
-                entityId: creature.entityId,
-                srdId: creature.srdId,
-                name: creature.name,
-                displayName: count > 1 ? `${creature.name} ${i + 1}` : creature.name,
-                type: 'monster',
-                initiative: groupInitiative,
-                initiativeModifier: dexMod,
-                hp: rolledHp,
-                maxHp: rolledHp,
-                tempHp: 0,
-                ac: baseAc,
-                conditions: [],
-                isActive: false,
-                isVisible: true,
-                isDefeated: false,
-                statBlock: statBlock || undefined,
-              });
-            }
+        if (creature.srdId) {
+          // Fetch from SRD
+          const srdResponse = await fetch(`/api/srd/creatures/${creature.srdId}`);
+          if (srdResponse.ok) {
+            const srdData: SrdCreature = await srdResponse.json();
+            statBlock = srdData as Record<string, unknown>;
+            baseHp = srdData.hit_points || 10;
+            baseAc = Array.isArray(srdData.armor_class)
+              ? srdData.armor_class[0]?.value || 10
+              : (srdData.armor_class as number) || 10;
+            dexMod = Math.floor(((srdData.dexterity || 10) - 10) / 2);
+            hpFormula = srdData.hit_points_roll || hpFormula;
           }
+        } else if (creature.entityId) {
+          // Fetch from campaign entity
+          const entityResponse = await fetch(`/api/entities/${creature.entityId}`);
+          if (entityResponse.ok) {
+            const entity: EntityData = await entityResponse.json();
+            statBlock = entity.mechanics?.statBlock || entity.mechanics as Record<string, unknown>;
+            baseHp = entity.mechanics?.hp || 10;
+            baseAc = entity.mechanics?.ac || 10;
+            dexMod = Math.floor(((entity.mechanics?.abilities?.dex || 10) - 10) / 2);
+          }
+        }
+
+        // Roll initiative once for the group
+        const groupInitiative = rollInitiative(dexMod);
+
+        // Add individual creatures
+        for (let i = 0; i < count; i++) {
+          // Roll individual HP if we have a formula
+          const rolledHp = hpFormula ? rollHpFormula(hpFormula) : baseHp;
+
+          combatants.push({
+            id: `monster-${creature.srdId || creature.entityId || creature.name}-${i + 1}`,
+            entityId: creature.entityId,
+            srdId: creature.srdId,
+            name: creature.name,
+            displayName: count > 1 ? `${creature.name} ${i + 1}` : creature.name,
+            type: 'monster',
+            initiative: groupInitiative,
+            initiativeModifier: dexMod,
+            hp: rolledHp,
+            maxHp: rolledHp,
+            tempHp: 0,
+            ac: baseAc,
+            conditions: [],
+            isActive: false,
+            isVisible: true,
+            isDefeated: false,
+            statBlock: statBlock || undefined,
+          });
         }
       }
 

@@ -88,13 +88,22 @@ function EncounterBlockComponent({ node, updateAttributes, deleteNode, editor }:
 
   const handleRunEncounter = () => {
     updateAttributes({ status: 'active' })
-    // Dispatch event for combat system
+
+    // Transform creatures to combat format
+    const combatCreatures = creatures.map(c => ({
+      srdId: c.isSrd ? c.id?.replace('srd-creature-', '') : undefined,
+      entityId: !c.isSrd && c.id && !c.id.startsWith('temp-') ? c.id : undefined,
+      name: c.name,
+      count: c.count || 1,
+    }))
+
+    // Dispatch event for combat system with full creature data
     window.dispatchEvent(
       new CustomEvent('run-encounter', {
         detail: {
-          id: node.attrs.id,
+          id: node.attrs.entityId || node.attrs.id, // Use entityId if available
           name: title,
-          creatures,
+          creatures: combatCreatures,
         },
       })
     )
