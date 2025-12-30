@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { DeleteCampaignButton } from '@/components/campaigns/delete-campaign-button'
+import { ExportButton } from '@/components/campaign/export-button'
 import { SessionsList } from '@/components/dashboard/SessionsList'
 import { MaterialCard } from '@/components/ui/material-card'
 import { ForgeButton } from '@/components/ui/forge-button'
@@ -100,6 +101,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
           </div>
 
           <div className="flex gap-2">
+            <ExportButton campaignId={campaign.id} campaignName={campaign.name} />
             <Button variant="outline" size="sm" asChild>
               <Link href={`/dashboard/campaigns/${params.id}/edit`}>
                 <Pencil className="w-4 h-4 mr-2" />
