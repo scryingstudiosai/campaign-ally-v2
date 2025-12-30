@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { User, Sparkles, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,7 +25,6 @@ export function CharacterSelector({ campaignId, characters, userId, existingMemb
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<'select' | 'spectate'>('select');
-  const router = useRouter();
   const supabase = createClient();
 
   const handleClaim = async () => {
@@ -36,16 +34,18 @@ export function CharacterSelector({ campaignId, characters, userId, existingMemb
     try {
       if (existingMemberId) {
         // Update existing membership
-        await supabase
+        const { error } = await supabase
           .from('campaign_members')
           .update({
             character_entity_id: mode === 'select' ? selectedId : null,
             role: mode === 'spectate' ? 'spectator' : 'player'
           })
           .eq('id', existingMemberId);
+
+        if (error) throw error;
       } else {
         // Create new membership
-        await supabase
+        const { error } = await supabase
           .from('campaign_members')
           .insert({
             campaign_id: campaignId,
@@ -53,12 +53,14 @@ export function CharacterSelector({ campaignId, characters, userId, existingMemb
             character_entity_id: mode === 'select' ? selectedId : null,
             role: mode === 'spectate' ? 'spectator' : 'player'
           });
+
+        if (error) throw error;
       }
 
-      router.push(`/portal/${campaignId}`);
+      // Use window.location for a hard redirect instead of router.push
+      window.location.href = `/portal/${campaignId}`;
     } catch (error) {
       console.error('Failed to claim character:', error);
-    } finally {
       setIsLoading(false);
     }
   };
