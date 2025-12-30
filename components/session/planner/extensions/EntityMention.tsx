@@ -94,7 +94,7 @@ export const EntityMention = Mention.configure({
   },
   suggestion,
   renderLabel({ node }) {
-    return `@${node.attrs.label ?? node.attrs.id}`
+    return `@${node.attrs.label || node.attrs.id}`
   },
 }).extend({
   name: 'entityMention',
@@ -141,7 +141,7 @@ export const EntityMention = Mention.configure({
         'data-entity-type': node.attrs.entityType,
         class: `entity-mention entity-mention--${node.attrs.entityType || 'default'}`,
       },
-      `@${node.attrs.label ?? node.attrs.id}`,
+      `@${node.attrs.label || node.attrs.id}`,
     ]
   },
 })
