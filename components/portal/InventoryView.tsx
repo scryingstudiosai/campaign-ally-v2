@@ -5,6 +5,9 @@ import { Package, Search } from 'lucide-react';
 import { InventoryItem } from './InventoryItem';
 import { ItemDetailSheet } from './ItemDetailSheet';
 import { CurrencyDisplay } from './CurrencyDisplay';
+import { PartyStash } from './PartyStash';
+import { LootRevealModal } from './LootRevealModal';
+import { useRealtimeInventory } from '@/hooks/useRealtimeInventory';
 
 interface SrdItem {
   id: string;
@@ -42,20 +45,35 @@ export interface InventoryItemData {
   custom_item: CustomItem | null;
 }
 
+export interface StashItemData {
+  id: string;
+  quantity: number;
+  srd_item: { id: string; name: string; item_type: string | null; rarity: string | null } | null;
+  custom_item: { id: string; name: string; image_url: string | null } | null;
+}
+
 interface Props {
   items: InventoryItemData[];
+  partyStash: StashItemData[];
   currency: {
     gold?: number;
     silver?: number;
     copper?: number;
   };
   characterId: string;
+  campaignId: string;
 }
 
-export function InventoryView({ items, currency }: Props) {
+export function InventoryView({ items, partyStash, currency, characterId, campaignId }: Props) {
   const [selectedItem, setSelectedItem] = useState<InventoryItemData | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'equipped' | 'bag'>('all');
+  const [stashItems, setStashItems] = useState(partyStash);
+
+  const { newLoot, clearNewLoot } = useRealtimeInventory({
+    campaignId,
+    characterId,
+  });
 
   // Get item name helper
   const getItemName = (item: InventoryItemData) =>
@@ -76,6 +94,10 @@ export function InventoryView({ items, currency }: Props) {
   const equippedCount = items.filter(i => i.is_equipped).length;
   const bagCount = items.filter(i => !i.is_equipped).length;
 
+  const handleClaimItem = (itemId: string) => {
+    setStashItems(prev => prev.filter(i => i.id !== itemId));
+  };
+
   return (
     <div className="p-4 space-y-4 pb-24">
       {/* Header */}
@@ -86,6 +108,14 @@ export function InventoryView({ items, currency }: Props) {
         </h1>
         <CurrencyDisplay currency={currency} />
       </div>
+
+      {/* Party Stash */}
+      <PartyStash
+        items={stashItems}
+        campaignId={campaignId}
+        characterId={characterId}
+        onClaim={handleClaimItem}
+      />
 
       {/* Search */}
       <div className="relative">
@@ -121,7 +151,7 @@ export function InventoryView({ items, currency }: Props) {
       </div>
 
       {/* Empty State */}
-      {items.length === 0 && (
+      {items.length === 0 && stashItems.length === 0 && (
         <div className="text-center py-12">
           <Package className="w-12 h-12 text-slate-600 mx-auto mb-4" />
           <h3 className="text-lg text-slate-300 mb-2">Backpack is Empty</h3>
@@ -155,6 +185,12 @@ export function InventoryView({ items, currency }: Props) {
       <ItemDetailSheet
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+      />
+
+      {/* Loot Reveal Modal */}
+      <LootRevealModal
+        item={newLoot}
+        onClose={clearNewLoot}
       />
     </div>
   );

@@ -67,7 +67,18 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     console.error('Inventory fetch error:', error);
   }
 
-  // 4. Fetch Character for currency
+  // 4. Fetch Party Stash
+  const { data: partyStash } = await supabase
+    .from('inventory_instances')
+    .select(`
+      id, quantity,
+      srd_item:srd_items!srd_item_id (id, name, item_type, rarity),
+      custom_item:entities!custom_entity_id (id, name, image_url)
+    `)
+    .eq('campaign_id', campaignId)
+    .eq('owner_type', 'party');
+
+  // 5. Fetch Character for currency
   const { data: character } = await supabase
     .from('entities')
     .select('mechanics')
@@ -84,8 +95,10 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
   return (
     <InventoryView
       items={inventoryItems || []}
+      partyStash={partyStash || []}
       currency={currency}
       characterId={membership.character_entity_id}
+      campaignId={campaignId}
     />
   );
 }
