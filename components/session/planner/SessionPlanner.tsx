@@ -91,34 +91,35 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
         const html = event.clipboardData?.getData('text/html');
         const text = event.clipboardData?.getData('text/plain');
 
+        // Debug logging
+        console.log('Paste event:', {
+          hasHtml: !!html,
+          hasText: !!text,
+          htmlPreview: html?.slice(0, 500),
+        });
+
         // If there's no HTML, let Tiptap handle plain text normally
         if (!html) {
           return false;
         }
 
-        // Check if this is from our own editor (internal copy/paste)
-        // ProseMirror adds data-pm-slice for internal clipboard operations
-        if (html.includes('data-pm-slice')) {
-          return false; // Let Tiptap handle internal paste
-        }
-
-        // Check if the HTML contains our custom block types
-        const hasOurBlocks = html.includes('data-quest-block') ||
+        // Check if the HTML contains our custom block wrapper types
+        // These should only be preserved for intentional block copy/paste
+        const hasBlockWrapper = html.includes('data-quest-block') ||
           html.includes('data-scene-block') ||
           html.includes('data-encounter-block') ||
-          html.includes('data-note-block') ||
-          html.includes('data-read-aloud') ||
-          html.includes('data-quest-objective') ||
-          html.includes('data-mention');
+          html.includes('data-note-block');
 
-        // If HTML has our custom blocks, let Tiptap parse it normally
-        if (hasOurBlocks) {
+        // For internal copy/paste WITH block wrappers, let Tiptap handle it
+        if (html.includes('data-pm-slice') && hasBlockWrapper) {
+          console.log('Internal paste with block wrapper - allowing');
           return false;
         }
 
-        // For external HTML without our blocks, convert to plain text
-        // This prevents random HTML structures from being misinterpreted as blocks
+        // For ALL other HTML (external or internal without explicit blocks),
+        // convert to plain text to prevent misinterpretation
         if (text) {
+          console.log('Converting HTML to plain text');
           event.preventDefault();
           view.dispatch(view.state.tr.insertText(text));
           return true;
