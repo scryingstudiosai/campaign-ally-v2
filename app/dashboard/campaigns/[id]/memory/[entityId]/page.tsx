@@ -33,6 +33,7 @@ import { CreatureBrainCard } from '@/components/entity/CreatureBrainCard'
 import { CreatureSoulCard } from '@/components/entity/CreatureSoulCard'
 import { CreatureMechanicsCard } from '@/components/entity/CreatureMechanicsCard'
 import { NpcMechanicsCard } from '@/components/entity/NpcMechanicsCard'
+import { PlayerSoulCard } from '@/components/entity/PlayerSoulCard'
 import { QuestSoulCard } from '@/components/entity/QuestSoulCard'
 import { QuestBrainCard } from '@/components/entity/QuestBrainCard'
 import { QuestObjectivesCard } from '@/components/entity/QuestObjectivesCard'
@@ -228,6 +229,26 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const questRewards = attributes.rewards as QuestRewards | null
   const questChain = attributes.chain as QuestChain | null
 
+  // Player-specific helpers
+  const isPlayer = entity.entity_type === 'player'
+  const playerSoul = entity.soul as {
+    race?: string
+    class?: string
+    level?: number
+    background?: string
+    ability_scores?: { str: number; dex: number; con: number; int: number; wis: number; cha: number }
+    max_hp?: number
+    current_hp?: number
+    temp_hp?: number
+    armor_class?: number
+    speed?: number
+    proficiency_bonus?: number
+    saving_throws?: string[]
+    languages?: string[]
+    skills?: string[]
+    hit_dice?: { current: number; max: number; face: number }
+  } | null
+
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
     (entity.voice && (entity.voice as Voice).style?.length > 0) ||
@@ -271,6 +292,10 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (questRewards && Object.keys(questRewards).length > 0) ||
     (questChain && Object.keys(questChain).length > 0)
 
+  const hasPlayerStageContent =
+    (playerSoul && Object.keys(playerSoul).length > 0) ||
+    entity.description
+
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
     (isItem && hasItemStageContent) ||
@@ -279,6 +304,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (isEncounter && hasEncounterStageContent) ||
     (isCreature && hasCreatureStageContent) ||
     (isQuest && hasQuestStageContent) ||
+    (isPlayer && hasPlayerStageContent) ||
     entity.public_notes ||
     entity.dm_notes
 
@@ -654,6 +680,27 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   questName={entity.name}
                   brainNextHook={(questBrain as Record<string, unknown>)?.next_quest_hook as string | undefined}
                 />
+              </>
+            )}
+
+            {/* --- PLAYER STAGE CONTENT --- */}
+            {isPlayer && (
+              <>
+                {/* Player Soul Card - Character stats and abilities */}
+                {playerSoul && Object.keys(playerSoul).length > 0 && (
+                  <PlayerSoulCard soul={playerSoul} />
+                )}
+
+                {/* Backstory/Description */}
+                {entity.description && (
+                  <div className="ca-panel p-4">
+                    <div className="ca-section-header mb-2">
+                      <User className="w-4 h-4" />
+                      <span>Backstory</span>
+                    </div>
+                    <p className="text-sm text-slate-300 whitespace-pre-wrap">{renderWithBold(entity.description)}</p>
+                  </div>
+                )}
               </>
             )}
 
