@@ -43,27 +43,35 @@ export function PortalCharacterView({ initialCharacter, characterEntityId }: Por
   useEffect(() => {
     if (!characterEntityId) return;
 
-    // Subscribe to changes on this character entity
+    console.log('Setting up realtime subscription for:', characterEntityId);
+
+    // Subscribe to ALL changes on entities table, then filter client-side
     const channel = supabase
-      .channel(`character-${characterEntityId}`)
+      .channel(`character-updates-${characterEntityId}`)
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',  // Listen to all events (INSERT, UPDATE, DELETE)
           schema: 'public',
           table: 'entities',
-          filter: `id=eq.${characterEntityId}`,
         },
         (payload) => {
-          console.log('Character updated via realtime:', payload.new);
-          setCharacter(payload.new as Character);
+          console.log('Realtime event received:', payload);
+
+          // Filter client-side for our character
+          if (payload.new && (payload.new as Record<string, unknown>).id === characterEntityId) {
+            console.log('Character updated via realtime:', payload.new);
+            setCharacter(payload.new as Character);
+          }
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         console.log('Realtime subscription status:', status);
+        if (err) console.error('Realtime subscription error:', err);
       });
 
     return () => {
+      console.log('Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [characterEntityId, supabase]);
