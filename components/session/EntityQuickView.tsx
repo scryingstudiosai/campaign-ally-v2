@@ -8,6 +8,7 @@ import {
   MapPin, Package, Skull, Flag, Scroll, Play, Plus,
   Footprints, Sparkles
 } from 'lucide-react';
+import { EntityVisibilityToggle } from '@/components/entity/EntityVisibilityToggle';
 import Link from 'next/link';
 
 interface EntityQuickViewProps {
@@ -103,10 +104,20 @@ export function EntityQuickView({
       <DialogContent className="bg-slate-900 border-slate-700 max-w-lg max-h-[85vh] flex flex-col p-0">
         {/* Header */}
         <DialogHeader className={`p-4 ${config.bg} border-b border-slate-700`}>
-          <DialogTitle className="flex items-center gap-2">
-            <Icon className={`w-5 h-5 ${config.color}`} />
-            <span className="truncate">{entity.name}</span>
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle className="flex items-center gap-2">
+              <Icon className={`w-5 h-5 ${config.color}`} />
+              <span className="truncate">{entity.name}</span>
+            </DialogTitle>
+            {/* Visibility Toggle for revealable entities */}
+            {['npc', 'location', 'faction', 'item'].includes(entity.entity_type) && (
+              <EntityVisibilityToggle
+                entityId={entity.id}
+                campaignId={campaignId}
+                entityName={entity.name}
+              />
+            )}
+          </div>
           <div className="flex flex-wrap gap-2 mt-2">
             <Badge variant="outline" className="border-slate-600 text-xs">
               {entity.entity_type}

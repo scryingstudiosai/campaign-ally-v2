@@ -7,7 +7,7 @@ import { DraggableEntity } from './DraggableEntity';
 import { DraggableObjective } from './DraggableObjective';
 import {
   Search, Users, MapPin, Package, Skull, Flag, Sword,
-  ChevronDown, ChevronRight, Loader2, Swords, Scroll
+  ChevronDown, ChevronRight, Loader2, Swords, Scroll, Eye
 } from 'lucide-react';
 
 interface LibraryPanelProps {
@@ -95,6 +95,9 @@ export interface Entity {
 // Combat-ready entity types
 const COMBAT_TYPES = ['npc', 'creature', 'player'];
 
+// Revealable entity types
+const REVEALABLE_TYPES = ['npc', 'location', 'faction', 'item'];
+
 export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat, onEntityClick, refreshTrigger }: LibraryPanelProps) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -103,6 +106,7 @@ export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat, onEnti
   );
   const [expandedQuests, setExpandedQuests] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [revealingEntity, setRevealingEntity] = useState<string | null>(null);
 
   // Select entity order based on combat state
   const ENTITY_GROUPS = isCombatActive ? COMBAT_ORDER : PREP_ORDER;
@@ -213,6 +217,31 @@ export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat, onEnti
     onAddToCombat?.(entity);
   };
 
+  const handleRevealToPlayers = async (entity: Entity, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRevealingEntity(entity.id);
+
+    try {
+      await fetch('/api/portal/world/reveal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          entityId: entity.id,
+          playerIds: null, // All players
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to reveal entity:', error);
+    }
+
+    setRevealingEntity(null);
+  };
+
+  const canRevealToPlayers = (entity: Entity) => {
+    return REVEALABLE_TYPES.includes(entity.entity_type?.toLowerCase());
+  };
+
   return (
     <div className="h-full flex flex-col">
       <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
@@ -316,6 +345,22 @@ export function LibraryPanel({ campaignId, isCombatActive, onAddToCombat, onEnti
                               <Swords className="w-3 h-3 mr-1" />
                               Add
                             </Button>
+                          )}
+
+                          {/* Quick Reveal to Players */}
+                          {canRevealToPlayers(entity) && (
+                            <button
+                              onClick={(e) => handleRevealToPlayers(entity, e)}
+                              disabled={revealingEntity === entity.id}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-green-400 hover:bg-green-400/10 transition-all ml-1"
+                              title="Reveal to players"
+                            >
+                              {revealingEntity === entity.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </button>
                           )}
                         </div>
 

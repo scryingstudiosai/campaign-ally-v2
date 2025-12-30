@@ -8,16 +8,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import {
   Sparkles, Loader2, Star, MapPin, Users, AlertTriangle,
   Scroll, ArrowRight, CheckCircle, Edit, Save,
   Clock, MessageSquare, Skull, Heart, Flag,
-  Package, Target, RefreshCw, Check, Database
+  Package, Target, RefreshCw, Check, Database, Send
 } from 'lucide-react';
 
 interface SessionReviewProps {
   sessionId: string;
   sessionName: string;
+  sessionNumber?: number;
   duration?: number;
   onClose?: () => void;
   onComplete?: () => void;
@@ -73,6 +75,7 @@ const UPDATE_COLORS: Record<string, string> = {
 export function SessionReview({
   sessionId,
   sessionName,
+  sessionNumber,
   duration,
   onClose,
   onComplete
@@ -93,6 +96,9 @@ export function SessionReview({
   // Applied state
   const [appliedResults, setAppliedResults] = useState<any[]>([]);
   const [hasApplied, setHasApplied] = useState(false);
+
+  // Publish to players
+  const [publishToPlayers, setPublishToPlayers] = useState(true);
 
   // Check for existing review on mount
   useEffect(() => {
@@ -210,6 +216,21 @@ export function SessionReview({
       const result = await response.json();
       setAppliedResults(result.results || []);
       setHasApplied(true);
+
+      // Publish summary to players if enabled
+      if (publishToPlayers && review) {
+        const summaryToPublish = editedSummary || review.summary;
+        await fetch(`/api/sessions/${sessionId}/publish-summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            summary: summaryToPublish,
+            title: sessionNumber
+              ? `Session ${sessionNumber}: ${sessionName}`
+              : sessionName,
+          }),
+        });
+      }
 
       // Call onComplete callback
       onComplete?.();
@@ -413,6 +434,31 @@ export function SessionReview({
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Publish to Players Toggle */}
+                <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <Send className="w-5 h-5 text-teal-400" />
+                    <div>
+                      <h4 className="text-white font-medium">Publish to Player Journals</h4>
+                      <p className="text-slate-400 text-sm">Players will receive this summary as a new journal entry</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPublishToPlayers(!publishToPlayers)}
+                    className={cn(
+                      "relative w-12 h-6 rounded-full transition-colors",
+                      publishToPlayers ? "bg-teal-600" : "bg-slate-600"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
+                        publishToPlayers ? "left-7" : "left-1"
+                      )}
+                    />
+                  </button>
+                </div>
 
                 {/* Highlights */}
                 {review.highlights.length > 0 && (
