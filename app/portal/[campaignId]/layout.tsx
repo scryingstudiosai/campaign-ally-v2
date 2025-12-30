@@ -107,8 +107,8 @@ export default async function PortalLayout({ children, params }: PortalLayoutPro
       {/* Bottom navigation */}
       <PortalNav
         campaignId={campaignId}
+        userId={user.id}
         isSpectator={membership.role === 'spectator'}
-        characterName={character?.name}
       />
     </div>
   );

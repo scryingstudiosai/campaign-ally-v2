@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { LogoutButton } from '@/components/auth/logout-button'
 import { CampaignCard } from '@/components/campaigns/campaign-card'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, Shield } from 'lucide-react'
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -39,7 +39,16 @@ export default async function DashboardPage() {
           <h1 className="text-3xl font-bold">
             Welcome, {displayName}!
           </h1>
-          <LogoutButton />
+          <div className="flex items-center gap-3">
+            <Link
+              href="/portal"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+            >
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Player Portal</span>
+            </Link>
+            <LogoutButton />
+          </div>
         </div>
 
         <div className="flex justify-between items-center mb-6">
