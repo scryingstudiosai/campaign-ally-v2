@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Search, X, LayoutGrid, List } from 'lucide-react'
+import { Search, X, LayoutGrid, List, Network } from 'lucide-react'
 import { EntityType } from './entity-type-badge'
 
 export interface EntityFilters {
@@ -23,8 +23,8 @@ export interface EntityFilters {
 interface EntityFiltersProps {
   filters: EntityFilters
   onFiltersChange: (filters: EntityFilters) => void
-  viewMode: 'card' | 'list'
-  onViewModeChange: (mode: 'card' | 'list') => void
+  viewMode: 'card' | 'list' | 'graph'
+  onViewModeChange: (mode: 'card' | 'list' | 'graph') => void
 }
 
 export function EntityFiltersBar({
@@ -73,6 +73,7 @@ export function EntityFiltersBar({
             size="sm"
             onClick={() => onViewModeChange('card')}
             className="rounded-r-none"
+            title="Card view"
           >
             <LayoutGrid className="w-4 h-4" />
           </Button>
@@ -80,9 +81,19 @@ export function EntityFiltersBar({
             variant={viewMode === 'list' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => onViewModeChange('list')}
-            className="rounded-l-none"
+            className="rounded-none border-x"
+            title="List view"
           >
             <List className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'graph' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => onViewModeChange('graph')}
+            className="rounded-l-none"
+            title="Relationship graph"
+          >
+            <Network className="w-4 h-4" />
           </Button>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { EntityCard, Entity } from '@/components/memory/entity-card'
 import { EntityListItem, EntityListHeader } from '@/components/memory/entity-list-item'
 import { EntityFiltersBar, EntityFilters } from '@/components/memory/entity-filters'
+import { RelationshipGraph } from '@/components/memory/relationship-graph'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,16 +23,27 @@ import { toast } from 'sonner'
 
 const STORAGE_KEY = 'memory-view-mode'
 
+interface Relationship {
+  id: string
+  source_id: string
+  target_id: string
+  relationship_type: string
+  description?: string
+  is_secret?: boolean
+}
+
 interface MemoryPageClientProps {
   campaignId: string
   campaignName: string
   initialEntities: Entity[]
+  initialRelationships: Relationship[]
 }
 
 export function MemoryPageClient({
   campaignId,
   campaignName,
   initialEntities,
+  initialRelationships,
 }: MemoryPageClientProps): JSX.Element {
   // Track entities in state for optimistic updates on delete
   const [entities, setEntities] = useState<Entity[]>(initialEntities)
@@ -42,21 +54,26 @@ export function MemoryPageClient({
   }, [initialEntities])
 
   // Initialize with default, then hydrate from localStorage
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
+  const [viewMode, setViewMode] = useState<'card' | 'list' | 'graph'>('card')
 
   // Hydrate view mode from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'card' || stored === 'list') {
+    if (stored === 'card' || stored === 'list' || stored === 'graph') {
       setViewMode(stored)
     }
   }, [])
 
   // Persist view mode changes to localStorage
-  const handleViewModeChange = (mode: 'card' | 'list') => {
+  const handleViewModeChange = (mode: 'card' | 'list' | 'graph') => {
     setViewMode(mode)
     localStorage.setItem(STORAGE_KEY, mode)
   }
+
+  // Handle entity click in graph view
+  const handleEntityClick = useCallback((entityId: string) => {
+    window.location.href = `/dashboard/campaigns/${campaignId}/memory/${entityId}`
+  }, [campaignId])
 
   // Handle entity deletion - optimistic update
   const handleEntityDelete = (deletedId: string) => {
@@ -344,6 +361,15 @@ export function MemoryPageClient({
               </p>
             </Card>
           )
+        ) : viewMode === 'graph' ? (
+          <Card className="overflow-hidden h-[600px]">
+            <RelationshipGraph
+              entities={filteredEntities}
+              relationships={initialRelationships}
+              onEntityClick={handleEntityClick}
+              className="w-full h-full"
+            />
+          </Card>
         ) : viewMode === 'card' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredEntities.map((entity) => (

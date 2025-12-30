@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { InteractiveText } from '@/components/forge/InteractiveText'
-import { InteractiveText as UniversalInteractiveText, EntityType, TextRange } from '@/components/ui/interactive-text'
+import { InteractiveText as UniversalInteractiveText, TextRange } from '@/components/ui/interactive-text'
 import { renderWithBold } from '@/lib/text-utils'
 import {
   Map, Eye, Ear, Wind, Thermometer, Lightbulb,
