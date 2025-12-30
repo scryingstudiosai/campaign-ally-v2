@@ -163,6 +163,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                   forgeType="quest"
                   label="Quest"
                 />
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/player`}
+                  forgeType="player"
+                  label="Hero"
+                />
               </div>
             </MaterialCard>
 
