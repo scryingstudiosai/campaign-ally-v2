@@ -98,16 +98,29 @@ export function JournalView({ campaignId, initialEntries, initialQuests, session
     }
   };
 
-  const handleUpdate = async (id: string, updates: Partial<JournalEntry>) => {
+  const handleUpdate = async (id: string, updates: { title?: string; content?: string; is_pinned?: boolean }) => {
     const res = await fetch('/api/portal/journal', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, ...updates }),
+      body: JSON.stringify({
+        id,
+        title: updates.title,
+        content: updates.content,
+        isPinned: updates.is_pinned  // API expects isPinned, not is_pinned
+      }),
     });
 
     if (res.ok) {
       const updated = await res.json();
-      setEntries(entries.map(e => e.id === id ? { ...e, ...updated } : e));
+      // Re-sort entries so pinned ones appear at top
+      setEntries(prev => {
+        const newEntries = prev.map(e => e.id === id ? { ...e, ...updated } : e);
+        return newEntries.sort((a, b) => {
+          if (a.is_pinned && !b.is_pinned) return -1;
+          if (!a.is_pinned && b.is_pinned) return 1;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+      });
       setEditingId(null);
     }
   };
@@ -125,7 +138,7 @@ export function JournalView({ campaignId, initialEntries, initialQuests, session
   };
 
   const handleTogglePin = async (id: string, currentPinned: boolean) => {
-    await handleUpdate(id, { is_pinned: !currentPinned } as Partial<JournalEntry>);
+    await handleUpdate(id, { is_pinned: !currentPinned });
   };
 
   const formatDate = (dateString: string) => {
@@ -291,7 +304,7 @@ interface EntryCardProps {
   onToggleExpand: () => void;
   onEdit: () => void;
   onCancelEdit: () => void;
-  onSave: (updates: Partial<JournalEntry>) => void;
+  onSave: (updates: { title?: string; content?: string; is_pinned?: boolean }) => void;
   onDelete: () => void;
   onTogglePin: () => void;
   formatDate: (date: string) => string;

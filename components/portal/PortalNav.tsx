@@ -82,7 +82,7 @@ export function PortalNav({ campaignId, userId, isSpectator = false }: Props) {
   const navItems = [
     { href: basePath, icon: User, label: 'Character', disabled: isSpectator },
     { href: `${basePath}/inventory`, icon: Package, label: 'Inventory', disabled: isSpectator },
-    { href: `${basePath}/messages`, icon: MessageSquare, label: 'Messages', badge: unreadCount, disabled: false },
+    { href: `${basePath}/messages`, icon: MessageSquare, label: 'Messages', badge: unreadCount > 0 ? unreadCount : undefined, disabled: false },
     { href: `${basePath}/journal`, icon: Book, label: 'Journal', disabled: false },
     { href: `${basePath}/world`, icon: Globe, label: 'World', disabled: false },
   ];
