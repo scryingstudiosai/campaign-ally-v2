@@ -3,6 +3,7 @@
 import { CreatureBrain, CreatureTreasure } from '@/types/living-entity'
 import { Brain, Target, Shield, Lightbulb, Home, Crown, Map, Scroll, AlertTriangle, Coins } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { MaterialCard } from '@/components/ui/material-card'
 
 interface CreatureBrainCardProps {
   brain: CreatureBrain
@@ -16,11 +17,14 @@ export function CreatureBrainCard({ brain, treasure }: CreatureBrainCardProps): 
   if (!hasBrainContent && !hasTreasureContent) return null
 
   return (
-    <div className="ca-card p-4 space-y-4">
-      <div className="flex items-center gap-2 text-amber-400 font-medium border-b border-amber-500/20 pb-2">
-        <Brain className="w-5 h-5" />
-        <span>Creature Brain (DM Info)</span>
+    <MaterialCard entityType="creature" className="p-0">
+      <div className="p-4 pb-2 border-b border-white/5">
+        <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+          <Brain className="w-5 h-5 text-orange-400" />
+          Creature Brain (DM Info)
+        </h3>
       </div>
+      <div className="p-4 space-y-4">
 
       {/* Tactics & Weaknesses */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -162,6 +166,7 @@ export function CreatureBrainCard({ brain, treasure }: CreatureBrainCardProps): 
           )}
         </div>
       )}
-    </div>
+      </div>
+    </MaterialCard>
   )
 }

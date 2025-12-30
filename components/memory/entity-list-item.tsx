@@ -19,6 +19,15 @@ import {
   Crown,
   Sparkles,
   Trash2,
+  User,
+  MapPin,
+  Sword,
+  Users,
+  Scroll,
+  Swords,
+  Bug,
+  HelpCircle,
+  Wand2,
 } from 'lucide-react'
 import {
   AlertDialog,
@@ -38,6 +47,18 @@ interface EntityListItemProps {
   selectionMode?: boolean
   isSelected?: boolean
   onToggleSelect?: () => void
+  isEven?: boolean
+}
+
+const ENTITY_TYPE_ICONS: Record<string, { icon: typeof User; color: string }> = {
+  npc: { icon: User, color: 'text-teal-400' },
+  location: { icon: MapPin, color: 'text-emerald-400' },
+  item: { icon: Sword, color: 'text-blue-400' },
+  faction: { icon: Users, color: 'text-orange-400' },
+  quest: { icon: Scroll, color: 'text-purple-400' },
+  encounter: { icon: Swords, color: 'text-amber-400' },
+  creature: { icon: Bug, color: 'text-rose-400' },
+  other: { icon: HelpCircle, color: 'text-slate-400' },
 }
 
 interface EntityListHeaderProps {
@@ -75,6 +96,7 @@ export function EntityListItem({
   selectionMode = false,
   isSelected = false,
   onToggleSelect,
+  isEven = false,
 }: EntityListItemProps): JSX.Element {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -83,6 +105,9 @@ export function EntityListItem({
 
   const statusConfig = STATUS_CONFIG[entity.status]
   const importanceConfig = IMPORTANCE_CONFIG[entity.importance_tier]
+  const entityTypeIcon = ENTITY_TYPE_ICONS[entity.entity_type] || ENTITY_TYPE_ICONS.other
+  const EntityIcon = entityTypeIcon.icon
+  const isStub = entity.attributes?.is_stub || entity.attributes?.needs_review
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -155,6 +180,11 @@ export function EntityListItem({
         </div>
       )}
 
+      {/* Entity Icon */}
+      <div className="w-8 flex-shrink-0 flex items-center justify-center">
+        <EntityIcon className={cn('w-4 h-4', entityTypeIcon.color)} />
+      </div>
+
       {/* Name */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
@@ -180,8 +210,10 @@ export function EntityListItem({
         {selectionMode ? (
           <div
             className={cn(
-              'flex items-center gap-4 p-3 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer',
-              isSelected && 'bg-teal-500/10'
+              'flex items-center gap-4 p-3 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border/50',
+              isSelected && 'bg-teal-500/10',
+              !isSelected && isEven && 'bg-slate-900/30',
+              isStub && 'border-l-2 border-l-amber-500 bg-amber-500/5'
             )}
             onClick={handleRowClick}
           >
@@ -194,7 +226,12 @@ export function EntityListItem({
 
             {/* Status */}
             <div className="w-24 flex-shrink-0 hidden md:block">
-              {statusConfig && (
+              {isStub ? (
+                <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">
+                  <Wand2 className="w-3 h-3" />
+                  Stub
+                </span>
+              ) : statusConfig && (
                 <Badge variant="outline" className={cn('text-xs', statusConfig.color)}>
                   {statusConfig.label}
                 </Badge>
@@ -203,7 +240,7 @@ export function EntityListItem({
 
             {/* Importance */}
             <div className="w-24 flex-shrink-0 hidden lg:flex items-center gap-1">
-              {importanceConfig && (
+              {importanceConfig && !isStub && (
                 <>
                   <importanceConfig.icon className={cn('w-3 h-3', importanceConfig.color)} />
                   <span className={cn('text-xs', importanceConfig.color)}>
@@ -225,8 +262,17 @@ export function EntityListItem({
           <>
           <Link
             href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}
-            className="flex items-center gap-4 p-3 hover:bg-muted/50 rounded-lg transition-colors"
+            className={cn(
+              'flex items-center gap-4 p-3 hover:bg-muted/50 transition-colors border-b border-border/50',
+              isEven && 'bg-slate-900/30',
+              isStub && 'border-l-2 border-l-amber-500 bg-amber-500/5'
+            )}
           >
+            {/* Entity Icon */}
+            <div className="w-8 flex-shrink-0 flex items-center justify-center">
+              <EntityIcon className={cn('w-4 h-4', entityTypeIcon.color)} />
+            </div>
+
             {/* Name */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -251,7 +297,12 @@ export function EntityListItem({
 
           {/* Status */}
           <div className="w-24 flex-shrink-0 hidden md:block">
-            {statusConfig && (
+            {isStub ? (
+              <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30">
+                <Wand2 className="w-3 h-3" />
+                Stub
+              </span>
+            ) : statusConfig && (
               <Badge variant="outline" className={cn('text-xs', statusConfig.color)}>
                 {statusConfig.label}
               </Badge>
@@ -260,7 +311,7 @@ export function EntityListItem({
 
           {/* Importance */}
           <div className="w-24 flex-shrink-0 hidden lg:flex items-center gap-1">
-            {importanceConfig && (
+            {importanceConfig && !isStub && (
               <>
                 <importanceConfig.icon className={cn('w-3 h-3', importanceConfig.color)} />
                 <span className={cn('text-xs', importanceConfig.color)}>
@@ -318,8 +369,9 @@ export function EntityListItem({
 
 export function EntityListHeader({ selectionMode = false }: EntityListHeaderProps): JSX.Element {
   return (
-    <div className="flex items-center gap-4 px-3 py-2 border-b border-border text-xs font-medium text-muted-foreground">
+    <div className="flex items-center gap-4 px-3 py-2 border-b border-border bg-slate-800/50 text-xs font-medium text-muted-foreground uppercase tracking-wide">
       {selectionMode && <div className="w-6 flex-shrink-0" />} {/* Checkbox spacer */}
+      <div className="w-8 flex-shrink-0" /> {/* Icon spacer */}
       <div className="flex-1">Name</div>
       <div className="w-24 flex-shrink-0 hidden sm:block">Type</div>
       <div className="w-24 flex-shrink-0 hidden md:block">Status</div>

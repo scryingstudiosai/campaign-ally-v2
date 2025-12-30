@@ -54,10 +54,22 @@ export function SessionsList({ campaignId }: SessionsListProps): JSX.Element {
   };
 
   const statusConfig: Record<SessionStatus, { color: string; label: string }> = {
-    planning: { color: 'bg-blue-900/50 text-blue-400', label: 'Planning' },
-    active: { color: 'bg-green-900/50 text-green-400', label: 'Live' },
-    review: { color: 'bg-amber-900/50 text-amber-400', label: 'Review' },
-    archived: { color: 'bg-slate-800 text-slate-400', label: 'Archived' },
+    planning: {
+      color: 'bg-teal-500/20 text-teal-400 border border-teal-500/30 shadow-[0_0_10px_rgba(45,212,191,0.2)]',
+      label: 'Planning'
+    },
+    active: {
+      color: 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.3)]',
+      label: 'Live'
+    },
+    review: {
+      color: 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_10px_rgba(251,191,36,0.2)]',
+      label: 'Review'
+    },
+    archived: {
+      color: 'bg-slate-500/20 text-slate-400 border border-slate-500/30',
+      label: 'Archived'
+    },
   };
 
   const formatDuration = (minutes?: number): string | null => {
@@ -92,12 +104,19 @@ export function SessionsList({ campaignId }: SessionsListProps): JSX.Element {
         {isLoading ? (
           <div className="text-slate-500 text-sm text-center py-8">Loading sessions...</div>
         ) : sessions.length === 0 ? (
-          <div className="text-center py-8">
-            <Calendar className="w-12 h-12 text-slate-700 mx-auto mb-3" />
-            <p className="text-slate-400 mb-1">No sessions yet</p>
-            <p className="text-slate-600 text-sm mb-4">Start your first session to begin tracking your campaign</p>
-            <Button onClick={handleNewSession} disabled={isCreating}>
-              <Plus className="w-4 h-4 mr-1" /> Start First Session
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-4">
+              <Calendar className="w-6 h-6 text-slate-500" />
+            </div>
+            <h3 className="text-lg font-medium text-slate-300 mb-2">No sessions yet</h3>
+            <p className="text-sm text-slate-500 mb-4">Create your first session to start your adventure</p>
+            <Button
+              onClick={handleNewSession}
+              disabled={isCreating}
+              className="bg-teal-600 hover:bg-teal-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Session
             </Button>
           </div>
         ) : (
@@ -106,7 +125,7 @@ export function SessionsList({ campaignId }: SessionsListProps): JSX.Element {
               <div
                 key={session.id}
                 onClick={() => router.push(`/dashboard/campaigns/${campaignId}/sessions/${session.id}`)}
-                className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors group"
+                className="flex items-center justify-between p-4 bg-slate-900/50 border border-white/5 rounded-lg hover:bg-slate-800/80 hover:border-teal-500/30 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer transition-all duration-200 group"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="min-w-0">

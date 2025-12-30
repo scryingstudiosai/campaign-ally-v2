@@ -1,8 +1,8 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Target, Users, Lock, AlertTriangle, Crosshair, Network } from 'lucide-react'
 import type { FactionBrain } from '@/types/living-entity'
+import { MaterialCard } from '@/components/ui/material-card'
 
 interface FactionBrainCardProps {
   brain: FactionBrain
@@ -15,19 +15,21 @@ export function FactionBrainCard({ brain, subType }: FactionBrainCardProps): JSX
   }
 
   return (
-    <Card className="ca-card">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
-          <Target className="w-4 h-4 text-teal-400" />
-          Faction Brain
+    <MaterialCard entityType="faction" className="p-0">
+      <div className="p-4 pb-2 border-b border-white/5">
+        <div className="flex items-center justify-between">
+          <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+            <Target className="w-5 h-5 text-rose-400" />
+            Faction Brain
+          </h3>
           {subType && (
-            <span className="text-xs text-slate-500 ml-auto capitalize">
+            <span className="text-xs text-smoke capitalize">
               {subType.replace('_', ' ')}
             </span>
           )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </div>
+      </div>
+      <div className="p-4 space-y-4">
         {/* Purpose */}
         {brain.purpose && (
           <div>
@@ -118,7 +120,7 @@ export function FactionBrainCard({ brain, subType }: FactionBrainCardProps): JSX
             <p className="text-sm text-slate-300">{brain.weakness}</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </MaterialCard>
   )
 }

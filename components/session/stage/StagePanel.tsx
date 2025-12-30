@@ -59,11 +59,21 @@ export function StagePanel({ session, campaignId }: StagePanelProps) {
 
   // Listen for trigger-start-combat events from encounter nodes
   useEffect(() => {
+    interface EncounterCreature {
+      srdId?: string;
+      entityId?: string;
+      name: string;
+      count: number;
+    }
+
     const handleTriggerCombat = (event: Event) => {
-      const customEvent = event as CustomEvent<{ encounterId: string }>;
-      const { encounterId } = customEvent.detail;
-      console.log('Starting combat with encounter:', encounterId);
-      startCombat(encounterId);
+      const customEvent = event as CustomEvent<{
+        encounterId: string;
+        creatures?: EncounterCreature[];
+      }>;
+      const { encounterId, creatures } = customEvent.detail;
+      console.log('Starting combat with encounter:', encounterId, 'creatures:', creatures);
+      startCombat(encounterId, creatures);
     };
 
     window.addEventListener('trigger-start-combat', handleTriggerCombat);

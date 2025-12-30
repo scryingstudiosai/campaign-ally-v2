@@ -10,6 +10,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ManaBar } from '@/components/ui/mana-bar';
+import { StatBlock } from '@/components/ui/stat-block';
+import { CarvedPanel } from '@/components/ui/carved-panel';
 
 interface CombatantCardProps {
   combatant: Combatant;
@@ -137,15 +140,13 @@ function CombatStatBlock({ combatant }: { combatant: Combatant }) {
       </div>
 
       {/* Ability Scores */}
-      <div className="grid grid-cols-6 gap-2">
-        {abilityScores.map(({ name, value }) => (
-          <div key={name} className="text-center p-2 bg-slate-800 rounded">
-            <p className="text-xs text-slate-500">{name}</p>
-            <p className="font-bold">{value}</p>
-            <p className="text-xs text-slate-400">{getMod(value)}</p>
-          </div>
-        ))}
-      </div>
+      <StatBlock
+        columns={6}
+        stats={abilityScores.map(({ name, value }) => ({
+          label: name,
+          value: `${value} (${getMod(value)})`,
+        }))}
+      />
 
       {/* Skills */}
       {(() => {
@@ -420,22 +421,16 @@ export function CombatantCard({
         </div>
 
         {/* HP Section - fixed width */}
-        <div className="w-28 flex-shrink-0">
-          <div className="flex items-center gap-1 mb-1">
-            <Heart className={`w-3 h-3 ${combatant.isDefeated ? 'text-slate-500' : 'text-red-400'}`} />
-            <span className="font-mono text-xs">
-              {combatant.hp}/{combatant.maxHp}
-              {combatant.tempHp > 0 && (
-                <span className="text-blue-400"> +{combatant.tempHp}</span>
-              )}
-            </span>
-          </div>
-          <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all ${hpColor}`}
-              style={{ width: `${Math.max(0, Math.min(100, hpPercentage))}%` }}
-            />
-          </div>
+        <div className="w-32 flex-shrink-0">
+          <ManaBar
+            value={combatant.hp}
+            max={combatant.maxHp}
+            variant={hpPercentage > 50 ? 'emerald' : hpPercentage > 25 ? 'gold' : 'blood'}
+            showValue={true}
+          />
+          {combatant.tempHp > 0 && (
+            <span className="text-xs text-arcane">+{combatant.tempHp} temp</span>
+          )}
           <Input
             ref={hpInputRef}
             value={hpInput}
@@ -486,9 +481,9 @@ export function CombatantCard({
 
           {/* Full Stat Block */}
           {(combatant.statBlock || (combatant as { fullEntity?: unknown }).fullEntity) ? (
-            <div className="bg-slate-900 rounded-lg p-3 max-h-80 overflow-y-auto">
+            <CarvedPanel deep className="max-h-80 overflow-y-auto">
               <CombatStatBlock combatant={combatant} />
-            </div>
+            </CarvedPanel>
           ) : null}
 
           {/* Death Saves (for players at 0 HP) */}

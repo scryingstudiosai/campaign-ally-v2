@@ -2,6 +2,7 @@
 
 import { QuestBrain } from '@/types/living-entity';
 import { Brain, Sparkles, Lock, AlertCircle, CheckCircle, FileText } from 'lucide-react';
+import { MaterialCard } from '@/components/ui/material-card';
 
 interface QuestBrainCardProps {
   brain: QuestBrain;
@@ -11,12 +12,14 @@ export function QuestBrainCard({ brain }: QuestBrainCardProps): JSX.Element | nu
   if (!brain || Object.keys(brain).length === 0) return null;
 
   return (
-    <div className="ca-card p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-2 text-amber-400 font-medium border-b border-amber-400/20 pb-2">
-        <Brain className="w-5 h-5" />
-        <span>DM Information</span>
+    <MaterialCard entityType="quest" className="p-0">
+      <div className="p-4 pb-2 border-b border-white/5">
+        <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+          <Brain className="w-5 h-5 text-gold" />
+          DM Information
+        </h3>
       </div>
+      <div className="p-4 space-y-4">
 
       {/* Background */}
       {brain.background && (
@@ -95,6 +98,7 @@ export function QuestBrainCard({ brain }: QuestBrainCardProps): JSX.Element | nu
           <p className="text-sm text-slate-300">{brain.dm_notes}</p>
         </div>
       )}
-    </div>
+      </div>
+    </MaterialCard>
   );
 }

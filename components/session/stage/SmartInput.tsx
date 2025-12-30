@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import { Send, Dices, Swords, Shield, Sparkles, MessageSquare } from 'lucide-react';
+import { useState, useRef, useEffect, KeyboardEvent, useMemo } from 'react';
+import { Send, Dices, Swords, Shield, Sparkles, MessageSquare, Eye } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { rollDice, DICE_PRESETS, DiceResult } from '@/lib/dice';
+
+type InputMode = 'narrative' | 'mechanic' | 'creative' | 'secret';
 
 interface SmartInputProps {
   onSend: (event: {
@@ -39,6 +41,50 @@ export function SmartInput({ onSend, onStartCombat, disabled }: SmartInputProps)
   const [showDicePresets, setShowDicePresets] = useState(false);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Detect input mode based on command prefix
+  const mode = useMemo((): InputMode => {
+    if (input.startsWith('/roll') || input.startsWith('/check') || input.startsWith('/save') || input.startsWith('/combat')) {
+      return 'mechanic';
+    }
+    if (input.startsWith('/forge') || input.startsWith('/generate')) {
+      return 'creative';
+    }
+    if (input.startsWith('/note') || input.startsWith('/whisper') || input.startsWith('/secret')) {
+      return 'secret';
+    }
+    return 'narrative';
+  }, [input]);
+
+  // Mode-specific styling
+  const modeStyles = {
+    narrative: {
+      border: 'border-slate-700',
+      ring: '',
+      shadow: '',
+      icon: null,
+    },
+    mechanic: {
+      border: 'border-arcane',
+      ring: 'ring-2 ring-arcane/20',
+      shadow: 'shadow-glow-arcane',
+      icon: <Dices className="w-4 h-4 text-arcane" />,
+    },
+    creative: {
+      border: 'border-gold',
+      ring: 'ring-2 ring-gold/20',
+      shadow: 'shadow-glow-gold',
+      icon: <Sparkles className="w-4 h-4 text-gold" />,
+    },
+    secret: {
+      border: 'border-purple',
+      ring: 'ring-2 ring-purple/20',
+      shadow: 'shadow-[0_0_20px_rgba(168,85,247,0.2)]',
+      icon: <Eye className="w-4 h-4 text-purple" />,
+    },
+  };
+
+  const currentStyle = modeStyles[mode];
 
   // Filter commands based on input
   const filteredCommands = input.startsWith('/')
@@ -278,8 +324,14 @@ export function SmartInput({ onSend, onStartCombat, disabled }: SmartInputProps)
             onKeyDown={handleKeyDown}
             placeholder="Type a message or / for commands..."
             disabled={disabled}
-            className="bg-slate-800 border-slate-700 pr-10 h-10"
+            className={`bg-slate-800 pr-10 h-10 transition-all duration-200 ${currentStyle.border} ${currentStyle.ring} ${currentStyle.shadow}`}
           />
+          {/* Mode Indicator Icon */}
+          {currentStyle.icon && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              {currentStyle.icon}
+            </div>
+          )}
         </div>
 
         {/* Send Button */}

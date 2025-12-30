@@ -5,7 +5,17 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useDroppable } from '@dnd-kit/core';
-import { EntityNode, ReadAloudNode, QuestObjectiveNode, EncounterNode } from './extensions';
+import {
+  EntityNode,
+  ReadAloudNode,
+  QuestObjectiveNode,
+  EncounterNode,
+  EntityMention,
+  NoteBlockNode,
+  SceneBlockNode,
+  EncounterBlockNode,
+  QuestBlockNode,
+} from './extensions';
 import { EditorToolbar } from './EditorToolbar';
 import { Loader2 } from 'lucide-react';
 
@@ -59,12 +69,18 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
         heading: { levels: [1, 2, 3] },
       }),
       Placeholder.configure({
-        placeholder: 'Start planning your session... Drag entities from the library →',
+        placeholder: 'Start planning your session... Type @ to mention entities →',
       }),
       EntityNode,
       ReadAloudNode,
       QuestObjectiveNode,
       EncounterNode,
+      EntityMention,
+      // Collapsible blocks
+      NoteBlockNode,
+      SceneBlockNode,
+      EncounterBlockNode,
+      QuestBlockNode,
     ],
     content: (initialContent as object) || { type: 'doc', content: [] },
     editorProps: {
@@ -122,25 +138,117 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       .run();
   }, [editor]);
 
-  // Expose insert functions for drag-drop handler
+  // Insert encounter block when encounter entity is dropped
+  const insertEncounterBlock = useCallback((encounter: {
+    id: string;
+    name: string;
+    creatures?: Array<{ name: string; count: number; cr?: string }>;
+    difficulty?: string;
+  }) => {
+    if (!editor) return;
+
+    editor.chain().focus().insertEncounterBlock({
+      title: encounter.name,
+      entityId: encounter.id,
+      difficulty: encounter.difficulty || 'medium',
+      creatures: JSON.stringify(encounter.creatures || []),
+    }).run();
+  }, [editor]);
+
+  // Insert quest block when quest entity is dropped
+  const insertQuestBlock = useCallback((quest: {
+    id: string;
+    name: string;
+    objectives?: Array<{ id: string; text: string; completed?: boolean }>;
+  }) => {
+    if (!editor) return;
+
+    const milestones = (quest.objectives || []).map(obj => ({
+      id: obj.id || crypto.randomUUID(),
+      text: obj.text,
+      completed: obj.completed || false,
+    }));
+
+    editor.chain().focus().insertQuestBlock({
+      title: quest.name,
+      entityId: quest.id,
+      milestones: JSON.stringify(milestones),
+    }).run();
+  }, [editor]);
+
+  // Insert quest block with a specific objective/beat as initial content
+  const insertQuestBlockWithObjective = useCallback((objective: {
+    id: string;
+    title: string;
+    description?: string;
+    questId: string;
+    questName: string;
+  }) => {
+    if (!editor) return;
+
+    editor.chain().focus().insertContent({
+      type: 'questBlock',
+      attrs: {
+        id: crypto.randomUUID(),
+        title: objective.questName,
+        entityId: objective.questId,
+        milestones: '[]',
+        status: 'pending',
+        isCollapsed: false,
+      },
+      content: [
+        {
+          type: 'questObjective',
+          attrs: {
+            id: objective.id,
+            title: objective.title,
+            description: objective.description || '',
+            questId: objective.questId,
+            questName: objective.questName,
+          },
+        },
+        { type: 'paragraph' },
+      ],
+    }).run();
+  }, [editor]);
+
+  // Expose editor and insert functions for drag-drop handler
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as Window & {
+      const win = window as Window & {
+        __sessionPlannerEditor?: typeof editor;
         __sessionPlannerInsertEntity?: typeof insertEntity;
         __sessionPlannerInsertObjective?: typeof insertObjective;
-      }).__sessionPlannerInsertEntity = insertEntity;
-      (window as Window & {
-        __sessionPlannerInsertEntity?: typeof insertEntity;
-        __sessionPlannerInsertObjective?: typeof insertObjective;
-      }).__sessionPlannerInsertObjective = insertObjective;
+        __sessionPlannerInsertEncounterBlock?: typeof insertEncounterBlock;
+        __sessionPlannerInsertQuestBlock?: typeof insertQuestBlock;
+        __sessionPlannerInsertQuestBlockWithObjective?: typeof insertQuestBlockWithObjective;
+      };
+      win.__sessionPlannerEditor = editor;
+      win.__sessionPlannerInsertEntity = insertEntity;
+      win.__sessionPlannerInsertObjective = insertObjective;
+      win.__sessionPlannerInsertEncounterBlock = insertEncounterBlock;
+      win.__sessionPlannerInsertQuestBlock = insertQuestBlock;
+      win.__sessionPlannerInsertQuestBlockWithObjective = insertQuestBlockWithObjective;
     }
     return () => {
       if (typeof window !== 'undefined') {
-        delete (window as Window & { __sessionPlannerInsertEntity?: typeof insertEntity }).__sessionPlannerInsertEntity;
-        delete (window as Window & { __sessionPlannerInsertObjective?: typeof insertObjective }).__sessionPlannerInsertObjective;
+        const win = window as Window & {
+          __sessionPlannerEditor?: typeof editor;
+          __sessionPlannerInsertEntity?: typeof insertEntity;
+          __sessionPlannerInsertObjective?: typeof insertObjective;
+          __sessionPlannerInsertEncounterBlock?: typeof insertEncounterBlock;
+          __sessionPlannerInsertQuestBlock?: typeof insertQuestBlock;
+          __sessionPlannerInsertQuestBlockWithObjective?: typeof insertQuestBlockWithObjective;
+        };
+        delete win.__sessionPlannerEditor;
+        delete win.__sessionPlannerInsertEntity;
+        delete win.__sessionPlannerInsertObjective;
+        delete win.__sessionPlannerInsertEncounterBlock;
+        delete win.__sessionPlannerInsertQuestBlock;
+        delete win.__sessionPlannerInsertQuestBlockWithObjective;
       }
     };
-  }, [insertEntity, insertObjective]);
+  }, [editor, insertEntity, insertObjective, insertEncounterBlock, insertQuestBlock, insertQuestBlockWithObjective]);
 
   // Listen for forced save events (e.g., from beat generation)
   useEffect(() => {

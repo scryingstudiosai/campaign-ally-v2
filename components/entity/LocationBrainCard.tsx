@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { LocationBrain } from '@/types/living-entity'
 import { Map, AlertTriangle, Clock, Swords, Gift, User, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { MaterialCard } from '@/components/ui/material-card'
 
 interface LocationBrainCardProps {
   brain: LocationBrain
@@ -33,21 +34,22 @@ export function LocationBrainCard({ brain, subType }: LocationBrainCardProps): J
   ) || []
 
   return (
-    <div className="ca-card p-4 space-y-4">
-      <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
-        <div className="flex items-center gap-2 text-emerald-400 font-medium">
-          <Map className="w-5 h-5" />
-          <span>Location Brain</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {subType && <Badge variant="outline" className="capitalize">{subType}</Badge>}
-          {brain.danger_level && (
-            <Badge className={dangerClass}>{brain.danger_level}</Badge>
-          )}
+    <MaterialCard entityType="location" className="p-0">
+      <div className="p-4 pb-2 border-b border-white/5">
+        <div className="flex items-center justify-between">
+          <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+            <Map className="w-5 h-5 text-emerald" />
+            Location Brain
+          </h3>
+          <div className="flex items-center gap-2">
+            {subType && <Badge variant="outline" className="capitalize">{subType}</Badge>}
+            {brain.danger_level && (
+              <Badge className={dangerClass}>{brain.danger_level}</Badge>
+            )}
+          </div>
         </div>
       </div>
-
-      <div className="space-y-3">
+      <div className="p-4 space-y-3">
         {brain.purpose && (
           <div>
             <span className="text-xs text-slate-500 uppercase">Purpose</span>
@@ -174,6 +176,6 @@ export function LocationBrainCard({ brain, subType }: LocationBrainCardProps): J
           </div>
         )}
       </div>
-    </div>
+    </MaterialCard>
   )
 }

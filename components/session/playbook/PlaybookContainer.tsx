@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -17,6 +17,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { SceneBlock, EncounterBlock, QuestBlock, InfoBlock, AddBlockMenu } from './blocks';
+import { LiveSpine } from '../LiveSpine';
 import { Loader2 } from 'lucide-react';
 
 interface PlaybookBlock {
@@ -40,6 +41,13 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
   const [blocks, setBlocks] = useState<PlaybookBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Find the active block index (first block with status 'active', or -1 if none)
+  const activeBlockIndex = useMemo(() => {
+    const validBlocks = blocks.filter(b => b && b.id);
+    return validBlocks.findIndex(b => b.status === 'active');
+  }, [blocks]);
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -266,26 +274,39 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
         </div>
       )}
 
-      {/* Blocks list */}
-      <div className="flex-1 overflow-y-auto space-y-3 pb-4">
+      {/* Blocks list with Live Spine */}
+      <div className="flex-1 overflow-y-auto pb-4">
         {!blocks?.length ? (
           <div className="text-center py-12">
             <p className="text-slate-500 mb-4">No blocks yet. Add your first block to start planning.</p>
             <AddBlockMenu onAddBlock={handleAddBlock} />
           </div>
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={blocks.filter(b => b && b.id).map(b => b.id)}
-              strategy={verticalListSortingStrategy}
+          <div className="relative pl-4" ref={containerRef}>
+            {/* Live Spine - Active Block Indicator */}
+            {activeBlockIndex >= 0 && (
+              <LiveSpine
+                activeIndex={activeBlockIndex}
+                containerRef={containerRef}
+              />
+            )}
+
+            {/* Blocks */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
             >
-              {blocks.filter(b => b && b.id).map(block => renderBlock(block))}
-            </SortableContext>
-          </DndContext>
+              <SortableContext
+                items={blocks.filter(b => b && b.id).map(b => b.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-3">
+                  {blocks.filter(b => b && b.id).map(block => renderBlock(block))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
         )}
       </div>
 

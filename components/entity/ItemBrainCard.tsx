@@ -3,6 +3,7 @@
 import { ItemBrain } from '@/types/living-entity'
 import { Sparkles, History, Scroll, Zap, AlertTriangle, Key } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { MaterialCard } from '@/components/ui/material-card'
 
 interface ItemBrainCardProps {
   brain: ItemBrain
@@ -14,18 +15,21 @@ export function ItemBrainCard({ brain, subType }: ItemBrainCardProps): JSX.Eleme
   if (!brain || Object.keys(brain).length === 0) return null
 
   return (
-    <div className="ca-card p-4 space-y-3">
-      <div className="flex items-center gap-2 text-emerald-400 font-medium border-b border-emerald-500/20 pb-2 mb-2">
-        <Sparkles className="w-5 h-5" />
-        <span>Item Soul</span>
-        {subType && (
-          <Badge variant="outline" className="ml-auto text-xs capitalize">
-            {subType}
-          </Badge>
-        )}
+    <MaterialCard entityType="item" className="p-0">
+      <div className="p-4 pb-2 border-b border-white/5">
+        <div className="flex items-center justify-between">
+          <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+            <Sparkles className="w-5 h-5 text-blue-400" />
+            Item Soul
+          </h3>
+          {subType && (
+            <Badge variant="outline" className="text-xs capitalize">
+              {subType}
+            </Badge>
+          )}
+        </div>
       </div>
-
-      <div className="space-y-4">
+      <div className="p-4 space-y-4">
         {/* Origin & History */}
         {(brain.origin || brain.history) && (
           <div className="space-y-2">
@@ -107,6 +111,6 @@ export function ItemBrainCard({ brain, subType }: ItemBrainCardProps): JSX.Eleme
           </div>
         )}
       </div>
-    </div>
+    </MaterialCard>
   )
 }

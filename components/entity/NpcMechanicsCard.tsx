@@ -5,6 +5,9 @@ import {
   Shield, Heart, Activity, Swords,
   Eye, Languages, Star, Zap, RotateCcw, Crown, User
 } from 'lucide-react'
+import { StatBlock } from '@/components/ui/stat-block'
+import { CarvedPanel } from '@/components/ui/carved-panel'
+import { MaterialCard } from '@/components/ui/material-card'
 
 interface NpcMechanicsCardProps {
   mechanics: NpcMechanics
@@ -58,16 +61,21 @@ export function NpcMechanicsCard({ mechanics, name }: NpcMechanicsCardProps): JS
   const isMinimal = mechanics.combat_role === 'non-combatant'
 
   return (
-    <div className="ca-card p-4 space-y-4">
+    <MaterialCard entityType="npc" className="p-0">
       {/* Header */}
-      <div className="flex items-center gap-2 text-primary font-medium border-b border-primary/20 pb-2">
-        <User className="w-5 h-5" />
-        <span>{name || 'Combat Stats'}</span>
-        <span className={`ml-auto text-sm ${roleConfig.color}`}>{roleConfig.label}</span>
-        {mechanics.cr && (
-          <span className="text-amber-400 text-sm">CR {mechanics.cr}</span>
-        )}
+      <div className="p-4 pb-2 border-b border-white/5">
+        <div className="flex items-center gap-2">
+          <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+            <User className="w-5 h-5 text-purple" />
+            {name || 'Combat Stats'}
+          </h3>
+          <span className={`ml-auto text-sm ${roleConfig.color}`}>{roleConfig.label}</span>
+          {mechanics.cr && (
+            <span className="text-gold text-sm font-medium">CR {mechanics.cr}</span>
+          )}
+        </div>
       </div>
+      <div className="p-4 space-y-4">
 
       {/* Core Stats */}
       <div className="grid grid-cols-3 gap-3 text-sm">
@@ -92,19 +100,15 @@ export function NpcMechanicsCard({ mechanics, name }: NpcMechanicsCardProps): JS
 
       {/* Ability Scores */}
       {mechanics.abilities && (
-        <div className="grid grid-cols-6 gap-2 text-center py-2 bg-slate-800/50 rounded">
-          {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((stat) => (
-            <div key={stat} className="space-y-0.5">
-              <span className="text-xs text-slate-500 uppercase">{stat}</span>
-              <div className="text-slate-200 font-medium">
-                {mechanics.abilities?.[stat] ?? '—'}
-              </div>
-              <div className="text-xs text-slate-400">
-                {formatMod(mechanics.abilities?.[stat])}
-              </div>
-            </div>
-          ))}
-        </div>
+        <CarvedPanel className="p-2">
+          <StatBlock
+            columns={6}
+            stats={(['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((stat) => ({
+              label: stat.toUpperCase(),
+              value: `${mechanics.abilities?.[stat] ?? '—'} (${formatMod(mechanics.abilities?.[stat])})`,
+            }))}
+          />
+        </CarvedPanel>
       )}
 
       {/* For minimal (non-combatant) NPCs, stop here */}
@@ -287,9 +291,10 @@ export function NpcMechanicsCard({ mechanics, name }: NpcMechanicsCardProps): JS
       {/* SRD Base Reference */}
       {mechanics.srd_base && (
         <div className="text-xs text-slate-500 pt-2 border-t border-slate-700">
-          Based on: <span className="text-primary">{mechanics.srd_base.name}</span>
+          Based on: <span className="text-arcane">{mechanics.srd_base.name}</span>
         </div>
       )}
-    </div>
+      </div>
+    </MaterialCard>
   )
 }
