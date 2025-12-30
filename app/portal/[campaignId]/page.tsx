@@ -7,7 +7,11 @@ interface PortalPageProps {
 }
 
 interface CharacterMechanics {
+  // Nested HP structure (from portal sync)
   hp?: { current?: number; max?: number };
+  // Flat HP structure (from combat sync)
+  hp_current?: number;
+  hp_max?: number;
   ac?: number;
   level?: number;
   class?: string;
@@ -85,7 +89,10 @@ export default async function PortalPage({ params }: PortalPageProps) {
   };
 
   const mechanics = character.mechanics || {};
-  const hp = mechanics.hp || { current: 0, max: 0 };
+  // Handle both flat (hp_current/hp_max) and nested (hp.current/hp.max) structures
+  const currentHp = mechanics.hp_current ?? mechanics.hp?.current ?? 0;
+  const maxHp = mechanics.hp_max ?? mechanics.hp?.max ?? 0;
+  const hp = { current: currentHp, max: maxHp };
   const hpPercent = hp.max ? Math.round((hp.current || 0) / hp.max * 100) : 100;
 
   return (
