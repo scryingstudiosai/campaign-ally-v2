@@ -37,6 +37,29 @@ export async function POST(
       .select('id, name, entity_type, status, summary')
       .eq('campaign_id', campaignId);
 
+    // Fetch player notes from this session period for AI context
+    const { data: playerNotes } = await supabase
+      .from('player_journal_entries')
+      .select('title, content, created_at')
+      .eq('campaign_id', campaignId)
+      .eq('entry_type', 'personal')
+      .gte('created_at', session.started_at || session.created_at)
+      .order('created_at', { ascending: true });
+
+    // Build player notes context
+    let playerNotesContext = '';
+    if (playerNotes && playerNotes.length > 0) {
+      playerNotesContext = `
+
+## Player Notes from This Session
+The players took the following notes during play. Use these to understand what THEY found important:
+
+${playerNotes.map(note => `- "${note.title}": ${note.content || '(no content)'}`).join('\n')}
+
+Consider highlighting moments the players specifically noted, as these were memorable to them.
+`;
+    }
+
     // Build entity name map for fuzzy matching
     const entityMap = new Map<string, any>();
     (entities || []).forEach(e => {
@@ -96,7 +119,7 @@ ${entityList || 'No entities loaded'}
 
 SESSION LOG:
 ${eventSummary || 'No events recorded'}
-
+${playerNotesContext}
 PREP NOTES:
 ${session.prep_content ? JSON.stringify(session.prep_content).substring(0, 1500) : 'None'}
 

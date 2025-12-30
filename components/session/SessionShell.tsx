@@ -13,8 +13,10 @@ import { SessionPlanner } from './planner/SessionPlanner';
 import { PlaybookContainer } from './playbook/PlaybookContainer';
 import { ToolkitPanel } from './toolkit/ToolkitPanel';
 import { StagePanel } from './stage/StagePanel';
+import { DMChatWidget } from './DMChatWidget';
 import { Entity } from './toolkit/LibraryPanel';
 import { rollInitiative } from '@/lib/dice';
+import { createClient } from '@/lib/supabase/client';
 
 interface SessionShellProps {
   session: Session;
@@ -26,6 +28,15 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isCombatActive, setIsCombatActive] = useState(!!session.combat_state);
   const [usePlaybook, setUsePlaybook] = useState(true); // New block-based playbook
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Get user ID for chat widget
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id || null);
+    });
+  }, []);
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -381,6 +392,9 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* DM Chat Widget */}
+      {userId && <DMChatWidget campaignId={campaignId} userId={userId} />}
 
     </DndContext>
   );

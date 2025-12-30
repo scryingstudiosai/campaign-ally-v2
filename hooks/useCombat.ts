@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { CombatState, Combatant, CombatLogEntry, Condition } from '@/types/combat';
 import { rollHpFormula, rollInitiative } from '@/lib/dice';
+import { syncPlayerHP, syncAllPlayerHP } from '@/lib/combat-sync';
 import { v4 as uuidv4 } from 'uuid';
 
 interface UseCombatProps {
@@ -428,6 +429,9 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
   // UPDATE COMBATANT HP
   // =========================================
   const updateHp = useCallback((combatantId: string, change: number, isDamage: boolean = true) => {
+    // Track the updated combatant for syncing
+    let updatedCombatant: Combatant | null = null;
+
     setCombatState(prev => {
       if (!prev) return prev;
 
@@ -454,7 +458,7 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
 
         newHp = Math.max(0, newHp);
 
-        return {
+        const updated = {
           ...c,
           hp: newHp,
           tempHp: newTempHp,
@@ -463,6 +467,11 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
             ? { successes: 0, failures: 0 }
             : c.deathSaves,
         };
+
+        // Store for syncing outside of setState
+        updatedCombatant = updated;
+
+        return updated;
       });
 
       const target = combatants.find(c => c.id === combatantId);
@@ -484,6 +493,14 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
         combatLog: [...prev.combatLog, logEntry],
       };
     });
+
+    // Sync player HP to entity (outside of setState to avoid closure issues)
+    // Use setTimeout to ensure state has been updated
+    setTimeout(() => {
+      if (updatedCombatant && updatedCombatant.type === 'player' && updatedCombatant.entityId) {
+        syncPlayerHP(updatedCombatant.entityId, updatedCombatant.hp, updatedCombatant.maxHp);
+      }
+    }, 0);
   }, []);
 
   // =========================================
@@ -736,26 +753,17 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
         },
       });
 
-      // Update player HP in the database (commit combat changes)
-      const playerCombatants = combatState.combatants.filter(c => c.type === 'player' && c.entityId);
-      console.log('[Combat] Updating HP for players:', playerCombatants.map(p => p.name));
-
-      for (const player of playerCombatants) {
-        try {
-          const response = await fetch(`/api/entities/${player.entityId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              mechanics: {
-                hp_current: player.hp,
-              },
-            }),
-          });
-          console.log(`[Combat] Updated ${player.name} HP:`, response.ok);
-        } catch (err) {
-          console.error(`[Combat] Failed to update ${player.name}:`, err);
-        }
-      }
+      // Sync all player HP to their entities (final sync at combat end)
+      const playerCombatants = combatState.combatants
+        .filter(c => c.type === 'player' && c.entityId)
+        .map(c => ({
+          entityId: c.entityId,
+          hp: c.hp,
+          maxHp: c.maxHp,
+          name: c.displayName || c.name || 'Unknown',
+        }));
+      console.log('[Combat] Final HP sync for players:', playerCombatants.map(p => p.name));
+      await syncAllPlayerHP(playerCombatants);
 
       // Clear combat state from session
       console.log('[Combat] Clearing combat state from session:', sessionId);

@@ -2,10 +2,19 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes that don't require authentication
-const publicRoutes = ['/', '/login', '/signup', '/auth/callback']
+const publicRoutes = ['/', '/login', '/signup', '/auth/callback', '/forgot-password', '/reset-password']
+
+// Route prefixes that don't require authentication (for dynamic routes)
+const publicPrefixes = ['/join', '/auth/']
 
 // Routes that authenticated users should be redirected away from
 const authRoutes = ['/login', '/signup']
+
+// Check if a path is public
+function isPublicPath(pathname: string): boolean {
+  if (publicRoutes.includes(pathname)) return true
+  return publicPrefixes.some(prefix => pathname.startsWith(prefix))
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -51,7 +60,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect unauthenticated users to login for protected routes
-  if (!user && !publicRoutes.includes(pathname) && !pathname.startsWith('/auth/')) {
+  if (!user && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('next', pathname)

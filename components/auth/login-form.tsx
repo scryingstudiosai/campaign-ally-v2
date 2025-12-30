@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -8,12 +9,29 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
+import { CheckCircle, AlertCircle } from 'lucide-react'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  // Handle URL query params for messages
+  useEffect(() => {
+    const success = searchParams.get('success')
+    const error = searchParams.get('error')
+
+    if (success === 'password_reset') {
+      setMessage({ type: 'success', text: 'Password updated successfully! Please sign in with your new password.' })
+    } else if (error === 'invalid_recovery_link') {
+      setMessage({ type: 'error', text: 'The password reset link is invalid or has expired. Please request a new one.' })
+    } else if (error === 'auth_callback_error') {
+      setMessage({ type: 'error', text: 'Authentication failed. Please try again.' })
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,6 +73,22 @@ export function LoginForm() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          {message && (
+            <div
+              className={`p-3 rounded-lg flex items-start gap-2 ${
+                message.type === 'success'
+                  ? 'bg-teal-500/10 border border-teal-500/30 text-teal-500'
+                  : 'bg-destructive/10 border border-destructive/30 text-destructive'
+              }`}
+            >
+              {message.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              )}
+              <span className="text-sm">{message.text}</span>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -80,7 +114,7 @@ export function LoginForm() {
           </div>
           <div className="text-sm text-right">
             <Link
-              href="#"
+              href="/forgot-password"
               className="text-muted-foreground hover:text-primary transition-colors"
             >
               Forgot password?

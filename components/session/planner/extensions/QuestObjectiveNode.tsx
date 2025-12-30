@@ -191,8 +191,13 @@ export const QuestObjectiveNode = Node.create({
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { 'data-quest-objective': 'true' }), 0];
+  renderHTML({ HTMLAttributes, node }) {
+    // No content hole (0) because atom: true means this is a leaf node
+    return ['div', mergeAttributes(HTMLAttributes, {
+      'data-quest-objective': 'true',
+      'data-id': node.attrs.id,
+      'data-title': node.attrs.title,
+    })];
   },
 
   addNodeView() {

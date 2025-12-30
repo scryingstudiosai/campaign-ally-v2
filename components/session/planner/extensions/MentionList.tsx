@@ -48,7 +48,11 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
     const selectItem = useCallback((index: number) => {
       const item = items[index]
       if (item) {
-        command(item)
+        // Map 'name' to 'label' for Tiptap Mention extension
+        command({
+          ...item,
+          label: item.name,
+        } as MentionItem & { label: string })
       }
     }, [items, command])
 

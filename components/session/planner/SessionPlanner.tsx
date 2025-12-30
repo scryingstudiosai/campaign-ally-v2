@@ -87,6 +87,46 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       attributes: {
         class: 'prose prose-invert prose-sm max-w-none focus:outline-none min-h-[300px] p-4',
       },
+      handlePaste: (view, event) => {
+        const html = event.clipboardData?.getData('text/html');
+        const text = event.clipboardData?.getData('text/plain');
+
+        // Debug logging
+        console.log('Paste event:', {
+          hasHtml: !!html,
+          hasText: !!text,
+          htmlPreview: html?.slice(0, 500),
+        });
+
+        // If there's no HTML, let Tiptap handle plain text normally
+        if (!html) {
+          return false;
+        }
+
+        // Check if the HTML contains our custom block wrapper types
+        // These should only be preserved for intentional block copy/paste
+        const hasBlockWrapper = html.includes('data-quest-block') ||
+          html.includes('data-scene-block') ||
+          html.includes('data-encounter-block') ||
+          html.includes('data-note-block');
+
+        // For internal copy/paste WITH block wrappers, let Tiptap handle it
+        if (html.includes('data-pm-slice') && hasBlockWrapper) {
+          console.log('Internal paste with block wrapper - allowing');
+          return false;
+        }
+
+        // For ALL other HTML (external or internal without explicit blocks),
+        // convert to plain text to prevent misinterpretation
+        if (text) {
+          console.log('Converting HTML to plain text');
+          event.preventDefault();
+          view.dispatch(view.state.tr.insertText(text));
+          return true;
+        }
+
+        return false;
+      },
     },
     onUpdate: ({ editor }) => {
       debouncedSave(editor.getJSON());
