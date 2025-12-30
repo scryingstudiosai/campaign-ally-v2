@@ -22,15 +22,41 @@ export default function ResetPasswordPage() {
   const supabase = createClient();
 
   // Check if we have a valid session from the reset link
+  // Supabase may send tokens in URL hash that need to be processed
   useEffect(() => {
-    const checkSession = async () => {
+    const handleAuth = async () => {
+      // Check if there's a hash with access_token (Supabase sends this for password reset)
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        // Parse the hash to extract tokens
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          // Set the session from the hash tokens
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (!error) {
+            // Clear the hash from URL for cleaner UX
+            window.history.replaceState(null, '', '/reset-password');
+            setHasValidSession(true);
+            return;
+          }
+        }
+      }
+
+      // Fallback: check for existing session
       const { data: { session } } = await supabase.auth.getSession();
       setHasValidSession(!!session);
       if (!session) {
         setError('Invalid or expired reset link. Please request a new one.');
       }
     };
-    checkSession();
+    handleAuth();
   }, [supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,8 +84,10 @@ export default function ResetPasswordPage() {
       setIsLoading(false);
     } else {
       setIsSuccess(true);
+      // Sign out and redirect to login with success message
+      await supabase.auth.signOut();
       setTimeout(() => {
-        router.push('/dashboard');
+        router.push('/login?success=password_reset');
       }, 2000);
     }
   };
@@ -118,7 +146,7 @@ export default function ResetPasswordPage() {
                   <CheckCircle className="w-8 h-8 text-teal-500" />
                 </div>
                 <p className="text-sm text-muted-foreground text-center">
-                  Redirecting you to the dashboard...
+                  Redirecting you to sign in...
                 </p>
               </div>
             </CardContent>
