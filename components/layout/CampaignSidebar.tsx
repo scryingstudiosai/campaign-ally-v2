@@ -19,6 +19,8 @@ import {
   Bug,
   Scroll,
   Search,
+  Crown,
+  Globe,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -52,6 +54,7 @@ function SidebarContent({
   const NAV_ITEMS = [
     { label: 'Overview', href: baseUrl, icon: LayoutDashboard, exact: true },
     { label: 'Memory', href: `${baseUrl}/memory`, icon: Brain },
+    { label: 'Atlas', href: `${baseUrl}/atlas`, icon: Globe },
     { label: 'Codex', href: `${baseUrl}/codex`, icon: Book },
     { label: 'Sessions', href: `${baseUrl}/sessions`, icon: History },
   ]
@@ -64,6 +67,7 @@ function SidebarContent({
     { label: 'Faction', href: `${baseUrl}/forge/faction`, icon: Users },
     { label: 'Encounter', href: `${baseUrl}/forge/encounter`, icon: Swords },
     { label: 'Quest', href: `${baseUrl}/forge/quest`, icon: Scroll },
+    { label: 'Player', href: `${baseUrl}/forge/player`, icon: Crown, special: true },
   ]
 
   const handleClick = () => {
@@ -128,6 +132,7 @@ function SidebarContent({
           </p>
           {FORGE_ITEMS.map((item) => {
             const active = isActive(item.href)
+            const isSpecial = 'special' in item && item.special
             return (
               <Link
                 key={item.href}
@@ -136,11 +141,15 @@ function SidebarContent({
                 className={cn(
                   'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
                   active
-                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
+                    ? isSpecial
+                      ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                      : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                    : isSpecial
+                      ? 'text-yellow-400/80 hover:text-yellow-300 hover:bg-yellow-500/10 border border-transparent hover:border-yellow-500/20'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
                 )}
               >
-                <item.icon className="w-4 h-4 flex-shrink-0" />
+                <item.icon className={cn('w-4 h-4 flex-shrink-0', isSpecial && !active && 'text-yellow-400')} />
                 <span>{item.label}</span>
               </Link>
             )

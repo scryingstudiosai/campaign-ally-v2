@@ -66,7 +66,7 @@ export function CommandMenu(): JSX.Element {
   // Cmd/Ctrl+K to toggle
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
+      if (e.key?.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         setOpen((prev) => !prev)
       }

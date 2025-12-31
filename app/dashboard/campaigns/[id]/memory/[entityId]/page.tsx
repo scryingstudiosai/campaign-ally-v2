@@ -33,6 +33,7 @@ import { CreatureBrainCard } from '@/components/entity/CreatureBrainCard'
 import { CreatureSoulCard } from '@/components/entity/CreatureSoulCard'
 import { CreatureMechanicsCard } from '@/components/entity/CreatureMechanicsCard'
 import { NpcMechanicsCard } from '@/components/entity/NpcMechanicsCard'
+import { PlayerSoulCard } from '@/components/entity/PlayerSoulCard'
 import { QuestSoulCard } from '@/components/entity/QuestSoulCard'
 import { QuestBrainCard } from '@/components/entity/QuestBrainCard'
 import { QuestObjectivesCard } from '@/components/entity/QuestObjectivesCard'
@@ -41,6 +42,7 @@ import { QuestChainCard } from '@/components/entity/QuestChainCard'
 import { TavernMenuCard } from '@/components/entity/TavernMenuCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
+import { LocationDetailWrapper } from '@/components/entity/LocationDetailWrapper'
 import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, NpcMechanics, QuestBrain, QuestSoul, QuestObjective, QuestRewards, QuestChain, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
@@ -227,6 +229,26 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const questRewards = attributes.rewards as QuestRewards | null
   const questChain = attributes.chain as QuestChain | null
 
+  // Player-specific helpers
+  const isPlayer = entity.entity_type === 'player'
+  const playerSoul = entity.soul as {
+    race?: string
+    class?: string
+    level?: number
+    background?: string
+    ability_scores?: { str: number; dex: number; con: number; int: number; wis: number; cha: number }
+    max_hp?: number
+    current_hp?: number
+    temp_hp?: number
+    armor_class?: number
+    speed?: number
+    proficiency_bonus?: number
+    saving_throws?: string[]
+    languages?: string[]
+    skills?: string[]
+    hit_dice?: { current: number; max: number; face: number }
+  } | null
+
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
     (entity.voice && (entity.voice as Voice).style?.length > 0) ||
@@ -270,6 +292,10 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (questRewards && Object.keys(questRewards).length > 0) ||
     (questChain && Object.keys(questChain).length > 0)
 
+  const hasPlayerStageContent =
+    (playerSoul && Object.keys(playerSoul).length > 0) ||
+    entity.description
+
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
     (isItem && hasItemStageContent) ||
@@ -278,6 +304,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (isEncounter && hasEncounterStageContent) ||
     (isCreature && hasCreatureStageContent) ||
     (isQuest && hasQuestStageContent) ||
+    (isPlayer && hasPlayerStageContent) ||
     entity.public_notes ||
     entity.dm_notes
 
@@ -390,6 +417,13 @@ export default async function EntityDetailPage({ params }: PageProps) {
         {/* === MASTER DASHBOARD LAYOUT === */}
         {/* Left (2/3): "The Stage" - Player-facing content */}
         {/* Right (1/3): "The Script" - DM-facing content */}
+        {/* For locations, wrap in LocationDetailWrapper for Atlas tab */}
+        <LocationDetailWrapper
+          campaignId={params.id}
+          locationId={entity.id}
+          mapImageUrl={locationSoul?.map_url as string | undefined}
+          isLocation={isLocation}
+        >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
 
           {/* === LEFT COLUMN (The Stage) - What players see/experience === */}
@@ -649,6 +683,27 @@ export default async function EntityDetailPage({ params }: PageProps) {
               </>
             )}
 
+            {/* --- PLAYER STAGE CONTENT --- */}
+            {isPlayer && (
+              <>
+                {/* Player Soul Card - Character stats and abilities */}
+                {playerSoul && Object.keys(playerSoul).length > 0 && (
+                  <PlayerSoulCard soul={playerSoul} />
+                )}
+
+                {/* Backstory/Description */}
+                {entity.description && (
+                  <div className="ca-panel p-4">
+                    <div className="ca-section-header mb-2">
+                      <User className="w-4 h-4" />
+                      <span>Backstory</span>
+                    </div>
+                    <p className="text-sm text-slate-300 whitespace-pre-wrap">{renderWithBold(entity.description)}</p>
+                  </div>
+                )}
+              </>
+            )}
+
             {/* --- SHARED STAGE CONTENT --- */}
             {/* Public Notes */}
             {entity.public_notes && (
@@ -835,6 +890,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
             </Card>
           </div>
         </div>
+        </LocationDetailWrapper>
       </div>
     </div>
   )

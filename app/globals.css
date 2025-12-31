@@ -257,3 +257,62 @@ body {
 .tippy-box[data-theme~='dark'] > .tippy-arrow::before {
   display: none;
 }
+
+/* ═══════════════════════════════════════════
+   ReactFlow Relationship Graph Styles
+   Custom theming for dark mode
+═══════════════════════════════════════════ */
+.react-flow__pane {
+  cursor: grab;
+}
+
+.react-flow__pane:active {
+  cursor: grabbing;
+}
+
+.react-flow__node {
+  cursor: pointer;
+}
+
+.react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+/* Attribution - hide the ReactFlow watermark */
+.react-flow__attribution {
+  display: none;
+}
+
+/* Controls styling for dark theme */
+.react-flow__controls {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+.react-flow__controls-button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.react-flow__controls-button svg {
+  max-width: 14px;
+  max-height: 14px;
+}
+
+/* Minimap styling for dark theme */
+.react-flow__minimap {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Edge interaction */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3;
+}
+
+/* Selection box */
+.react-flow__selection {
+  background: rgba(20, 184, 166, 0.1);
+  border: 1px dashed rgba(20, 184, 166, 0.5);
+}

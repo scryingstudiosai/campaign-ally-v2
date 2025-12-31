@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { DeleteCampaignButton } from '@/components/campaigns/delete-campaign-button'
+import { ExportButton } from '@/components/campaign/export-button'
 import { SessionsList } from '@/components/dashboard/SessionsList'
 import { MaterialCard } from '@/components/ui/material-card'
 import { ForgeButton } from '@/components/ui/forge-button'
@@ -14,6 +15,7 @@ import {
   Pencil,
   Sparkles,
 } from 'lucide-react'
+import { CampaignChecklistWrapper } from '@/components/onboarding/CampaignChecklistWrapper'
 
 interface PageProps {
   params: { id: string }
@@ -100,6 +102,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
           </div>
 
           <div className="flex gap-2">
+            <ExportButton campaignId={campaign.id} campaignName={campaign.name} />
             <Button variant="outline" size="sm" asChild>
               <Link href={`/dashboard/campaigns/${params.id}/edit`}>
                 <Pencil className="w-4 h-4 mr-2" />
@@ -161,6 +164,11 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                   forgeType="quest"
                   label="Quest"
                 />
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/player`}
+                  forgeType="player"
+                  label="Player"
+                />
               </div>
             </MaterialCard>
 
@@ -194,6 +202,9 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                 </Link>
               </div>
             </div>
+
+            {/* Getting Started Checklist */}
+            <CampaignChecklistWrapper campaignId={params.id} />
           </div>
         </div>
       </div>

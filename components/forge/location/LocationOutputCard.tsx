@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { InteractiveText } from '@/components/forge/InteractiveText'
-import { SelectionPopover } from '@/components/forge/SelectionPopover'
+import { InteractiveText as UniversalInteractiveText, TextRange } from '@/components/ui/interactive-text'
 import { renderWithBold } from '@/lib/text-utils'
 import {
   Map, Eye, Ear, Wind, Thermometer, Lightbulb,
@@ -134,10 +134,18 @@ export function LocationOutputCard({
     return keywords.join(', ') || atmo.slice(0, 30)
   }
 
+  // Handle manual text selection to create discovery
+  const handleManualSelect = (text: string, type: EntityType, _range: TextRange) => {
+    if (onManualDiscovery) {
+      onManualDiscovery(text, type)
+    }
+  }
+
   // Render text with interactive links if scan result available, otherwise bold
   const renderTextWithDiscoveries = (text: string | undefined): React.ReactNode => {
     if (!text) return null
 
+    // If we have a scan result, use the specialized InteractiveText with tooltips
     if (scanResult) {
       return (
         <InteractiveText
@@ -145,6 +153,16 @@ export function LocationOutputCard({
           scanResult={scanResult}
           campaignId={campaignId}
           onDiscoveryAction={onDiscoveryAction}
+        />
+      )
+    }
+
+    // Otherwise use universal component with manual selection enabled
+    if (onManualDiscovery) {
+      return (
+        <UniversalInteractiveText
+          content={text}
+          onManualSelect={handleManualSelect}
         />
       )
     }
@@ -606,15 +624,6 @@ export function LocationOutputCard({
         </div>
       )}
 
-      {/* Selection Popover for manual discovery creation */}
-      {onManualDiscovery && (
-        <SelectionPopover
-          containerRef={contentRef}
-          onCreateDiscovery={onManualDiscovery}
-          onSearchExisting={onLinkExisting || (() => {})}
-          existingEntities={existingEntities}
-        />
-      )}
     </div>
   )
 }

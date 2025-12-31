@@ -1,43 +1,65 @@
-import Image from 'next/image'
-import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
-import { Button } from '@/components/ui/button'
+import Navbar from '@/components/landing/navbar'
+import Hero from '@/components/landing/hero'
+import InteractiveDemo from '@/components/landing/interactive-demo'
+import BeforeAfter from '@/components/landing/before-after'
+import Features from '@/components/landing/features'
+import HowItWorks from '@/components/landing/how-it-works'
+import Testimonials from '@/components/landing/testimonials'
+import Pricing from '@/components/landing/pricing'
+import FAQ from '@/components/landing/faq'
+import FinalCTA from '@/components/landing/final-cta'
+import Footer from '@/components/landing/footer'
 
-export default async function Home() {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
+export default function LandingPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="flex flex-col items-center gap-8">
-        <Image
-          src="/images/logo-stacked.png"
-          alt="Campaign Ally"
-          width={200}
-          height={200}
-          priority
-        />
-        <p className="text-muted-foreground text-center max-w-md">
-          Your AI co-pilot for managing D&amp;D campaigns.
-        </p>
+    <main className="min-h-screen bg-stone-950 text-white">
+      <Navbar />
+      <Hero />
 
-        <div className="flex gap-4 mt-4">
-          {user ? (
-            <Button asChild size="lg">
-              <Link href="/dashboard">Go to Dashboard</Link>
-            </Button>
-          ) : (
-            <>
-              <Button asChild size="lg">
-                <Link href="/login">Sign In</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="/signup">Sign Up</Link>
-              </Button>
-            </>
-          )}
+      <section id="demo" className="px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <InteractiveDemo />
         </div>
-      </div>
+      </section>
+
+      <section className="px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mx-auto max-w-6xl">
+          <BeforeAfter />
+        </div>
+      </section>
+
+      <section id="features" className="px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mx-auto max-w-6xl">
+          <Features />
+        </div>
+      </section>
+
+      <section id="how" className="px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mx-auto max-w-6xl">
+          <HowItWorks />
+        </div>
+      </section>
+
+      <section id="testimonials" className="px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mx-auto max-w-6xl">
+          <Testimonials />
+        </div>
+      </section>
+
+      <section id="pricing" className="px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mx-auto max-w-6xl">
+          <Pricing />
+        </div>
+      </section>
+
+      <section id="faq" className="px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mx-auto max-w-4xl">
+          <FAQ />
+        </div>
+      </section>
+
+      <FinalCTA />
+      <Footer />
     </main>
   )
 }

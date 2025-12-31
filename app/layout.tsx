@@ -24,8 +24,41 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Campaign Ally - AI Co-Pilot for Dungeon Masters',
-  description: 'An AI-powered campaign management tool for D&D Dungeon Masters',
+  title: 'Campaign Ally — The AI Co-Pilot That Actually Knows Your World',
+  description: 'Campaign-aware AI for D&D 5e Dungeon Masters. Forge NPCs, locations, quests, and sessions that connect to your world automatically. Stop generating generic filler.',
+  keywords: ['D&D', 'DM tools', 'campaign management', 'AI dungeon master', 'NPC generator', 'world building', 'tabletop RPG'],
+  authors: [{ name: 'Campaign Ally' }],
+  creator: 'Campaign Ally',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://campaignally.ai',
+    siteName: 'Campaign Ally',
+    title: 'Campaign Ally — The AI Co-Pilot That Actually Knows Your World',
+    description: 'Stop generating generic filler. Campaign Ally remembers your NPCs, tracks your factions, and connects your lore automatically.',
+    images: [
+      {
+        url: '/images/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Campaign Ally - AI-Powered Campaign Management',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Campaign Ally — The AI Co-Pilot That Actually Knows Your World',
+    description: 'Campaign-aware AI for D&D 5e Dungeon Masters. Forge NPCs, locations, quests, and sessions that connect to your world automatically.',
+    images: ['/images/og-image.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
   icons: {
     icon: '/favicon.ico',
     apple: '/images/favicon-256.png',

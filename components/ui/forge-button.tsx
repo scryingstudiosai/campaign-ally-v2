@@ -10,6 +10,7 @@ import {
   Users,
   Swords,
   Scroll,
+  Crown,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -18,7 +19,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-type ForgeType = 'npc' | 'creature' | 'location' | 'item' | 'faction' | 'encounter' | 'quest';
+type ForgeType = 'npc' | 'creature' | 'location' | 'item' | 'faction' | 'encounter' | 'quest' | 'player';
 
 interface ForgeButtonProps {
   href: string;
@@ -68,6 +69,12 @@ const FORGE_CONFIG: Record<ForgeType, { icon: typeof User; hover: string; iconCo
     hover: 'hover:shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:border-purple-500/30',
     iconColor: 'text-purple-400',
     tooltip: 'Create adventures with objectives and rewards',
+  },
+  player: {
+    icon: Crown,
+    hover: 'hover:shadow-[0_0_15px_rgba(251,191,36,0.4)] hover:border-yellow-500/40',
+    iconColor: 'text-yellow-400',
+    tooltip: 'Create a player character with stats and starting gear',
   },
 };
 

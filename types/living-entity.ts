@@ -228,6 +228,7 @@ export interface LocationSoul {
   distinctive_feature?: string; // The ONE thing that makes this place unique
   mood?: string;              // Emotional tone (dread, wonder, melancholy)
   key_figures?: LocationKeyFigure[]; // Important NPCs found here
+  map_url?: string;           // URL to the location's map image (for Atlas feature)
 }
 
 export const DEFAULT_LOCATION_SOUL: LocationSoul = {};
