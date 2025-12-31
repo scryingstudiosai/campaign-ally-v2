@@ -769,7 +769,7 @@ export default function PlayerForgePage(): JSX.Element {
                               {score > 0 ? formatModifier(mod) : '—'}
                             </div>
                             <Select
-                              value={score > 0 ? score.toString() : ''}
+                              value={score > 0 ? score.toString() : undefined}
                               onValueChange={(v) => v && assignStandardScore(ability, parseInt(v))}
                             >
                               <SelectTrigger className="bg-slate-900/50 border-slate-600">
@@ -888,7 +888,7 @@ export default function PlayerForgePage(): JSX.Element {
                                   {score > 0 ? formatModifier(mod) : '—'}
                                 </div>
                                 <Select
-                                  value={score > 0 ? score.toString() : ''}
+                                  value={score > 0 ? score.toString() : undefined}
                                   onValueChange={(v) => v && assignRolledScore(ability, parseInt(v))}
                                   disabled={selectOptions.length === 0}
                                 >
@@ -1114,12 +1114,15 @@ export default function PlayerForgePage(): JSX.Element {
                 {/* Home Location */}
                 <div className="space-y-2">
                   <Label>Home Location</Label>
-                  <Select value={anchorLocation} onValueChange={setAnchorLocation}>
+                  <Select
+                    value={anchorLocation || '__none__'}
+                    onValueChange={(v) => setAnchorLocation(v === '__none__' ? '' : v)}
+                  >
                     <SelectTrigger className="bg-slate-900/50 border-slate-700">
                       <SelectValue placeholder="Select a location..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {entities
                         .filter((e) => e.entity_type === 'location')
                         .map((e) => (
@@ -1134,12 +1137,15 @@ export default function PlayerForgePage(): JSX.Element {
                 {/* Faction Affiliation */}
                 <div className="space-y-2">
                   <Label>Faction Affiliation</Label>
-                  <Select value={anchorFaction} onValueChange={setAnchorFaction}>
+                  <Select
+                    value={anchorFaction || '__none__'}
+                    onValueChange={(v) => setAnchorFaction(v === '__none__' ? '' : v)}
+                  >
                     <SelectTrigger className="bg-slate-900/50 border-slate-700">
                       <SelectValue placeholder="Select a faction..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {entities
                         .filter((e) => e.entity_type === 'faction')
                         .map((e) => (
@@ -1154,12 +1160,15 @@ export default function PlayerForgePage(): JSX.Element {
                 {/* Known NPC */}
                 <div className="space-y-2">
                   <Label>Known NPC</Label>
-                  <Select value={anchorNpc} onValueChange={setAnchorNpc}>
+                  <Select
+                    value={anchorNpc || '__none__'}
+                    onValueChange={(v) => setAnchorNpc(v === '__none__' ? '' : v)}
+                  >
                     <SelectTrigger className="bg-slate-900/50 border-slate-700">
                       <SelectValue placeholder="Select an NPC..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {entities
                         .filter((e) => e.entity_type === 'npc')
                         .map((e) => (

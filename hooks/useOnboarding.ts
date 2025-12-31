@@ -62,25 +62,44 @@ export function useOnboarding() {
         .eq('user_id', user.id)
         .single()
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        // PGRST116 = no rows returned
-        throw fetchError
+      if (fetchError) {
+        // PGRST116 = no rows returned (expected for new users)
+        // 42P01 = table doesn't exist (migration not run yet)
+        // Other errors should be handled gracefully
+        if (fetchError.code !== 'PGRST116' && fetchError.code !== '42P01') {
+          console.warn('Onboarding fetch warning:', fetchError.message)
+        }
+        // If table doesn't exist, just skip onboarding features gracefully
+        if (fetchError.code === '42P01') {
+          setIsLoading(false)
+          return
+        }
       }
 
       if (!onboarding) {
-        // Create initial onboarding record
-        const { data: newOnboarding, error: insertError } = await supabase
+        // Create initial onboarding record using upsert to avoid conflicts
+        const { data: newOnboarding, error: upsertError } = await supabase
           .from('user_onboarding')
-          .insert({ user_id: user.id })
+          .upsert(
+            { user_id: user.id },
+            { onConflict: 'user_id', ignoreDuplicates: false }
+          )
           .select()
           .single()
 
-        if (insertError) throw insertError
+        if (upsertError) {
+          // Log but don't throw - let app continue without onboarding
+          console.warn('Failed to create onboarding record:', upsertError.message)
+          setIsLoading(false)
+          return
+        }
         setData(newOnboarding)
       } else {
         setData(onboarding)
       }
     } catch (err) {
+      // Gracefully handle errors - don't break the app
+      console.warn('Onboarding error:', err instanceof Error ? err.message : err)
       setError(err instanceof Error ? err.message : 'Failed to load onboarding data')
     } finally {
       setIsLoading(false)
