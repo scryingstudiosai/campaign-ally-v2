@@ -5,7 +5,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// GET - Fetch all entities for a campaign
+// GET - Get marker counts per location for a campaign
 export async function GET(req: NextRequest, { params }: RouteParams) {
   const { id: campaignId } = await params;
   const supabase = await createClient();
@@ -30,26 +30,22 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
   }
 
-  // Get optional type filter from query params
-  const { searchParams } = new URL(req.url);
-  const typeFilter = searchParams.get('type');
-
-  // Fetch entities
-  let query = supabase
-    .from('entities')
-    .select('id, name, entity_type, sub_type, summary, soul, attributes')
-    .eq('campaign_id', campaignId)
-    .is('deleted_at', null);
-
-  if (typeFilter) {
-    query = query.eq('entity_type', typeFilter);
-  }
-
-  const { data: entities, error } = await query.order('name', { ascending: true });
+  // Get marker counts grouped by parent_location_id
+  const { data: markers, error } = await supabase
+    .from('map_markers')
+    .select('parent_location_id')
+    .eq('campaign_id', campaignId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(entities);
+  // Count markers per location
+  const counts: Record<string, number> = {};
+  markers?.forEach((marker) => {
+    const locId = marker.parent_location_id;
+    counts[locId] = (counts[locId] || 0) + 1;
+  });
+
+  return NextResponse.json(counts);
 }

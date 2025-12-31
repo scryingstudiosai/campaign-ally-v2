@@ -13,9 +13,10 @@ import {
   Shield,
   Swords,
   Bug,
+  Crown,
 } from 'lucide-react'
 
-export type EntityType = 'npc' | 'location' | 'item' | 'faction' | 'quest' | 'encounter' | 'creature' | 'other'
+export type EntityType = 'npc' | 'player' | 'location' | 'item' | 'faction' | 'quest' | 'encounter' | 'creature' | 'other'
 export type EntitySubType = 'standard' | 'villain' | 'hero' | string
 
 interface EntityTypeBadgeProps {
@@ -59,6 +60,13 @@ const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
     bgColor: 'bg-teal-500/20',
     borderColor: 'border-teal-500/30',
     icon: User,
+  },
+  player: {
+    label: 'Player',
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/20',
+    borderColor: 'border-amber-500/30',
+    icon: Crown,
   },
   location: {
     label: 'Location',

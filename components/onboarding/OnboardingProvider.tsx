@@ -33,8 +33,8 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
       {/* Setup Wizard Modal */}
       <SetupWizard open={showWizard} onComplete={handleWizardComplete} />
 
-      {/* Floating Help Button */}
-      <div className="fixed bottom-4 right-4 z-40">
+      {/* Floating Help Button - positioned above the chat widget */}
+      <div className="fixed bottom-20 right-4 z-40">
         <HelpPanel
           trigger={
             <Button

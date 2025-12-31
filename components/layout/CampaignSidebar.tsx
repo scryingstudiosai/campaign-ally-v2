@@ -20,6 +20,7 @@ import {
   Scroll,
   Search,
   Crown,
+  Globe,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -53,6 +54,7 @@ function SidebarContent({
   const NAV_ITEMS = [
     { label: 'Overview', href: baseUrl, icon: LayoutDashboard, exact: true },
     { label: 'Memory', href: `${baseUrl}/memory`, icon: Brain },
+    { label: 'Atlas', href: `${baseUrl}/atlas`, icon: Globe },
     { label: 'Codex', href: `${baseUrl}/codex`, icon: Book },
     { label: 'Sessions', href: `${baseUrl}/sessions`, icon: History },
   ]
