@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { PageTransition, StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion'
 
 interface Location {
   id: string
@@ -238,10 +239,11 @@ export default function AtlasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+    <PageTransition>
+      <div className="min-h-screen bg-background text-foreground p-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <FadeIn className="flex items-start justify-between mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 rounded-lg bg-teal-500/10 border border-teal-500/20">
@@ -250,7 +252,7 @@ export default function AtlasPage() {
               <h1 className="text-3xl font-bold">Campaign Atlas</h1>
             </div>
             <p className="text-slate-400">
-              Explore your world's geography with interactive maps
+              Explore your world&apos;s geography with interactive maps
             </p>
           </div>
 
@@ -271,7 +273,7 @@ export default function AtlasPage() {
               Hierarchy
             </Button>
           </div>
-        </div>
+        </FadeIn>
 
         {/* Search */}
         <div className="relative mb-6">
@@ -312,9 +314,13 @@ export default function AtlasPage() {
                       <Globe className="w-5 h-5" />
                       Mapped Locations ({locationsWithMaps.length})
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {locationsWithMaps.map(renderLocationCard)}
-                    </div>
+                    <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" staggerDelay={0.05}>
+                      {locationsWithMaps.map((location) => (
+                        <StaggerItem key={location.id}>
+                          <HoverLift>{renderLocationCard(location)}</HoverLift>
+                        </StaggerItem>
+                      ))}
+                    </StaggerContainer>
                   </div>
                 )}
 
@@ -325,9 +331,13 @@ export default function AtlasPage() {
                       <MapPin className="w-5 h-5" />
                       Unmapped Locations ({locationsWithoutMaps.length})
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {locationsWithoutMaps.map(renderLocationCard)}
-                    </div>
+                    <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" delay={0.2} staggerDelay={0.05}>
+                      {locationsWithoutMaps.map((location) => (
+                        <StaggerItem key={location.id}>
+                          <HoverLift>{renderLocationCard(location)}</HoverLift>
+                        </StaggerItem>
+                      ))}
+                    </StaggerContainer>
                   </div>
                 )}
               </>
@@ -346,7 +356,7 @@ export default function AtlasPage() {
                 </div>
                 <h2 className="text-xl font-semibold text-slate-300 mb-2">No Locations Yet</h2>
                 <p className="text-slate-500 mb-6 max-w-md mx-auto">
-                  Create locations in the Location Forge to start building your world's atlas.
+                  Create locations in the Location Forge to start building your world&apos;s atlas.
                 </p>
                 <Button asChild>
                   <Link href={`/dashboard/campaigns/${campaignId}/forge/location`}>
@@ -358,7 +368,8 @@ export default function AtlasPage() {
             )}
           </>
         )}
+        </div>
       </div>
-    </div>
+    </PageTransition>
   )
 }

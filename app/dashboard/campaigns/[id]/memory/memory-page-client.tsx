@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2, User, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
+import { PageTransition, StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion'
 
 const STORAGE_KEY = 'memory-view-mode'
 
@@ -203,10 +204,11 @@ export function MemoryPageClient({
   }, [selectedIds, exitSelectionMode])
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
+    <PageTransition>
+      <div className="min-h-screen bg-background text-foreground p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <FadeIn className="mb-8">
           <Button variant="ghost" asChild className="mb-4">
             <Link href={`/dashboard/campaigns/${campaignId}`}>
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -273,7 +275,7 @@ export function MemoryPageClient({
               )}
             </div>
           </div>
-        </div>
+        </FadeIn>
 
         {/* Quick Stats */}
         {entities.length > 0 && (
@@ -371,19 +373,22 @@ export function MemoryPageClient({
             />
           </Card>
         ) : viewMode === 'card' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" staggerDelay={0.03}>
             {filteredEntities.map((entity) => (
-              <EntityCard
-                key={entity.id}
-                entity={entity}
-                campaignId={campaignId}
-                onDelete={handleEntityDelete}
-                selectionMode={selectionMode}
-                isSelected={selectedIds.has(entity.id)}
-                onToggleSelect={() => toggleSelection(entity.id)}
-              />
+              <StaggerItem key={entity.id}>
+                <HoverLift>
+                  <EntityCard
+                    entity={entity}
+                    campaignId={campaignId}
+                    onDelete={handleEntityDelete}
+                    selectionMode={selectionMode}
+                    isSelected={selectedIds.has(entity.id)}
+                    onToggleSelect={() => toggleSelection(entity.id)}
+                  />
+                </HoverLift>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         ) : (
           <Card className="overflow-hidden">
             <EntityListHeader selectionMode={selectionMode} />
@@ -445,6 +450,7 @@ export function MemoryPageClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </PageTransition>
   )
 }
