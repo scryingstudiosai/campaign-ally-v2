@@ -1,17 +1,20 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { useOnboarding, ChecklistProgress } from '@/hooks/useOnboarding'
 import { CampaignChecklist } from './CampaignChecklist'
+import { CampaignActionsProvider } from '@/components/campaign/CampaignActionsContext'
 import { createClient } from '@/lib/supabase/client'
 
 interface CampaignChecklistWrapperProps {
   campaignId: string
+  campaignName?: string
 }
 
-export function CampaignChecklistWrapper({ campaignId }: CampaignChecklistWrapperProps) {
+export function CampaignChecklistWrapper({ campaignId, campaignName: initialName }: CampaignChecklistWrapperProps) {
   const { data, isLoading, getCompletionPercentage, updateChecklist } = useOnboarding()
   const supabase = createClient()
+  const [campaignName, setCampaignName] = useState(initialName || 'Campaign')
 
   // Auto-sync checklist progress by checking actual entity data
   const syncChecklistProgress = useCallback(async () => {
@@ -104,6 +107,22 @@ export function CampaignChecklistWrapper({ campaignId }: CampaignChecklistWrappe
     syncChecklistProgress()
   }, [syncChecklistProgress])
 
+  // Fetch campaign name if not provided
+  useEffect(() => {
+    if (!initialName) {
+      supabase
+        .from('campaigns')
+        .select('name')
+        .eq('id', campaignId)
+        .single()
+        .then(({ data }) => {
+          if (data?.name) {
+            setCampaignName(data.name)
+          }
+        })
+    }
+  }, [campaignId, initialName, supabase])
+
   // Don't render if loading or if checklist is complete
   if (isLoading || !data) return null
 
@@ -112,5 +131,9 @@ export function CampaignChecklistWrapper({ campaignId }: CampaignChecklistWrappe
   // Hide once complete
   if (percentage === 100) return null
 
-  return <CampaignChecklist campaignId={campaignId} />
+  return (
+    <CampaignActionsProvider campaignId={campaignId} campaignName={campaignName}>
+      <CampaignChecklist campaignId={campaignId} />
+    </CampaignActionsProvider>
+  )
 }

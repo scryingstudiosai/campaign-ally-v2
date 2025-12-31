@@ -102,6 +102,7 @@ export default function PlayerForgePage(): JSX.Element {
   const [level, setLevel] = useState(1);
   const [background, setBackground] = useState('');
   const [backstory, setBackstory] = useState('');
+  const [dmSecrets, setDmSecrets] = useState('');
 
   // Step 2: Stats
   type ScoreMethod = 'standard' | 'roll' | 'manual';
@@ -371,6 +372,7 @@ export default function PlayerForgePage(): JSX.Element {
             saving_throws: savingThrows,
             languages: ['Common'],
           },
+          attributes: dmSecrets ? { dm_secrets: dmSecrets } : undefined,
           forge_status: 'complete',
         })
         .select('id')
@@ -647,6 +649,26 @@ export default function PlayerForgePage(): JSX.Element {
                     onChange={(e) => setBackstory(e.target.value)}
                     className="min-h-[100px] bg-slate-900/50 border-slate-700"
                   />
+                </div>
+
+                {/* DM Secrets */}
+                <div className="col-span-2 space-y-2 p-4 bg-red-950/20 border border-red-500/30 rounded-lg">
+                  <Label htmlFor="dmSecrets" className="text-red-400 flex items-center gap-2">
+                    DM Secrets
+                    <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-300 rounded border border-red-500/30">
+                      Hidden from Players
+                    </span>
+                  </Label>
+                  <Textarea
+                    id="dmSecrets"
+                    placeholder="Secret information only the DM knows about this character..."
+                    value={dmSecrets}
+                    onChange={(e) => setDmSecrets(e.target.value)}
+                    className="min-h-[80px] bg-red-950/30 border-red-500/30 placeholder:text-red-300/50"
+                  />
+                  <p className="text-xs text-red-400/70">
+                    This won&apos;t appear in the future Player Portal.
+                  </p>
                 </div>
               </div>
             </div>

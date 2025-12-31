@@ -791,6 +791,20 @@ export default async function EntityDetailPage({ params }: PageProps) {
               <QuestBrainCard brain={questBrain} />
             )}
 
+            {/* --- PLAYER SCRIPT CONTENT --- */}
+            {isPlayer && attributes.dm_secrets && (
+              <div className="ca-panel p-4 border-l-2 border-red-500/50 bg-red-950/20">
+                <div className="flex items-center gap-2 text-red-400 mb-2">
+                  <EyeOff className="w-4 h-4" />
+                  <span className="text-sm font-medium">DM Secrets</span>
+                  <Badge variant="outline" className="ml-auto text-xs text-red-400 border-red-500/30 bg-red-500/10">
+                    Hidden from Players
+                  </Badge>
+                </div>
+                <p className="text-sm text-slate-300">{renderWithBold(attributes.dm_secrets)}</p>
+              </div>
+            )}
+
             {/* --- SHARED SCRIPT CONTENT --- */}
             {/* Secret - DM Only */}
             {attributes.secret && (

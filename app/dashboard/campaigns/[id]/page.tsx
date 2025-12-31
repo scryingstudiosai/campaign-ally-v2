@@ -204,7 +204,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
             </div>
 
             {/* Getting Started Checklist */}
-            <CampaignChecklistWrapper campaignId={params.id} />
+            <CampaignChecklistWrapper campaignId={params.id} campaignName={campaign.name} />
           </div>
         </div>
       </div>
