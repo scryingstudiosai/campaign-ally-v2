@@ -65,8 +65,12 @@ export function CharacterSheet({ campaignId, character }: Props) {
   const mechanics = (char.mechanics || {}) as Record<string, unknown>;
   const soul = (char.soul || {}) as Record<string, unknown>;
   const stats = (mechanics.ability_scores || mechanics.stats || {}) as Record<string, number>;
-  const maxHp = (mechanics.max_hp || mechanics.hp || 0) as number;
-  const currentHp = (mechanics.current_hp ?? maxHp) as number;
+
+  // Handle HP - can be a number or an object {max, current}
+  const hpValue = mechanics.hp;
+  const isHpObject = hpValue && typeof hpValue === 'object' && 'max' in (hpValue as object);
+  const maxHp = (mechanics.max_hp || (isHpObject ? (hpValue as { max: number }).max : hpValue) || 0) as number;
+  const currentHp = (mechanics.current_hp ?? (isHpObject ? (hpValue as { current: number }).current : maxHp)) as number;
   const tempHp = (mechanics.temp_hp || 0) as number;
   const ac = (mechanics.ac || mechanics.armor_class || 10) as number;
   const level = (mechanics.level || 1) as number;
