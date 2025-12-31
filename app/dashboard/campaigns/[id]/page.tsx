@@ -15,6 +15,7 @@ import {
   Pencil,
   Sparkles,
 } from 'lucide-react'
+import { CampaignChecklistWrapper } from '@/components/onboarding/CampaignChecklistWrapper'
 
 interface PageProps {
   params: { id: string }
@@ -201,6 +202,9 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                 </Link>
               </div>
             </div>
+
+            {/* Getting Started Checklist */}
+            <CampaignChecklistWrapper campaignId={params.id} />
           </div>
         </div>
       </div>
