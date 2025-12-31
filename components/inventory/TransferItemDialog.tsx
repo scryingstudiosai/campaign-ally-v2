@@ -190,11 +190,13 @@ export function TransferItemDialog({
                       {loadingOwners ? 'Loading...' : `No ${ownerType}s found`}
                     </SelectItem>
                   ) : (
-                    owners.map((owner) => (
-                      <SelectItem key={owner.id} value={owner.id}>
-                        {owner.name}
-                      </SelectItem>
-                    ))
+                    owners
+                      .filter((owner) => owner.id)
+                      .map((owner) => (
+                        <SelectItem key={owner.id} value={owner.id}>
+                          {owner.name}
+                        </SelectItem>
+                      ))
                   )}
                 </SelectContent>
               </Select>

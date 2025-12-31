@@ -355,11 +355,13 @@ export function NpcInputForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">No specific location</SelectItem>
-              {existingLocations.map((loc) => (
-                <SelectItem key={loc.id} value={loc.id}>
-                  {loc.name}
-                </SelectItem>
-              ))}
+              {existingLocations
+                .filter((loc) => loc.id)
+                .map((loc) => (
+                  <SelectItem key={loc.id} value={loc.id}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
@@ -379,11 +381,13 @@ export function NpcInputForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">No faction affiliation</SelectItem>
-              {existingFactions.map((fac) => (
-                <SelectItem key={fac.id} value={fac.id}>
-                  {fac.name}
-                </SelectItem>
-              ))}
+              {existingFactions
+                .filter((fac) => fac.id)
+                .map((fac) => (
+                  <SelectItem key={fac.id} value={fac.id}>
+                    {fac.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>

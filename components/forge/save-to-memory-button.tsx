@@ -197,11 +197,13 @@ export function SaveToMemoryButton({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">No location</SelectItem>
-              {locations.map((loc) => (
-                <SelectItem key={loc.id} value={loc.id}>
-                  {loc.name}
-                </SelectItem>
-              ))}
+              {locations
+                .filter((loc) => loc.id)
+                .map((loc) => (
+                  <SelectItem key={loc.id} value={loc.id}>
+                    {loc.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>

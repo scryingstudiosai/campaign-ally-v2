@@ -524,17 +524,19 @@ export default function EncounterForgePage({ params }: PageProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No location</SelectItem>
-                {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={loc.id}>
-                    <span className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-teal-400" />
-                      {loc.name}
-                      {loc.sub_type && (
-                        <span className="text-xs text-slate-500">({loc.sub_type})</span>
-                      )}
-                    </span>
-                  </SelectItem>
-                ))}
+                {locations
+                  .filter((loc) => loc.id)
+                  .map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      <span className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-teal-400" />
+                        {loc.name}
+                        {loc.sub_type && (
+                          <span className="text-xs text-slate-500">({loc.sub_type})</span>
+                        )}
+                      </span>
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-slate-500">

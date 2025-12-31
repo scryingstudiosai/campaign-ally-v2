@@ -776,11 +776,13 @@ export default function PlayerForgePage(): JSX.Element {
                                 <SelectValue placeholder="Select..." />
                               </SelectTrigger>
                               <SelectContent>
-                                {selectOptions.map((s, idx) => (
-                                  <SelectItem key={`${s}-${idx}`} value={s.toString()}>
-                                    {s} ({formatModifier(calculateModifier(s))})
-                                  </SelectItem>
-                                ))}
+                                {selectOptions
+                                  .filter((s) => s > 0)
+                                  .map((s, idx) => (
+                                    <SelectItem key={`${s}-${idx}`} value={s.toString()}>
+                                      {s} ({formatModifier(calculateModifier(s))})
+                                    </SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                           </div>
@@ -896,11 +898,13 @@ export default function PlayerForgePage(): JSX.Element {
                                     <SelectValue placeholder="Select..." />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {selectOptions.map((s, idx) => (
-                                      <SelectItem key={`${s}-${idx}`} value={s.toString()}>
-                                        {s} ({formatModifier(calculateModifier(s))})
-                                      </SelectItem>
-                                    ))}
+                                    {selectOptions
+                                      .filter((s) => s > 0)
+                                      .map((s, idx) => (
+                                        <SelectItem key={`${s}-${idx}`} value={s.toString()}>
+                                          {s} ({formatModifier(calculateModifier(s))})
+                                        </SelectItem>
+                                      ))}
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -1124,7 +1128,7 @@ export default function PlayerForgePage(): JSX.Element {
                     <SelectContent>
                       <SelectItem value="__none__">None</SelectItem>
                       {entities
-                        .filter((e) => e.entity_type === 'location')
+                        .filter((e) => e.entity_type === 'location' && e.id)
                         .map((e) => (
                           <SelectItem key={e.id} value={e.id}>
                             {e.name}
@@ -1147,7 +1151,7 @@ export default function PlayerForgePage(): JSX.Element {
                     <SelectContent>
                       <SelectItem value="__none__">None</SelectItem>
                       {entities
-                        .filter((e) => e.entity_type === 'faction')
+                        .filter((e) => e.entity_type === 'faction' && e.id)
                         .map((e) => (
                           <SelectItem key={e.id} value={e.id}>
                             {e.name}
@@ -1170,7 +1174,7 @@ export default function PlayerForgePage(): JSX.Element {
                     <SelectContent>
                       <SelectItem value="__none__">None</SelectItem>
                       {entities
-                        .filter((e) => e.entity_type === 'npc')
+                        .filter((e) => e.entity_type === 'npc' && e.id)
                         .map((e) => (
                           <SelectItem key={e.id} value={e.id}>
                             {e.name}

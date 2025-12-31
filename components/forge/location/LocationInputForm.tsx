@@ -497,11 +497,13 @@ export function LocationInputForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Standalone (no parent)</SelectItem>
-                  {availableParents.map(loc => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.name} ({loc.sub_type})
-                    </SelectItem>
-                  ))}
+                  {availableParents
+                    .filter((loc) => loc.id)
+                    .map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.name} ({loc.sub_type})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-slate-500">
