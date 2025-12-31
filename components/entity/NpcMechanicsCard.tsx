@@ -77,24 +77,29 @@ export function NpcMechanicsCard({ mechanics, name }: NpcMechanicsCardProps): JS
       </div>
       <div className="p-4 space-y-4">
 
-      {/* Core Stats */}
-      <div className="grid grid-cols-3 gap-3 text-sm">
-        <div className="flex items-center gap-1">
-          <Shield className="w-4 h-4 text-blue-400" />
-          <span className="text-slate-400">AC</span>
-          <span className="text-slate-200 font-medium">{mechanics.ac || '—'}</span>
-          {mechanics.ac_type && <span className="text-slate-500 text-xs">({mechanics.ac_type})</span>}
+      {/* Quick Reference Stats - DMs reference these constantly */}
+      <div className="flex items-center gap-6 p-3 bg-slate-800/50 rounded-lg">
+        <div className="text-center">
+          <Shield className="w-5 h-5 text-blue-400 mx-auto mb-1" />
+          <span className="text-xl font-bold text-slate-100">{mechanics.ac || '—'}</span>
+          <p className="text-[10px] text-slate-500 uppercase">AC</p>
         </div>
-        <div className="flex items-center gap-1">
-          <Heart className="w-4 h-4 text-red-400" />
-          <span className="text-slate-400">HP</span>
-          <span className="text-slate-200 font-medium">{mechanics.hp || '—'}</span>
-          {mechanics.hit_dice && <span className="text-slate-500 text-xs">({mechanics.hit_dice})</span>}
+        <div className="text-center">
+          <Heart className="w-5 h-5 text-red-400 mx-auto mb-1" />
+          <span className="text-xl font-bold text-slate-100">{mechanics.hp || '—'}</span>
+          <p className="text-[10px] text-slate-500 uppercase">HP</p>
         </div>
-        <div className="flex items-center gap-1">
-          <Activity className="w-4 h-4 text-green-400" />
-          <span className="text-slate-400">Speed</span>
-          <span className="text-slate-200 text-xs">{formatSpeeds(mechanics.speed)}</span>
+        {mechanics.senses?.passive_perception && (
+          <div className="text-center">
+            <Eye className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+            <span className="text-xl font-bold text-slate-100">{mechanics.senses.passive_perception}</span>
+            <p className="text-[10px] text-slate-500 uppercase">Passive</p>
+          </div>
+        )}
+        <div className="text-center">
+          <Activity className="w-5 h-5 text-green-400 mx-auto mb-1" />
+          <span className="text-sm font-medium text-slate-200">{formatSpeeds(mechanics.speed)}</span>
+          <p className="text-[10px] text-slate-500 uppercase">Speed</p>
         </div>
       </div>
 

@@ -118,6 +118,7 @@ export interface NpcBrain extends BaseBrain {
   fear: string;
   leverage: string;
   line: string;
+  secret?: string; // DM-only hidden truth about this NPC
 }
 
 export const DEFAULT_NPC_BRAIN: NpcBrain = {

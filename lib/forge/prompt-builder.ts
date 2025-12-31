@@ -341,6 +341,7 @@ BRAIN GUIDELINES (The NPC's psychology):
 - **Fear**: Must be VISCERAL. Not "fears failure" but "fears his children will discover he murdered their mother"
 - **Leverage**: Must be ACTIONABLE. How can the party pressure this NPC?
 - **Line**: Must be ABSOLUTE. The hard limit that defines their character.
+- **Secret**: DM ONLY. A hidden truth that players don't know - could change everything if revealed.
 
 VOICE GUIDELINES (How they speak):
 - **Style**: 2-3 adjectives that capture how they SOUND (e.g., "Gravelly", "Slow", "Menacing")
@@ -426,7 +427,8 @@ function getOutputFormatInstructions(forgeType: ForgeType): string {
     "desire": "What they want RIGHT NOW - specific and actionable",
     "fear": "What terrifies them - be specific",
     "leverage": "How someone could manipulate or pressure them",
-    "line": "The one thing they will NEVER do, no matter what"
+    "line": "The one thing they will NEVER do, no matter what",
+    "secret": "DM ONLY: A hidden truth about this NPC that players don't know"
   },
 
   "voice": {
