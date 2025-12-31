@@ -285,6 +285,11 @@ export function MemoryPageClient({
                 {typeCounts.npc} NPCs
               </span>
             )}
+            {typeCounts.player && (
+              <span className="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                {typeCounts.player} Players
+              </span>
+            )}
             {typeCounts.location && (
               <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                 {typeCounts.location} Locations

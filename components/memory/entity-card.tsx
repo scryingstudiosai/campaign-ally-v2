@@ -94,6 +94,12 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     glowClass: '',
     hoverClass: 'hover:border-teal-500/50 hover:shadow-[0_0_20px_rgba(45,212,191,0.15)]',
   },
+  // Player characters
+  player_default: {
+    borderClass: 'border-yellow-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(234,179,8,0.15)]',
+    hoverClass: 'hover:border-yellow-500/60 hover:shadow-[0_0_20px_rgba(234,179,8,0.25)]',
+  },
   // Default fallbacks for other entity types
   location_default: {
     borderClass: 'border-emerald-500/30',
@@ -393,7 +399,7 @@ export function EntityCard({
       <div className="relative group">
         {selectionMode ? (
           <MaterialCard
-            entityType={entity.entity_type as 'npc' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
+            entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
             hoverable
             className={cn(
               'h-full p-4 cursor-pointer relative',
@@ -472,7 +478,7 @@ export function EntityCard({
         ) : (
           <Link href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}>
             <MaterialCard
-              entityType={entity.entity_type as 'npc' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
+              entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
               hoverable
               className={cn(
                 'h-full p-4 relative',

@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 
 interface MaterialCardProps extends React.HTMLAttributes<HTMLDivElement> {
   hoverable?: boolean;
-  entityType?: 'npc' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter';
+  entityType?: 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter';
   active?: boolean;
 }
 
@@ -39,6 +39,7 @@ const MaterialCard = forwardRef<HTMLDivElement, MaterialCardProps>(
           ],
           // Entity type hover colors
           entityType === 'npc' && hoverable && "hover:border-t-purple-400/25 hover:shadow-glow-purple",
+          entityType === 'player' && hoverable && "hover:border-t-yellow-400/25 hover:shadow-[0_0_20px_rgba(234,179,8,0.15)]",
           entityType === 'location' && hoverable && "hover:border-t-emerald-400/25 hover:shadow-[0_0_20px_rgba(52,211,153,0.15)]",
           entityType === 'quest' && hoverable && "hover:border-t-amber-400/25 hover:shadow-glow-gold",
           entityType === 'item' && hoverable && "hover:border-t-blue-400/25 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]",
