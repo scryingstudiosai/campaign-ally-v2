@@ -103,15 +103,30 @@ export default function PlayerForgePage(): JSX.Element {
   const [backstory, setBackstory] = useState('');
 
   // Step 2: Stats
+  type ScoreMethod = 'standard' | 'roll' | 'manual';
+  const [scoreMethod, setScoreMethod] = useState<ScoreMethod>('standard');
   const [abilityScores, setAbilityScores] = useState<AbilityScores>({
-    str: 10,
-    dex: 10,
-    con: 10,
-    int: 10,
-    wis: 10,
-    cha: 10,
+    str: 0,
+    dex: 0,
+    con: 0,
+    int: 0,
+    wis: 0,
+    cha: 0,
   });
+  // Standard array - track which scores are still available
   const [availableScores, setAvailableScores] = useState<number[]>([...standardArray]);
+
+  // Roll method - track dice rolls for transparency
+  interface DiceRoll {
+    rolls: number[];
+    dropped: number;
+    total: number;
+  }
+  const [diceRolls, setDiceRolls] = useState<Record<keyof AbilityScores, DiceRoll | null>>({
+    str: null, dex: null, con: null, int: null, wis: null, cha: null,
+  });
+  const [rolledValues, setRolledValues] = useState<number[]>([]);
+  const [availableRolledScores, setAvailableRolledScores] = useState<number[]>([]);
 
   // Step 3: Loadout
   const [selectedPack, setSelectedPack] = useState('');
@@ -189,8 +204,11 @@ export default function PlayerForgePage(): JSX.Element {
     switch (currentStep) {
       case 'identity':
         return name.trim() !== '' && race !== '' && playerClass !== '';
-      case 'stats':
-        return availableScores.length === 0; // All scores assigned
+      case 'stats': {
+        // All 6 abilities must have a value > 0
+        const allAssigned = Object.values(abilityScores).every((score) => score > 0);
+        return allAssigned;
+      }
       case 'loadout':
         return selectedPack !== '';
       case 'anchors':
@@ -214,11 +232,44 @@ export default function PlayerForgePage(): JSX.Element {
     }
   };
 
-  // Ability score assignment
-  const assignScore = (ability: keyof AbilityScores, score: number): void => {
-    // Add current score back to available if it's from standard array
+  // Roll 4d6 drop lowest logic
+  const roll4d6DropLowest = (): DiceRoll => {
+    const rolls = Array.from({ length: 4 }, () => Math.floor(Math.random() * 6) + 1);
+    const sorted = [...rolls].sort((a, b) => a - b);
+    const dropped = sorted[0];
+    const kept = sorted.slice(1);
+    const total = kept.reduce((sum, die) => sum + die, 0);
+    return { rolls, dropped, total };
+  };
+
+  // Roll all abilities at once
+  const rollAllAbilities = (): void => {
+    const newRolls: number[] = [];
+    const newDiceRolls: Record<keyof AbilityScores, DiceRoll | null> = {
+      str: null, dex: null, con: null, int: null, wis: null, cha: null,
+    };
+
+    // Generate 6 rolls
+    for (let i = 0; i < 6; i++) {
+      const roll = roll4d6DropLowest();
+      newRolls.push(roll.total);
+    }
+
+    // Sort descending for display
+    const sortedRolls = [...newRolls].sort((a, b) => b - a);
+    setRolledValues(sortedRolls);
+    setAvailableRolledScores(sortedRolls);
+    setDiceRolls(newDiceRolls);
+    // Reset ability scores when rolling new values
+    setAbilityScores({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
+  };
+
+  // Assign a score from standard array
+  const assignStandardScore = (ability: keyof AbilityScores, score: number): void => {
     const currentScore = abilityScores[ability];
-    if (standardArray.includes(currentScore)) {
+
+    // Return current score to available pool if it was assigned
+    if (currentScore > 0 && standardArray.includes(currentScore)) {
       setAvailableScores((prev) => [...prev, currentScore].sort((a, b) => b - a));
     }
 
@@ -229,13 +280,54 @@ export default function PlayerForgePage(): JSX.Element {
       return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
     });
 
-    // Set the score
     setAbilityScores((prev) => ({ ...prev, [ability]: score }));
   };
 
+  // Assign a rolled score
+  const assignRolledScore = (ability: keyof AbilityScores, score: number): void => {
+    const currentScore = abilityScores[ability];
+
+    // Return current score to available pool if it was assigned
+    if (currentScore > 0) {
+      setAvailableRolledScores((prev) => [...prev, currentScore].sort((a, b) => b - a));
+    }
+
+    // Remove new score from available
+    setAvailableRolledScores((prev) => {
+      const idx = prev.indexOf(score);
+      if (idx === -1) return prev;
+      return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+    });
+
+    setAbilityScores((prev) => ({ ...prev, [ability]: score }));
+  };
+
+  // Set manual score
+  const setManualScore = (ability: keyof AbilityScores, value: number): void => {
+    const clampedValue = Math.min(20, Math.max(1, value));
+    setAbilityScores((prev) => ({ ...prev, [ability]: clampedValue }));
+  };
+
+  // Reset scores based on current method
   const resetScores = (): void => {
-    setAbilityScores({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 });
+    setAbilityScores({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
+    if (scoreMethod === 'standard') {
+      setAvailableScores([...standardArray]);
+    } else if (scoreMethod === 'roll') {
+      setRolledValues([]);
+      setAvailableRolledScores([]);
+      setDiceRolls({ str: null, dex: null, con: null, int: null, wis: null, cha: null });
+    }
+  };
+
+  // Change score method
+  const changeScoreMethod = (method: ScoreMethod): void => {
+    setScoreMethod(method);
+    setAbilityScores({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
     setAvailableScores([...standardArray]);
+    setRolledValues([]);
+    setAvailableRolledScores([]);
+    setDiceRolls({ str: null, dex: null, con: null, int: null, wis: null, cha: null });
   };
 
   // Save player
@@ -563,7 +655,7 @@ export default function PlayerForgePage(): JSX.Element {
         {/* Step 2: Stats */}
         {currentStep === 'stats' && (
           <div className="space-y-6">
-            <div className="ca-panel p-6 space-y-4">
+            <div className="ca-panel p-6 space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-white">Ability Scores</h2>
                 <Button variant="outline" size="sm" onClick={resetScores}>
@@ -572,86 +664,334 @@ export default function PlayerForgePage(): JSX.Element {
                 </Button>
               </div>
 
-              <p className="text-sm text-slate-400">
-                Assign scores from the standard array to your abilities. Click a score
-                below, then click an ability to assign it.
-              </p>
-
-              {/* Available Scores */}
-              <div className="flex gap-2 flex-wrap">
-                {availableScores.map((score, idx) => (
-                  <div
-                    key={`${score}-${idx}`}
-                    className="px-4 py-2 bg-teal-500/20 border border-teal-500/50 rounded-lg text-teal-400 font-bold"
+              {/* Method Selection */}
+              <div className="space-y-2">
+                <Label className="text-slate-400">Choose a method:</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={scoreMethod === 'standard' ? 'default' : 'outline'}
+                    onClick={() => changeScoreMethod('standard')}
+                    className={cn(
+                      scoreMethod === 'standard' && 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                    )}
                   >
-                    {score}
-                  </div>
-                ))}
-                {availableScores.length === 0 && (
-                  <p className="text-sm text-green-400">All scores assigned!</p>
-                )}
+                    Standard Array
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={scoreMethod === 'roll' ? 'default' : 'outline'}
+                    onClick={() => changeScoreMethod('roll')}
+                    className={cn(
+                      scoreMethod === 'roll' && 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                    )}
+                  >
+                    <Dices className="w-4 h-4 mr-2" />
+                    Roll 4d6 Drop 1
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={scoreMethod === 'manual' ? 'default' : 'outline'}
+                    onClick={() => changeScoreMethod('manual')}
+                    className={cn(
+                      scoreMethod === 'manual' && 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                    )}
+                  >
+                    Manual Entry
+                  </Button>
+                </div>
               </div>
 
-              {/* Ability Grid */}
-              <div className="grid grid-cols-3 gap-4">
-                {(Object.keys(ABILITY_LABELS) as Array<keyof AbilityScores>).map(
-                  (ability) => {
-                    const score = abilityScores[ability];
-                    const mod = calculateModifier(score);
-                    const isSavingThrow = savingThrows.includes(ability);
+              {/* Standard Array Method */}
+              {scoreMethod === 'standard' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-400">
+                    Assign values from the standard array (15, 14, 13, 12, 10, 8) to your abilities.
+                  </p>
 
-                    return (
-                      <div
-                        key={ability}
-                        className={cn(
-                          'p-4 rounded-lg border text-center space-y-2',
-                          isSavingThrow
-                            ? 'bg-amber-500/10 border-amber-500/30'
-                            : 'bg-slate-800/50 border-slate-700'
-                        )}
-                      >
-                        <div className="text-xs text-slate-400 uppercase">
-                          {ABILITY_LABELS[ability]}
-                          {isSavingThrow && (
-                            <span className="ml-1 text-amber-400">★</span>
-                          )}
-                        </div>
-                        <div className="text-3xl font-bold text-white">{score}</div>
+                  {/* Available Scores */}
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="text-sm text-slate-500 mr-2">Available:</span>
+                    {availableScores.length > 0 ? (
+                      availableScores.map((score, idx) => (
                         <div
-                          className={cn(
-                            'text-sm',
-                            mod >= 0 ? 'text-green-400' : 'text-red-400'
-                          )}
+                          key={`${score}-${idx}`}
+                          className="px-3 py-1.5 bg-yellow-500/20 border border-yellow-500/50 rounded-lg text-yellow-400 font-bold text-sm"
                         >
-                          {formatModifier(mod)}
+                          {score}
                         </div>
-                        <Select
-                          value={score.toString()}
-                          onValueChange={(v) => assignScore(ability, parseInt(v))}
-                        >
-                          <SelectTrigger className="bg-slate-900/50 border-slate-600">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[...availableScores, score]
-                              .sort((a, b) => b - a)
-                              .map((s, idx) => (
-                                <SelectItem key={`${s}-${idx}`} value={s.toString()}>
-                                  {s} ({formatModifier(calculateModifier(s))})
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    );
-                  }
-                )}
-              </div>
+                      ))
+                    ) : (
+                      <span className="text-sm text-green-400">All scores assigned!</span>
+                    )}
+                  </div>
 
+                  {/* Ability Grid */}
+                  <div className="grid grid-cols-3 gap-4">
+                    {(Object.keys(ABILITY_LABELS) as Array<keyof AbilityScores>).map(
+                      (ability) => {
+                        const score = abilityScores[ability];
+                        const mod = score > 0 ? calculateModifier(score) : 0;
+                        const isSavingThrow = savingThrows.includes(ability);
+                        const selectOptions = score > 0
+                          ? [...availableScores, score].sort((a, b) => b - a)
+                          : availableScores;
+
+                        return (
+                          <div
+                            key={ability}
+                            className={cn(
+                              'p-4 rounded-lg border text-center space-y-2',
+                              isSavingThrow
+                                ? 'bg-amber-500/10 border-amber-500/30'
+                                : 'bg-slate-800/50 border-slate-700'
+                            )}
+                          >
+                            <div className="text-xs text-slate-400 uppercase">
+                              {ABILITY_LABELS[ability]}
+                              {isSavingThrow && (
+                                <span className="ml-1 text-amber-400">★</span>
+                              )}
+                            </div>
+                            <div className="text-3xl font-bold text-white">
+                              {score > 0 ? score : '—'}
+                            </div>
+                            <div
+                              className={cn(
+                                'text-sm',
+                                score === 0
+                                  ? 'text-slate-500'
+                                  : mod >= 0
+                                  ? 'text-green-400'
+                                  : 'text-red-400'
+                              )}
+                            >
+                              {score > 0 ? formatModifier(mod) : '—'}
+                            </div>
+                            <Select
+                              value={score > 0 ? score.toString() : ''}
+                              onValueChange={(v) => v && assignStandardScore(ability, parseInt(v))}
+                            >
+                              <SelectTrigger className="bg-slate-900/50 border-slate-600">
+                                <SelectValue placeholder="Select..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {selectOptions.map((s, idx) => (
+                                  <SelectItem key={`${s}-${idx}`} value={s.toString()}>
+                                    {s} ({formatModifier(calculateModifier(s))})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Roll Method */}
+              {scoreMethod === 'roll' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-400">
+                    Roll 4d6 and drop the lowest die for each ability score. Click the button to roll all 6 scores.
+                  </p>
+
+                  {/* Roll Button */}
+                  <Button
+                    type="button"
+                    onClick={rollAllAbilities}
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                  >
+                    <Dices className="w-4 h-4 mr-2" />
+                    {rolledValues.length > 0 ? 'Reroll All Abilities' : 'Roll All Abilities'}
+                  </Button>
+
+                  {/* Rolled Values Display */}
+                  {rolledValues.length > 0 && (
+                    <>
+                      <div className="flex gap-2 flex-wrap">
+                        <span className="text-sm text-slate-500 mr-2">Rolled values:</span>
+                        {rolledValues.map((score, idx) => (
+                          <div
+                            key={`rolled-${idx}`}
+                            className={cn(
+                              'px-3 py-1.5 rounded-lg font-bold text-sm',
+                              availableRolledScores.includes(score)
+                                ? 'bg-yellow-500/20 border border-yellow-500/50 text-yellow-400'
+                                : 'bg-slate-700/50 border border-slate-600 text-slate-500 line-through'
+                            )}
+                          >
+                            {score}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Available to assign */}
+                      <div className="flex gap-2 flex-wrap">
+                        <span className="text-sm text-slate-500 mr-2">Available:</span>
+                        {availableRolledScores.length > 0 ? (
+                          availableRolledScores.map((score, idx) => (
+                            <div
+                              key={`avail-${idx}`}
+                              className="px-3 py-1.5 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 font-bold text-sm"
+                            >
+                              {score}
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-sm text-green-400">All scores assigned!</span>
+                        )}
+                      </div>
+
+                      {/* Ability Grid for Roll */}
+                      <div className="grid grid-cols-3 gap-4">
+                        {(Object.keys(ABILITY_LABELS) as Array<keyof AbilityScores>).map(
+                          (ability) => {
+                            const score = abilityScores[ability];
+                            const mod = score > 0 ? calculateModifier(score) : 0;
+                            const isSavingThrow = savingThrows.includes(ability);
+                            const selectOptions = score > 0
+                              ? [...availableRolledScores, score].sort((a, b) => b - a)
+                              : availableRolledScores;
+
+                            return (
+                              <div
+                                key={ability}
+                                className={cn(
+                                  'p-4 rounded-lg border text-center space-y-2',
+                                  isSavingThrow
+                                    ? 'bg-amber-500/10 border-amber-500/30'
+                                    : 'bg-slate-800/50 border-slate-700'
+                                )}
+                              >
+                                <div className="text-xs text-slate-400 uppercase">
+                                  {ABILITY_LABELS[ability]}
+                                  {isSavingThrow && (
+                                    <span className="ml-1 text-amber-400">★</span>
+                                  )}
+                                </div>
+                                <div className="text-3xl font-bold text-white">
+                                  {score > 0 ? score : '—'}
+                                </div>
+                                <div
+                                  className={cn(
+                                    'text-sm',
+                                    score === 0
+                                      ? 'text-slate-500'
+                                      : mod >= 0
+                                      ? 'text-green-400'
+                                      : 'text-red-400'
+                                  )}
+                                >
+                                  {score > 0 ? formatModifier(mod) : '—'}
+                                </div>
+                                <Select
+                                  value={score > 0 ? score.toString() : ''}
+                                  onValueChange={(v) => v && assignRolledScore(ability, parseInt(v))}
+                                  disabled={selectOptions.length === 0}
+                                >
+                                  <SelectTrigger className="bg-slate-900/50 border-slate-600">
+                                    <SelectValue placeholder="Select..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {selectOptions.map((s, idx) => (
+                                      <SelectItem key={`${s}-${idx}`} value={s.toString()}>
+                                        {s} ({formatModifier(calculateModifier(s))})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {rolledValues.length === 0 && (
+                    <div className="text-center py-8 text-slate-500">
+                      Click &quot;Roll All Abilities&quot; to generate your scores
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Manual Entry Method */}
+              {scoreMethod === 'manual' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-400">
+                    Enter ability scores manually. Valid range: 1-20. Use this for point buy,
+                    scores rolled at the table, or any custom method.
+                  </p>
+
+                  {/* Ability Grid for Manual */}
+                  <div className="grid grid-cols-3 gap-4">
+                    {(Object.keys(ABILITY_LABELS) as Array<keyof AbilityScores>).map(
+                      (ability) => {
+                        const score = abilityScores[ability];
+                        const mod = score > 0 ? calculateModifier(score) : 0;
+                        const isSavingThrow = savingThrows.includes(ability);
+
+                        return (
+                          <div
+                            key={ability}
+                            className={cn(
+                              'p-4 rounded-lg border text-center space-y-2',
+                              isSavingThrow
+                                ? 'bg-amber-500/10 border-amber-500/30'
+                                : 'bg-slate-800/50 border-slate-700'
+                            )}
+                          >
+                            <div className="text-xs text-slate-400 uppercase">
+                              {ABILITY_LABELS[ability]}
+                              {isSavingThrow && (
+                                <span className="ml-1 text-amber-400">★</span>
+                              )}
+                            </div>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={20}
+                              value={score || ''}
+                              onChange={(e) => setManualScore(ability, parseInt(e.target.value) || 0)}
+                              className="bg-slate-900/50 border-slate-600 text-center text-2xl font-bold h-12"
+                              placeholder="—"
+                            />
+                            <div
+                              className={cn(
+                                'text-sm',
+                                score === 0
+                                  ? 'text-slate-500'
+                                  : mod >= 0
+                                  ? 'text-green-400'
+                                  : 'text-red-400'
+                              )}
+                            >
+                              {score > 0 ? formatModifier(mod) : '—'}
+                            </div>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Saving throw note */}
               {playerClass && (
                 <p className="text-xs text-slate-500">
                   ★ = Saving throw proficiency for{' '}
                   {classes.find((c) => c.value === playerClass)?.label}
+                </p>
+              )}
+
+              {/* Validation message */}
+              {!canProceed() && (
+                <p className="text-sm text-amber-400">
+                  Assign all 6 ability scores to continue.
                 </p>
               )}
             </div>

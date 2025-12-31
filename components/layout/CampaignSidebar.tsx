@@ -65,7 +65,7 @@ function SidebarContent({
     { label: 'Faction', href: `${baseUrl}/forge/faction`, icon: Users },
     { label: 'Encounter', href: `${baseUrl}/forge/encounter`, icon: Swords },
     { label: 'Quest', href: `${baseUrl}/forge/quest`, icon: Scroll },
-    { label: 'Hero', href: `${baseUrl}/forge/player`, icon: Crown, special: true },
+    { label: 'Player', href: `${baseUrl}/forge/player`, icon: Crown, special: true },
   ]
 
   const handleClick = () => {

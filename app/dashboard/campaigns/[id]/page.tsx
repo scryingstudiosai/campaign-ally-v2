@@ -167,7 +167,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                 <ForgeButton
                   href={`/dashboard/campaigns/${params.id}/forge/player`}
                   forgeType="player"
-                  label="Hero"
+                  label="Player"
                 />
               </div>
             </MaterialCard>
