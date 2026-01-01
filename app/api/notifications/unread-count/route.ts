@@ -61,6 +61,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ count: count || 0 });
     }
   } catch (error: unknown) {
+    // If the dm_notifications table doesn't exist yet, return 0 gracefully
+    const errorMessage = error instanceof Error ? error.message : '';
+    if (errorMessage.includes('relation') && errorMessage.includes('does not exist')) {
+      return NextResponse.json({ count: 0 });
+    }
     console.error('Get unread count error:', error);
     const message = error instanceof Error ? error.message : 'Failed to get unread count';
     return NextResponse.json({ error: message }, { status: 500 });

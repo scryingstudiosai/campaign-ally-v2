@@ -265,6 +265,38 @@ export const classArmor: Record<string, string[]> = {
   wizard: [],
 };
 
+// Spellcasting focus options by class
+export const classSpellcastingFocus: Record<string, { options: string[]; automatic: string[] }> = {
+  barbarian: { options: [], automatic: [] },
+  bard: { options: ['Lute', 'Lyre', 'Flute', 'Drum', 'Horn'], automatic: [] },
+  cleric: { options: ['Holy Symbol (Amulet)', 'Holy Symbol (Emblem)', 'Holy Symbol (Reliquary)'], automatic: [] },
+  druid: { options: ['Druidic Focus (Sprig of Mistletoe)', 'Druidic Focus (Totem)', 'Druidic Focus (Wooden Staff)', 'Druidic Focus (Yew Wand)'], automatic: [] },
+  fighter: { options: [], automatic: [] },
+  monk: { options: [], automatic: [] },
+  paladin: { options: ['Holy Symbol (Amulet)', 'Holy Symbol (Emblem)', 'Holy Symbol (Reliquary)'], automatic: [] },
+  ranger: { options: [], automatic: [] },
+  rogue: { options: [], automatic: [] },
+  sorcerer: { options: ['Arcane Focus (Crystal)', 'Arcane Focus (Orb)', 'Arcane Focus (Rod)', 'Arcane Focus (Staff)', 'Arcane Focus (Wand)', 'Component Pouch'], automatic: [] },
+  warlock: { options: ['Arcane Focus (Crystal)', 'Arcane Focus (Orb)', 'Arcane Focus (Rod)', 'Arcane Focus (Staff)', 'Arcane Focus (Wand)', 'Component Pouch'], automatic: [] },
+  wizard: { options: ['Arcane Focus (Crystal)', 'Arcane Focus (Orb)', 'Arcane Focus (Rod)', 'Arcane Focus (Staff)', 'Arcane Focus (Wand)', 'Component Pouch'], automatic: ['Spellbook'] },
+};
+
+// Class-specific recommended packs
+export const classRecommendedPacks: Record<string, string[]> = {
+  barbarian: ['explorers'],
+  bard: ['diplomats', 'entertainers'],
+  cleric: ['priests', 'explorers'],
+  druid: ['explorers'],
+  fighter: ['dungeoneers', 'explorers'],
+  monk: ['dungeoneers', 'explorers'],
+  paladin: ['priests', 'explorers'],
+  ranger: ['dungeoneers', 'explorers'],
+  rogue: ['burglars', 'dungeoneers'],
+  sorcerer: ['dungeoneers', 'explorers'],
+  warlock: ['dungeoneers', 'scholars'],
+  wizard: ['scholars', 'explorers'],
+};
+
 // Languages
 export const languages = [
   'Common',

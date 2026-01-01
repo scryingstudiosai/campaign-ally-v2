@@ -43,6 +43,8 @@ import {
   equipmentPacks,
   classWeapons,
   classArmor,
+  classSpellcastingFocus,
+  classRecommendedPacks,
   languages,
 } from '@/lib/data/srd-packs';
 
@@ -140,6 +142,7 @@ export default function PlayerForgePage(): JSX.Element {
 
   // Step 3: Loadout
   const [selectedPack, setSelectedPack] = useState('');
+  const [spellcastingFocus, setSpellcastingFocus] = useState('');
   const [additionalItems, setAdditionalItems] = useState<string[]>([]);
   const [startingGold, setStartingGold] = useState(10);
 
@@ -244,6 +247,43 @@ export default function PlayerForgePage(): JSX.Element {
       const classLabel = classes.find((c) => c.value === playerClass)?.label;
       if (classLabel) parts.push(classLabel);
     }
+
+    // Add equipment from loadout
+    const weapons = classWeapons[playerClass] || [];
+    const armor = classArmor[playerClass] || [];
+    const focusData = classSpellcastingFocus[playerClass];
+
+    // Primary weapon (first in list, usually the main one)
+    if (weapons.length > 0) {
+      const primaryWeapon = weapons[0];
+      // Special handling for staff with wizard
+      if (playerClass === 'wizard' && primaryWeapon.toLowerCase().includes('staff')) {
+        parts.push('wielding a glowing arcane quarterstaff');
+      } else {
+        parts.push(`wielding ${primaryWeapon.toLowerCase()}`);
+      }
+    }
+
+    // Armor
+    if (armor.length > 0) {
+      parts.push(`wearing ${armor[0].toLowerCase()}`);
+    }
+
+    // Spellcasting focus or class-specific items
+    if (spellcastingFocus) {
+      if (spellcastingFocus.toLowerCase().includes('spellbook')) {
+        parts.push('holding a spellbook with arcane symbols');
+      } else if (spellcastingFocus.toLowerCase().includes('holy symbol')) {
+        parts.push('with glowing holy symbol');
+      } else if (spellcastingFocus.toLowerCase().includes('druidic')) {
+        parts.push('with wooden druidic focus');
+      } else if (spellcastingFocus.toLowerCase().includes('arcane focus')) {
+        parts.push('with magical arcane focus');
+      }
+    } else if (focusData?.automatic.includes('Spellbook')) {
+      parts.push('carrying a leather-bound spellbook');
+    }
+
     if (backstory) {
       // Take first sentence of backstory as context
       const firstSentence = backstory.split(/[.!?]/)[0].trim();
@@ -395,10 +435,14 @@ export default function PlayerForgePage(): JSX.Element {
       const packItems = selectedPack ? equipmentPacks[selectedPack]?.items || [] : [];
       const classWeaponItems = classWeapons[playerClass] || [];
       const classArmorItems = classArmor[playerClass] || [];
+      const automaticItems = classSpellcastingFocus[playerClass]?.automatic || [];
+      const focusItems = spellcastingFocus ? [spellcastingFocus] : [];
       const allItems = [
         ...packItems,
         ...classWeaponItems,
         ...classArmorItems,
+        ...automaticItems,
+        ...focusItems,
         ...additionalItems,
       ];
 
@@ -1131,17 +1175,57 @@ export default function PlayerForgePage(): JSX.Element {
                 <div className="space-y-2">
                   <Label>Class Starting Gear</Label>
                   <div className="flex flex-wrap gap-2">
-                    {[...(classWeapons[playerClass] || []), ...(classArmor[playerClass] || [])].map(
-                      (item, idx) => (
-                        <span
-                          key={`${item}-${idx}`}
-                          className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-slate-300"
-                        >
-                          {item}
-                        </span>
-                      )
-                    )}
+                    {[
+                      ...(classWeapons[playerClass] || []),
+                      ...(classArmor[playerClass] || []),
+                      ...(classSpellcastingFocus[playerClass]?.automatic || []),
+                    ].map((item, idx) => (
+                      <span
+                        key={`${item}-${idx}`}
+                        className={cn(
+                          'px-2 py-1 border rounded text-sm',
+                          classSpellcastingFocus[playerClass]?.automatic.includes(item)
+                            ? 'bg-purple-900/30 border-purple-700 text-purple-300'
+                            : 'bg-slate-800 border-slate-700 text-slate-300'
+                        )}
+                      >
+                        {item}
+                        {classSpellcastingFocus[playerClass]?.automatic.includes(item) && (
+                          <span className="ml-1 text-xs text-purple-400">(auto)</span>
+                        )}
+                      </span>
+                    ))}
                   </div>
+                </div>
+              )}
+
+              {/* Spellcasting Focus Choice */}
+              {playerClass && classSpellcastingFocus[playerClass]?.options.length > 0 && (
+                <div className="space-y-2">
+                  <Label>
+                    {playerClass === 'bard' ? 'Musical Instrument' : 'Spellcasting Focus'}
+                  </Label>
+                  <Select value={spellcastingFocus} onValueChange={setSpellcastingFocus}>
+                    <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                      <SelectValue placeholder="Choose your focus..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classSpellcastingFocus[playerClass].options.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">
+                    {playerClass === 'wizard' && 'Wizards can use their arcane focus or component pouch for spellcasting.'}
+                    {playerClass === 'sorcerer' && 'Sorcerers can use their arcane focus or component pouch for spellcasting.'}
+                    {playerClass === 'warlock' && 'Warlocks can use their arcane focus or component pouch for spellcasting.'}
+                    {playerClass === 'cleric' && 'Clerics use a holy symbol to channel divine magic.'}
+                    {playerClass === 'paladin' && 'Paladins use a holy symbol to channel divine magic.'}
+                    {playerClass === 'druid' && 'Druids use a druidic focus to channel nature magic.'}
+                    {playerClass === 'bard' && 'Bards use a musical instrument as their spellcasting focus.'}
+                  </p>
                 </div>
               )}
 
