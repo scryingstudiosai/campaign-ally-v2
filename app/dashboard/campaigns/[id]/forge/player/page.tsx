@@ -469,6 +469,17 @@ export default function PlayerForgePage(): JSX.Element {
         ...additionalItems,
       ];
 
+      // Build loadout data for soul
+      const loadoutData = {
+        weapons: classWeaponItems,
+        armor: classArmorItems.length > 0 ? classArmorItems[0] : null,
+        pack: selectedPack || null,
+        packContents: packItems,
+        focus: spellcastingFocus || null,
+        automaticItems: automaticItems,
+        gold: startingGold,
+      };
+
       // Create the player entity
       const { data: entity, error: entityError } = await supabase
         .from('entities')
@@ -493,6 +504,7 @@ export default function PlayerForgePage(): JSX.Element {
             proficiency_bonus: proficiencyBonus,
             saving_throws: savingThrows,
             languages: ['Common'],
+            loadout: loadoutData,
           },
           attributes: dmSecrets ? { dm_secrets: dmSecrets } : undefined,
           forge_status: 'complete',

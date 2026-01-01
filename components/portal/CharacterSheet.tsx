@@ -64,17 +64,24 @@ export function CharacterSheet({ campaignId, character }: Props) {
 
   const mechanics = (char.mechanics || {}) as Record<string, unknown>;
   const soul = (char.soul || {}) as Record<string, unknown>;
-  const stats = (mechanics.ability_scores || mechanics.stats || {}) as Record<string, number>;
 
-  // Handle HP - can be a number or an object {max, current}
-  const hpValue = mechanics.hp;
-  const isHpObject = hpValue && typeof hpValue === 'object' && 'max' in (hpValue as object);
-  const maxHp = (mechanics.max_hp || (isHpObject ? (hpValue as { max: number }).max : hpValue) || 0) as number;
-  const currentHp = (mechanics.current_hp ?? (isHpObject ? (hpValue as { current: number }).current : maxHp)) as number;
-  const tempHp = (mechanics.temp_hp || 0) as number;
-  const ac = (mechanics.ac || mechanics.armor_class || 10) as number;
-  const level = (mechanics.level || 1) as number;
-  const proficiencyBonus = Math.floor((level - 1) / 4) + 2;
+  // Read ability scores from soul first (where Player Forge saves them), fall back to mechanics
+  const abilityScores = (soul.ability_scores || mechanics.ability_scores || mechanics.stats || {}) as Record<string, number>;
+  const stats = abilityScores;
+
+  // Read stats from soul first (Player Forge saves here), fall back to mechanics
+  const maxHp = (soul.max_hp || mechanics.max_hp || 0) as number;
+  const currentHp = (soul.current_hp ?? mechanics.current_hp ?? maxHp) as number;
+  const tempHp = (soul.temp_hp || mechanics.temp_hp || 0) as number;
+  const ac = (soul.armor_class || mechanics.ac || mechanics.armor_class || 10) as number;
+  const level = (soul.level || mechanics.level || 1) as number;
+  const speed = (soul.speed || mechanics.speed || 30) as number;
+  const proficiencyBonus = (soul.proficiency_bonus || Math.floor((level - 1) / 4) + 2) as number;
+  const savingThrows = (soul.saving_throws || mechanics.saving_throws || []) as string[];
+  const languages = (soul.languages || mechanics.languages || ['Common']) as string[];
+
+  // Loadout data from soul
+  const loadout = (soul.loadout || {}) as Record<string, unknown>;
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => {
