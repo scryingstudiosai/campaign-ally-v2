@@ -50,7 +50,7 @@ export default function Navbar() {
             {/* Logo */}
             <Link href="/" className="flex items-center">
               <Image
-                src="/images/logo-horizontal.svg"
+                src="/images/logo-horizontal.png"
                 alt="Campaign Ally"
                 width={180}
                 height={40}
