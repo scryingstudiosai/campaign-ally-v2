@@ -549,11 +549,11 @@ export default function PlayerForgePage(): JSX.Element {
         }
       }
 
-      // Create anchor relationships
+      // Create anchor relationships (World Anchors)
       const anchors = [
-        { id: anchorLocation, type: 'lives_in' },
-        { id: anchorFaction, type: 'member_of' },
-        { id: anchorNpc, type: 'knows' },
+        { id: anchorLocation, type: 'lives_in', label: 'Home location' },
+        { id: anchorFaction, type: 'member_of', label: 'Faction affiliation' },
+        { id: anchorNpc, type: 'knows', label: 'Known NPC' },
       ].filter((a) => a.id);
 
       if (anchors.length > 0) {
@@ -562,11 +562,16 @@ export default function PlayerForgePage(): JSX.Element {
           source_id: entity.id,
           target_id: anchor.id,
           relationship_type: anchor.type,
-          surface_description: 'Created during character creation',
+          surface_description: `${anchor.label} selected during character creation`,
+          visibility: 'public', // Players can see their own world anchors
           is_active: true,
         }));
 
-        await supabase.from('relationships').insert(relationships);
+        const { error: relError } = await supabase.from('relationships').insert(relationships);
+        if (relError) {
+          console.error('Failed to save world anchors:', relError);
+          // Don't fail the whole creation, just log the error
+        }
       }
 
       // In player mode, link character to player's membership

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   User, Heart, Shield, Swords, Sparkles,
   Edit2, ChevronDown, ChevronUp,
-  Scroll, Star, Target, Backpack
+  Scroll, Star, Target, Backpack, MapPin, Users, UserCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,17 +26,30 @@ interface Campaign {
   image_url: string | null;
 }
 
+interface WorldAnchor {
+  id: string;
+  relationship_type: string;
+  surface_description: string | null;
+  target: {
+    id: string;
+    name: string;
+    entity_type: string;
+    image_url: string | null;
+  } | null;
+}
+
 interface Props {
   campaignId: string;
   userId: string;
   campaign: Campaign | null;
   character: Character | null;
   membershipId: string;
+  worldAnchors?: WorldAnchor[];
 }
 
 type EditingSection = 'none' | 'backstory' | 'hp' | 'notes';
 
-export function CharacterSheet({ campaignId, character }: Props) {
+export function CharacterSheet({ campaignId, character, worldAnchors = [] }: Props) {
   const [char, setChar] = useState<Character | null>(character);
   const [editingSection, setEditingSection] = useState<EditingSection>('none');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['stats', 'combat']));
@@ -440,6 +453,92 @@ export function CharacterSheet({ campaignId, character }: Props) {
                   </span>
                 </div>
               )}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* World Connections (Anchors) */}
+        {worldAnchors.length > 0 && (
+          <CollapsibleSection
+            title="World Connections"
+            icon={<MapPin className="w-4 h-4" />}
+            isExpanded={expandedSections.has('worldConnections')}
+            onToggle={() => toggleSection('worldConnections')}
+          >
+            <div className="space-y-2">
+              {worldAnchors.map((anchor) => {
+                if (!anchor.target) return null;
+
+                // Icon and color based on entity type
+                const getAnchorStyle = (entityType: string) => {
+                  switch (entityType) {
+                    case 'location':
+                      return {
+                        icon: <MapPin className="w-4 h-4" />,
+                        bgColor: 'bg-emerald-500/20',
+                        borderColor: 'border-emerald-500/30',
+                        textColor: 'text-emerald-400',
+                      };
+                    case 'faction':
+                      return {
+                        icon: <Users className="w-4 h-4" />,
+                        bgColor: 'bg-purple-500/20',
+                        borderColor: 'border-purple-500/30',
+                        textColor: 'text-purple-400',
+                      };
+                    case 'npc':
+                      return {
+                        icon: <UserCircle className="w-4 h-4" />,
+                        bgColor: 'bg-blue-500/20',
+                        borderColor: 'border-blue-500/30',
+                        textColor: 'text-blue-400',
+                      };
+                    default:
+                      return {
+                        icon: <Target className="w-4 h-4" />,
+                        bgColor: 'bg-slate-500/20',
+                        borderColor: 'border-slate-500/30',
+                        textColor: 'text-slate-400',
+                      };
+                  }
+                };
+
+                const style = getAnchorStyle(anchor.target.entity_type);
+                const relationshipLabel = anchor.relationship_type.replace(/_/g, ' ');
+
+                return (
+                  <div
+                    key={anchor.id}
+                    className={cn(
+                      'flex items-center gap-3 p-3 rounded-lg border',
+                      style.bgColor,
+                      style.borderColor
+                    )}
+                  >
+                    {anchor.target.image_url ? (
+                      <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-800">
+                        <img
+                          src={anchor.target.image_url}
+                          alt={anchor.target.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0', style.bgColor, style.textColor)}>
+                        {style.icon}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-white font-medium truncate">
+                        {anchor.target.name}
+                      </div>
+                      <div className={cn('text-xs capitalize', style.textColor)}>
+                        {relationshipLabel}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CollapsibleSection>
         )}
