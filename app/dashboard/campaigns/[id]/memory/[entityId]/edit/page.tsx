@@ -8,6 +8,7 @@ import {
   ItemEditor,
   FactionEditor,
   EncounterEditor,
+  PlayerEditor,
   GenericEditor,
 } from '@/components/entity/edit';
 
@@ -63,6 +64,8 @@ export default async function EntityEditPage({ params }: PageProps): Promise<JSX
   switch (entity.entity_type) {
     case 'npc':
       return <NpcEditor {...commonProps} />;
+    case 'player':
+      return <PlayerEditor {...commonProps} />;
     case 'location':
       return <LocationEditor {...commonProps} />;
     case 'creature':

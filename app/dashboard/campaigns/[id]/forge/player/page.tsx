@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Plus,
   Minus,
+  ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { EntityTypeahead } from '@/components/forge/entity-typeahead';
+import { ImageInput } from '@/components/ui/image-input';
 import { cn } from '@/lib/utils';
 
 // SRD data
@@ -55,7 +57,7 @@ import {
   getClassSavingThrows,
 } from '@/lib/utils/player-stats';
 
-type Step = 'identity' | 'stats' | 'loadout' | 'anchors' | 'review';
+type Step = 'identity' | 'stats' | 'loadout' | 'anchors' | 'portrait' | 'review';
 
 interface AbilityScores {
   str: number;
@@ -141,7 +143,10 @@ export default function PlayerForgePage(): JSX.Element {
   const [anchorFaction, setAnchorFaction] = useState('');
   const [anchorNpc, setAnchorNpc] = useState('');
 
-  // Step 5: Review - derived stats
+  // Step 5: Portrait
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  // Step 6: Review - derived stats
   const maxHP = calculateMaxHP(playerClass, level, abilityScores.con);
   const armorClass = calculateArmorClass(
     abilityScores.dex,
@@ -199,8 +204,29 @@ export default function PlayerForgePage(): JSX.Element {
   }, [campaignId, supabase, router]);
 
   // Navigation
-  const steps: Step[] = ['identity', 'stats', 'loadout', 'anchors', 'review'];
+  const steps: Step[] = ['identity', 'stats', 'loadout', 'anchors', 'portrait', 'review'];
   const currentIndex = steps.indexOf(currentStep);
+
+  // Build portrait generation prompt from character details
+  const buildPortraitPrompt = (): string => {
+    const parts: string[] = [];
+    if (race) {
+      const raceLabel = races.find((r) => r.value === race)?.label;
+      if (raceLabel) parts.push(raceLabel);
+    }
+    if (playerClass) {
+      const classLabel = classes.find((c) => c.value === playerClass)?.label;
+      if (classLabel) parts.push(classLabel);
+    }
+    if (backstory) {
+      // Take first sentence of backstory as context
+      const firstSentence = backstory.split(/[.!?]/)[0].trim();
+      if (firstSentence && firstSentence.length < 100) {
+        parts.push(firstSentence);
+      }
+    }
+    return parts.join(', ') || 'Fantasy adventurer character portrait';
+  };
 
   const canProceed = (): boolean => {
     switch (currentStep) {
@@ -215,6 +241,8 @@ export default function PlayerForgePage(): JSX.Element {
         return selectedPack !== '';
       case 'anchors':
         return true; // Optional
+      case 'portrait':
+        return true; // Optional - can skip portrait
       case 'review':
         return true;
       default:
@@ -358,6 +386,7 @@ export default function PlayerForgePage(): JSX.Element {
           subtype: `${races.find((r) => r.value === race)?.label} ${classes.find((c) => c.value === playerClass)?.label}`,
           summary: `Level ${level} ${races.find((r) => r.value === race)?.label} ${classes.find((c) => c.value === playerClass)?.label}`,
           description: backstory || undefined,
+          image_url: imageUrl || undefined,
           soul: {
             race,
             class: playerClass,
@@ -510,6 +539,7 @@ export default function PlayerForgePage(): JSX.Element {
               stats: <Dices className="w-4 h-4" />,
               loadout: <Sword className="w-4 h-4" />,
               anchors: <Users className="w-4 h-4" />,
+              portrait: <ImageIcon className="w-4 h-4" />,
               review: <CheckCircle className="w-4 h-4" />,
             };
 
@@ -1181,7 +1211,50 @@ export default function PlayerForgePage(): JSX.Element {
           </div>
         )}
 
-        {/* Step 5: Review */}
+        {/* Step 5: Portrait */}
+        {currentStep === 'portrait' && (
+          <div className="space-y-6">
+            <div className="ca-panel p-6 space-y-6">
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-white">Bring Your Character to Life</h2>
+                <p className="text-slate-400 mt-2">
+                  Generate a portrait based on your character&apos;s details, or upload your own.
+                </p>
+              </div>
+
+              {/* Character Summary for Context */}
+              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                <h3 className="font-medium text-white">{name}</h3>
+                <p className="text-sm text-slate-400 mt-1">
+                  {races.find((r) => r.value === race)?.label}{' '}
+                  {classes.find((c) => c.value === playerClass)?.label} • Level {level}
+                </p>
+                {backstory && (
+                  <p className="text-sm text-slate-300 mt-2 italic line-clamp-2">
+                    &quot;{backstory}&quot;
+                  </p>
+                )}
+              </div>
+
+              {/* Image Input */}
+              <ImageInput
+                value={imageUrl}
+                onChange={(url) => setImageUrl(url)}
+                campaignId={campaignId}
+                entityType="player"
+                generationPrompt={buildPortraitPrompt()}
+                label="Character Portrait"
+              />
+
+              {/* Skip Note */}
+              <p className="text-center text-sm text-slate-500">
+                You can always add or change your portrait later from the character page.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 6: Review */}
         {currentStep === 'review' && (
           <div className="space-y-6">
             <div className="ca-panel p-6 space-y-4">

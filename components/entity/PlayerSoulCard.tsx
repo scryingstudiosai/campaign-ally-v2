@@ -180,13 +180,13 @@ export function PlayerSoulCard({ soul }: PlayerSoulCardProps): JSX.Element | nul
                   }`}
                   title={`${ABILITY_FULL_NAMES[ability]}${isSave ? ' (Saving Throw Proficiency)' : ''}`}
                 >
-                  <div className="text-xs text-slate-400">{ABILITY_LABELS[ability]}</div>
-                  <div className="text-lg font-bold text-white">{score}</div>
+                  <div className="text-xs text-slate-400 uppercase tracking-wide">{ABILITY_LABELS[ability]}</div>
                   <div
-                    className={`text-xs ${mod >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                    className={`text-2xl font-bold mt-1 ${mod >= 0 ? 'text-white' : 'text-red-400'}`}
                   >
                     {formatModifier(mod)}
                   </div>
+                  <div className="text-xs text-slate-500 mt-1">{score}</div>
                 </div>
               );
             })}
