@@ -48,17 +48,14 @@ export default function Navbar() {
         <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center">
               <Image
-                src="/images/logo.png"
+                src="/images/logo-horizontal.svg"
                 alt="Campaign Ally"
-                width={32}
-                height={32}
-                className="w-8 h-8"
+                width={180}
+                height={40}
+                className="h-8 w-auto"
               />
-              <span className="font-display text-lg font-semibold text-white">
-                Campaign Ally
-              </span>
             </Link>
 
             {/* Desktop Navigation */}
