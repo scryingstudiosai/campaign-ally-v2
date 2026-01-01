@@ -8,6 +8,7 @@ import { StatBlockEditor } from '@/components/form-widgets/StatBlockEditor';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ImageInput } from '@/components/ui/image-input';
 import {
   Select,
   SelectContent,
@@ -26,6 +27,7 @@ interface NpcEditorProps {
     sub_type?: string;
     summary?: string;
     description?: string;
+    image_url?: string | null;
     soul?: Record<string, unknown>;
     brain?: Record<string, unknown>;
     voice?: Record<string, unknown>;
@@ -90,6 +92,7 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
       sub_type: entity.sub_type || '',
       summary: entity.summary || '',
       description: entity.description || '',
+      image_url: entity.image_url || null,
 
       // Soul - map all possible field name variations
       soul: {
@@ -241,6 +244,7 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
       sub_type: formData.sub_type,
       summary: formData.summary,
       description: formData.description,
+      image_url: formData.image_url,
       soul: formData.soul,
       brain: {
         ...formData.brain,
@@ -368,6 +372,19 @@ export function NpcEditor({ entity, campaignId }: NpcEditorProps): JSX.Element {
               rows={4}
             />
           </div>
+
+          <ImageInput
+            value={formData.image_url}
+            onChange={(url) => {
+              setFormData((prev) => ({ ...prev, image_url: url }));
+              setHasChanges(true);
+            }}
+            campaignId={campaignId}
+            entityId={entity.id}
+            entityType="npc"
+            generationPrompt={formData.soul?.appearance as string}
+            label="Portrait"
+          />
         </div>
       ),
     },

@@ -8,6 +8,7 @@ import { StatBlockEditor } from '@/components/form-widgets/StatBlockEditor';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ImageInput } from '@/components/ui/image-input';
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ interface CreatureEditorProps {
     summary?: string;
     description?: string;
     read_aloud?: string;
+    image_url?: string | null;
     soul?: Record<string, unknown>;
     brain?: Record<string, unknown>;
     mechanics?: Record<string, unknown>;
@@ -69,6 +71,7 @@ interface CreatureFormData {
   name: string;
   summary: string;
   sub_type: string;
+  image_url: string | null;
   size: string;
   creature_type: string;
   alignment: string;
@@ -160,6 +163,7 @@ export function CreatureEditor({ entity, campaignId }: CreatureEditorProps): JSX
       name: entity.name || '',
       summary: entity.summary || '',
       sub_type: entity.sub_type || (attributes.subtype as string) || '',
+      image_url: entity.image_url || null,
 
       // Classification - check multiple locations
       size: (mechanics.size as string) ||
@@ -316,6 +320,7 @@ export function CreatureEditor({ entity, campaignId }: CreatureEditorProps): JSX
       summary: formData.summary,
       sub_type: formData.sub_type,
       description: formData.soul.description,
+      image_url: formData.image_url,
 
       soul: {
         description: formData.soul.description,
@@ -398,6 +403,19 @@ export function CreatureEditor({ entity, campaignId }: CreatureEditorProps): JSX
               placeholder="Ancient Red Dragon"
             />
           </div>
+
+          <ImageInput
+            value={formData.image_url}
+            onChange={(url) => {
+              setFormData((prev) => ({ ...prev, image_url: url }));
+              setHasChanges(true);
+            }}
+            campaignId={campaignId}
+            entityId={entity.id}
+            entityType="creature"
+            generationPrompt={formData.soul.description}
+            label="Creature Image"
+          />
 
           {/* Classification Row */}
           <div className="grid grid-cols-3 gap-4">
