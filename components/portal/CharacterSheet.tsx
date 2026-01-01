@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   User, Heart, Shield, Swords, Sparkles,
   Edit2, ChevronDown, ChevronUp,
-  Scroll, Star, Target
+  Scroll, Star, Target, Backpack
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -97,7 +97,8 @@ export function CharacterSheet({ campaignId, character }: Props) {
 
   const startEdit = (section: EditingSection) => {
     if (section === 'backstory') {
-      setEditBackstory((soul.backstory as string) || '');
+      // Fall back to entity description if soul.backstory is empty
+      setEditBackstory((soul.backstory as string) || char?.description || '');
       setEditPersonality((soul.personality as string) || '');
       setEditGoals((soul.goals as string) || '');
     } else if (section === 'hp') {
@@ -354,6 +355,95 @@ export function CharacterSheet({ campaignId, character }: Props) {
           </div>
         </CollapsibleSection>
 
+        {/* Equipment & Loadout */}
+        {(loadout.weapons || loadout.armor || loadout.focus || loadout.pack) && (
+          <CollapsibleSection
+            title="Equipment"
+            icon={<Backpack className="w-4 h-4" />}
+            isExpanded={expandedSections.has('equipment')}
+            onToggle={() => toggleSection('equipment')}
+          >
+            <div className="space-y-3">
+              {/* Weapons */}
+              {(loadout.weapons as string[])?.length > 0 && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Weapons</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {(loadout.weapons as string[]).map((weapon, i) => (
+                      <span key={i} className="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded-lg">
+                        {weapon}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Armor & Shield */}
+              {(loadout.armor || loadout.shield) && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Armor</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {loadout.armor && (
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-lg">
+                        {loadout.armor as string}
+                      </span>
+                    )}
+                    {loadout.shield && (
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-lg">
+                        {loadout.shield as string}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Focus / Spellcasting */}
+              {loadout.focus && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Spellcasting Focus</h4>
+                  <span className="px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-lg">
+                    {loadout.focus as string}
+                  </span>
+                </div>
+              )}
+
+              {/* Automatic Items (Spellbook, etc.) */}
+              {(loadout.automaticItems as string[])?.length > 0 && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Class Items</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {(loadout.automaticItems as string[]).map((item, i) => (
+                      <span key={i} className="px-2 py-1 bg-amber-500/20 text-amber-300 text-xs rounded-lg">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pack */}
+              {loadout.pack && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Equipment Pack</h4>
+                  <span className="px-2 py-1 bg-slate-600/50 text-slate-300 text-xs rounded-lg">
+                    {loadout.pack as string}
+                  </span>
+                </div>
+              )}
+
+              {/* Starting Gold */}
+              {loadout.gold !== undefined && (loadout.gold as number) > 0 && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Gold</h4>
+                  <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-lg">
+                    {loadout.gold as number} gp
+                  </span>
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+        )}
+
         {/* Backstory & Personality - Editable */}
         <CollapsibleSection
           title="Backstory & Personality"
@@ -418,10 +508,13 @@ export function CharacterSheet({ campaignId, character }: Props) {
             </div>
           ) : (
             <div className="space-y-3">
-              {soul.backstory && (
+              {/* Show backstory from soul, or fall back to entity description */}
+              {(soul.backstory || char.description) && (
                 <div>
                   <h4 className="text-xs text-slate-500 mb-1">Backstory</h4>
-                  <p className="text-sm text-slate-300">{soul.backstory as string}</p>
+                  <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                    {(soul.backstory as string) || char.description}
+                  </p>
                 </div>
               )}
               {soul.personality && (
@@ -436,7 +529,7 @@ export function CharacterSheet({ campaignId, character }: Props) {
                   <p className="text-sm text-slate-300">{soul.goals as string}</p>
                 </div>
               )}
-              {!soul.backstory && !soul.personality && !soul.goals && (
+              {!soul.backstory && !char.description && !soul.personality && !soul.goals && (
                 <p className="text-slate-500 text-sm italic">
                   No backstory yet. Tap the edit button to add one!
                 </p>
