@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,8 +34,9 @@ interface Membership {
   character_entity_id: string | null;
 }
 
-export default function SwitchCharacterPage({ params }: { params: Promise<{ campaignId: string }> }) {
-  const { campaignId } = use(params);
+export default function SwitchCharacterPage() {
+  const params = useParams();
+  const campaignId = params?.campaignId as string;
   const router = useRouter();
   const supabase = createClient();
 

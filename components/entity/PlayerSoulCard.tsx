@@ -1,6 +1,6 @@
 'use client';
 
-import { User, Heart, Shield, Zap, Activity, BookOpen, Eye } from 'lucide-react';
+import { User, Heart, Shield, Zap, Activity, BookOpen, Eye, Backpack, Sword, Wand2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   calculateModifier,
@@ -15,6 +15,17 @@ interface AbilityScores {
   int: number;
   wis: number;
   cha: number;
+}
+
+interface Loadout {
+  weapons?: string[];
+  armor?: string | null;
+  shield?: string | null;
+  pack?: string | null;
+  packContents?: string[];
+  focus?: string | null;
+  automaticItems?: string[];
+  gold?: number;
 }
 
 interface PlayerSoul {
@@ -37,6 +48,7 @@ interface PlayerSoul {
     max: number;
     face: number;
   };
+  loadout?: Loadout;
 }
 
 interface PlayerSoulCardProps {
@@ -223,6 +235,101 @@ export function PlayerSoulCard({ soul }: PlayerSoulCardProps): JSX.Element | nul
                 {skill}
               </Badge>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Equipment / Loadout */}
+      {soul.loadout && (soul.loadout.weapons?.length || soul.loadout.armor || soul.loadout.focus || soul.loadout.automaticItems?.length || soul.loadout.pack) && (
+        <div className="pt-4 mt-4 border-t border-slate-700/50">
+          <div className="flex items-center gap-2 text-xs text-slate-500 uppercase mb-3">
+            <Backpack className="w-3 h-3" /> Equipment
+          </div>
+
+          <div className="space-y-3">
+            {/* Weapons */}
+            {soul.loadout.weapons && soul.loadout.weapons.length > 0 && (
+              <div>
+                <div className="flex items-center gap-1 text-xs text-slate-400 mb-1">
+                  <Sword className="w-3 h-3 text-red-400" />
+                  <span>Weapons</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {soul.loadout.weapons.map((weapon, idx) => (
+                    <span key={idx} className="px-2 py-0.5 bg-red-900/30 text-red-300 rounded text-xs">
+                      {weapon}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Armor & Shield */}
+            {(soul.loadout.armor || soul.loadout.shield) && (
+              <div>
+                <div className="flex items-center gap-1 text-xs text-slate-400 mb-1">
+                  <Shield className="w-3 h-3 text-blue-400" />
+                  <span>Armor</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {soul.loadout.armor && (
+                    <span className="px-2 py-0.5 bg-blue-900/30 text-blue-300 rounded text-xs">
+                      {soul.loadout.armor}
+                    </span>
+                  )}
+                  {soul.loadout.shield && (
+                    <span className="px-2 py-0.5 bg-blue-900/30 text-blue-300 rounded text-xs">
+                      {soul.loadout.shield}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Focus */}
+            {soul.loadout.focus && (
+              <div>
+                <div className="flex items-center gap-1 text-xs text-slate-400 mb-1">
+                  <Wand2 className="w-3 h-3 text-purple-400" />
+                  <span>Spellcasting Focus</span>
+                </div>
+                <span className="px-2 py-0.5 bg-purple-900/30 text-purple-300 rounded text-xs">
+                  {soul.loadout.focus}
+                </span>
+              </div>
+            )}
+
+            {/* Automatic Items (Spellbook, etc) */}
+            {soul.loadout.automaticItems && soul.loadout.automaticItems.length > 0 && (
+              <div>
+                <div className="text-xs text-slate-400 mb-1">Class Items</div>
+                <div className="flex flex-wrap gap-1">
+                  {soul.loadout.automaticItems.map((item, idx) => (
+                    <span key={idx} className="px-2 py-0.5 bg-amber-900/30 text-amber-300 rounded text-xs">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pack */}
+            {soul.loadout.pack && (
+              <div>
+                <div className="text-xs text-slate-400 mb-1">Equipment Pack</div>
+                <span className="px-2 py-0.5 bg-slate-700 text-slate-300 rounded text-xs">
+                  {soul.loadout.pack}
+                </span>
+              </div>
+            )}
+
+            {/* Gold */}
+            {soul.loadout.gold !== undefined && soul.loadout.gold > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-400">Gold:</span>
+                <span className="text-amber-400 font-medium">{soul.loadout.gold} gp</span>
+              </div>
+            )}
           </div>
         </div>
       )}
