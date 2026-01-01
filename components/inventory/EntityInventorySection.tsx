@@ -19,6 +19,24 @@ import { Badge } from '@/components/ui/badge';
 import { SrdItemDisplay } from '@/components/srd/SrdItemDisplay';
 import { Package, RefreshCw, Plus, Store, Link } from 'lucide-react';
 
+interface Loadout {
+  weapons?: string[];
+  armor?: string | null;
+  shield?: string | null;
+  pack?: string | null;
+  packContents?: string[];
+  focus?: string | null;
+  automaticItems?: string[];
+  gold?: number;
+}
+
+interface LoadoutItem {
+  name: string;
+  quantity: number;
+  category: 'weapon' | 'armor' | 'focus' | 'class' | 'item';
+  isEquipped: boolean;
+}
+
 interface EntityInventorySectionProps {
   campaignId: string;
   entityId: string;
@@ -26,6 +44,7 @@ interface EntityInventorySectionProps {
   entityName?: string;
   subType?: string;
   mechanics?: Record<string, unknown>;
+  soul?: Record<string, unknown> | null;
 }
 
 export function EntityInventorySection({
@@ -35,9 +54,55 @@ export function EntityInventorySection({
   entityName,
   subType,
   mechanics,
+  soul,
 }: EntityInventorySectionProps): JSX.Element | null {
   // Only show inventory for entity types that can hold items
   const canHoldItems = ['npc', 'player', 'location', 'creature'].includes(entityType);
+
+  // Build loadout items from soul.loadout (for player characters)
+  const loadoutItems: LoadoutItem[] = [];
+  const loadout = (soul?.loadout || {}) as Loadout;
+  const loadoutGold = loadout.gold || 0;
+
+  // Add weapons
+  if (loadout.weapons?.length) {
+    loadout.weapons.forEach((weapon) => {
+      loadoutItems.push({ name: weapon, quantity: 1, category: 'weapon', isEquipped: true });
+    });
+  }
+
+  // Add armor
+  if (loadout.armor) {
+    loadoutItems.push({ name: loadout.armor, quantity: 1, category: 'armor', isEquipped: true });
+  }
+
+  // Add shield
+  if (loadout.shield) {
+    loadoutItems.push({ name: loadout.shield, quantity: 1, category: 'armor', isEquipped: true });
+  }
+
+  // Add focus
+  if (loadout.focus) {
+    loadoutItems.push({ name: loadout.focus, quantity: 1, category: 'focus', isEquipped: true });
+  }
+
+  // Add automatic items (Spellbook, etc)
+  if (loadout.automaticItems?.length) {
+    loadout.automaticItems.forEach((item) => {
+      loadoutItems.push({ name: item, quantity: 1, category: 'class', isEquipped: false });
+    });
+  }
+
+  // Add pack contents (group duplicates)
+  if (loadout.packContents?.length) {
+    const packCounts: Record<string, number> = {};
+    loadout.packContents.forEach((item) => {
+      packCounts[item] = (packCounts[item] || 0) + 1;
+    });
+    Object.entries(packCounts).forEach(([item, count]) => {
+      loadoutItems.push({ name: item, quantity: count, category: 'item', isEquipped: false });
+    });
+  }
 
   // State for dialogs
   const [viewingItem, setViewingItem] = useState<InventoryInstanceWithItem | null>(null);
@@ -112,6 +177,25 @@ export function EntityInventorySection({
   // Show Stock Shelves button for ALL locations (any location can be stocked)
   const showStockButton = entityType === 'location';
 
+  // Total item count includes both loadout and inventory items
+  const totalItemCount = loadoutItems.length + items.length;
+
+  // Category color mapping
+  const getCategoryColor = (category: LoadoutItem['category']) => {
+    switch (category) {
+      case 'weapon':
+        return 'bg-red-900/30 text-red-300 border-red-700/50';
+      case 'armor':
+        return 'bg-blue-900/30 text-blue-300 border-blue-700/50';
+      case 'focus':
+        return 'bg-purple-900/30 text-purple-300 border-purple-700/50';
+      case 'class':
+        return 'bg-amber-900/30 text-amber-300 border-amber-700/50';
+      default:
+        return 'bg-slate-800 text-slate-300 border-slate-700';
+    }
+  };
+
   return (
     <div className="ca-panel p-4">
       {/* Header with Add Item button */}
@@ -120,8 +204,14 @@ export function EntityInventorySection({
           {isShop ? <Store className="w-5 h-5 text-amber-400" /> : <Package className="w-5 h-5" />}
           {isShop ? 'Shop Inventory' : 'Inventory'}
           <span className="text-sm text-slate-400 font-normal">
-            ({items.length} {items.length === 1 ? 'item' : 'items'})
+            ({totalItemCount} {totalItemCount === 1 ? 'item' : 'items'})
           </span>
+          {/* Gold display for players */}
+          {entityType === 'player' && loadoutGold > 0 && (
+            <Badge variant="outline" className="border-amber-500 text-amber-400 text-xs">
+              {loadoutGold} gp
+            </Badge>
+          )}
           {/* Price modifier badge for shops */}
           {isShop && priceModifier !== 1.0 && (
             <Badge
@@ -148,6 +238,33 @@ export function EntityInventorySection({
           Add Item
         </Button>
       </div>
+
+      {/* Starting Equipment (from soul.loadout) */}
+      {loadoutItems.length > 0 && (
+        <div className="mb-4">
+          <div className="text-xs text-slate-500 uppercase mb-2">Starting Equipment</div>
+          <div className="space-y-1">
+            {loadoutItems.map((item, idx) => (
+              <div
+                key={`loadout-${idx}`}
+                className={`flex items-center justify-between py-2 px-3 rounded-lg border ${getCategoryColor(item.category)}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{item.name}</span>
+                  {item.quantity > 1 && (
+                    <span className="text-xs opacity-70">x{item.quantity}</span>
+                  )}
+                </div>
+                {item.isEquipped && (
+                  <Badge variant="outline" className="text-xs border-teal-500 text-teal-400">
+                    Equipped
+                  </Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stock Shelves Button for locations */}
       {showStockButton && (
