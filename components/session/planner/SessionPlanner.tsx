@@ -16,8 +16,10 @@ import {
   EncounterBlockNode,
   QuestBlockNode,
 } from './extensions';
-import { EditorToolbar } from './EditorToolbar';
+import { EditorToolbar, FontSize } from './EditorToolbar';
+import { PrepHelpDialog } from './PrepHelpDialog';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface SessionPlannerProps {
   sessionId: string;
@@ -25,10 +27,33 @@ interface SessionPlannerProps {
   onContentChange?: (content: unknown) => void;
 }
 
+const FONT_SIZE_KEY = 'prep-font-size';
+const FONT_SIZE_CLASSES: Record<FontSize, string> = {
+  sm: 'text-sm',      // 14px
+  md: 'text-base',    // 16px
+  lg: 'text-lg',      // 18px
+};
+
 export function SessionPlanner({ sessionId, initialContent, onContentChange }: SessionPlannerProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [fontSize, setFontSize] = useState<FontSize>('md');
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Load font size preference from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(FONT_SIZE_KEY);
+    if (saved && ['sm', 'md', 'lg'].includes(saved)) {
+      setFontSize(saved as FontSize);
+    }
+  }, []);
+
+  // Save font size preference to localStorage
+  const handleFontSizeChange = useCallback((size: FontSize) => {
+    setFontSize(size);
+    localStorage.setItem(FONT_SIZE_KEY, size);
+  }, []);
 
   // Setup droppable area
   const { setNodeRef, isOver } = useDroppable({
@@ -315,13 +340,20 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
 
   return (
     <div className="h-full flex flex-col">
-      <EditorToolbar editor={editor} />
+      <EditorToolbar
+        editor={editor}
+        fontSize={fontSize}
+        onFontSizeChange={handleFontSizeChange}
+        onHelpClick={() => setShowHelp(true)}
+      />
 
       <div
         ref={setNodeRef}
-        className={`flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg transition-colors ${
-          isOver ? 'ring-2 ring-teal-500 ring-inset bg-teal-900/10' : ''
-        }`}
+        className={cn(
+          'flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg transition-colors',
+          FONT_SIZE_CLASSES[fontSize],
+          isOver && 'ring-2 ring-teal-500 ring-inset bg-teal-900/10'
+        )}
       >
         <EditorContent editor={editor} className="h-full" />
       </div>
@@ -339,6 +371,9 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
           <span>Auto-save enabled</span>
         )}
       </div>
+
+      {/* Help Dialog */}
+      <PrepHelpDialog open={showHelp} onOpenChange={setShowHelp} />
     </div>
   );
 }

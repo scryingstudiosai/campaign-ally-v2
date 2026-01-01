@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, ReactNode } from 'react'
+import { useState, ReactNode, useMemo } from 'react'
 import { NodeViewWrapper, NodeViewContent, NodeViewProps } from '@tiptap/react'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,8 +30,39 @@ import {
   Play,
   CheckCircle,
   SkipForward,
+  Layers,
 } from 'lucide-react'
 import { BlockStatus, STATUS_STYLES, STATUS_BADGES } from './shared'
+
+// Count nested entities and blocks inside a node
+function countNestedItems(node: NodeViewProps['node']): number {
+  let count = 0
+
+  node.content.forEach((child) => {
+    // Count entity nodes (inline mentions)
+    if (child.type.name === 'entityNode' || child.type.name === 'entityMention') {
+      count++
+    }
+    // Count quest objectives
+    if (child.type.name === 'questObjective') {
+      count++
+    }
+    // Count encounter nodes
+    if (child.type.name === 'encounterNode') {
+      count++
+    }
+    // Recursively count in paragraphs and other containers
+    if (child.content) {
+      child.content.forEach((grandchild) => {
+        if (grandchild.type.name === 'entityNode' || grandchild.type.name === 'entityMention') {
+          count++
+        }
+      })
+    }
+  })
+
+  return count
+}
 
 interface BlockWrapperProps {
   node: NodeViewProps['node']
@@ -67,6 +98,9 @@ export function BlockWrapper({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editedTitle, setEditedTitle] = useState(title)
+
+  // Count nested items for the badge
+  const nestedCount = useMemo(() => countNestedItems(node), [node])
 
   // Update status without adding to undo history
   const updateStatus = (newStatus: BlockStatus) => {
@@ -170,6 +204,18 @@ export function BlockWrapper({
             contentEditable={false}
           >
             {title || 'Untitled Block'}
+          </span>
+        )}
+
+        {/* Nested Count Badge */}
+        {nestedCount > 0 && (
+          <span
+            contentEditable={false}
+            className="flex items-center gap-1 text-xs bg-teal-900/50 text-teal-300 px-1.5 py-0.5 rounded font-medium"
+            title={`${nestedCount} nested ${nestedCount === 1 ? 'item' : 'items'}`}
+          >
+            <Layers className="w-3 h-3" />
+            <span>+{nestedCount}</span>
           </span>
         )}
 

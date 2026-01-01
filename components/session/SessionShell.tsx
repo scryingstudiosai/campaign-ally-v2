@@ -17,6 +17,7 @@ import { DMChatWidget } from './DMChatWidget';
 import { Entity } from './toolkit/LibraryPanel';
 import { rollInitiative } from '@/lib/dice';
 import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface SessionShellProps {
   session: Session;
@@ -29,6 +30,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
   const [isCombatActive, setIsCombatActive] = useState(!!session.combat_state);
   const [usePlaybook, setUsePlaybook] = useState(true); // New block-based playbook
   const [userId, setUserId] = useState<string | null>(null);
+  const [isShiftHeld, setIsShiftHeld] = useState(false);
 
   // Get user ID for chat widget
   useEffect(() => {
@@ -36,6 +38,23 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
     supabase.auth.getUser().then(({ data }) => {
       setUserId(data.user?.id || null);
     });
+  }, []);
+
+  // Track shift key state for nest-on-drop behavior
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftHeld(true);
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftHeld(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, []);
 
   // Configure drag sensors
@@ -111,8 +130,9 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
 
       // Check if cursor is at root level (not inside a block)
       // depth 0 = doc, depth 1 = direct child of doc (root level)
-      let isAtRootLevel = true;
-      if (editor?.state) {
+      // When shift is held, force nested behavior (treat as NOT root level)
+      let isAtRootLevel = !isShiftHeld; // Shift forces nested mode
+      if (!isShiftHeld && editor?.state) {
         try {
           const { from } = editor.state.selection;
           const $pos = editor.state.doc.resolve(from);
@@ -254,7 +274,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
         }
       }
     }
-  }, [isCombatActive, handleAddEntityToCombat]);
+  }, [isCombatActive, handleAddEntityToCombat, isShiftHeld]);
 
   const handleDragStart = useCallback((event: { active: { id: string | number } }) => {
     setActiveId(String(event.active.id));
@@ -380,18 +400,36 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
       {/* Drag Overlay */}
       <DragOverlay>
         {activeId ? (
-          <div className={`rounded-lg px-3 py-2 shadow-lg border ${
-            activeId.toString().startsWith('objective-')
-              ? 'bg-amber-900/90 border-amber-500 text-amber-200'
-              : 'bg-slate-800 border-teal-500 text-slate-200'
-          }`}>
-            <span className="text-sm">
-              {activeId.toString().startsWith('objective-') ? '🎯 ' : ''}
-              Dragging...
-            </span>
+          <div className="flex flex-col gap-2">
+            <div className={cn(
+              'rounded-lg px-3 py-2 shadow-lg border',
+              activeId.toString().startsWith('objective-')
+                ? 'bg-amber-900/90 border-amber-500 text-amber-200'
+                : isShiftHeld
+                  ? 'bg-teal-900/90 border-teal-400 text-teal-200'
+                  : 'bg-slate-800 border-teal-500 text-slate-200'
+            )}>
+              <span className="text-sm">
+                {activeId.toString().startsWith('objective-') ? '🎯 ' : ''}
+                {isShiftHeld ? 'Nest inside block...' : 'Dragging...'}
+              </span>
+            </div>
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* Drag Hint Tooltip */}
+      {activeId && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 px-3 py-2 rounded-lg shadow-lg text-sm z-50 pointer-events-none">
+          {isShiftHeld ? (
+            <span className="text-teal-400">Release to add inside the current block</span>
+          ) : (
+            <span className="text-slate-400">
+              Hold <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-xs mx-1 text-slate-300">Shift</kbd> to nest inside a block
+            </span>
+          )}
+        </div>
+      )}
 
       {/* DM Chat Widget */}
       {userId && <DMChatWidget campaignId={campaignId} userId={userId} />}
