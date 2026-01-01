@@ -1,6 +1,30 @@
 import { Badge } from '@/components/ui/badge'
 import { MaterialCard } from '@/components/ui/material-card'
-import { Sparkles, Palette, Globe, BookOpen, HelpCircle, Check, Users } from 'lucide-react'
+import { Sparkles, Palette, Globe, BookOpen, HelpCircle, Check, Users, Gamepad2 } from 'lucide-react'
+
+interface PlayerSettings {
+  character_editing?: {
+    backstory?: boolean
+    personality?: boolean
+    notes?: boolean
+    appearance?: boolean
+  }
+  inventory?: {
+    can_add_items?: boolean
+    requires_approval?: boolean
+    can_see_party_stash?: boolean
+  }
+  visibility?: {
+    can_see_quests?: boolean
+    can_see_world_map?: boolean
+    can_see_party_members?: boolean
+    can_see_revealed_lore?: boolean
+  }
+  communication?: {
+    can_message_dm?: boolean
+    can_message_party?: boolean
+  }
+}
 
 interface Codex {
   id: string
@@ -21,6 +45,7 @@ interface Codex {
   open_questions: string[]
   resolved_questions?: string[]
   proper_nouns?: string[]
+  player_settings?: PlayerSettings | null
 }
 
 interface CodexDisplayProps {
@@ -327,6 +352,88 @@ export function CodexDisplay({ codex }: CodexDisplayProps): JSX.Element {
                     <p className="text-sm text-ash">{fact}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          </MaterialCard>
+        )}
+
+        {/* Player Portal Settings */}
+        {codex.player_settings && (
+          <MaterialCard className="p-0 border-teal-500/30 md:col-span-2">
+            <div className="p-4 pb-2 border-b border-teal-500/10">
+              <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-teal-400">
+                <Gamepad2 className="w-5 h-5" />
+                Player Portal Settings
+              </h3>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Character Editing */}
+                <div>
+                  <p className="text-xs text-smoke uppercase tracking-wider mb-2">Character Editing</p>
+                  <div className="space-y-1">
+                    {codex.player_settings.character_editing?.backstory && (
+                      <Badge variant="secondary" className="mr-1">Backstory</Badge>
+                    )}
+                    {codex.player_settings.character_editing?.personality && (
+                      <Badge variant="secondary" className="mr-1">Personality</Badge>
+                    )}
+                    {codex.player_settings.character_editing?.notes && (
+                      <Badge variant="secondary" className="mr-1">Notes</Badge>
+                    )}
+                    {codex.player_settings.character_editing?.appearance && (
+                      <Badge variant="secondary" className="mr-1">Appearance</Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Inventory */}
+                <div>
+                  <p className="text-xs text-smoke uppercase tracking-wider mb-2">Inventory</p>
+                  <div className="space-y-1">
+                    {codex.player_settings.inventory?.can_add_items && (
+                      <Badge variant="secondary" className="mr-1">Add Items</Badge>
+                    )}
+                    {codex.player_settings.inventory?.requires_approval && (
+                      <Badge variant="outline" className="mr-1 text-amber-400 border-amber-500/30">Approval Required</Badge>
+                    )}
+                    {codex.player_settings.inventory?.can_see_party_stash && (
+                      <Badge variant="secondary" className="mr-1">Party Stash</Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Visibility */}
+                <div>
+                  <p className="text-xs text-smoke uppercase tracking-wider mb-2">Visibility</p>
+                  <div className="space-y-1">
+                    {codex.player_settings.visibility?.can_see_quests && (
+                      <Badge variant="secondary" className="mr-1">Quests</Badge>
+                    )}
+                    {codex.player_settings.visibility?.can_see_world_map && (
+                      <Badge variant="secondary" className="mr-1">World Map</Badge>
+                    )}
+                    {codex.player_settings.visibility?.can_see_party_members && (
+                      <Badge variant="secondary" className="mr-1">Party</Badge>
+                    )}
+                    {codex.player_settings.visibility?.can_see_revealed_lore && (
+                      <Badge variant="secondary" className="mr-1">Lore</Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Communication */}
+                <div>
+                  <p className="text-xs text-smoke uppercase tracking-wider mb-2">Communication</p>
+                  <div className="space-y-1">
+                    {codex.player_settings.communication?.can_message_dm && (
+                      <Badge variant="secondary" className="mr-1">Message DM</Badge>
+                    )}
+                    {codex.player_settings.communication?.can_message_party && (
+                      <Badge variant="secondary" className="mr-1">Party Chat</Badge>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </MaterialCard>
