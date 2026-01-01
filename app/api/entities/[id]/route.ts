@@ -137,6 +137,10 @@ export async function PATCH(
       updateData.description = body.description;
       console.log('[API PATCH] Will update description to:', body.description);
     }
+    if ('image_url' in body) {
+      updateData.image_url = body.image_url;
+      console.log('[API PATCH] Will update image_url to:', body.image_url);
+    }
 
     // Nested objects - deep merge with existing data
     if ('soul' in body && body.soul) {
