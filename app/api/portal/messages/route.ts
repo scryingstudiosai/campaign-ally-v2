@@ -68,6 +68,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Create DM notification if message is from a player
+  if (!isDM && message) {
+    // Get character entity ID for the notification
+    const { data: membershipData } = await supabase
+      .from('campaign_members')
+      .select('character_entity_id')
+      .eq('campaign_id', campaignId)
+      .eq('user_id', user.id)
+      .single();
+
+    const messagePreview = content.length > 80 ? content.substring(0, 80) + '...' : content;
+
+    await supabase.from('dm_notifications').insert({
+      campaign_id: campaignId,
+      type: 'player_message',
+      title: `Message from ${senderName}`,
+      message: messagePreview,
+      source_user_id: user.id,
+      source_entity_id: membershipData?.character_entity_id || null,
+      reference_id: message.id,
+    });
+  }
+
   return NextResponse.json({ message });
 }
 
