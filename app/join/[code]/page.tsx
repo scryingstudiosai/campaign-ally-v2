@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,9 +31,11 @@ interface Membership {
   character_entity: Character | null;
 }
 
-export default function JoinCampaignPage({ params }: { params: Promise<{ code: string }> }) {
-  const { code } = use(params);
+export default function JoinCampaignPage() {
+  // Get params safely - useParams returns an object, not a promise
+  const params = useParams();
   const router = useRouter();
+  const code = params?.code as string;
 
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -44,23 +46,80 @@ export default function JoinCampaignPage({ params }: { params: Promise<{ code: s
   const [unclaimedCharacters, setUnclaimedCharacters] = useState<Character[]>([]);
 
   useEffect(() => {
-    async function loadCampaign() {
+    if (!code) {
+      setError('No invite code provided');
+      setLoading(false);
+      return;
+    }
+
+    loadInvite();
+  }, [code]);
+
+  async function loadInvite() {
+    try {
       const supabase = createClient();
 
       // Check auth
       const { data: { user: authUser } } = await supabase.auth.getUser();
       setUser(authUser);
 
-      // Validate join code
-      const { data: campaignData, error: campaignError } = await supabase
-        .from('campaigns')
-        .select('id, name, description, image_url')
-        .eq('join_code', code.toUpperCase())
-        .is('deleted_at', null)
+      // First try campaign_invites table
+      const { data: invite, error: inviteError } = await supabase
+        .from('campaign_invites')
+        .select(`
+          *,
+          campaigns (
+            id,
+            name,
+            description,
+            image_url
+          )
+        `)
+        .eq('code', code.toUpperCase())
+        .eq('is_active', true)
         .single();
 
-      if (campaignError || !campaignData) {
-        setError('Invalid or expired join code');
+      let campaignData: Campaign | null = null;
+
+      if (!inviteError && invite) {
+        // Check expiration
+        if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+          setError('This invite has expired');
+          setLoading(false);
+          return;
+        }
+
+        // Check max uses
+        if (invite.max_uses && invite.use_count >= invite.max_uses) {
+          setError('This invite has reached its maximum uses');
+          setLoading(false);
+          return;
+        }
+
+        // Handle joined table types
+        const campaignResult = invite.campaigns as unknown;
+        campaignData = (Array.isArray(campaignResult) ? campaignResult[0] : campaignResult) as Campaign;
+      } else {
+        // Fallback to legacy join_code on campaigns table
+        const { data: legacyCampaign, error: legacyError } = await supabase
+          .from('campaigns')
+          .select('id, name, description, image_url')
+          .eq('join_code', code.toUpperCase())
+          .is('deleted_at', null)
+          .single();
+
+        if (legacyError || !legacyCampaign) {
+          console.log('Invite lookup failed:', { code, inviteError, legacyError });
+          setError('Invalid or expired invite code');
+          setLoading(false);
+          return;
+        }
+
+        campaignData = legacyCampaign;
+      }
+
+      if (!campaignData) {
+        setError('Campaign not found');
         setLoading(false);
         return;
       }
@@ -119,10 +178,12 @@ export default function JoinCampaignPage({ params }: { params: Promise<{ code: s
       }
 
       setLoading(false);
+    } catch (err) {
+      console.error('Error loading invite:', err);
+      setError('Failed to load invite');
+      setLoading(false);
     }
-
-    loadCampaign();
-  }, [code]);
+  }
 
   const handleJoin = async () => {
     if (!user) {
@@ -131,7 +192,10 @@ export default function JoinCampaignPage({ params }: { params: Promise<{ code: s
       return;
     }
 
-    if (!campaign) return;
+    if (!campaign) {
+      toast.error('Campaign not found');
+      return;
+    }
 
     setJoining(true);
     try {
@@ -148,18 +212,27 @@ export default function JoinCampaignPage({ params }: { params: Promise<{ code: s
 
       if (memberError) {
         if (memberError.code === '23505') {
-          // Already a member - refresh to show character selection
+          // Already a member - just reload to show character selection
           window.location.reload();
           return;
         }
         throw memberError;
       }
 
+      // Try to increment invite use count (may not exist for legacy codes)
+      await supabase
+        .from('campaign_invites')
+        .update({ use_count: (await supabase.from('campaign_invites').select('use_count').eq('code', code.toUpperCase()).single()).data?.use_count + 1 || 1 })
+        .eq('code', code.toUpperCase());
+
       toast.success(`Joined ${campaign.name}!`);
+
+      // Reload to show character options
       window.location.reload();
 
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to join';
+      console.error('Join error:', err);
+      const message = err instanceof Error ? err.message : 'Failed to join campaign';
       toast.error(message);
     } finally {
       setJoining(false);
@@ -167,29 +240,31 @@ export default function JoinCampaignPage({ params }: { params: Promise<{ code: s
   };
 
   const handleClaimCharacter = async (characterId: string) => {
-    if (!campaign || !user) return;
+    if (!user || !campaign) return;
 
     try {
       const supabase = createClient();
 
       // Update membership with character
-      const { error } = await supabase
+      const { error: memberError } = await supabase
         .from('campaign_members')
         .update({ character_entity_id: characterId })
         .eq('campaign_id', campaign.id)
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (memberError) throw memberError;
 
       toast.success('Character claimed!');
       router.push(`/portal/${campaign.id}`);
 
     } catch (err) {
+      console.error('Claim error:', err);
       const message = err instanceof Error ? err.message : 'Failed to claim character';
       toast.error(message);
     }
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
@@ -198,12 +273,13 @@ export default function JoinCampaignPage({ params }: { params: Promise<{ code: s
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
         <Card className="max-w-md w-full bg-slate-900 border-slate-800">
           <CardHeader className="text-center">
-            <CardTitle className="text-red-400">Invalid Code</CardTitle>
+            <CardTitle className="text-red-400">Invalid Invite</CardTitle>
             <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
@@ -216,7 +292,7 @@ export default function JoinCampaignPage({ params }: { params: Promise<{ code: s
     );
   }
 
-  // Already a member with character
+  // Already a member with character - show enter button
   if (membership?.character_entity_id && membership.character_entity) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
@@ -239,7 +315,7 @@ export default function JoinCampaignPage({ params }: { params: Promise<{ code: s
     );
   }
 
-  // Member but no character yet
+  // Member but no character yet - show character selection
   if (membership && !membership.character_entity_id) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
@@ -335,7 +411,7 @@ export default function JoinCampaignPage({ params }: { params: Promise<{ code: s
     );
   }
 
-  // Not yet joined
+  // Not yet joined - show join card
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
       <Card className="max-w-md w-full bg-slate-900 border-slate-800">
@@ -354,7 +430,7 @@ export default function JoinCampaignPage({ params }: { params: Promise<{ code: s
               <Shield className="h-8 w-8 text-teal-400" />
             </div>
           )}
-          <CardTitle className="text-2xl text-white">{campaign?.name}</CardTitle>
+          <CardTitle className="text-2xl text-white">{campaign?.name || 'Campaign'}</CardTitle>
           {campaign?.description && (
             <CardDescription className="mt-2">
               {campaign.description}
