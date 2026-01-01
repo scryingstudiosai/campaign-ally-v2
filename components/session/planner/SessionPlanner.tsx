@@ -204,6 +204,7 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
   }, [editor]);
 
   // Insert encounter block when encounter entity is dropped
+  // Inserts at the END of the document for predictable placement
   const insertEncounterBlock = useCallback((encounter: {
     id: string;
     name: string;
@@ -212,15 +213,22 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
   }) => {
     if (!editor) return;
 
-    editor.chain().focus().insertEncounterBlock({
-      title: encounter.name,
-      entityId: encounter.id,
-      difficulty: encounter.difficulty || 'medium',
-      creatures: JSON.stringify(encounter.creatures || []),
-    }).run();
+    // Move to end of document, then insert block
+    const endPos = editor.state.doc.content.size;
+    editor.chain()
+      .focus()
+      .setTextSelection(endPos)
+      .insertEncounterBlock({
+        title: encounter.name,
+        entityId: encounter.id,
+        difficulty: encounter.difficulty || 'medium',
+        creatures: JSON.stringify(encounter.creatures || []),
+      })
+      .run();
   }, [editor]);
 
   // Insert quest block when quest entity is dropped
+  // Inserts at the END of the document for predictable placement
   const insertQuestBlock = useCallback((quest: {
     id: string;
     name: string;
@@ -234,14 +242,21 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       completed: obj.completed || false,
     }));
 
-    editor.chain().focus().insertQuestBlock({
-      title: quest.name,
-      entityId: quest.id,
-      milestones: JSON.stringify(milestones),
-    }).run();
+    // Move to end of document, then insert block
+    const endPos = editor.state.doc.content.size;
+    editor.chain()
+      .focus()
+      .setTextSelection(endPos)
+      .insertQuestBlock({
+        title: quest.name,
+        entityId: quest.id,
+        milestones: JSON.stringify(milestones),
+      })
+      .run();
   }, [editor]);
 
   // Insert quest block with a specific objective/beat as initial content
+  // Inserts at the END of the document for predictable placement
   const insertQuestBlockWithObjective = useCallback((objective: {
     id: string;
     title: string;
@@ -251,30 +266,36 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
   }) => {
     if (!editor) return;
 
-    editor.chain().focus().insertContent({
-      type: 'questBlock',
-      attrs: {
-        id: crypto.randomUUID(),
-        title: objective.questName,
-        entityId: objective.questId,
-        milestones: '[]',
-        status: 'pending',
-        isCollapsed: false,
-      },
-      content: [
-        {
-          type: 'questObjective',
-          attrs: {
-            id: objective.id,
-            title: objective.title,
-            description: objective.description || '',
-            questId: objective.questId,
-            questName: objective.questName,
-          },
+    // Move to end of document, then insert block
+    const endPos = editor.state.doc.content.size;
+    editor.chain()
+      .focus()
+      .setTextSelection(endPos)
+      .insertContent({
+        type: 'questBlock',
+        attrs: {
+          id: crypto.randomUUID(),
+          title: objective.questName,
+          entityId: objective.questId,
+          milestones: '[]',
+          status: 'pending',
+          isCollapsed: false,
         },
-        { type: 'paragraph' },
-      ],
-    }).run();
+        content: [
+          {
+            type: 'questObjective',
+            attrs: {
+              id: objective.id,
+              title: objective.title,
+              description: objective.description || '',
+              questId: objective.questId,
+              questName: objective.questName,
+            },
+          },
+          { type: 'paragraph' },
+        ],
+      })
+      .run();
   }, [editor]);
 
   // Expose editor and insert functions for drag-drop handler
@@ -352,7 +373,9 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
         className={cn(
           'flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg transition-colors',
           FONT_SIZE_CLASSES[fontSize],
-          isOver && 'ring-2 ring-teal-500 ring-inset bg-teal-900/10'
+          // Only show global highlight when NOT holding shift (root level drop)
+          // When shift is held, individual blocks will highlight instead
+          isOver && 'ring-2 ring-teal-500/50 ring-inset'
         )}
       >
         <EditorContent editor={editor} className="h-full" />

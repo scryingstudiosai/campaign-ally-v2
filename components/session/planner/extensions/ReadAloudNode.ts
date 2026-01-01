@@ -17,14 +17,17 @@ export const ReadAloudNode = Node.create({
       'div',
       mergeAttributes(HTMLAttributes, {
         'data-read-aloud': 'true',
-        class: 'relative bg-slate-800/50 border-l-4 border-teal-500 p-4 my-4 rounded-r-lg',
+        class: 'relative bg-slate-800/50 border-l-4 border-teal-500 p-4 my-4 rounded-r-lg read-aloud-block',
       }),
       [
-        'div',
-        { class: 'absolute top-2 right-2 text-xs text-teal-400 uppercase tracking-wider font-semibold' },
+        'span',
+        {
+          class: 'absolute top-2 right-2 text-xs text-teal-400 uppercase tracking-wider font-semibold pointer-events-none select-none',
+          contenteditable: 'false',
+        },
         '📖 Read Aloud',
       ],
-      ['div', { class: 'italic text-slate-300 pt-4' }, 0],
+      ['div', { class: 'italic text-slate-300 mt-4 read-aloud-content' }, 0],
     ];
   },
 

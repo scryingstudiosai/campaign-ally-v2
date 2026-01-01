@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, ReactNode, useMemo } from 'react'
+import { useState, ReactNode, useMemo, useEffect } from 'react'
 import { NodeViewWrapper, NodeViewContent, NodeViewProps } from '@tiptap/react'
 import { Button } from '@/components/ui/button'
 import {
@@ -34,27 +34,28 @@ import {
 } from 'lucide-react'
 import { BlockStatus, STATUS_STYLES, STATUS_BADGES } from './shared'
 
-// Count nested entities and blocks inside a node
-function countNestedItems(node: NodeViewProps['node']): number {
+// Count nested BLOCK nodes inside a node (not inline mentions)
+// This counts actual nested blocks like encounter blocks, quest blocks, etc.
+function countNestedBlocks(node: NodeViewProps['node']): number {
   let count = 0
 
+  // Block node types that should be counted
+  const BLOCK_TYPES = [
+    'encounterBlock',
+    'questBlock',
+    'sceneBlock',
+    'noteBlock',
+  ]
+
   node.content.forEach((child) => {
-    // Count entity nodes (inline mentions)
-    if (child.type.name === 'entityNode' || child.type.name === 'entityMention') {
+    // Count block nodes
+    if (BLOCK_TYPES.includes(child.type.name)) {
       count++
     }
-    // Count quest objectives
-    if (child.type.name === 'questObjective') {
-      count++
-    }
-    // Count encounter nodes
-    if (child.type.name === 'encounterNode') {
-      count++
-    }
-    // Recursively count in paragraphs and other containers
+    // Recursively count in any container nodes
     if (child.content) {
       child.content.forEach((grandchild) => {
-        if (grandchild.type.name === 'entityNode' || grandchild.type.name === 'entityMention') {
+        if (BLOCK_TYPES.includes(grandchild.type.name)) {
           count++
         }
       })
@@ -98,9 +99,61 @@ export function BlockWrapper({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editedTitle, setEditedTitle] = useState(title)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [isShiftHeld, setIsShiftHeld] = useState(false)
 
-  // Count nested items for the badge
-  const nestedCount = useMemo(() => countNestedItems(node), [node])
+  // Track shift key for nested drop highlighting
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftHeld(true)
+    }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        setIsShiftHeld(false)
+        setIsDragOver(false) // Clear highlight when shift is released
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+
+  // Handle drag events for block-specific highlighting
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (isShiftHeld) {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragOver(true)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (isShiftHeld) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear if actually leaving this element (not entering a child)
+    const relatedTarget = e.relatedTarget as Node | null
+    if (!e.currentTarget.contains(relatedTarget)) {
+      setIsDragOver(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    setIsDragOver(false)
+    // The actual drop handling is done in SessionShell via dnd-kit
+    // This just clears our visual state
+  }
+
+  // Count nested BLOCKS for the badge (not inline entity mentions)
+  const nestedCount = useMemo(() => countNestedBlocks(node), [node])
 
   // Update status without adding to undo history
   const updateStatus = (newStatus: BlockStatus) => {
@@ -145,8 +198,15 @@ export function BlockWrapper({
 
   return (
     <NodeViewWrapper
-      className={`my-3 rounded-lg border transition-all ${STATUS_STYLES[status]}`}
+      className={`my-3 rounded-lg border transition-all ${STATUS_STYLES[status]} ${
+        isDragOver && isShiftHeld ? 'ring-2 ring-teal-500 bg-teal-900/20' : ''
+      }`}
       data-block-status={status}
+      data-block-id={node.attrs.id}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       {/* Header */}
       <div className="flex items-center gap-2 p-3">
