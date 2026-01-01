@@ -17,6 +17,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import {
+  ImageGenerationOptions,
+  useImageGenerationStyles,
+} from '@/components/ui/image-generation-options';
 
 interface ImageInputProps {
   value?: string | null;
@@ -27,6 +31,7 @@ interface ImageInputProps {
   generationPrompt?: string;
   disabled?: boolean;
   label?: string;
+  showStyleOptions?: boolean;
 }
 
 export function ImageInput({
@@ -38,6 +43,7 @@ export function ImageInput({
   generationPrompt,
   disabled,
   label = 'Image',
+  showStyleOptions = true,
 }: ImageInputProps) {
   const [activeTab, setActiveTab] = useState<string>('generate');
   const [urlInput, setUrlInput] = useState('');
@@ -47,6 +53,7 @@ export function ImageInput({
   const [imageError, setImageError] = useState(false);
   const [showRegenerateMode, setShowRegenerateMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [styles, setStyles] = useImageGenerationStyles(entityType);
 
   // Check if current value is external URL (not our storage)
   const isExternalUrl = value && !value.includes('supabase.co');
@@ -111,6 +118,9 @@ export function ImageInput({
           campaignId,
           entityId,
           entityType,
+          artStyle: styles.artStyle,
+          lightingStyle: styles.lightingStyle,
+          compositionStyle: styles.compositionStyle,
         }),
       });
 
@@ -278,6 +288,14 @@ export function ImageInput({
               >
                 Use description from entity
               </Button>
+            )}
+            {showStyleOptions && (
+              <ImageGenerationOptions
+                value={styles}
+                onChange={setStyles}
+                entityType={entityType}
+                compact
+              />
             )}
             <Button
               type="button"

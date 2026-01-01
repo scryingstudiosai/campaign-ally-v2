@@ -2,18 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getOpenAIClient } from '@/lib/openai';
 import { CAMPAIGN_IMAGES_BUCKET } from '@/lib/supabase/storage';
-
-// Style prompts based on entity type
-const STYLE_PROMPTS: Record<string, string> = {
-  npc: 'Fantasy RPG character portrait, painterly style, dramatic lighting, head and shoulders composition',
-  player: 'Fantasy RPG character portrait, painterly style, dramatic lighting, head and shoulders composition',
-  location: 'Fantasy RPG environment art, detailed landscape, atmospheric, cinematic composition',
-  item: 'Fantasy RPG item illustration, detailed, centered on simple gradient background',
-  creature: 'Fantasy RPG monster illustration, dynamic pose, dramatic lighting, menacing',
-  faction: 'Fantasy RPG faction emblem or group scene, dramatic, symbolic, heraldic elements',
-  encounter: 'Fantasy RPG battle scene, dramatic lighting, dynamic action, atmospheric',
-  quest: 'Fantasy RPG quest illustration, epic scene, dramatic lighting, story moment',
-};
+import { buildGenerationPrompt } from '@/lib/image-generation/styles';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,15 +14,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { prompt, campaignId, entityId, entityType } = await req.json();
+    const {
+      prompt,
+      campaignId,
+      entityId,
+      entityType,
+      artStyle,
+      lightingStyle,
+      compositionStyle,
+    } = await req.json();
 
     if (!prompt || !campaignId) {
       return NextResponse.json({ error: 'Missing prompt or campaignId' }, { status: 400 });
     }
 
-    // Build context-aware prompt
-    const stylePrompt = STYLE_PROMPTS[entityType] || 'Fantasy RPG illustration, detailed, dramatic lighting';
-    const fullPrompt = `${stylePrompt}: ${prompt}`;
+    // Build context-aware prompt using the style system
+    const fullPrompt = buildGenerationPrompt({
+      userPrompt: prompt,
+      entityType,
+      artStyle: artStyle || 'classic-fantasy',
+      lightingStyle: lightingStyle || 'dramatic',
+      compositionStyle: compositionStyle || 'portrait',
+      qualityLevel: 'high',
+    });
 
     // Generate with DALL-E 3
     const openai = getOpenAIClient();
