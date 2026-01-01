@@ -317,3 +317,135 @@ export function getDefaultStylesForEntityType(entityType?: string): {
       };
   }
 }
+
+/**
+ * Character loadout data for image generation
+ */
+export interface CharacterLoadout {
+  weapons?: string[];
+  armor?: string;
+  shield?: string;
+  focus?: string;
+  pack?: string;
+  equipment?: string[];
+}
+
+/**
+ * Character data for building image prompts
+ */
+export interface CharacterData {
+  name?: string;
+  race?: string;
+  class?: string;
+  appearance?: string;
+  gender?: string;
+  mechanics?: {
+    loadout?: CharacterLoadout;
+  };
+}
+
+/**
+ * Build a character portrait prompt including equipment
+ */
+export function buildCharacterPrompt(
+  character: CharacterData,
+  options: {
+    artStyle?: string;
+    lightingStyle?: string;
+    compositionStyle?: string;
+    qualityLevel?: 'high' | 'medium' | 'standard';
+  } = {}
+): string {
+  const parts: string[] = [];
+
+  // Core character identity
+  if (character.race) parts.push(character.race);
+  if (character.class) parts.push(character.class);
+  if (character.gender) parts.push(character.gender);
+  if (character.appearance) parts.push(character.appearance);
+
+  // Add equipment from loadout
+  const loadout = character.mechanics?.loadout;
+  if (loadout) {
+    // Weapons - filter out ammo for visual prompt
+    if (loadout.weapons?.length) {
+      const visualWeapons = loadout.weapons.filter(w =>
+        !w.toLowerCase().includes('bolt') &&
+        !w.toLowerCase().includes('arrow') &&
+        !w.toLowerCase().includes('ammunition') &&
+        !w.toLowerCase().includes('dart')
+      );
+      if (visualWeapons.length > 0) {
+        // Take first 2 weapons max for cleaner prompt
+        const mainWeapons = visualWeapons.slice(0, 2);
+        parts.push(`wielding ${mainWeapons.join(' and ').toLowerCase()}`);
+      }
+    }
+
+    // Armor
+    if (loadout.armor && loadout.armor.toLowerCase() !== 'none') {
+      parts.push(`wearing ${loadout.armor.toLowerCase()}`);
+    }
+
+    // Shield
+    if (loadout.shield) {
+      parts.push(`carrying a ${loadout.shield.toLowerCase()}`);
+    }
+
+    // Spellcasting focus
+    if (loadout.focus) {
+      if (loadout.focus.toLowerCase().includes('staff')) {
+        parts.push('with glowing magical staff');
+      } else if (loadout.focus.toLowerCase().includes('orb')) {
+        parts.push('holding a glowing arcane orb');
+      } else if (loadout.focus.toLowerCase().includes('wand')) {
+        parts.push('with magical wand');
+      } else if (loadout.focus.toLowerCase().includes('crystal')) {
+        parts.push('with glowing crystal focus');
+      } else if (loadout.focus.toLowerCase().includes('holy symbol')) {
+        parts.push('wearing holy symbol');
+      } else if (loadout.focus.toLowerCase().includes('druidic')) {
+        parts.push('with wooden druidic focus');
+      } else if (loadout.focus.toLowerCase().includes('spellbook')) {
+        parts.push('holding a leather-bound spellbook with arcane symbols');
+      } else if (
+        loadout.focus.toLowerCase().includes('lute') ||
+        loadout.focus.toLowerCase().includes('lyre') ||
+        loadout.focus.toLowerCase().includes('flute') ||
+        loadout.focus.toLowerCase().includes('drum') ||
+        loadout.focus.toLowerCase().includes('horn')
+      ) {
+        parts.push(`carrying a ${loadout.focus.toLowerCase()}`);
+      }
+    }
+
+    // Class-specific additions
+    const classLower = character.class?.toLowerCase() || '';
+    if (classLower === 'wizard' && !loadout.focus?.toLowerCase().includes('staff')) {
+      // Wizards always have spellbook
+      if (!loadout.focus?.toLowerCase().includes('spellbook')) {
+        parts.push('with spellbook');
+      }
+    } else if (classLower === 'cleric' || classLower === 'paladin') {
+      if (!loadout.focus) {
+        parts.push('with holy symbol');
+      }
+    } else if (classLower === 'druid') {
+      if (!loadout.focus) {
+        parts.push('with druidic focus');
+      }
+    }
+  }
+
+  const description = parts.join(', ') || 'fantasy adventurer';
+
+  // Build full prompt with style options
+  return buildGenerationPrompt({
+    userPrompt: description,
+    entityType: 'player',
+    artStyle: options.artStyle,
+    lightingStyle: options.lightingStyle,
+    compositionStyle: options.compositionStyle,
+    qualityLevel: options.qualityLevel,
+  });
+}

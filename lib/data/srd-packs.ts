@@ -297,6 +297,61 @@ export const classRecommendedPacks: Record<string, string[]> = {
   wizard: ['scholars', 'explorers'],
 };
 
+// Weapon choices (either/or options) by class - each array is a choice, pick one set
+export const classWeaponChoices: Record<string, { label: string; items: string[] }[]> = {
+  barbarian: [
+    { label: 'Primary Weapon', items: ['Greataxe'] },
+    { label: 'Secondary Weapons', items: ['Handaxe', 'Handaxe'] },
+    { label: 'Javelins', items: ['Javelin', 'Javelin', 'Javelin', 'Javelin'] },
+  ],
+  bard: [
+    { label: 'Weapon Choice', items: ['Rapier'] }, // or Longsword or any simple
+    { label: 'Dagger', items: ['Dagger'] },
+  ],
+  cleric: [
+    { label: 'Weapon Choice', items: ['Mace'] }, // or Warhammer if dwarf
+    { label: 'Ranged Option', items: ['Light Crossbow', 'Crossbow Bolts (20)'] },
+    { label: 'Shield', items: ['Shield'] },
+  ],
+  druid: [
+    { label: 'Shield', items: ['Wooden Shield'] },
+    { label: 'Weapon Choice', items: ['Scimitar'] }, // or any simple melee
+  ],
+  fighter: [
+    { label: 'Melee Setup', items: ['Longsword', 'Shield'] }, // or two martial weapons
+    { label: 'Ranged Option', items: ['Longbow', 'Arrows (20)'] }, // or two handaxes
+  ],
+  monk: [
+    { label: 'Weapon Choice', items: ['Shortsword'] }, // or any simple weapon
+    { label: 'Darts', items: ['Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart'] },
+  ],
+  paladin: [
+    { label: 'Melee Setup', items: ['Longsword', 'Shield'] }, // or two martial weapons
+    { label: 'Javelins', items: ['Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin'] },
+  ],
+  ranger: [
+    { label: 'Ranged Weapon', items: ['Longbow', 'Arrows (20)'] },
+    { label: 'Melee Weapons', items: ['Shortsword', 'Shortsword'] }, // or two simple melee
+  ],
+  rogue: [
+    { label: 'Melee Weapon', items: ['Rapier'] }, // or shortsword
+    { label: 'Ranged Weapon', items: ['Shortbow', 'Arrows (20)'] },
+    { label: 'Daggers', items: ['Dagger', 'Dagger'] },
+  ],
+  sorcerer: [
+    { label: 'Weapon Choice', items: ['Light Crossbow', 'Crossbow Bolts (20)'] }, // or any simple
+    { label: 'Daggers', items: ['Dagger', 'Dagger'] },
+  ],
+  warlock: [
+    { label: 'Weapon Choice', items: ['Light Crossbow', 'Crossbow Bolts (20)'] }, // or any simple
+    { label: 'Daggers', items: ['Dagger', 'Dagger'] },
+  ],
+  wizard: [
+    { label: 'Weapon Choice', items: ['Quarterstaff'] }, // or dagger
+    { label: 'Backup Dagger', items: ['Dagger'] },
+  ],
+};
+
 // Languages
 export const languages = [
   'Common',

@@ -45,6 +45,7 @@ import {
   classArmor,
   classSpellcastingFocus,
   classRecommendedPacks,
+  classWeaponChoices,
   languages,
 } from '@/lib/data/srd-packs';
 
@@ -249,18 +250,26 @@ export default function PlayerForgePage(): JSX.Element {
     }
 
     // Add equipment from loadout
-    const weapons = classWeapons[playerClass] || [];
+    const weaponGroups = classWeaponChoices[playerClass] || [];
     const armor = classArmor[playerClass] || [];
     const focusData = classSpellcastingFocus[playerClass];
 
-    // Primary weapon (first in list, usually the main one)
-    if (weapons.length > 0) {
-      const primaryWeapon = weapons[0];
-      // Special handling for staff with wizard
-      if (playerClass === 'wizard' && primaryWeapon.toLowerCase().includes('staff')) {
-        parts.push('wielding a glowing arcane quarterstaff');
-      } else {
-        parts.push(`wielding ${primaryWeapon.toLowerCase()}`);
+    // Get primary weapon from first weapon group (skip ammo like bolts/arrows)
+    if (weaponGroups.length > 0) {
+      const primaryGroup = weaponGroups[0];
+      const visualWeapons = primaryGroup.items.filter(w =>
+        !w.toLowerCase().includes('bolt') &&
+        !w.toLowerCase().includes('arrow') &&
+        !w.toLowerCase().includes('ammunition')
+      );
+      if (visualWeapons.length > 0) {
+        const primaryWeapon = visualWeapons[0];
+        // Special handling for staff with wizard
+        if (playerClass === 'wizard' && primaryWeapon.toLowerCase().includes('staff')) {
+          parts.push('wielding a glowing arcane quarterstaff');
+        } else {
+          parts.push(`wielding ${primaryWeapon.toLowerCase()}`);
+        }
       }
     }
 
@@ -271,17 +280,30 @@ export default function PlayerForgePage(): JSX.Element {
 
     // Spellcasting focus or class-specific items
     if (spellcastingFocus) {
-      if (spellcastingFocus.toLowerCase().includes('spellbook')) {
-        parts.push('holding a spellbook with arcane symbols');
+      if (spellcastingFocus.toLowerCase().includes('staff')) {
+        parts.push('with glowing magical staff');
+      } else if (spellcastingFocus.toLowerCase().includes('orb')) {
+        parts.push('holding a glowing arcane orb');
+      } else if (spellcastingFocus.toLowerCase().includes('wand')) {
+        parts.push('with magical wand');
+      } else if (spellcastingFocus.toLowerCase().includes('crystal')) {
+        parts.push('with glowing crystal focus');
       } else if (spellcastingFocus.toLowerCase().includes('holy symbol')) {
-        parts.push('with glowing holy symbol');
+        parts.push('wearing holy symbol');
       } else if (spellcastingFocus.toLowerCase().includes('druidic')) {
         parts.push('with wooden druidic focus');
-      } else if (spellcastingFocus.toLowerCase().includes('arcane focus')) {
-        parts.push('with magical arcane focus');
+      } else if (spellcastingFocus.toLowerCase().includes('lute') ||
+                 spellcastingFocus.toLowerCase().includes('lyre') ||
+                 spellcastingFocus.toLowerCase().includes('flute') ||
+                 spellcastingFocus.toLowerCase().includes('drum') ||
+                 spellcastingFocus.toLowerCase().includes('horn')) {
+        parts.push(`carrying a ${spellcastingFocus.toLowerCase()}`);
       }
-    } else if (focusData?.automatic.includes('Spellbook')) {
-      parts.push('carrying a leather-bound spellbook');
+    }
+
+    // Add spellbook for wizard if automatic
+    if (focusData?.automatic.includes('Spellbook')) {
+      parts.push('with leather-bound spellbook');
     }
 
     if (backstory) {
@@ -433,7 +455,8 @@ export default function PlayerForgePage(): JSX.Element {
     try {
       // Build inventory items list
       const packItems = selectedPack ? equipmentPacks[selectedPack]?.items || [] : [];
-      const classWeaponItems = classWeapons[playerClass] || [];
+      // Get all weapon items from the choice groups
+      const classWeaponItems = (classWeaponChoices[playerClass] || []).flatMap(group => group.items);
       const classArmorItems = classArmor[playerClass] || [];
       const automaticItems = classSpellcastingFocus[playerClass]?.automatic || [];
       const focusItems = spellcastingFocus ? [spellcastingFocus] : [];
@@ -1170,32 +1193,66 @@ export default function PlayerForgePage(): JSX.Element {
                 </div>
               </div>
 
-              {/* Class Weapons & Armor */}
+              {/* Class Starting Gear - Organized by Category */}
               {playerClass && (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <Label>Class Starting Gear</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      ...(classWeapons[playerClass] || []),
-                      ...(classArmor[playerClass] || []),
-                      ...(classSpellcastingFocus[playerClass]?.automatic || []),
-                    ].map((item, idx) => (
-                      <span
-                        key={`${item}-${idx}`}
-                        className={cn(
-                          'px-2 py-1 border rounded text-sm',
-                          classSpellcastingFocus[playerClass]?.automatic.includes(item)
-                            ? 'bg-purple-900/30 border-purple-700 text-purple-300'
-                            : 'bg-slate-800 border-slate-700 text-slate-300'
-                        )}
-                      >
-                        {item}
-                        {classSpellcastingFocus[playerClass]?.automatic.includes(item) && (
-                          <span className="ml-1 text-xs text-purple-400">(auto)</span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
+
+                  {/* Weapons - Organized by choice groups */}
+                  {classWeaponChoices[playerClass]?.length > 0 && (
+                    <div className="space-y-2">
+                      {classWeaponChoices[playerClass].map((group, groupIdx) => (
+                        <div key={groupIdx} className="space-y-1">
+                          <div className="text-xs text-slate-500">{group.label}</div>
+                          <div className="flex flex-wrap gap-1">
+                            {group.items.map((item, idx) => (
+                              <span
+                                key={`${item}-${idx}`}
+                                className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-slate-300"
+                              >
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Armor */}
+                  {classArmor[playerClass]?.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-slate-500">Armor</div>
+                      <div className="flex flex-wrap gap-1">
+                        {classArmor[playerClass].map((item, idx) => (
+                          <span
+                            key={`${item}-${idx}`}
+                            className="px-2 py-1 bg-blue-900/30 border border-blue-700 rounded text-sm text-blue-300"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Automatic Items (like Spellbook) */}
+                  {classSpellcastingFocus[playerClass]?.automatic.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-slate-500">Automatic Equipment</div>
+                      <div className="flex flex-wrap gap-1">
+                        {classSpellcastingFocus[playerClass].automatic.map((item, idx) => (
+                          <span
+                            key={`${item}-${idx}`}
+                            className="px-2 py-1 bg-purple-900/30 border border-purple-700 rounded text-sm text-purple-300"
+                          >
+                            {item}
+                            <span className="ml-1 text-xs text-purple-400">✓</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
