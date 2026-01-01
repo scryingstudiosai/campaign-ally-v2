@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -86,13 +86,19 @@ const ABILITY_LABELS: Record<keyof AbilityScores, string> = {
 export default function PlayerForgePage(): JSX.Element {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const campaignId = params.id as string;
   const supabase = createClient();
+
+  // Player mode - when accessed from player portal
+  const isPlayerMode = searchParams.get('playerMode') === 'true';
+  const returnTo = searchParams.get('returnTo');
 
   // Loading and campaign state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [campaignName, setCampaignName] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Current step
   const [currentStep, setCurrentStep] = useState<Step>('identity');
@@ -168,21 +174,41 @@ export default function PlayerForgePage(): JSX.Element {
         return;
       }
 
-      // Fetch campaign
-      const { data: campaignData, error: campaignError } = await supabase
-        .from('campaigns')
-        .select('id, name')
-        .eq('id', campaignId)
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .single();
+      setCurrentUserId(user.id);
 
-      if (campaignError || !campaignData) {
-        router.push('/dashboard');
-        return;
+      // In player mode, verify membership instead of ownership
+      if (isPlayerMode) {
+        const { data: membership } = await supabase
+          .from('campaign_members')
+          .select('id, campaign:campaigns(id, name)')
+          .eq('campaign_id', campaignId)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          router.push('/');
+          return;
+        }
+
+        const campaignInfo = membership.campaign as unknown as { id: string; name: string } | null;
+        setCampaignName(campaignInfo?.name || 'Campaign');
+      } else {
+        // Normal DM mode - require ownership
+        const { data: campaignData, error: campaignError } = await supabase
+          .from('campaigns')
+          .select('id, name')
+          .eq('id', campaignId)
+          .eq('user_id', user.id)
+          .is('deleted_at', null)
+          .single();
+
+        if (campaignError || !campaignData) {
+          router.push('/dashboard');
+          return;
+        }
+
+        setCampaignName(campaignData.name);
       }
-
-      setCampaignName(campaignData.name);
 
       // Fetch entities for anchoring
       const { data: entityData } = await supabase
@@ -201,7 +227,7 @@ export default function PlayerForgePage(): JSX.Element {
     }
 
     fetchData();
-  }, [campaignId, supabase, router]);
+  }, [campaignId, supabase, router, isPlayerMode]);
 
   // Navigation
   const steps: Step[] = ['identity', 'stats', 'loadout', 'anchors', 'portrait', 'review'];
@@ -464,8 +490,21 @@ export default function PlayerForgePage(): JSX.Element {
         await supabase.from('relationships').insert(relationships);
       }
 
-      toast.success('Player character created!');
-      router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
+      // In player mode, link character to player's membership
+      if (isPlayerMode && currentUserId) {
+        // Update membership with character
+        await supabase
+          .from('campaign_members')
+          .update({ character_entity_id: entity.id })
+          .eq('campaign_id', campaignId)
+          .eq('user_id', currentUserId);
+
+        toast.success('Character created!');
+        router.push(returnTo || `/portal/${campaignId}`);
+      } else {
+        toast.success('Player character created!');
+        router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
+      }
     } catch (error) {
       console.error('Failed to save player:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to save player');
@@ -500,9 +539,9 @@ export default function PlayerForgePage(): JSX.Element {
         }}
       >
         <Button variant="ghost" asChild className="mb-2 -ml-2">
-          <Link href={`/dashboard/campaigns/${campaignId}`}>
+          <Link href={isPlayerMode ? (returnTo || `/portal/${campaignId}`) : `/dashboard/campaigns/${campaignId}`}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to {campaignName}
+            {isPlayerMode ? 'Back to Portal' : `Back to ${campaignName}`}
           </Link>
         </Button>
         <div className="flex items-center gap-3">
@@ -681,25 +720,27 @@ export default function PlayerForgePage(): JSX.Element {
                   />
                 </div>
 
-                {/* DM Secrets */}
-                <div className="col-span-2 space-y-2 p-4 bg-red-950/20 border border-red-500/30 rounded-lg">
-                  <Label htmlFor="dmSecrets" className="text-red-400 flex items-center gap-2">
-                    DM Secrets
-                    <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-300 rounded border border-red-500/30">
-                      Hidden from Players
-                    </span>
-                  </Label>
-                  <Textarea
-                    id="dmSecrets"
-                    placeholder="Secret information only the DM knows about this character..."
-                    value={dmSecrets}
-                    onChange={(e) => setDmSecrets(e.target.value)}
-                    className="min-h-[80px] bg-red-950/30 border-red-500/30 placeholder:text-red-300/50"
-                  />
-                  <p className="text-xs text-red-400/70">
-                    This won&apos;t appear in the future Player Portal.
-                  </p>
-                </div>
+                {/* DM Secrets - hidden in player mode */}
+                {!isPlayerMode && (
+                  <div className="col-span-2 space-y-2 p-4 bg-red-950/20 border border-red-500/30 rounded-lg">
+                    <Label htmlFor="dmSecrets" className="text-red-400 flex items-center gap-2">
+                      DM Secrets
+                      <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-300 rounded border border-red-500/30">
+                        Hidden from Players
+                      </span>
+                    </Label>
+                    <Textarea
+                      id="dmSecrets"
+                      placeholder="Secret information only the DM knows about this character..."
+                      value={dmSecrets}
+                      onChange={(e) => setDmSecrets(e.target.value)}
+                      className="min-h-[80px] bg-red-950/30 border-red-500/30 placeholder:text-red-300/50"
+                    />
+                    <p className="text-xs text-red-400/70">
+                      This won&apos;t appear in the Player Portal.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
