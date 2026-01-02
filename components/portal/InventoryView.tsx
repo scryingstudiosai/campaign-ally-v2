@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Package, Search, Plus } from 'lucide-react';
 import { InventoryItem } from './InventoryItem';
 import { ItemDetailSheet } from './ItemDetailSheet';
@@ -67,12 +68,15 @@ interface Props {
 }
 
 export function InventoryView({ items, partyStash, currency, characterId, campaignId }: Props) {
+  const router = useRouter();
   const [selectedItem, setSelectedItem] = useState<InventoryItemData | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'equipped' | 'bag'>('all');
   const [stashItems, setStashItems] = useState(partyStash);
   const [showAddItem, setShowAddItem] = useState(false);
-  const [inventoryItems, setInventoryItems] = useState(items);
+
+  // Use items directly from props - they're refreshed by router.refresh()
+  const inventoryItems = items;
 
   const { newLoot, clearNewLoot } = useRealtimeInventory({
     campaignId,
@@ -100,12 +104,9 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
 
   // Handle item added - refresh the inventory
   const handleItemAdded = () => {
-    // The AddItemToInventoryDialog uses the inventory API which adds to inventory_instances
-    // We need to refetch - for now, we just close the dialog.
-    // A full refetch would require a router.refresh() or similar
     setShowAddItem(false);
-    // Force page refresh to get new inventory data
-    window.location.reload();
+    // Use router.refresh() to properly refetch RSC data without full page reload
+    router.refresh();
   };
 
   const handleClaimItem = (itemId: string) => {

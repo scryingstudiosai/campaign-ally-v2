@@ -42,7 +42,7 @@ export function useRealtimeInventory({ campaignId, characterId }: UseRealtimeInv
 
             // If item was given directly to this player
             if (item.owner_type === 'player' && item.owner_id === characterId) {
-              // Fetch full item details
+              // Fetch full item details for loot reveal
               const { data: fullItem } = await supabase
                 .from('inventory_instances')
                 .select(`
@@ -56,6 +56,8 @@ export function useRealtimeInventory({ campaignId, characterId }: UseRealtimeInv
               if (fullItem) {
                 setNewLoot(fullItem as InventoryItem);
               }
+              // Refresh page data to show the new item in inventory
+              router.refresh();
             }
 
             // If item added to party stash

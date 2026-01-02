@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation';
 import { InventoryView } from '@/components/portal/InventoryView';
 import type { InventoryItemData, StashItemData } from '@/components/portal/InventoryView';
 
+// Force dynamic rendering to ensure fresh data on each request
+export const dynamic = 'force-dynamic';
+
 interface InventoryPageProps {
   params: Promise<{ campaignId: string }>;
 }
