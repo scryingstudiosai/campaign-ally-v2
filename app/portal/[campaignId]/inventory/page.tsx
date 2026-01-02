@@ -7,17 +7,6 @@ interface InventoryPageProps {
   params: Promise<{ campaignId: string }>;
 }
 
-interface Loadout {
-  weapons?: string[];
-  armor?: string | null;
-  shield?: string | null;
-  pack?: string | null;
-  packContents?: string[];
-  focus?: string | null;
-  automaticItems?: string[];
-  gold?: number;
-}
-
 export default async function InventoryPage({ params }: InventoryPageProps) {
   const { campaignId } = await params;
   const supabase = await createClient();
@@ -38,201 +27,8 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     redirect(`/portal/${campaignId}`);
   }
 
-  // 3. Fetch Character with soul.loadout for starting equipment
-  const { data: character } = await supabase
-    .from('entities')
-    .select('id, soul, mechanics')
-    .eq('id', membership.character_entity_id)
-    .single();
-
-  const soul = (character?.soul || {}) as Record<string, unknown>;
-  const mechanics = (character?.mechanics || {}) as Record<string, unknown>;
-  const loadout = (soul.loadout || {}) as Loadout;
-
-  // 4. Build inventory from soul.loadout (starting equipment)
-  const loadoutItems: InventoryItemData[] = [];
-  let itemIndex = 0;
-
-  // Weapons
-  if (loadout.weapons?.length) {
-    for (const weapon of loadout.weapons) {
-      loadoutItems.push({
-        id: `loadout-weapon-${itemIndex++}`,
-        quantity: 1,
-        charges: null,
-        max_charges: null,
-        is_equipped: true,
-        is_attuned: false,
-        is_identified: true,
-        notes: null,
-        acquired_from: 'Starting Equipment',
-        srd_item: {
-          id: `loadout-weapon-${itemIndex}`,
-          name: weapon,
-          item_type: 'weapon',
-          subtype: null,
-          rarity: 'common',
-          description: null,
-          mechanics: null,
-          value_gp: null,
-          weight: null,
-          requires_attunement: false,
-        },
-        custom_item: null,
-      });
-    }
-  }
-
-  // Armor
-  if (loadout.armor) {
-    loadoutItems.push({
-      id: `loadout-armor-${itemIndex++}`,
-      quantity: 1,
-      charges: null,
-      max_charges: null,
-      is_equipped: true,
-      is_attuned: false,
-      is_identified: true,
-      notes: null,
-      acquired_from: 'Starting Equipment',
-      srd_item: {
-        id: `loadout-armor-${itemIndex}`,
-        name: loadout.armor,
-        item_type: 'armor',
-        subtype: null,
-        rarity: 'common',
-        description: null,
-        mechanics: null,
-        value_gp: null,
-        weight: null,
-        requires_attunement: false,
-      },
-      custom_item: null,
-    });
-  }
-
-  // Shield
-  if (loadout.shield) {
-    loadoutItems.push({
-      id: `loadout-shield-${itemIndex++}`,
-      quantity: 1,
-      charges: null,
-      max_charges: null,
-      is_equipped: true,
-      is_attuned: false,
-      is_identified: true,
-      notes: null,
-      acquired_from: 'Starting Equipment',
-      srd_item: {
-        id: `loadout-shield-${itemIndex}`,
-        name: loadout.shield,
-        item_type: 'armor',
-        subtype: 'Shield',
-        rarity: 'common',
-        description: null,
-        mechanics: null,
-        value_gp: null,
-        weight: null,
-        requires_attunement: false,
-      },
-      custom_item: null,
-    });
-  }
-
-  // Spellcasting Focus
-  if (loadout.focus) {
-    loadoutItems.push({
-      id: `loadout-focus-${itemIndex++}`,
-      quantity: 1,
-      charges: null,
-      max_charges: null,
-      is_equipped: true,
-      is_attuned: false,
-      is_identified: true,
-      notes: null,
-      acquired_from: 'Starting Equipment',
-      srd_item: {
-        id: `loadout-focus-${itemIndex}`,
-        name: loadout.focus,
-        item_type: 'wondrous',
-        subtype: 'Spellcasting Focus',
-        rarity: 'common',
-        description: null,
-        mechanics: null,
-        value_gp: null,
-        weight: null,
-        requires_attunement: false,
-      },
-      custom_item: null,
-    });
-  }
-
-  // Automatic Items (Spellbook, etc.)
-  if (loadout.automaticItems?.length) {
-    for (const item of loadout.automaticItems) {
-      loadoutItems.push({
-        id: `loadout-auto-${itemIndex++}`,
-        quantity: 1,
-        charges: null,
-        max_charges: null,
-        is_equipped: false,
-        is_attuned: false,
-        is_identified: true,
-        notes: null,
-        acquired_from: 'Starting Equipment',
-        srd_item: {
-          id: `loadout-auto-${itemIndex}`,
-          name: item,
-          item_type: 'wondrous',
-          subtype: null,
-          rarity: 'common',
-          description: null,
-          mechanics: null,
-          value_gp: null,
-          weight: null,
-          requires_attunement: false,
-        },
-        custom_item: null,
-      });
-    }
-  }
-
-  // Pack Contents - group duplicates
-  if (loadout.packContents?.length) {
-    const packCounts: Record<string, number> = {};
-    for (const item of loadout.packContents) {
-      packCounts[item] = (packCounts[item] || 0) + 1;
-    }
-
-    for (const [itemName, quantity] of Object.entries(packCounts)) {
-      loadoutItems.push({
-        id: `loadout-pack-${itemIndex++}`,
-        quantity,
-        charges: null,
-        max_charges: null,
-        is_equipped: false,
-        is_attuned: false,
-        is_identified: true,
-        notes: loadout.pack ? `From ${loadout.pack}` : null,
-        acquired_from: 'Starting Equipment',
-        srd_item: {
-          id: `loadout-pack-${itemIndex}`,
-          name: itemName,
-          item_type: 'adventuring-gear',
-          subtype: null,
-          rarity: 'common',
-          description: null,
-          mechanics: null,
-          value_gp: null,
-          weight: null,
-          requires_attunement: false,
-        },
-        custom_item: null,
-      });
-    }
-  }
-
-  // 5. Also fetch from inventory_instances table (for DM-added or found items)
+  // 3. Fetch ALL items from inventory_instances table
+  // Items are inserted here during character creation and when added later
   const { data: inventoryItems } = await supabase
     .from('inventory_instances')
     .select(`
@@ -256,6 +52,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     `)
     .eq('owner_id', membership.character_entity_id)
     .eq('owner_type', 'player')
+    .order('is_equipped', { ascending: false })
     .order('sort_order', { ascending: true, nullsFirst: false });
 
   // Normalize inventory items (handle array vs single object from Supabase)
@@ -265,10 +62,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     custom_item: Array.isArray(item.custom_item) ? item.custom_item[0] || null : item.custom_item,
   }));
 
-  // Combine loadout items with inventory items
-  const allItems = [...loadoutItems, ...normalizedInventoryItems];
-
-  // 6. Fetch Party Stash
+  // 4. Fetch Party Stash
   const { data: partyStash } = await supabase
     .from('inventory_instances')
     .select(`
@@ -286,16 +80,27 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     custom_item: Array.isArray(item.custom_item) ? item.custom_item[0] || null : item.custom_item,
   }));
 
-  // 7. Get currency from loadout or mechanics
+  // 5. Get currency - check for gold item in inventory
+  const goldItem = normalizedInventoryItems.find(item =>
+    item.srd_item?.name?.toLowerCase() === 'gold pieces' ||
+    item.custom_item?.name?.toLowerCase() === 'gold pieces'
+  );
+
   const currency = {
-    gold: loadout.gold || (mechanics.gold as number) || 0,
-    silver: (mechanics.silver as number) || 0,
-    copper: (mechanics.copper as number) || 0,
+    gold: goldItem?.quantity || 0,
+    silver: 0,
+    copper: 0,
   };
+
+  // Filter out gold from regular items display
+  const displayItems = normalizedInventoryItems.filter(item =>
+    item.srd_item?.name?.toLowerCase() !== 'gold pieces' &&
+    item.custom_item?.name?.toLowerCase() !== 'gold pieces'
+  );
 
   return (
     <InventoryView
-      items={allItems}
+      items={displayItems}
       partyStash={normalizedStash}
       currency={currency}
       characterId={membership.character_entity_id}

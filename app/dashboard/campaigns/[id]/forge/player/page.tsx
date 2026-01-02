@@ -516,6 +516,16 @@ export default function PlayerForgePage(): JSX.Element {
         throw new Error(entityError?.message || 'Failed to create player');
       }
 
+      // In player mode, link character to player's membership BEFORE adding inventory
+      // (so the bulk API can verify ownership)
+      if (isPlayerMode && currentUserId) {
+        await supabase
+          .from('campaign_members')
+          .update({ character_entity_id: entity.id })
+          .eq('campaign_id', campaignId)
+          .eq('user_id', currentUserId);
+      }
+
       // Add inventory items via bulk API
       if (allItems.length > 0 || startingGold > 0) {
         // Count items for stacking
@@ -574,15 +584,8 @@ export default function PlayerForgePage(): JSX.Element {
         }
       }
 
-      // In player mode, link character to player's membership
-      if (isPlayerMode && currentUserId) {
-        // Update membership with character
-        await supabase
-          .from('campaign_members')
-          .update({ character_entity_id: entity.id })
-          .eq('campaign_id', campaignId)
-          .eq('user_id', currentUserId);
-
+      // Navigate after creation
+      if (isPlayerMode) {
         toast.success('Character created!');
         router.push(returnTo || `/portal/${campaignId}`);
       } else {

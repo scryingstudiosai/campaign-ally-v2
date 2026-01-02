@@ -786,7 +786,6 @@ export default async function EntityDetailPage({ params }: PageProps) {
               entityName={entity.name}
               subType={entity.sub_type}
               mechanics={entity.mechanics as Record<string, unknown>}
-              soul={entity.soul as Record<string, unknown> | null}
             />
           </div>
 
