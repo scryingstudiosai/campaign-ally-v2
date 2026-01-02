@@ -606,7 +606,12 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
                 {/* Location Mechanics - Hazards, encounters (player-facing) */}
                 {locationMechanics && Object.keys(locationMechanics).length > 0 && (
-                  <LocationMechanicsCard mechanics={locationMechanics} />
+                  <LocationMechanicsCard
+                    mechanics={locationMechanics}
+                    locationId={entity.id}
+                    locationName={entity.name}
+                    campaignId={params.id}
+                  />
                 )}
 
                 {/* Tavern/Inn Menu & Services - Room rates, drinks, meals */}

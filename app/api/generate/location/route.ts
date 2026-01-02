@@ -14,6 +14,7 @@ import {
   TAVERN_INN_PROMPT
 } from '@/lib/forge/prompts/location-prompts'
 import { isLikelyShop, inferShopType, getSrdItemsForShopType } from '@/lib/srd/item-lookup'
+import type { ShopSpecialItem } from '@/lib/forge/shop-stocker'
 
 interface LocationInputs {
   name?: string
@@ -79,6 +80,7 @@ interface LocationMechanics {
   shop_type?: string
   price_modifier?: number
   suggested_stock?: string[]
+  special_items?: ShopSpecialItem[]
   // Tavern/Inn-related properties
   is_tavern?: boolean
   establishment_quality?: 'poor' | 'modest' | 'comfortable' | 'wealthy' | 'aristocratic'
@@ -124,6 +126,68 @@ interface GeneratedLocation {
   facts: LocationFact[]
   read_aloud: string
   dm_slug: string
+}
+
+/**
+ * Generate 3 unique specialty items for a shop location
+ */
+async function generateShopSpecialtyItems(
+  shopName: string,
+  shopType: string,
+  campaignContext: string
+): Promise<ShopSpecialItem[]> {
+  try {
+    const prompt = `You are a creative D&D item designer. Generate 3 unique specialty items for a ${shopType} shop called "${shopName}".
+
+These should NOT be standard SRD items. They should be unique, memorable items that make this specific shop special - items that players will remember and talk about.
+
+For each item provide:
+- name: A unique, evocative name (not generic like "Magic Sword")
+- description: 2-3 sentences about what makes it special
+- item_type: weapon, armor, potion, wondrous, tool, consumable, etc.
+- rarity: common, uncommon, or rare (no legendary items for shop stock)
+- base_price_gp: Reasonable price for the item type and rarity
+
+Shop context:
+- Shop Name: ${shopName}
+- Shop Type: ${shopType}
+${campaignContext ? `- Campaign Setting: ${campaignContext.substring(0, 500)}` : ''}
+
+Return ONLY a valid JSON array with exactly 3 items:
+[
+  { "name": "...", "description": "...", "item_type": "...", "rarity": "...", "base_price_gp": ... }
+]`
+
+    const completion = await getOpenAIClient().chat.completions.create({
+      model: 'gpt-4o-mini', // Use mini for cost efficiency
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.9,
+      max_tokens: 800,
+    })
+
+    const responseContent = completion.choices[0]?.message?.content
+    if (!responseContent) {
+      console.error('[Shop Specialty] No response from OpenAI')
+      return []
+    }
+
+    const parsed = JSON.parse(responseContent)
+    // Handle both array response and {items: [...]} response
+    const items = Array.isArray(parsed) ? parsed : (parsed.items || [])
+
+    // Validate and return
+    return items.slice(0, 3).map((item: Record<string, unknown>) => ({
+      name: String(item.name || 'Mysterious Item'),
+      description: String(item.description || 'A unique shop item'),
+      item_type: String(item.item_type || 'wondrous'),
+      rarity: String(item.rarity || 'uncommon'),
+      base_price_gp: Number(item.base_price_gp) || 50,
+    }))
+  } catch (error) {
+    console.error('[Shop Specialty] Error generating specialty items:', error)
+    return []
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -247,7 +311,7 @@ Ensure this location fits within and complements its parent location.
       generatedLocation.mechanics = {}
     }
 
-    // Detect if this is a shop location and add shop metadata
+    // Detect if this is a shop location and add shop metadata + specialty items
     const locationForShopCheck = {
       name: generatedLocation.name,
       sub_type: generatedLocation.sub_type,
@@ -257,6 +321,13 @@ Ensure this location fits within and complements its parent location.
       const shopType = inferShopType(locationForShopCheck)
       const suggestedStock = getSrdItemsForShopType(shopType)
 
+      // Generate 3 unique specialty items for this shop
+      const specialtyItems = await generateShopSpecialtyItems(
+        generatedLocation.name,
+        shopType,
+        campaignContext
+      )
+
       // Add shop properties to mechanics
       generatedLocation.mechanics = {
         ...generatedLocation.mechanics,
@@ -264,6 +335,7 @@ Ensure this location fits within and complements its parent location.
         shop_type: shopType,
         price_modifier: 1.0, // Default standard pricing
         suggested_stock: suggestedStock,
+        special_items: specialtyItems, // Include the generated specialty items
       }
     }
 

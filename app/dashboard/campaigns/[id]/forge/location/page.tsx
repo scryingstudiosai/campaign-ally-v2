@@ -348,10 +348,12 @@ export default function LocationForgePage(): JSX.Element {
       shop_type: (mechanics.shop_type as string) || 'general',
       price_modifier: (mechanics.price_modifier as number) || 1.0,
       suggested_srd_stock: (mechanics.suggested_stock as string[]) || [],
+      special_items: (mechanics.special_items as ShopInventoryData['special_items']) || [],
     }
 
     // Only stock if we have items to stock
-    if (inventoryData.suggested_srd_stock.length === 0) return
+    const hasItems = inventoryData.suggested_srd_stock.length > 0 || (inventoryData.special_items && inventoryData.special_items.length > 0)
+    if (!hasItems) return
 
     try {
       const response = await fetch('/api/location/stock', {
