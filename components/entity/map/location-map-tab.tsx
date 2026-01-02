@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Upload, Image, Loader2, Sparkles, Link, X, Map } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Upload, Image, Loader2, Sparkles, Link, X, Map, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -12,13 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InteractiveMap } from './interactive-map';
 import { toast } from 'sonner';
@@ -52,15 +45,6 @@ interface LocationMapTabProps {
   onEntityClick?: (entityId: string) => void;
 }
 
-const MAP_STYLES = [
-  { value: 'hand-drawn', label: 'Hand-Drawn Fantasy' },
-  { value: 'parchment', label: 'Parchment/Antique' },
-  { value: 'satellite', label: 'Aerial/Satellite View' },
-  { value: 'blueprint', label: 'Blueprint/Floor Plan' },
-  { value: 'battlemap', label: 'Battle Map (Grid)' },
-  { value: 'artistic', label: 'Artistic/Painted' },
-];
-
 export function LocationMapTab({
   campaignId,
   locationId,
@@ -69,18 +53,15 @@ export function LocationMapTab({
   onImageUpdate,
   onEntityClick,
 }: LocationMapTabProps) {
+  const router = useRouter();
   const [markers, setMarkers] = useState<MapMarker[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Dialog state
   const [showDialog, setShowDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState('generate');
+  const [activeTab, setActiveTab] = useState('upload');
   const [submitting, setSubmitting] = useState(false);
-
-  // AI Generation state
-  const [mapDescription, setMapDescription] = useState('');
-  const [mapStyle, setMapStyle] = useState('hand-drawn');
 
   // URL state
   const [externalUrl, setExternalUrl] = useState('');
@@ -183,45 +164,9 @@ export function LocationMapTab({
     }
   };
 
-  // AI Generation handler
-  const handleAIGenerate = async () => {
-    if (!mapDescription.trim()) {
-      toast.error('Please describe what should be on the map');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      // Build a map-specific prompt
-      const prompt = buildMapPrompt(locationName, mapDescription, mapStyle);
-
-      const res = await fetch('/api/images/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          campaignId,
-          entityId: locationId,
-          entityType: 'map',
-          artStyle: mapStyle === 'artistic' ? 'painterly' : 'classic-fantasy',
-          compositionStyle: 'environment',
-        }),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to generate map');
-      }
-
-      const data = await res.json();
-      setPreviewUrl(data.url);
-      toast.success('Map generated! Click Save to add it.');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Generation failed';
-      toast.error(message);
-    } finally {
-      setSubmitting(false);
-    }
+  // Navigate to full AI generation page
+  const handleAIGenerate = () => {
+    router.push(`/dashboard/campaigns/${campaignId}/memory/${locationId}/generate-map`);
   };
 
   // File upload handler
@@ -296,39 +241,9 @@ export function LocationMapTab({
   };
 
   const resetForm = () => {
-    setMapDescription('');
-    setMapStyle('hand-drawn');
     setExternalUrl('');
     setPreviewUrl(null);
-    setActiveTab('generate');
-  };
-
-  const buildMapPrompt = (name: string, description: string, style: string): string => {
-    const styleDescriptions: Record<string, string> = {
-      'hand-drawn': 'hand-drawn fantasy map style with ink lines on parchment paper',
-      'parchment': 'antique cartography style with aged parchment, decorative borders, and compass rose',
-      'satellite': 'aerial satellite view, realistic top-down perspective',
-      'blueprint': 'architectural blueprint style, clean lines, floor plan view',
-      'battlemap': 'tactical battle map with grid squares, suitable for tabletop RPG combat',
-      'artistic': 'painted artistic style, like classic fantasy book illustrations',
-    };
-
-    return `Create a detailed fantasy map of "${name}".
-
-STYLE: ${styleDescriptions[style] || style}
-
-CONTENT TO INCLUDE:
-${description}
-
-REQUIREMENTS:
-- Top-down bird's eye view
-- Clear visual hierarchy
-- High contrast between features
-- Professional cartography quality
-- Suitable for tabletop RPG use
-- NO text labels (will be added as overlays)
-
-Generate a beautiful, detailed map.`;
+    setActiveTab('upload');
   };
 
   if (loading) {
@@ -364,12 +279,40 @@ Generate a beautiful, detailed map.`;
               <DialogTitle>Add Map for {locationName}</DialogTitle>
             </DialogHeader>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="bg-stone-800 w-full grid grid-cols-3">
-                <TabsTrigger value="generate" className="data-[state=active]:bg-stone-700">
+            {/* AI Generation - Prominent CTA */}
+            <div className="bg-gradient-to-br from-teal-900/30 to-cyan-900/30 rounded-lg p-4 border border-teal-700/50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white">AI Map Generation</h3>
+                  <p className="text-sm text-stone-400">
+                    Generate maps with curated styles, entity context, and CSS grid overlay
+                  </p>
+                </div>
+                <Button
+                  onClick={handleAIGenerate}
+                  className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500"
+                >
                   <Sparkles className="h-4 w-4 mr-2" />
-                  AI Generate
-                </TabsTrigger>
+                  Generate
+                  <ExternalLink className="h-3 w-3 ml-2" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-stone-700" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-stone-900 px-2 text-stone-500">or add existing map</span>
+              </div>
+            </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="bg-stone-800 w-full grid grid-cols-2">
                 <TabsTrigger value="upload" className="data-[state=active]:bg-stone-700">
                   <Upload className="h-4 w-4 mr-2" />
                   Upload
@@ -379,50 +322,6 @@ Generate a beautiful, detailed map.`;
                   URL
                 </TabsTrigger>
               </TabsList>
-
-              {/* AI Generate Tab */}
-              <TabsContent value="generate" className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label>Map Style</Label>
-                  <Select value={mapStyle} onValueChange={setMapStyle}>
-                    <SelectTrigger className="bg-stone-800 border-stone-700">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-stone-900 border-stone-700">
-                      {MAP_STYLES.map((style) => (
-                        <SelectItem key={style.value} value={style.value}>
-                          {style.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Describe the Map</Label>
-                  <Textarea
-                    placeholder={`Describe what should appear on this map...
-
-Example: A ruined monastery on a cliff overlooking a dark forest. Show the main chapel, collapsed east wing, underground catacombs entrance, and a hidden ritual chamber. Include surrounding terrain with paths leading to the ruins.`}
-                    value={mapDescription}
-                    onChange={(e) => setMapDescription(e.target.value)}
-                    className="bg-stone-800 border-stone-700 min-h-[120px]"
-                  />
-                </div>
-
-                <Button
-                  onClick={handleAIGenerate}
-                  disabled={submitting || !mapDescription.trim()}
-                  className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
-                  )}
-                  Generate Map
-                </Button>
-              </TabsContent>
 
               {/* Upload Tab */}
               <TabsContent value="upload" className="space-y-4 mt-4">
@@ -436,7 +335,7 @@ Example: A ruined monastery on a cliff overlooking a dark forest. Show the main 
                     <Upload className="h-8 w-8 mx-auto mb-2 text-stone-500" />
                   )}
                   <p className="text-stone-400">Click to upload or drag & drop</p>
-                  <p className="text-stone-600 text-sm">PNG, JPG, WebP up to 5MB</p>
+                  <p className="text-stone-600 text-sm">PNG, JPG, WebP up to 10MB</p>
                 </div>
                 <input
                   ref={fileInputRef}
@@ -553,12 +452,40 @@ Example: A ruined monastery on a cliff overlooking a dark forest. Show the main 
             <DialogTitle>Replace Map for {locationName}</DialogTitle>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-stone-800 w-full grid grid-cols-3">
-              <TabsTrigger value="generate" className="data-[state=active]:bg-stone-700">
+          {/* AI Generation - Prominent CTA */}
+          <div className="bg-gradient-to-br from-teal-900/30 to-cyan-900/30 rounded-lg p-4 border border-teal-700/50">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-white">AI Map Generation</h3>
+                <p className="text-sm text-stone-400">
+                  Generate maps with curated styles, entity context, and CSS grid overlay
+                </p>
+              </div>
+              <Button
+                onClick={handleAIGenerate}
+                className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500"
+              >
                 <Sparkles className="h-4 w-4 mr-2" />
-                AI Generate
-              </TabsTrigger>
+                Generate
+                <ExternalLink className="h-3 w-3 ml-2" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-stone-700" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-stone-900 px-2 text-stone-500">or add existing map</span>
+            </div>
+          </div>
+
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="bg-stone-800 w-full grid grid-cols-2">
               <TabsTrigger value="upload" className="data-[state=active]:bg-stone-700">
                 <Upload className="h-4 w-4 mr-2" />
                 Upload
@@ -568,50 +495,6 @@ Example: A ruined monastery on a cliff overlooking a dark forest. Show the main 
                 URL
               </TabsTrigger>
             </TabsList>
-
-            {/* AI Generate Tab */}
-            <TabsContent value="generate" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label>Map Style</Label>
-                <Select value={mapStyle} onValueChange={setMapStyle}>
-                  <SelectTrigger className="bg-stone-800 border-stone-700">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-stone-900 border-stone-700">
-                    {MAP_STYLES.map((style) => (
-                      <SelectItem key={style.value} value={style.value}>
-                        {style.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Describe the Map</Label>
-                <Textarea
-                  placeholder={`Describe what should appear on this map...
-
-Example: A ruined monastery on a cliff overlooking a dark forest. Show the main chapel, collapsed east wing, underground catacombs entrance, and a hidden ritual chamber.`}
-                  value={mapDescription}
-                  onChange={(e) => setMapDescription(e.target.value)}
-                  className="bg-stone-800 border-stone-700 min-h-[120px]"
-                />
-              </div>
-
-              <Button
-                onClick={handleAIGenerate}
-                disabled={submitting || !mapDescription.trim()}
-                className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500"
-              >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-2" />
-                )}
-                Generate Map
-              </Button>
-            </TabsContent>
 
             {/* Upload Tab */}
             <TabsContent value="upload" className="space-y-4 mt-4">
@@ -625,7 +508,7 @@ Example: A ruined monastery on a cliff overlooking a dark forest. Show the main 
                   <Upload className="h-8 w-8 mx-auto mb-2 text-stone-500" />
                 )}
                 <p className="text-stone-400">Click to upload or drag & drop</p>
-                <p className="text-stone-600 text-sm">PNG, JPG, WebP up to 5MB</p>
+                <p className="text-stone-600 text-sm">PNG, JPG, WebP up to 10MB</p>
               </div>
               <input
                 ref={fileInputRef}

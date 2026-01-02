@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       artStyle,
       lightingStyle,
       compositionStyle,
+      size, // Optional: '1024x1024', '1792x1024', '1024x1792'
     } = await req.json();
 
     if (!prompt || !campaignId) {
@@ -38,13 +39,17 @@ export async function POST(req: NextRequest) {
       qualityLevel: 'high',
     });
 
+    // Validate size parameter (DALL-E 3 supported sizes)
+    const validSizes = ['1024x1024', '1792x1024', '1024x1792'];
+    const imageSize = validSizes.includes(size) ? size : '1024x1024';
+
     // Generate with DALL-E 3
     const openai = getOpenAIClient();
     const aiResponse = await openai.images.generate({
       model: 'dall-e-3',
       prompt: fullPrompt,
       n: 1,
-      size: '1024x1024',
+      size: imageSize as '1024x1024' | '1792x1024' | '1024x1792',
       response_format: 'b64_json',
     });
 
