@@ -155,14 +155,26 @@ export function SpiderwebGraph({
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
   const [showSecrets, setShowSecrets] = useState(true)
 
+  // Sync entities state when props change (e.g., when filters change in parent)
+  useEffect(() => {
+    setEntities(initialEntities)
+  }, [initialEntities])
+
+  // Sync relationships state when props change
+  useEffect(() => {
+    setRelationships(initialRelationships)
+  }, [initialRelationships])
+
   // Debug: Log relationship count on mount and when relationships change
   useEffect(() => {
-    console.log('[SpiderwebGraph] Initial entities:', initialEntities.length)
-    console.log('[SpiderwebGraph] Initial relationships:', initialRelationships.length)
+    console.log('[SpiderwebGraph] Props received - entities:', initialEntities.length, 'relationships:', initialRelationships.length)
+    console.log('[SpiderwebGraph] State - entities:', entities.length, 'relationships:', relationships.length)
     if (initialRelationships.length > 0) {
       console.log('[SpiderwebGraph] Sample relationship:', initialRelationships[0])
+    } else {
+      console.warn('[SpiderwebGraph] WARNING: No relationships passed to component!')
     }
-  }, [initialEntities.length, initialRelationships.length])
+  }, [initialEntities.length, initialRelationships.length, entities.length, relationships.length])
 
   // Available entity types from data
   const availableTypes = useMemo(() => {

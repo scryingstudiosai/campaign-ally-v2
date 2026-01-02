@@ -46,6 +46,14 @@ export function MemoryPageClient({
   initialEntities,
   initialRelationships,
 }: MemoryPageClientProps): JSX.Element {
+  // Debug: Log what we received from server
+  useEffect(() => {
+    console.log('[MemoryPageClient] Received from server - entities:', initialEntities.length, 'relationships:', initialRelationships.length)
+    if (initialRelationships.length > 0) {
+      console.log('[MemoryPageClient] Sample relationship:', initialRelationships[0])
+    }
+  }, [initialEntities.length, initialRelationships.length])
+
   // Track entities in state for optimistic updates on delete
   const [entities, setEntities] = useState<Entity[]>(initialEntities)
 
