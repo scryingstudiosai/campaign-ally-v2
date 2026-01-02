@@ -6,37 +6,49 @@ import Link from 'next/link'
 import {
   Globe,
   MapPin,
-  ChevronRight,
   Loader2,
-  Image,
-  ArrowLeft,
+  Plus,
+  Sparkles,
+  Upload,
+  Link as LinkIcon,
   Search,
   Layers,
+  Grid3X3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { PageTransition, StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion'
+import { MapCard } from '@/components/atlas/MapCard'
+import { AddMapDialog } from '@/components/atlas/AddMapDialog'
+import type { AtlasMap } from '@/app/api/campaigns/[id]/atlas/route'
 
-interface Location {
-  id: string
-  name: string
-  entity_type: string
-  sub_type: string | null
-  summary: string | null
-  soul: {
-    map_url?: string
-    location_type?: string
-    settlement_size?: string
-  } | null
-  parent_location_id?: string
-  attributes: Record<string, unknown> | null
+type MapType = 'world' | 'region' | 'city' | 'dungeon' | 'building' | 'encounter' | 'other'
+
+const mapTypeLabels: Record<MapType, string> = {
+  world: 'World',
+  region: 'Region',
+  city: 'City',
+  dungeon: 'Dungeon',
+  building: 'Building',
+  encounter: 'Encounter',
+  other: 'Other',
 }
 
-interface LocationWithChildren extends Location {
-  children: LocationWithChildren[]
-  markerCount: number
+const mapTypeIcons: Record<MapType, typeof Globe> = {
+  world: Globe,
+  region: Layers,
+  city: Grid3X3,
+  dungeon: MapPin,
+  building: Grid3X3,
+  encounter: MapPin,
+  other: MapPin,
 }
 
 export default function AtlasPage() {
@@ -44,191 +56,85 @@ export default function AtlasPage() {
   const router = useRouter()
   const campaignId = params.id as string
 
-  const [locations, setLocations] = useState<Location[]>([])
-  const [markerCounts, setMarkerCounts] = useState<Record<string, number>>({})
+  const [maps, setMaps] = useState<AtlasMap[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [viewMode, setViewMode] = useState<'grid' | 'tree'>('grid')
+  const [typeFilter, setTypeFilter] = useState<MapType | 'all'>('all')
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [addDialogMode, setAddDialogMode] = useState<'upload' | 'url'>('upload')
 
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
-      try {
-        const [locationsRes, markersRes] = await Promise.all([
-          fetch(`/api/campaigns/${campaignId}/entities?type=location`),
-          fetch(`/api/campaigns/${campaignId}/markers/counts`),
-        ])
-
-        if (locationsRes.ok) {
-          const data = await locationsRes.json()
-          setLocations(data.filter((l: Location) => l.entity_type === 'location'))
-        }
-
-        if (markersRes.ok) {
-          const counts = await markersRes.json()
-          setMarkerCounts(counts)
-        }
-      } catch (error) {
-        console.error('Failed to fetch atlas data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
+    fetchMaps()
   }, [campaignId])
 
-  // Filter locations that have maps
-  const locationsWithMaps = locations.filter((l) => l.soul?.map_url)
-  const locationsWithoutMaps = locations.filter((l) => !l.soul?.map_url)
-
-  // Search filter
-  const filteredLocations = searchQuery
-    ? locations.filter((l) =>
-        l.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : null
-
-  // Build tree structure for hierarchy view
-  const buildTree = (locations: Location[]): LocationWithChildren[] => {
-    const map = new Map<string, LocationWithChildren>()
-    const roots: LocationWithChildren[] = []
-
-    // Create nodes
-    locations.forEach((loc) => {
-      map.set(loc.id, {
-        ...loc,
-        children: [],
-        markerCount: markerCounts[loc.id] || 0,
-      })
-    })
-
-    // Build tree
-    locations.forEach((loc) => {
-      const node = map.get(loc.id)!
-      const parentId = loc.attributes?.parent_location_id as string | undefined
-      if (parentId && map.has(parentId)) {
-        map.get(parentId)!.children.push(node)
-      } else {
-        roots.push(node)
+  async function fetchMaps() {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/atlas`)
+      if (res.ok) {
+        const data = await res.json()
+        setMaps(data)
       }
-    })
-
-    return roots
+    } catch (error) {
+      console.error('Failed to fetch maps:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const renderLocationCard = (location: Location) => {
-    const hasMap = !!location.soul?.map_url
-    const markerCount = markerCounts[location.id] || 0
-    const locationType = location.sub_type || location.soul?.location_type || 'Location'
+  async function handleDeleteMap(mapId: string) {
+    if (!confirm('Are you sure you want to delete this map?')) return
 
-    return (
-      <button
-        key={location.id}
-        onClick={() => router.push(`/dashboard/campaigns/${campaignId}/memory/${location.id}`)}
-        className={cn(
-          'group relative rounded-xl border overflow-hidden text-left transition-all',
-          hasMap
-            ? 'border-teal-500/30 bg-gradient-to-br from-teal-500/5 to-slate-900/50 hover:border-teal-500/50'
-            : 'border-white/10 bg-slate-900/50 hover:border-white/20'
-        )}
-      >
-        {/* Map Preview */}
-        <div className="aspect-video relative overflow-hidden bg-slate-800">
-          {hasMap ? (
-            <>
-              <img
-                src={location.soul!.map_url}
-                alt={location.name}
-                className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
-              {markerCount > 0 && (
-                <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-teal-500/90 text-white text-xs font-medium flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  {markerCount}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Image className="w-12 h-12 text-slate-700" />
-            </div>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h3 className="font-medium text-white group-hover:text-teal-400 transition-colors">
-                {location.name}
-              </h3>
-              <p className="text-xs text-slate-500 capitalize mt-0.5">{locationType}</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-teal-400 transition-colors flex-shrink-0" />
-          </div>
-          {location.summary && (
-            <p className="text-xs text-slate-400 mt-2 line-clamp-2">{location.summary}</p>
-          )}
-        </div>
-      </button>
-    )
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/atlas/${mapId}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        setMaps(maps.filter((m) => m.id !== mapId))
+      }
+    } catch (error) {
+      console.error('Failed to delete map:', error)
+    }
   }
 
-  const renderTreeNode = (node: LocationWithChildren, depth = 0) => {
-    const hasMap = !!node.soul?.map_url
-    const locationType = node.sub_type || node.soul?.location_type || 'Location'
-
-    return (
-      <div key={node.id} style={{ marginLeft: depth * 24 }}>
-        <button
-          onClick={() => router.push(`/dashboard/campaigns/${campaignId}/memory/${node.id}`)}
-          className={cn(
-            'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors',
-            hasMap
-              ? 'bg-teal-500/10 border border-teal-500/20 hover:border-teal-500/40'
-              : 'hover:bg-slate-800/50'
-          )}
-        >
-          <div
-            className={cn(
-              'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0',
-              hasMap ? 'bg-teal-500/20' : 'bg-slate-800'
-            )}
-          >
-            {hasMap ? (
-              <Globe className={cn('w-5 h-5', hasMap ? 'text-teal-400' : 'text-slate-500')} />
-            ) : (
-              <MapPin className="w-5 h-5 text-slate-500" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-white truncate">{node.name}</span>
-              {hasMap && (
-                <Badge variant="outline" className="text-teal-400 border-teal-500/30 text-xs">
-                  Has Map
-                </Badge>
-              )}
-              {node.markerCount > 0 && (
-                <Badge variant="outline" className="text-slate-400 border-slate-700 text-xs">
-                  {node.markerCount} pins
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-slate-500 capitalize">{locationType}</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-slate-500" />
-        </button>
-        {node.children.length > 0 && (
-          <div className="mt-1 space-y-1">
-            {node.children.map((child) => renderTreeNode(child, depth + 1))}
-          </div>
-        )}
-      </div>
-    )
+  async function handleTogglePublic(map: AtlasMap) {
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/atlas/${map.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublic: !map.is_public }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setMaps(maps.map((m) => (m.id === map.id ? updated : m)))
+      }
+    } catch (error) {
+      console.error('Failed to update map:', error)
+    }
   }
+
+  function handleMapAdded(newMap: AtlasMap) {
+    setMaps([newMap, ...maps])
+    setShowAddDialog(false)
+  }
+
+  // Filter maps
+  const filteredMaps = maps.filter((map) => {
+    const matchesSearch = map.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesType = typeFilter === 'all' || map.map_type === typeFilter
+    return matchesSearch && matchesType
+  })
+
+  // Group by type for display
+  const mapsByType = filteredMaps.reduce(
+    (acc, map) => {
+      const type = map.map_type as MapType
+      if (!acc[type]) acc[type] = []
+      acc[type].push(map)
+      return acc
+    },
+    {} as Record<MapType, AtlasMap[]>
+  )
 
   if (loading) {
     return (
@@ -244,132 +150,186 @@ export default function AtlasPage() {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <FadeIn className="flex items-start justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-teal-500/10 border border-teal-500/20">
-                <Globe className="w-6 h-6 text-teal-400" />
-              </div>
-              <h1 className="text-3xl font-bold">Campaign Atlas</h1>
-            </div>
-            <p className="text-slate-400">
-              Explore your world&apos;s geography with interactive maps
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('grid')}
-            >
-              Grid
-            </Button>
-            <Button
-              variant={viewMode === 'tree' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('tree')}
-            >
-              <Layers className="w-4 h-4 mr-1" />
-              Hierarchy
-            </Button>
-          </div>
-        </FadeIn>
-
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input
-            placeholder="Search locations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-slate-800/50 border-white/10"
-          />
-        </div>
-
-        {/* Search Results */}
-        {filteredLocations && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-slate-300 mb-4">
-              Search Results ({filteredLocations.length})
-            </h2>
-            {filteredLocations.length === 0 ? (
-              <p className="text-slate-500 text-center py-8">No locations found</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredLocations.map(renderLocationCard)}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Main Content */}
-        {!filteredLocations && (
-          <>
-            {viewMode === 'grid' ? (
-              <>
-                {/* Locations with Maps */}
-                {locationsWithMaps.length > 0 && (
-                  <div className="mb-8">
-                    <h2 className="text-lg font-semibold text-teal-400 mb-4 flex items-center gap-2">
-                      <Globe className="w-5 h-5" />
-                      Mapped Locations ({locationsWithMaps.length})
-                    </h2>
-                    <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" staggerDelay={0.05}>
-                      {locationsWithMaps.map((location) => (
-                        <StaggerItem key={location.id}>
-                          <HoverLift>{renderLocationCard(location)}</HoverLift>
-                        </StaggerItem>
-                      ))}
-                    </StaggerContainer>
-                  </div>
-                )}
-
-                {/* Locations without Maps */}
-                {locationsWithoutMaps.length > 0 && (
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-400 mb-4 flex items-center gap-2">
-                      <MapPin className="w-5 h-5" />
-                      Unmapped Locations ({locationsWithoutMaps.length})
-                    </h2>
-                    <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" delay={0.2} staggerDelay={0.05}>
-                      {locationsWithoutMaps.map((location) => (
-                        <StaggerItem key={location.id}>
-                          <HoverLift>{renderLocationCard(location)}</HoverLift>
-                        </StaggerItem>
-                      ))}
-                    </StaggerContainer>
-                  </div>
-                )}
-              </>
-            ) : (
-              /* Tree View */
-              <div className="space-y-2">
-                {buildTree(locations).map((node) => renderTreeNode(node))}
-              </div>
-            )}
-
-            {/* Empty State */}
-            {locations.length === 0 && (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 mx-auto rounded-full bg-slate-800 flex items-center justify-center mb-4">
-                  <Globe className="w-10 h-10 text-slate-600" />
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-lg bg-teal-500/10 border border-teal-500/20">
+                  <Globe className="w-6 h-6 text-teal-400" />
                 </div>
-                <h2 className="text-xl font-semibold text-slate-300 mb-2">No Locations Yet</h2>
-                <p className="text-slate-500 mb-6 max-w-md mx-auto">
-                  Create locations in the Location Forge to start building your world&apos;s atlas.
-                </p>
-                <Button asChild>
-                  <Link href={`/dashboard/campaigns/${campaignId}/forge/location`}>
-                    <MapPin className="w-4 h-4 mr-2" />
-                    Create Location
-                  </Link>
-                </Button>
+                <h1 className="text-3xl font-bold">Campaign Atlas</h1>
               </div>
-            )}
-          </>
-        )}
+              <p className="text-slate-400">
+                Manage and explore your campaign&apos;s maps
+              </p>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="bg-teal-600 hover:bg-teal-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Map
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => router.push(`/dashboard/campaigns/${campaignId}/forge/map`)}
+                >
+                  <Sparkles className="w-4 h-4 mr-2 text-purple-400" />
+                  Generate with AI
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setAddDialogMode('upload')
+                    setShowAddDialog(true)
+                  }}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Image
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setAddDialogMode('url')
+                    setShowAddDialog(true)
+                  }}
+                >
+                  <LinkIcon className="w-4 h-4 mr-2" />
+                  Link External URL
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </FadeIn>
+
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Search maps..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-slate-800/50 border-white/10"
+              />
+            </div>
+
+            {/* Type Filter */}
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant={typeFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTypeFilter('all')}
+              >
+                All
+              </Button>
+              {(Object.keys(mapTypeLabels) as MapType[]).map((type) => (
+                <Button
+                  key={type}
+                  variant={typeFilter === type ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTypeFilter(type)}
+                >
+                  {mapTypeLabels[type]}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Maps Grid */}
+          {filteredMaps.length > 0 ? (
+            typeFilter === 'all' ? (
+              // Show grouped by type when no filter
+              <div className="space-y-8">
+                {(Object.keys(mapsByType) as MapType[]).map((type) => (
+                  <div key={type}>
+                    <h2 className="text-lg font-semibold text-slate-300 mb-4 flex items-center gap-2">
+                      {(() => {
+                        const Icon = mapTypeIcons[type]
+                        return <Icon className="w-5 h-5 text-teal-400" />
+                      })()}
+                      {mapTypeLabels[type]} Maps ({mapsByType[type].length})
+                    </h2>
+                    <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {mapsByType[type].map((map) => (
+                        <StaggerItem key={map.id}>
+                          <HoverLift>
+                            <MapCard
+                              map={map}
+                              campaignId={campaignId}
+                              onDelete={() => handleDeleteMap(map.id)}
+                              onTogglePublic={() => handleTogglePublic(map)}
+                            />
+                          </HoverLift>
+                        </StaggerItem>
+                      ))}
+                    </StaggerContainer>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Show flat grid when filtered
+              <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredMaps.map((map) => (
+                  <StaggerItem key={map.id}>
+                    <HoverLift>
+                      <MapCard
+                        map={map}
+                        campaignId={campaignId}
+                        onDelete={() => handleDeleteMap(map.id)}
+                        onTogglePublic={() => handleTogglePublic(map)}
+                      />
+                    </HoverLift>
+                  </StaggerItem>
+                ))}
+              </StaggerContainer>
+            )
+          ) : (
+            // Empty State
+            <div className="text-center py-16">
+              <div className="w-20 h-20 mx-auto rounded-full bg-slate-800 flex items-center justify-center mb-4">
+                <Globe className="w-10 h-10 text-slate-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-slate-300 mb-2">
+                {searchQuery || typeFilter !== 'all' ? 'No Maps Found' : 'No Maps Yet'}
+              </h2>
+              <p className="text-slate-500 mb-6 max-w-md mx-auto">
+                {searchQuery || typeFilter !== 'all'
+                  ? 'Try adjusting your search or filters'
+                  : 'Create your first map to start building your campaign\'s visual world.'}
+              </p>
+              {!searchQuery && typeFilter === 'all' && (
+                <div className="flex items-center justify-center gap-3">
+                  <Button
+                    onClick={() => router.push(`/dashboard/campaigns/${campaignId}/forge/map`)}
+                    className="bg-gradient-to-r from-purple-600 to-teal-600"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate with AI
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setAddDialogMode('upload')
+                      setShowAddDialog(true)
+                    }}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Map
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Add Map Dialog */}
+      <AddMapDialog
+        open={showAddDialog}
+        onClose={() => setShowAddDialog(false)}
+        campaignId={campaignId}
+        mode={addDialogMode}
+        onMapAdded={handleMapAdded}
+      />
     </PageTransition>
   )
 }
