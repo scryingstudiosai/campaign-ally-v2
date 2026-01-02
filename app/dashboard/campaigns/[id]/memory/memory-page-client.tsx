@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2, User, MapPin } from 'lucide-react'
+import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2, User, MapPin, Network } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageTransition, StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion'
 
@@ -236,6 +236,12 @@ export function MemoryPageClient({
                   >
                     <CheckSquare className="w-4 h-4 mr-2" />
                     Select
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/dashboard/campaigns/${campaignId}/memory/spiderweb`}>
+                      <Network className="w-4 h-4 mr-2" />
+                      Spiderweb
+                    </Link>
                   </Button>
                   <Button asChild>
                     <Link href={`/dashboard/campaigns/${campaignId}/memory/new`}>
