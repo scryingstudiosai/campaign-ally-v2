@@ -18,6 +18,7 @@ import {
   CheckCheck
 } from 'lucide-react';
 import Image from 'next/image';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 
 interface Message {
   id: string;
@@ -54,6 +55,14 @@ export default function DMMessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Hook to mark portal_messages as read (clears sidebar badge)
+  const { markAsRead } = useUnreadNotifications({ campaignId, type: 'player_message' });
+
+  // Mark all portal messages as read when DM views this page
+  useEffect(() => {
+    markAsRead();
+  }, [markAsRead]);
 
   // Fetch player conversations
   const fetchConversations = useCallback(async () => {

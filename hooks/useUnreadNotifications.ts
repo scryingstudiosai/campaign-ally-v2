@@ -94,18 +94,24 @@ export function useUnreadNotifications(options: UseUnreadNotificationsOptions = 
 
     const supabase = createClient();
 
+    // Subscribe to different table based on type
+    const tableName = type === 'player_message' ? 'portal_messages' : 'dm_notifications';
+    const channelName = type === 'player_message'
+      ? `portal-messages:${campaignId}`
+      : `dm-notifications:${campaignId}`;
+
     const channel = supabase
-      .channel(`dm-notifications:${campaignId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'dm_notifications',
+          table: tableName,
           filter: `campaign_id=eq.${campaignId}`,
         },
         () => {
-          // New notification received, increment count
+          // New notification/message received, increment count
           setCount((prev) => prev + 1);
         }
       )
@@ -114,11 +120,11 @@ export function useUnreadNotifications(options: UseUnreadNotificationsOptions = 
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'dm_notifications',
+          table: tableName,
           filter: `campaign_id=eq.${campaignId}`,
         },
         (payload) => {
-          // Check if notification was marked as read
+          // Check if notification/message was marked as read
           const newRecord = payload.new as { is_read: boolean };
           const oldRecord = payload.old as { is_read: boolean };
 
@@ -132,7 +138,7 @@ export function useUnreadNotifications(options: UseUnreadNotificationsOptions = 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [campaignId, enableRealtime]);
+  }, [campaignId, enableRealtime, type]);
 
   return {
     count,
