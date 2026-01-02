@@ -118,6 +118,19 @@ const IMPORTANCE_SIZES: Record<string, number> = {
   background: 5,
 }
 
+// Helper to convert hex to rgba
+function hexToRgba(hex: string, alpha: number): string {
+  // Handle rgba strings
+  if (hex.startsWith('rgba')) {
+    return hex.replace(/[\d.]+\)$/, `${alpha})`)
+  }
+  // Handle hex
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 export function SpiderwebGraph({
   campaignId,
   initialEntities,
@@ -134,10 +147,21 @@ export function SpiderwebGraph({
   const [entities, setEntities] = useState<Entity[]>(initialEntities)
   const [relationships, setRelationships] = useState<Relationship[]>(initialRelationships)
   const [searchTerm, setSearchTerm] = useState('')
-  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set())
+  const [searchHighlightedNodes, setSearchHighlightedNodes] = useState<Set<string>>(new Set())
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null)
+  const [connectedNodes, setConnectedNodes] = useState<Set<string>>(new Set())
+  const [connectedLinks, setConnectedLinks] = useState<Set<string>>(new Set())
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
   const [showSecrets, setShowSecrets] = useState(true)
+
+  // Debug: Log relationship count on mount and when relationships change
+  useEffect(() => {
+    console.log('[SpiderwebGraph] Initial entities:', initialEntities.length)
+    console.log('[SpiderwebGraph] Initial relationships:', initialRelationships.length)
+    if (initialRelationships.length > 0) {
+      console.log('[SpiderwebGraph] Sample relationship:', initialRelationships[0])
+    }
+  }, [initialEntities.length, initialRelationships.length])
 
   // Available entity types from data
   const availableTypes = useMemo(() => {
@@ -200,6 +224,7 @@ export function SpiderwebGraph({
           filter: `campaign_id=eq.${campaignId}`,
         },
         (payload) => {
+          console.log('[SpiderwebGraph] Relationship change:', payload.eventType, payload)
           if (payload.eventType === 'INSERT') {
             setRelationships(prev => [...prev, payload.new as Relationship])
           } else if (payload.eventType === 'UPDATE') {
@@ -222,7 +247,7 @@ export function SpiderwebGraph({
   // Search highlighting
   useEffect(() => {
     if (!searchTerm.trim()) {
-      setHighlightedNodes(new Set())
+      setSearchHighlightedNodes(new Set())
       return
     }
 
@@ -235,7 +260,7 @@ export function SpiderwebGraph({
         )
         .map(e => e.id)
     )
-    setHighlightedNodes(matchingIds)
+    setSearchHighlightedNodes(matchingIds)
   }, [searchTerm, entities])
 
   // Build graph data
@@ -251,7 +276,7 @@ export function SpiderwebGraph({
     const nodes: GraphNode[] = filteredEntities.map(entity => {
       const colorConfig = ENTITY_COLORS[entity.entity_type] || ENTITY_COLORS.npc
       const size = IMPORTANCE_SIZES[entity.importance_tier || 'minor'] || 8
-      const isHighlighted = highlightedNodes.has(entity.id)
+      const isSearchHighlighted = searchHighlightedNodes.has(entity.id)
 
       return {
         id: entity.id,
@@ -262,97 +287,198 @@ export function SpiderwebGraph({
         imageUrl: entity.image_url,
         status: entity.status,
         importance: entity.importance_tier,
-        color: isHighlighted ? '#14b8a6' : colorConfig.fill,
-        val: isHighlighted ? size * 1.5 : size,
-        highlighted: isHighlighted,
+        color: colorConfig.fill,
+        val: isSearchHighlighted ? size * 1.5 : size,
+        highlighted: isSearchHighlighted,
       }
     })
 
     // Build links - only include relationships where both entities are visible
-    const filteredRelationships = relationships.filter(
-      r => entityIds.has(r.source_id) && entityIds.has(r.target_id)
-    )
+    const filteredRelationships = relationships.filter(r => {
+      const hasSource = entityIds.has(r.source_id)
+      const hasTarget = entityIds.has(r.target_id)
+      return hasSource && hasTarget
+    })
 
     // Filter secret relationships if not showing
     const visibleRelationships = showSecrets
       ? filteredRelationships
       : filteredRelationships.filter(r => !r.is_secret)
 
+    console.log('[SpiderwebGraph] Building graph - Nodes:', nodes.length, 'Links:', visibleRelationships.length)
+
     const links: GraphLink[] = visibleRelationships.map(rel => ({
       id: rel.id,
       source: rel.source_id,
       target: rel.target_id,
-      relationshipType: rel.relationship_type,
+      relationshipType: rel.relationship_type || 'unknown',
       description: rel.description,
       isSecret: rel.is_secret,
-      color: rel.is_secret ? 'rgba(251, 191, 36, 0.6)' : 'rgba(255, 255, 255, 0.3)',
+      color: rel.is_secret ? '#fbbf24' : '#ffffff',
     }))
 
     return { nodes, links }
-  }, [entities, relationships, selectedTypes, highlightedNodes, showSecrets])
+  }, [entities, relationships, selectedTypes, searchHighlightedNodes, showSecrets])
 
-  // Node canvas rendering
+  // Node canvas rendering - hide labels by default, show on hover
   const paintNode = useCallback((node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
-    const label = node.name
-    const fontSize = Math.max(12 / globalScale, 3)
     const nodeSize = node.val || 8
+    const isHovered = hoveredNode?.id === node.id
+    const isConnectedToHovered = connectedNodes.has(node.id)
+    const isSearchHighlighted = node.highlighted
+
+    // Determine opacity based on hover state
+    let opacity = 1
+    if (hoveredNode && !isHovered && !isConnectedToHovered) {
+      opacity = 0.15 // Dim unrelated nodes when hovering
+    } else if (searchHighlightedNodes.size > 0 && !isSearchHighlighted) {
+      opacity = 0.3
+    }
 
     // Draw node circle
     ctx.beginPath()
     ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI, false)
-
-    // Fill with entity color
-    ctx.fillStyle = node.color
+    ctx.fillStyle = hexToRgba(node.color, opacity)
     ctx.fill()
 
-    // Border
-    if (node.highlighted) {
+    // Draw border
+    if (isHovered) {
+      ctx.strokeStyle = '#ffffff'
+      ctx.lineWidth = 3 / globalScale
+      ctx.stroke()
+    } else if (isConnectedToHovered) {
+      ctx.strokeStyle = '#ffffff'
+      ctx.lineWidth = 2 / globalScale
+      ctx.stroke()
+    } else if (isSearchHighlighted) {
       ctx.strokeStyle = '#14b8a6'
       ctx.lineWidth = 3 / globalScale
+      ctx.stroke()
     } else {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+      ctx.strokeStyle = hexToRgba('#ffffff', opacity * 0.5)
       ctx.lineWidth = 1 / globalScale
+      ctx.stroke()
     }
-    ctx.stroke()
 
-    // Draw label
-    ctx.font = `${fontSize}px Inter, system-ui, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'top'
+    // ONLY show label for hovered node or connected nodes (when something is hovered)
+    if (isHovered || isConnectedToHovered) {
+      const fontSize = Math.max(14 / globalScale, 4)
+      ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
 
-    // Text shadow for readability
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-    ctx.fillText(label, node.x!, node.y! + nodeSize + 2)
+      // Measure text for background
+      const textWidth = ctx.measureText(node.name).width
+      const padding = 4 / globalScale
+      const bgHeight = fontSize + padding * 2
 
-    // Actual text
-    ctx.fillStyle = node.highlighted ? '#14b8a6' : '#e5e5e5'
-    ctx.fillText(label, node.x!, node.y! + nodeSize + 1)
-  }, [])
+      // Draw background for readability
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+      ctx.fillRect(
+        node.x! - textWidth / 2 - padding,
+        node.y! + nodeSize + 2,
+        textWidth + padding * 2,
+        bgHeight
+      )
 
-  // Link canvas rendering
+      // Draw text
+      ctx.fillStyle = isHovered ? '#ffffff' : 'rgba(255, 255, 255, 0.9)'
+      ctx.fillText(node.name, node.x!, node.y! + nodeSize + 4)
+    }
+    // Show labels for search-highlighted nodes even when not hovering
+    else if (isSearchHighlighted && !hoveredNode) {
+      const fontSize = Math.max(12 / globalScale, 3)
+      ctx.font = `${fontSize}px Inter, system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
+      ctx.fillText(node.name, node.x!, node.y! + nodeSize + 2)
+      ctx.fillStyle = '#14b8a6'
+      ctx.fillText(node.name, node.x!, node.y! + nodeSize + 1)
+    }
+  }, [hoveredNode, connectedNodes, searchHighlightedNodes])
+
+  // Link canvas rendering - show prominently on hover
   const paintLink = useCallback((link: GraphLink, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const source = link.source as GraphNode
     const target = link.target as GraphNode
 
     if (!source.x || !source.y || !target.x || !target.y) return
 
+    const sourceId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source
+    const targetId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target
+    const linkKey = `${sourceId}-${targetId}`
+    const reverseLinkKey = `${targetId}-${sourceId}`
+    const isHighlighted = connectedLinks.has(linkKey) || connectedLinks.has(reverseLinkKey)
+
     ctx.beginPath()
     ctx.moveTo(source.x, source.y)
     ctx.lineTo(target.x, target.y)
 
-    if (link.isSecret) {
-      // Dashed line for secret relationships
-      ctx.setLineDash([5 / globalScale, 5 / globalScale])
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)'
+    if (isHighlighted) {
+      // Bright, visible line for highlighted relationships
+      if (link.isSecret) {
+        ctx.setLineDash([5 / globalScale, 5 / globalScale])
+        ctx.strokeStyle = '#fbbf24'
+      } else {
+        ctx.setLineDash([])
+        ctx.strokeStyle = link.color || '#ffffff'
+      }
+      ctx.lineWidth = 2.5 / globalScale
+      ctx.globalAlpha = 1
+    } else if (!hoveredNode) {
+      // Subtle lines when nothing is hovered
+      if (link.isSecret) {
+        ctx.setLineDash([5 / globalScale, 5 / globalScale])
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)'
+      } else {
+        ctx.setLineDash([])
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
+      }
+      ctx.lineWidth = 0.5 / globalScale
+      ctx.globalAlpha = 1
     } else {
+      // Very dim when hovering but not connected
       ctx.setLineDash([])
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'
+      ctx.lineWidth = 0.3 / globalScale
+      ctx.globalAlpha = 1
     }
 
-    ctx.lineWidth = 1 / globalScale
     ctx.stroke()
     ctx.setLineDash([])
-  }, [])
+    ctx.globalAlpha = 1
+
+    // Show relationship type label on highlighted links
+    if (isHighlighted && link.relationshipType) {
+      const midX = (source.x + target.x) / 2
+      const midY = (source.y + target.y) / 2
+
+      const fontSize = Math.max(10 / globalScale, 3)
+      ctx.font = `${fontSize}px Inter, system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+
+      // Format label
+      const label = link.relationshipType.replace(/_/g, ' ')
+      const textWidth = ctx.measureText(label).width
+      const padding = 3 / globalScale
+
+      // Background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+      ctx.fillRect(
+        midX - textWidth / 2 - padding,
+        midY - fontSize / 2 - padding,
+        textWidth + padding * 2,
+        fontSize + padding * 2
+      )
+
+      // Text
+      ctx.fillStyle = link.isSecret ? '#fbbf24' : '#ffffff'
+      ctx.fillText(label, midX, midY)
+    }
+  }, [hoveredNode, connectedLinks])
 
   // Handle node click
   const handleNodeClick = useCallback((node: GraphNode) => {
@@ -361,13 +487,67 @@ export function SpiderwebGraph({
     }
   }, [onEntityClick])
 
-  // Handle node hover
+  // Handle node hover - track connected nodes and links
   const handleNodeHover = useCallback((node: GraphNode | null) => {
     setHoveredNode(node)
+
+    if (node) {
+      // Find all connected nodes and links
+      const nodeIds = new Set<string>()
+      const linkKeys = new Set<string>()
+
+      nodeIds.add(node.id)
+
+      graphData.links.forEach((link) => {
+        const sourceId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source
+        const targetId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target
+
+        if (sourceId === node.id) {
+          nodeIds.add(targetId as string)
+          linkKeys.add(`${sourceId}-${targetId}`)
+        } else if (targetId === node.id) {
+          nodeIds.add(sourceId as string)
+          linkKeys.add(`${sourceId}-${targetId}`)
+        }
+      })
+
+      setConnectedNodes(nodeIds)
+      setConnectedLinks(linkKeys)
+    } else {
+      setConnectedNodes(new Set())
+      setConnectedLinks(new Set())
+    }
+
     if (containerRef.current) {
       containerRef.current.style.cursor = node ? 'pointer' : 'default'
     }
-  }, [])
+  }, [graphData.links])
+
+  // Get connections for hovered node
+  const hoveredNodeConnections = useMemo(() => {
+    if (!hoveredNode) return []
+
+    return graphData.links
+      .filter(link => {
+        const sourceId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source
+        const targetId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target
+        return sourceId === hoveredNode.id || targetId === hoveredNode.id
+      })
+      .map(link => {
+        const sourceId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source
+        const targetId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target
+        const otherId = sourceId === hoveredNode.id ? targetId : sourceId
+        const otherNode = graphData.nodes.find(n => n.id === otherId)
+        const isOutgoing = sourceId === hoveredNode.id
+
+        return {
+          relationshipType: link.relationshipType,
+          otherNode,
+          isOutgoing,
+          isSecret: link.isSecret,
+        }
+      })
+  }, [hoveredNode, graphData])
 
   // Toggle type filter
   const toggleTypeFilter = useCallback((type: string) => {
@@ -406,7 +586,7 @@ export function SpiderwebGraph({
   const handleReset = useCallback(() => {
     setSearchTerm('')
     setSelectedTypes(new Set())
-    setHighlightedNodes(new Set())
+    setSearchHighlightedNodes(new Set())
     if (graphRef.current) {
       graphRef.current.zoomToFit(400, 50)
     }
@@ -532,29 +712,26 @@ export function SpiderwebGraph({
         </Button>
       </div>
 
-      {/* Hover Info Panel */}
+      {/* Hover Info Panel with Connections */}
       {hoveredNode && (
-        <Card className="absolute bottom-4 left-4 z-10 p-4 bg-stone-900/95 border-stone-700 max-w-xs">
+        <Card className="absolute bottom-4 left-4 z-10 p-4 bg-stone-900/95 border-stone-700 max-w-sm backdrop-blur">
           <div className="flex items-start gap-3">
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border-2"
               style={{
                 backgroundColor: ENTITY_COLORS[hoveredNode.entityType]?.bg || ENTITY_COLORS.npc.bg,
                 borderColor: ENTITY_COLORS[hoveredNode.entityType]?.border || ENTITY_COLORS.npc.border,
-                borderWidth: 2,
               }}
             >
-              <div
-              style={{ color: ENTITY_COLORS[hoveredNode.entityType]?.fill || ENTITY_COLORS.npc.fill }}
-            >
-              {(() => {
-                const Icon = ENTITY_ICONS[hoveredNode.entityType] || Users
-                return <Icon className="w-4 h-4" />
-              })()}
-            </div>
+              <div style={{ color: ENTITY_COLORS[hoveredNode.entityType]?.fill || ENTITY_COLORS.npc.fill }}>
+                {(() => {
+                  const Icon = ENTITY_ICONS[hoveredNode.entityType] || Users
+                  return <Icon className="w-4 h-4" />
+                })()}
+              </div>
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-stone-100 truncate">{hoveredNode.name}</h4>
+              <h4 className="font-medium text-stone-100 truncate text-lg">{hoveredNode.name}</h4>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="text-xs capitalize" style={{
                   borderColor: ENTITY_COLORS[hoveredNode.entityType]?.border,
@@ -573,6 +750,40 @@ export function SpiderwebGraph({
               )}
             </div>
           </div>
+
+          {/* Connections */}
+          {hoveredNodeConnections.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-stone-700">
+              <p className="text-xs text-stone-500 mb-2">
+                {hoveredNodeConnections.length} connection{hoveredNodeConnections.length !== 1 ? 's' : ''}
+              </p>
+              <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                {hoveredNodeConnections.slice(0, 10).map((conn, idx) => (
+                  <div key={idx} className="text-xs flex items-center gap-2">
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{
+                        backgroundColor: ENTITY_COLORS[conn.otherNode?.entityType || 'npc']?.fill,
+                      }}
+                    />
+                    <span className={cn(
+                      "text-stone-500",
+                      conn.isSecret && "text-amber-500"
+                    )}>
+                      {conn.relationshipType?.replace(/_/g, ' ')}
+                      {conn.isSecret && ' 🔒'}
+                    </span>
+                    <span className="text-stone-300 truncate">{conn.otherNode?.name}</span>
+                  </div>
+                ))}
+                {hoveredNodeConnections.length > 10 && (
+                  <p className="text-xs text-stone-500">
+                    +{hoveredNodeConnections.length - 10} more...
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </Card>
       )}
 
@@ -585,7 +796,7 @@ export function SpiderwebGraph({
               <span className="font-medium text-stone-200">{stats.totalNodes}</span>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span>Links:</span>
+              <span>Relationships:</span>
               <span className="font-medium text-stone-200">{stats.totalLinks}</span>
             </div>
           </div>
@@ -621,6 +832,13 @@ export function SpiderwebGraph({
             </div>
           </div>
         </Card>
+      </div>
+
+      {/* Instructions */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+        <div className="text-xs text-stone-500 bg-stone-900/80 px-3 py-1.5 rounded-full">
+          Hover over nodes to see names and connections
+        </div>
       </div>
 
       {/* Graph */}
