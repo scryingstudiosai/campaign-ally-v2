@@ -9,6 +9,7 @@ import { LocationMapTab } from './map/location-map-tab';
 interface LocationDetailWrapperProps {
   campaignId: string;
   locationId: string;
+  locationName?: string;
   mapImageUrl?: string;
   isLocation: boolean;
   children: React.ReactNode;
@@ -17,6 +18,7 @@ interface LocationDetailWrapperProps {
 export function LocationDetailWrapper({
   campaignId,
   locationId,
+  locationName,
   mapImageUrl,
   isLocation,
   children,
@@ -90,6 +92,7 @@ export function LocationDetailWrapper({
         <LocationMapTab
           campaignId={campaignId}
           locationId={locationId}
+          locationName={locationName}
           imageUrl={mapImageUrl}
           onImageUpdate={handleImageUpdate}
           onEntityClick={handleEntityClick}

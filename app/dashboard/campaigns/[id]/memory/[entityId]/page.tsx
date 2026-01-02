@@ -458,6 +458,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
         <LocationDetailWrapper
           campaignId={params.id}
           locationId={entity.id}
+          locationName={entity.name}
           mapImageUrl={locationSoul?.map_url as string | undefined}
           isLocation={isLocation}
         >

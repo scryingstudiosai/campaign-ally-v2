@@ -509,6 +509,8 @@ export default function LocationForgePage(): JSX.Element {
           read_aloud: forge.output.read_aloud,
           dm_slug: forge.output.dm_slug,
           summary: forge.output.dm_slug || forge.output.read_aloud?.substring(0, 200),
+          // Mark as complete (no longer a stub)
+          forge_status: 'complete',
           attributes: {
             is_stub: false,
             needs_review: false,
