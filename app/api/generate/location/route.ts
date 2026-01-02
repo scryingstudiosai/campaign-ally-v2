@@ -136,6 +136,8 @@ async function generateShopSpecialtyItems(
   shopType: string,
   campaignContext: string
 ): Promise<ShopSpecialItem[]> {
+  console.log('[Shop Specialty] Generating specialty items for:', { shopName, shopType })
+
   try {
     const prompt = `You are a creative D&D item designer. Generate 3 unique specialty items for a ${shopType} shop called "${shopName}".
 
@@ -153,13 +155,15 @@ Shop context:
 - Shop Type: ${shopType}
 ${campaignContext ? `- Campaign Setting: ${campaignContext.substring(0, 500)}` : ''}
 
-Return ONLY a valid JSON array with exactly 3 items:
-[
-  { "name": "...", "description": "...", "item_type": "...", "rarity": "...", "base_price_gp": ... }
-]`
+Return a JSON object with an "items" array containing exactly 3 items:
+{
+  "items": [
+    { "name": "...", "description": "...", "item_type": "...", "rarity": "...", "base_price_gp": ... }
+  ]
+}`
 
     const completion = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o-mini', // Use mini for cost efficiency
+      model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.9,
@@ -172,18 +176,54 @@ Return ONLY a valid JSON array with exactly 3 items:
       return []
     }
 
+    console.log('[Shop Specialty] Raw response:', responseContent)
+
     const parsed = JSON.parse(responseContent)
-    // Handle both array response and {items: [...]} response
-    const items = Array.isArray(parsed) ? parsed : (parsed.items || [])
+
+    // Find the items array - could be under various keys
+    let items: unknown[] = []
+    if (Array.isArray(parsed)) {
+      items = parsed
+    } else if (typeof parsed === 'object' && parsed !== null) {
+      // Look for any array value in the object
+      for (const key of ['items', 'specialty_items', 'special_items', 'result', 'data']) {
+        if (Array.isArray(parsed[key])) {
+          items = parsed[key]
+          break
+        }
+      }
+      // If still not found, try to find any array value
+      if (items.length === 0) {
+        for (const value of Object.values(parsed)) {
+          if (Array.isArray(value)) {
+            items = value as unknown[]
+            break
+          }
+        }
+      }
+    }
+
+    console.log('[Shop Specialty] Parsed items count:', items.length)
+
+    if (items.length === 0) {
+      console.error('[Shop Specialty] No items found in response:', parsed)
+      return []
+    }
 
     // Validate and return
-    return items.slice(0, 3).map((item: Record<string, unknown>) => ({
-      name: String(item.name || 'Mysterious Item'),
-      description: String(item.description || 'A unique shop item'),
-      item_type: String(item.item_type || 'wondrous'),
-      rarity: String(item.rarity || 'uncommon'),
-      base_price_gp: Number(item.base_price_gp) || 50,
-    }))
+    const result = items.slice(0, 3).map((item: unknown) => {
+      const i = item as Record<string, unknown>
+      return {
+        name: String(i.name || 'Mysterious Item'),
+        description: String(i.description || 'A unique shop item'),
+        item_type: String(i.item_type || 'wondrous'),
+        rarity: String(i.rarity || 'uncommon'),
+        base_price_gp: Number(i.base_price_gp) || 50,
+      }
+    })
+
+    console.log('[Shop Specialty] Generated items:', result.map(i => i.name))
+    return result
   } catch (error) {
     console.error('[Shop Specialty] Error generating specialty items:', error)
     return []

@@ -342,7 +342,14 @@ export default function LocationForgePage(): JSX.Element {
     entityId: string,
     mechanics: Record<string, unknown> | undefined
   ): Promise<void> => {
-    if (!mechanics?.is_shop) return
+    console.log('[LocationForge] autoStockShopIfNeeded called')
+    console.log('[LocationForge] mechanics?.is_shop:', mechanics?.is_shop)
+    console.log('[LocationForge] mechanics?.special_items:', mechanics?.special_items)
+
+    if (!mechanics?.is_shop) {
+      console.log('[LocationForge] Not a shop, skipping auto-stock')
+      return
+    }
 
     const inventoryData: ShopInventoryData = {
       shop_type: (mechanics.shop_type as string) || 'general',
@@ -351,11 +358,21 @@ export default function LocationForgePage(): JSX.Element {
       special_items: (mechanics.special_items as ShopInventoryData['special_items']) || [],
     }
 
+    console.log('[LocationForge] inventoryData:', {
+      shop_type: inventoryData.shop_type,
+      special_items_count: inventoryData.special_items?.length || 0,
+      special_items: inventoryData.special_items?.map(i => i.name),
+    })
+
     // Only stock if we have items to stock
     const hasItems = inventoryData.suggested_srd_stock.length > 0 || (inventoryData.special_items && inventoryData.special_items.length > 0)
-    if (!hasItems) return
+    if (!hasItems) {
+      console.log('[LocationForge] No items to stock, skipping')
+      return
+    }
 
     try {
+      console.log('[LocationForge] Calling /api/location/stock...')
       const response = await fetch('/api/location/stock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -367,15 +384,22 @@ export default function LocationForgePage(): JSX.Element {
       })
 
       if (!response.ok) {
-        console.error('Failed to auto-stock shop:', await response.text())
+        console.error('[LocationForge] Failed to auto-stock shop:', await response.text())
       } else {
         const result = await response.json()
+        console.log('[LocationForge] Stock result:', result)
         if (result.itemsAdded > 0) {
-          toast.success(`Shop stocked with ${result.itemsAdded} items!`)
+          const specialCount = result.stocked?.specialItems || 0
+          const srdCount = result.stocked?.srdItems || 0
+          if (specialCount > 0) {
+            toast.success(`Shop stocked with ${specialCount} specialty items and ${srdCount} standard items!`)
+          } else {
+            toast.success(`Shop stocked with ${result.itemsAdded} items!`)
+          }
         }
       }
     } catch (error) {
-      console.error('Error auto-stocking shop:', error)
+      console.error('[LocationForge] Error auto-stocking shop:', error)
     }
   }
 

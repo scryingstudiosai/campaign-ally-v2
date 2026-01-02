@@ -159,9 +159,52 @@ export async function stockShopInventory(
   const priceMultiplier = inventoryData.price_modifier || 1.0;
   const results: StockingResult = { specialItems: 0, srdItems: 0, errors: [] };
 
+  console.log('[ShopStocker] Starting stock for location:', locationId);
+  console.log('[ShopStocker] Special items to process:', inventoryData.special_items?.length || 0);
+
   // 1. Create and stock SPECIAL ITEMS (AI-generated unique items)
+  // First, check which specialty items already exist to avoid duplicates
+  const existingSpecialtyItems = new Set<string>();
+
+  const { data: existingInventory } = await supabase
+    .from('inventory_instances')
+    .select(`
+      id,
+      custom_entity_id,
+      custom_entity:entities!custom_entity_id (name)
+    `)
+    .eq('owner_id', locationId)
+    .eq('owner_type', 'location')
+    .not('custom_entity_id', 'is', null);
+
+  if (existingInventory) {
+    for (const inv of existingInventory) {
+      // custom_entity can be an array or object depending on the query
+      const entityData = inv.custom_entity;
+      let entityName: string | undefined;
+      if (Array.isArray(entityData) && entityData.length > 0) {
+        entityName = (entityData[0] as { name?: string })?.name;
+      } else if (entityData && typeof entityData === 'object') {
+        entityName = (entityData as { name?: string })?.name;
+      }
+      if (entityName) {
+        existingSpecialtyItems.add(entityName.toLowerCase());
+      }
+    }
+  }
+
+  console.log('[ShopStocker] Existing specialty items:', existingSpecialtyItems.size);
+
   for (const specialItem of inventoryData.special_items || []) {
     try {
+      // Skip if this item already exists in the shop
+      if (existingSpecialtyItems.has(specialItem.name.toLowerCase())) {
+        console.log('[ShopStocker] Skipping duplicate specialty item:', specialItem.name);
+        continue;
+      }
+
+      console.log('[ShopStocker] Creating specialty item:', specialItem.name);
+
       // Create the custom item entity
       const { data: entity, error: entityError } = await supabase
         .from('entities')
@@ -177,6 +220,8 @@ export async function stockShopInventory(
           mechanics: {
             rarity: specialItem.rarity,
             base_price_gp: specialItem.base_price_gp,
+            is_specialty_item: true,
+            source_shop_id: locationId,
             ...specialItem.mechanics,
           },
           soul: {
@@ -188,9 +233,12 @@ export async function stockShopInventory(
         .single();
 
       if (entityError) {
+        console.error('[ShopStocker] Failed to create entity:', entityError);
         results.errors.push(`Failed to create ${specialItem.name}: ${entityError.message}`);
         continue;
       }
+
+      console.log('[ShopStocker] Created entity:', entity.id);
 
       // Add to inventory with price markup
       const finalPrice = Math.ceil(specialItem.base_price_gp * priceMultiplier);
@@ -207,15 +255,18 @@ export async function stockShopInventory(
           acquired_from: 'Shop Special Stock',
           notes: inventoryData.specialty
             ? `Part of shop specialty: ${inventoryData.specialty}`
-            : null,
+            : 'Unique shop specialty item',
         });
 
       if (invError) {
+        console.error('[ShopStocker] Failed to add to inventory:', invError);
         results.errors.push(`Failed to add ${specialItem.name} to inventory: ${invError.message}`);
       } else {
+        console.log('[ShopStocker] Added to inventory:', specialItem.name);
         results.specialItems++;
       }
     } catch (err) {
+      console.error('[ShopStocker] Error processing specialty item:', err);
       results.errors.push(`Error processing ${specialItem.name}: ${String(err)}`);
     }
   }
