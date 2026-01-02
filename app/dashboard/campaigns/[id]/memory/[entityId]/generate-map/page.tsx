@@ -32,101 +32,101 @@ const MAP_TYPES = [
 ];
 
 // Styles by Map Type - Curated to ensure usable results
-// CRITICAL: All styles include "gridless" and force orthographic/top-down view
+// CRITICAL: All styles explicitly require floor plan / overhead view with NO perspective
 const STYLES_BY_TYPE: Record<string, Array<{value: string, label: string, promptKeywords: string}>> = {
   battlemap: [
     {
       value: 'realistic',
       label: '🛡️ Realistic / VTT',
-      promptKeywords: 'Top-down orthographic view, tabletop roleplaying battlemap, 4k, realistic render, dramatic lighting, sharp focus, gridless, no grid lines',
+      promptKeywords: 'FLOOR PLAN battlemap looking STRAIGHT DOWN from above, flat overhead view, tabletop RPG map, realistic textures, ground and floor only, walls shown as outlines, furniture as simple shapes from above, gridless, no grid lines, no perspective, no horizon',
     },
     {
       value: 'osr-blue',
       label: '📜 Old School Blue (OSR)',
-      promptKeywords: 'Old school D&D map, blue ink on graph paper, cross-hatching style, simple line art, top-down schematic, gridless, no grid lines',
+      promptKeywords: 'FLOOR PLAN map in classic D&D blue ink style, looking STRAIGHT DOWN, architectural blueprint on graph paper, cross-hatching for walls, simple line art, overhead schematic view, gridless, no grid lines, no perspective',
     },
     {
       value: 'watercolor',
       label: '🎨 Watercolor / Hand-drawn',
-      promptKeywords: 'Hand-drawn pen and ink map with watercolor wash, cross-hatching, parchment paper background, top-down orthographic, gridless, no grid lines',
+      promptKeywords: 'Hand-drawn FLOOR PLAN with watercolor wash, looking STRAIGHT DOWN from above, pen and ink architectural style, cross-hatching, parchment paper, overhead view only, gridless, no grid lines, no perspective',
     },
     {
       value: 'dark-fantasy',
       label: '🌑 Dark Fantasy / Noir',
-      promptKeywords: 'Grimdark fantasy battlemap, desaturated, high contrast, shadows, ominous atmosphere, top-down orthographic, gridless, no grid lines',
+      promptKeywords: 'Dark fantasy FLOOR PLAN battlemap, looking STRAIGHT DOWN from above, desaturated colors, high contrast, ground textures and shadows only, overhead architectural view, gridless, no grid lines, no perspective',
     },
   ],
   dungeon: [
     {
       value: 'realistic',
       label: '🛡️ Realistic Dungeon',
-      promptKeywords: 'Top-down orthographic dungeon map, stone corridors, dramatic torch lighting, 4k render, tabletop RPG, gridless, no grid lines',
+      promptKeywords: 'FLOOR PLAN of dungeon looking STRAIGHT DOWN from above, stone floor textures, wall outlines, corridor layout, overhead architectural view, tabletop RPG dungeon map, gridless, no grid lines, no perspective, no 3D walls',
     },
     {
       value: 'osr-blue',
       label: '📜 Classic Blue Map',
-      promptKeywords: 'Old school dungeon map, blue ink on graph paper, cross-hatching for walls, simple line art, top-down, gridless, no grid lines',
+      promptKeywords: 'Classic FLOOR PLAN dungeon map, blue ink on graph paper style, looking STRAIGHT DOWN, cross-hatching for walls, architectural overhead view, simple line art, gridless, no grid lines, no perspective',
     },
     {
       value: 'watercolor',
       label: '🎨 Watercolor Dungeon',
-      promptKeywords: 'Hand-drawn dungeon map, pen and ink with watercolor wash, cross-hatching, parchment texture, top-down, gridless, no grid lines',
+      promptKeywords: 'Hand-drawn dungeon FLOOR PLAN, looking STRAIGHT DOWN from above, pen and ink with watercolor wash, architectural overhead view, parchment texture, gridless, no grid lines, no perspective',
     },
     {
       value: 'dark-fantasy',
       label: '🌑 Dark Fantasy Dungeon',
-      promptKeywords: 'Grimdark dungeon battlemap, desaturated, high contrast, oppressive shadows, top-down orthographic, gridless, no grid lines',
+      promptKeywords: 'Grimdark dungeon FLOOR PLAN, looking STRAIGHT DOWN from above, desaturated overhead view, high contrast stone textures, architectural layout, gridless, no grid lines, no perspective, no 3D',
     },
   ],
   region: [
     {
       value: 'parchment',
       label: '🗺️ Parchment Cartography',
-      promptKeywords: 'Fantasy world map, aged parchment texture, ink drawn mountains and forests, Tolkien style, worn edges, sepia tones, cartographic top-down view',
+      promptKeywords: 'Fantasy region map looking STRAIGHT DOWN from high above, aged parchment texture, cartographic overhead view, ink drawn terrain symbols for mountains and forests, Tolkien style cartography, no perspective, no horizon',
     },
     {
       value: 'satellite',
       label: '🛰️ Realistic Atlas',
-      promptKeywords: 'Satellite view fantasy region, photorealistic terrain, biomes, high altitude aerial view, cartographic projection, top-down',
+      promptKeywords: 'Satellite-style overhead view looking STRAIGHT DOWN, fantasy region from directly above, photorealistic terrain textures, flat cartographic projection, no perspective, no horizon line',
     },
     {
       value: 'artistic',
       label: '🎨 Artistic Regional',
-      promptKeywords: 'Painted fantasy regional map, artistic cartography, illustrated terrain features, beautiful hand-crafted style, top-down view',
+      promptKeywords: 'Painted fantasy regional map looking STRAIGHT DOWN from above, artistic cartography with flat overhead view, illustrated terrain symbols, beautiful hand-crafted style, no perspective, no horizon',
     },
   ],
   city: [
     {
       value: 'blueprint',
       label: '🏙️ Settlement Blueprint',
-      promptKeywords: 'Medieval city map, top-down, paper texture, street layout, districts, fantasy cartography, architectural style, gridless',
+      promptKeywords: 'City FLOOR PLAN looking STRAIGHT DOWN from above, architectural overhead view, building footprints and rooftops, street layout, districts marked, flat cartographic style, gridless, no perspective, no 3D buildings',
     },
     {
       value: 'parchment',
       label: '🗺️ Parchment City Map',
-      promptKeywords: 'Fantasy city map on aged parchment, ink drawn buildings and streets, cartographic style, bird\'s eye view, top-down',
+      promptKeywords: 'Fantasy city map looking STRAIGHT DOWN from above, aged parchment, building footprints shown from overhead, streets and districts, cartographic style, no perspective, no 3D, no horizon',
     },
     {
       value: 'realistic',
       label: '🛰️ Aerial City View',
-      promptKeywords: 'Aerial view of fantasy medieval city, photorealistic, detailed architecture, bird\'s eye perspective, top-down orthographic',
+      promptKeywords: 'City map looking STRAIGHT DOWN from directly above, Google Maps satellite style, building rooftops and footprints, overhead view only, no perspective, no horizon, no 3D buildings shown from side',
     },
   ],
   building: [
     {
       value: 'blueprint',
       label: '📐 Floor Plan',
-      promptKeywords: 'Architectural floor plan, top-down orthographic, clean lines, room layout, fantasy building blueprint, gridless, no grid lines',
+      promptKeywords: 'Architectural FLOOR PLAN looking STRAIGHT DOWN, clean line drawing, room layout with wall outlines, furniture shown as simple shapes from above, architectural blueprint style, gridless, no grid lines, no perspective',
     },
     {
       value: 'realistic',
       label: '🛡️ Realistic Interior',
-      promptKeywords: 'Top-down interior battlemap, furnished rooms, realistic lighting, tabletop RPG style, orthographic view, gridless, no grid lines',
+      promptKeywords: 'Interior FLOOR PLAN battlemap looking STRAIGHT DOWN from above, furnished rooms with furniture shapes from overhead, realistic floor textures, architectural layout, gridless, no grid lines, no perspective, no 3D',
     },
     {
       value: 'watercolor',
       label: '🎨 Hand-drawn Plan',
-      promptKeywords: 'Hand-drawn building floor plan, pen and ink with watercolor, parchment texture, top-down view, gridless, no grid lines',
+      promptKeywords: 'Hand-drawn building FLOOR PLAN looking STRAIGHT DOWN, pen and ink with watercolor, architectural overhead view, room layout, parchment texture, gridless, no grid lines, no perspective',
     },
   ],
 };
@@ -147,6 +147,83 @@ const ENVIRONMENTS = [
   { value: 'temple', label: 'Temple / Sacred' },
   { value: 'castle', label: 'Castle / Fortress' },
 ];
+
+// CRITICAL: Top-down enforcement rules - added to every prompt
+const TOP_DOWN_ENFORCEMENT = `
+STRICT TOP-DOWN REQUIREMENTS - YOU MUST FOLLOW THESE EXACTLY:
+- Camera is positioned DIRECTLY ABOVE looking STRAIGHT DOWN (90 degree angle)
+- This is a FLOOR PLAN / ARCHITECTURAL BLUEPRINT view
+- NO perspective, NO vanishing points, NO horizon line
+- NO walls shown as vertical surfaces - only show wall footprints/outlines from above
+- NO side views of furniture, objects, or terrain - only show their footprints from above
+- Everything appears flat as if pressed under glass
+- Humans/creatures would appear as circles/dots from this view (do not include them)
+- Tables appear as rectangles, chairs as small squares, beds as rectangles
+- Trees appear as circular canopy shapes from above
+- Buildings appear as roof outlines or floor plans
+- This map will be used as a tabletop RPG battlemap - it MUST be usable for placing miniature tokens
+- Think "Google Maps satellite view" or "architectural floor plan"
+DO NOT: Show any walls from the side, show horizon, show sky, show perspective depth, show anything at an angle
+`;
+
+// Convert vertical/perspective descriptions to floor-plan equivalents
+function sanitizeForFloorPlan(text: string): string {
+  if (!text) return '';
+
+  const conversions: [RegExp, string][] = [
+    // Tall/vertical structures → footprints
+    [/towering\s+spires?/gi, 'tower foundations visible from above'],
+    [/tall\s+towers?/gi, 'tower footprints'],
+    [/high\s+ceilings?/gi, 'spacious room'],
+    [/vaulted\s+ceilings?/gi, 'large open chamber'],
+    [/soaring\s+(columns?|pillars?)/gi, 'column bases arranged in rows'],
+    [/rising\s+(columns?|pillars?)/gi, 'column bases'],
+    [/grand\s+staircase/gi, 'staircase footprint (marked with lines)'],
+    [/spiral\s+staircase/gi, 'spiral staircase (circular shape with spiral lines)'],
+    [/steep\s+stairs?/gi, 'stairway (marked with direction lines)'],
+    [/towering\s+trees?/gi, 'tree canopies from above'],
+    [/tall\s+trees?/gi, 'circular tree canopy shapes'],
+    [/massive\s+chandelier/gi, 'chandelier shadow on floor'],
+    [/hanging\s+(lights?|lamps?|lanterns?)/gi, 'light sources marked on floor'],
+    [/high\s+windows?/gi, 'window alcoves in wall outline'],
+    [/balconies?\s+overlooking/gi, 'balcony platform outline'],
+    [/overlooking\s+the/gi, 'adjacent to the'],
+    [/looking\s+down\s+(at|on)/gi, 'near'],
+    [/rises?\s+(up|above)/gi, 'extends'],
+    [/looms?\s+(over|above)/gi, 'is situated near'],
+    [/stretches?\s+upward/gi, 'extends across'],
+    [/reaches?\s+(toward|to)\s+the\s+(sky|ceiling|heavens)/gi, 'is prominently positioned'],
+  ];
+
+  let result = text;
+  for (const [pattern, replacement] of conversions) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
+
+// Format hazards properly (fixes [object Object] bug)
+function formatHazards(hazards: unknown[]): string {
+  if (!Array.isArray(hazards) || hazards.length === 0) return '';
+
+  const formatted = hazards.map(h => {
+    if (typeof h === 'string') return h;
+    if (typeof h === 'object' && h !== null) {
+      // Handle common hazard object shapes
+      const obj = h as Record<string, unknown>;
+      if (obj.name) return String(obj.name);
+      if (obj.type) return String(obj.type);
+      if (obj.description) return String(obj.description);
+      if (obj.hazard) return String(obj.hazard);
+      // Fallback: stringify but filter useful keys
+      const keys = Object.keys(obj).filter(k => typeof obj[k] === 'string');
+      if (keys.length > 0) return String(obj[keys[0]]);
+    }
+    return '';
+  }).filter(Boolean);
+
+  return formatted.length > 0 ? formatted.join(', ') : '';
+}
 
 interface Entity {
   id: string;
@@ -250,29 +327,37 @@ export default function GenerateMapPage() {
     const brain = entity.brain || {};
     const mechanics = entity.mechanics || {};
 
-    // Extract descriptive elements
+    // Extract descriptive elements - sanitized for floor plan view
     const elements: string[] = [];
 
-    // From soul (sensory/atmospheric details)
-    if (soul.distinctive_feature) elements.push(`Distinctive feature: ${soul.distinctive_feature}`);
-    if (soul.purpose) elements.push(`Purpose: ${soul.purpose}`);
-    if (soul.atmosphere) elements.push(`Atmosphere: ${soul.atmosphere}`);
-    if (Array.isArray(soul.sights) && soul.sights.length > 0) elements.push(`Visual elements: ${soul.sights.join(', ')}`);
-    if (soul.lighting) elements.push(`Lighting: ${soul.lighting}`);
-    if (soul.architecture) elements.push(`Architecture: ${soul.architecture}`);
-    if (soul.terrain) elements.push(`Terrain: ${soul.terrain}`);
+    // From soul (sensory/atmospheric details) - sanitize vertical descriptions
+    if (soul.distinctive_feature) {
+      elements.push(`Distinctive feature: ${sanitizeForFloorPlan(String(soul.distinctive_feature))}`);
+    }
+    if (soul.purpose) elements.push(`Purpose: ${sanitizeForFloorPlan(String(soul.purpose))}`);
+    // Skip atmosphere - not relevant for floor plan
+    if (Array.isArray(soul.sights) && soul.sights.length > 0) {
+      const sanitizedSights = soul.sights.map(s => sanitizeForFloorPlan(String(s)));
+      elements.push(`Floor features: ${sanitizedSights.join(', ')}`);
+    }
+    // Skip lighting - not visible from above
+    if (soul.architecture) {
+      elements.push(`Layout style: ${sanitizeForFloorPlan(String(soul.architecture))}`);
+    }
+    if (soul.terrain) elements.push(`Ground terrain: ${sanitizeForFloorPlan(String(soul.terrain))}`);
     if (Array.isArray(soul.notable_features) && soul.notable_features.length > 0) {
-      elements.push(`Notable features: ${soul.notable_features.join(', ')}`);
+      const sanitizedFeatures = soul.notable_features.map(f => sanitizeForFloorPlan(String(f)));
+      elements.push(`Floor-level features: ${sanitizedFeatures.join(', ')}`);
     }
 
-    // From brain (DM knowledge)
-    if (brain.concept) elements.push(`Concept: ${brain.concept}`);
-    if (brain.situation) elements.push(`Current situation: ${brain.situation}`);
-    if (brain.history) elements.push(`History: ${brain.history}`);
+    // From brain (DM knowledge) - brief context only
+    if (brain.concept) elements.push(`Concept: ${sanitizeForFloorPlan(String(brain.concept))}`);
+    // Skip situation and history - not relevant for map layout
 
-    // From mechanics (game elements)
+    // From mechanics (game elements) - using formatHazards to fix [object Object] bug
     if (Array.isArray(mechanics.hazards) && mechanics.hazards.length > 0) {
-      elements.push(`Hazards: ${mechanics.hazards.join(', ')}`);
+      const hazardsText = formatHazards(mechanics.hazards);
+      if (hazardsText) elements.push(`Hazard locations to mark: ${hazardsText}`);
     }
     if (Array.isArray(mechanics.rooms) && mechanics.rooms.length > 0) {
       const roomNames = mechanics.rooms.map((r: unknown) => {
@@ -280,34 +365,40 @@ export default function GenerateMapPage() {
         if (typeof r === 'string') return r;
         return '';
       }).filter(Boolean);
-      if (roomNames.length > 0) elements.push(`Rooms/Areas: ${roomNames.join(', ')}`);
+      if (roomNames.length > 0) elements.push(`Rooms/Areas to include: ${roomNames.join(', ')}`);
     }
-    if (mechanics.defenses) elements.push(`Defenses: ${mechanics.defenses}`);
-    if (mechanics.entry_points) elements.push(`Entry points: ${mechanics.entry_points}`);
+    if (mechanics.defenses) elements.push(`Defensive positions: ${sanitizeForFloorPlan(String(mechanics.defenses))}`);
+    if (mechanics.entry_points) elements.push(`Entry/exit points: ${String(mechanics.entry_points)}`);
 
-    // Environment modifier
+    // Environment modifier - focus on ground-level features
     const envKeywords = environment !== 'none'
-      ? `${environment} environment, ${environment} terrain features`
+      ? `${environment} terrain textures and ground features`
       : '';
 
-    // Build the prompt
-    const prompt = `${styleInfo.promptKeywords}
+    // Sanitize additional details too
+    const sanitizedDetails = additionalDetails ? sanitizeForFloorPlan(additionalDetails) : '';
 
-Create a map of "${entity.name}" - ${entity.description || soul.purpose || 'a fantasy location'}.
+    // Build the prompt with STRICT top-down enforcement
+    const prompt = `${TOP_DOWN_ENFORCEMENT}
 
-${elements.length > 0 ? `LOCATION DETAILS:\n${elements.join('\n')}` : ''}
+STYLE: ${styleInfo.promptKeywords}
 
-${envKeywords ? `ENVIRONMENT: ${envKeywords}` : ''}
+Create a TOP-DOWN FLOOR PLAN map of "${entity.name}" - ${sanitizeForFloorPlan(entity.description || String(soul.purpose) || 'a fantasy location')}.
 
-${additionalDetails ? `ADDITIONAL DETAILS: ${additionalDetails}` : ''}
+${elements.length > 0 ? `LAYOUT ELEMENTS (show from above):\n${elements.join('\n')}` : ''}
 
-CRITICAL REQUIREMENTS:
-- Top-down orthographic view (bird's eye, looking straight down)
-- NO angled or perspective views - must be usable for tabletop RPG
-- NO grid lines (grid will be added as CSS overlay)
-- Clear, usable layout
-- High quality, detailed
-- Professional cartography suitable for tabletop RPG use`;
+${envKeywords ? `GROUND/TERRAIN: ${envKeywords}` : ''}
+
+${sanitizedDetails ? `ADDITIONAL FLOOR FEATURES: ${sanitizedDetails}` : ''}
+
+FINAL REMINDERS:
+- This is a BIRD'S EYE VIEW looking STRAIGHT DOWN
+- Show only what would be visible looking down from directly above
+- Walls appear as thick lines (floor plan style)
+- Furniture appears as simple shapes from above
+- NO 3D perspective, NO horizon, NO sky visible
+- Must be usable for placing tabletop RPG miniatures
+- NO grid lines (grid overlay added separately via CSS)`;
 
     return prompt;
   };
