@@ -176,6 +176,8 @@ export function RewardsEditor({ value = {}, onChange, campaignId }: RewardsEdito
       }
       setItemInput('');
       setSearchOpen(false);
+      // Re-focus input after selection
+      setTimeout(() => inputRef.current?.focus(), 0);
     } else {
       // Add as plain text
       const trimmed = itemInput.trim();
@@ -187,6 +189,8 @@ export function RewardsEditor({ value = {}, onChange, campaignId }: RewardsEdito
         }
         setItemInput('');
         setSearchOpen(false);
+        // Re-focus input after adding
+        setTimeout(() => inputRef.current?.focus(), 0);
       }
     }
   };
@@ -293,7 +297,7 @@ export function RewardsEditor({ value = {}, onChange, campaignId }: RewardsEdito
         )}
 
         {/* Add Item Input with Typeahead */}
-        <Popover open={searchOpen && (searchResults.length > 0 || isSearching)} onOpenChange={setSearchOpen}>
+        <Popover open={searchOpen && (searchResults.length > 0 || isSearching)} onOpenChange={setSearchOpen} modal={false}>
           <PopoverTrigger asChild>
             <div className="flex gap-2">
               <Input
@@ -318,8 +322,14 @@ export function RewardsEditor({ value = {}, onChange, campaignId }: RewardsEdito
               </button>
             </div>
           </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0 bg-slate-900 border-slate-700" align="start">
-            <Command>
+          <PopoverContent
+            className="w-[400px] p-0 bg-slate-900 border-slate-700"
+            align="start"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <Command shouldFilter={false}>
               <CommandList>
                 {isSearching && (
                   <div className="flex items-center justify-center p-4 text-slate-400">
