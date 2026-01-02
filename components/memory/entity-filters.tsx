@@ -91,7 +91,7 @@ export function EntityFiltersBar({
             size="sm"
             onClick={() => onViewModeChange('graph')}
             className="rounded-l-none"
-            title="Relationship graph"
+            title="Spiderweb"
           >
             <Network className="w-4 h-4" />
           </Button>
