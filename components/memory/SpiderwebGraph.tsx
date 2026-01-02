@@ -45,7 +45,7 @@ interface Relationship {
   target_id: string
   relationship_type: string
   description?: string
-  is_secret?: boolean
+  visibility?: 'public' | 'dm_only' | 'revealable'
 }
 
 interface GraphNode {
@@ -75,7 +75,8 @@ interface GraphLink {
   target: string | GraphNode
   relationshipType: string
   description?: string
-  isSecret?: boolean
+  visibility?: 'public' | 'dm_only' | 'revealable'
+  isSecret: boolean // Derived from visibility === 'dm_only'
   color: string
 }
 
@@ -300,22 +301,28 @@ export function SpiderwebGraph({
       return hasSource && hasTarget
     })
 
-    // Filter secret relationships if not showing
+    // Filter dm_only relationships if not showing secrets
+    // DM always has the option to show all, default is to show all
     const visibleRelationships = showSecrets
       ? filteredRelationships
-      : filteredRelationships.filter(r => !r.is_secret)
+      : filteredRelationships.filter(r => r.visibility === 'public')
 
     console.log('[SpiderwebGraph] Building graph - Nodes:', nodes.length, 'Links:', visibleRelationships.length)
+    console.log('[SpiderwebGraph] Total relationships before filter:', filteredRelationships.length)
 
-    const links: GraphLink[] = visibleRelationships.map(rel => ({
-      id: rel.id,
-      source: rel.source_id,
-      target: rel.target_id,
-      relationshipType: rel.relationship_type || 'unknown',
-      description: rel.description,
-      isSecret: rel.is_secret,
-      color: rel.is_secret ? '#fbbf24' : '#ffffff',
-    }))
+    const links: GraphLink[] = visibleRelationships.map(rel => {
+      const isSecret = rel.visibility === 'dm_only' || rel.visibility === 'revealable'
+      return {
+        id: rel.id,
+        source: rel.source_id,
+        target: rel.target_id,
+        relationshipType: rel.relationship_type || 'unknown',
+        description: rel.description,
+        visibility: rel.visibility,
+        isSecret,
+        color: isSecret ? '#fbbf24' : '#ffffff',
+      }
+    })
 
     return { nodes, links }
   }, [entities, relationships, selectedTypes, searchHighlightedNodes, showSecrets])
@@ -670,7 +677,7 @@ export function SpiderwebGraph({
               onCheckedChange={(checked) => setShowSecrets(checked === true)}
             />
             <label htmlFor="show-secrets" className="text-xs text-stone-400 cursor-pointer">
-              Show secret relationships
+              Show DM-only relationships
             </label>
           </div>
         </Card>
@@ -827,7 +834,7 @@ export function SpiderwebGraph({
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-0.5 border-t-2 border-dashed border-amber-400/60" />
-                <span className="text-xs text-stone-400">Secret</span>
+                <span className="text-xs text-stone-400">DM Only</span>
               </div>
             </div>
           </div>
