@@ -854,6 +854,7 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
               setFormData((prev) => ({ ...prev, rewards }));
               setHasChanges(true);
             }}
+            campaignId={campaignId}
           />
         </div>
       ),

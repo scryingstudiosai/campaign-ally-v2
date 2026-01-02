@@ -172,11 +172,25 @@ export const ENTITY_TYPE_PROMPTS: Record<string, string> = {
   npc: 'fantasy character portrait, detailed face and expression, personality visible through pose and attire',
   player: 'heroic fantasy character, adventurer appearance, distinctive equipment, memorable design',
   location: 'fantasy environment art, immersive atmosphere, architectural or natural details, sense of scale',
-  item: 'fantasy item illustration, centered object, detailed craftsmanship, magical properties visible if applicable',
+  item: 'fantasy item product shot, centered composition, isolated object on dark background, studio lighting, detailed craftsmanship, magical properties visible if applicable, NO people, NO hands, NO person holding the item, item only',
   creature: 'fantasy creature illustration, anatomically coherent, unique design, conveying personality or threat level',
   faction: 'faction representation, symbolic elements, group identity, heraldic or emblematic qualities',
   encounter: 'combat or tense scene, multiple subjects, action energy, dramatic moment',
   quest: 'narrative moment illustration, storytelling composition, emotional weight, epic or intimate as appropriate',
+};
+
+/**
+ * Negative prompts for entity types (used if the AI model supports it)
+ */
+export const ENTITY_TYPE_NEGATIVE_PROMPTS: Record<string, string> = {
+  item: 'person, hand, hands, holding, human, figure, body, arm, arms, fingers, people, wielding, gripping',
+  npc: '',
+  player: '',
+  location: 'people, characters, figures',
+  creature: '',
+  faction: '',
+  encounter: '',
+  quest: '',
 };
 
 /**
@@ -301,7 +315,7 @@ export function getDefaultStylesForEntityType(entityType?: string): {
       return {
         artStyle: 'classic-fantasy',
         lightingStyle: 'soft',
-        compositionStyle: 'portrait',
+        compositionStyle: 'cinematic', // Product shot style - centered, isolated
       };
     case 'encounter':
       return {
