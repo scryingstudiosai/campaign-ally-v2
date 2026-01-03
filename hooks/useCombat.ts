@@ -731,13 +731,13 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
                 }
               }
 
-              // Add gold as an item
-              if (rewards.gold && typeof rewards.gold === 'number' && rewards.gold > 0) {
-                lootItems.push({ custom_name: 'Gold Pieces', quantity: rewards.gold });
-              }
+              // Get gold amount (will be added to party treasury, not as item)
+              const goldAmount = (rewards.gold && typeof rewards.gold === 'number' && rewards.gold > 0)
+                ? rewards.gold
+                : 0;
 
-              // Insert loot into party inventory
-              if (lootItems.length > 0) {
+              // Insert loot into party inventory and add gold to party treasury
+              if (lootItems.length > 0 || goldAmount > 0) {
                 const lootResponse = await fetch('/api/portal/inventory/distribute-loot', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -746,6 +746,7 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
                     encounterId: combatState.encounterId,
                     encounterName: encounter.name || 'Combat',
                     items: lootItems,
+                    gold: goldAmount,
                     xp: rewards.xp || 0,
                   }),
                 });
@@ -754,6 +755,9 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
                   const result = await lootResponse.json();
                   lootPileId = result.itemsAdded;
                   console.log('[Combat] Added loot to party inventory:', result);
+                  if (result.goldAdded > 0) {
+                    console.log(`[Combat] Added ${result.goldAdded} gp to party treasury`);
+                  }
                 } else {
                   console.error('[Combat] Failed to add loot to party:', await lootResponse.text());
                 }

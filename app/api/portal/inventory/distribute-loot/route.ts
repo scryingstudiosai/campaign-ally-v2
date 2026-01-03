@@ -12,6 +12,7 @@ interface DistributeLootRequest {
   encounterId: string;
   encounterName: string;
   items: LootItem[];
+  gold?: number;
   xp?: number;
 }
 
@@ -24,10 +25,10 @@ export async function POST(request: NextRequest) {
   }
 
   const body: DistributeLootRequest = await request.json();
-  const { campaignId, encounterId, encounterName, items, xp } = body;
+  const { campaignId, encounterId, encounterName, items, gold, xp } = body;
 
-  if (!campaignId || !items || items.length === 0) {
-    return NextResponse.json({ error: 'Missing campaignId or items' }, { status: 400 });
+  if (!campaignId || ((items.length === 0) && !gold)) {
+    return NextResponse.json({ error: 'Missing campaignId or items/gold' }, { status: 400 });
   }
 
   // Verify user has access to this campaign (must be DM)
@@ -94,10 +95,38 @@ export async function POST(request: NextRequest) {
     // TODO: Add XP to player characters or party pool
   }
 
+  // Add gold to party treasury
+  let goldAdded = 0;
+  if (gold && gold > 0) {
+    // Get current party gold
+    const { data: currentCampaign } = await supabase
+      .from('campaigns')
+      .select('party_gold')
+      .eq('id', campaignId)
+      .single();
+
+    const currentGold = currentCampaign?.party_gold || 0;
+    const newTotal = currentGold + gold;
+
+    // Update party gold
+    const { error: goldError } = await supabase
+      .from('campaigns')
+      .update({ party_gold: newTotal })
+      .eq('id', campaignId);
+
+    if (goldError) {
+      errors.push(`Failed to add gold: ${goldError.message}`);
+    } else {
+      goldAdded = gold;
+      console.log(`[Loot Distribution] Added ${gold} gp to party treasury (new total: ${newTotal} gp)`);
+    }
+  }
+
   return NextResponse.json({
     success: true,
     itemsAdded: insertedItems.length,
     items: insertedItems,
+    goldAdded,
     xp: xp || 0,
     errors: errors.length > 0 ? errors : undefined,
   });
