@@ -63,6 +63,7 @@ function SidebarContent({
     { label: 'Atlas', href: `${baseUrl}/atlas`, icon: Globe },
     { label: 'Codex', href: `${baseUrl}/codex`, icon: Book },
     { label: 'Sessions', href: `${baseUrl}/sessions`, icon: History },
+    { label: 'Party', href: `${baseUrl}/party`, icon: Users },
     { label: 'Messages', href: `${baseUrl}/messages`, icon: MessageSquare, badge: unreadMessages },
   ]
 
