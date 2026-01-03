@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { CampaignChecklistWrapper } from '@/components/onboarding/CampaignChecklistWrapper'
+import { StoryThreadsPanel } from '@/components/story-threads'
 
 interface PageProps {
   params: { id: string }
@@ -115,9 +116,10 @@ export default async function CampaignDetailPage({ params }: PageProps) {
 
         {/* Bento Grid Layout - Sessions & Sidebar aligned */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT COLUMN (Spans 2 cols) - Sessions */}
-          <div className="lg:col-span-2">
+          {/* LEFT COLUMN (Spans 2 cols) - Sessions & Story Threads */}
+          <div className="lg:col-span-2 space-y-6">
             <SessionsList campaignId={params.id} />
+            <StoryThreadsPanel campaignId={params.id} />
           </div>
 
           {/* RIGHT COLUMN - Tools & Quick Access */}

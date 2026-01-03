@@ -36,9 +36,10 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json({
-        success: true,
         message: `Embedded ${result.success} entities`,
-        ...result,
+        embedded: result.success,
+        failed: result.failed,
+        skipped: result.skipped,
       });
     }
 
