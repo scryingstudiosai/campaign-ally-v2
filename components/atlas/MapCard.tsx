@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Globe,
@@ -12,8 +13,14 @@ import {
   Sparkles,
   Upload,
   ExternalLink,
+  Grid3X3,
+  X,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
+import { Slider } from '@/components/ui/slider'
+import { Label } from '@/components/ui/label'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,8 +55,19 @@ export function MapCard({ map, campaignId, onDelete, onTogglePublic }: MapCardPr
   const SourceIcon = sourceTypeIcons[map.source_type]
   const poiCount = Array.isArray(map.poi_data) ? map.poi_data.length : 0
 
+  // Fullscreen modal state for maps without linked entity
+  const [showModal, setShowModal] = useState(false)
+  const [showGrid, setShowGrid] = useState(false)
+  const [gridSize, setGridSize] = useState(50)
+
   const handleClick = () => {
-    router.push(`/dashboard/campaigns/${campaignId}/atlas/${map.id}`)
+    // If map is linked to an entity, navigate to that entity's page
+    if (map.linked_entity?.id) {
+      router.push(`/dashboard/campaigns/${campaignId}/memory/${map.linked_entity.id}`)
+    } else {
+      // Otherwise, open fullscreen modal to view the map
+      setShowModal(true)
+    }
   }
 
   return (
@@ -161,6 +179,84 @@ export function MapCard({ map, campaignId, onDelete, onTogglePublic }: MapCardPr
           </div>
         )}
       </div>
+
+      {/* Fullscreen Map Modal (for maps without linked entity) */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 bg-stone-950 border-stone-800 overflow-hidden">
+          {/* Header with controls */}
+          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/90 via-black/60 to-transparent">
+            <div>
+              <h2 className="text-lg font-semibold text-white">{map.name}</h2>
+              <p className="text-xs text-stone-400 capitalize">{map.map_type} {map.style && `• ${map.style}`}</p>
+            </div>
+
+            <div className="flex items-center gap-6">
+              {/* Grid Controls */}
+              <div className="flex items-center gap-3 bg-black/40 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={`grid-toggle-${map.id}`}
+                    checked={showGrid}
+                    onCheckedChange={setShowGrid}
+                  />
+                  <Label htmlFor={`grid-toggle-${map.id}`} className="text-sm text-white flex items-center gap-1.5 cursor-pointer">
+                    <Grid3X3 className="h-4 w-4" />
+                    Grid
+                  </Label>
+                </div>
+
+                {showGrid && (
+                  <div className="flex items-center gap-2 pl-2 border-l border-stone-700">
+                    <Label className="text-xs text-stone-400">Size:</Label>
+                    <Slider
+                      value={[gridSize]}
+                      onValueChange={(values: number[]) => setGridSize(values[0])}
+                      min={20}
+                      max={100}
+                      step={5}
+                      className="w-20"
+                    />
+                    <span className="text-xs text-stone-500 w-10">{gridSize}px</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Close button */}
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-2 bg-black/40 hover:bg-black/60 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-white" />
+              </button>
+            </div>
+          </div>
+
+          {/* Map Image with Grid Overlay */}
+          <div className="w-full h-full overflow-auto flex items-center justify-center bg-stone-900">
+            <div className="relative">
+              <img
+                src={map.image_url}
+                alt={map.name}
+                className="max-w-full max-h-[95vh] object-contain"
+              />
+
+              {/* CSS Grid Overlay */}
+              {showGrid && (
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(to right, rgba(255,255,255,0.25) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(255,255,255,0.25) 1px, transparent 1px)
+                    `,
+                    backgroundSize: `${gridSize}px ${gridSize}px`,
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
