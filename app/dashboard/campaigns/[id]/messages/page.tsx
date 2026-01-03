@@ -279,6 +279,50 @@ export default function DMMessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, partyMessages]);
 
+  // Realtime subscription for party chat messages
+  useEffect(() => {
+    const channel = supabase
+      .channel(`dm-party-chat-${campaignId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'portal_messages',
+          filter: `campaign_id=eq.${campaignId}`,
+        },
+        async (payload) => {
+          const newMsg = payload.new as Message;
+
+          // Only handle party channel messages
+          if (newMsg.channel !== 'party') return;
+
+          console.log('[Messages] Realtime party message received:', newMsg);
+
+          // Get current user to check if it's our own message
+          const { data: { user } } = await supabase.auth.getUser();
+          const isOwnMessage = user?.id === newMsg.sender_id;
+
+          // Add to party messages if viewing party chat
+          if (activeView === 'party') {
+            setPartyMessages(prev => {
+              // Avoid duplicates (in case we sent it ourselves)
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+          } else if (!isOwnMessage) {
+            // Increment unread count if not viewing party chat and not our own message
+            setPartyUnreadCount(prev => prev + 1);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [campaignId, supabase, activeView]);
+
   // Send message
   const handleSend = async () => {
     if (!newMessage.trim() || sending) return;
