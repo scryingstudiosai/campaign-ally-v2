@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Package, Search, Plus } from 'lucide-react';
 import { InventoryItem } from './InventoryItem';
@@ -74,6 +74,11 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
   const [filter, setFilter] = useState<'all' | 'equipped' | 'bag'>('all');
   const [stashItems, setStashItems] = useState(partyStash);
   const [showAddItem, setShowAddItem] = useState(false);
+
+  // Sync stash items when props change (from router.refresh())
+  useEffect(() => {
+    setStashItems(partyStash);
+  }, [partyStash]);
 
   // Use items directly from props - they're refreshed by router.refresh()
   const inventoryItems = items;

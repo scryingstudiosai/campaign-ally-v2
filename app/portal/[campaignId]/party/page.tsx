@@ -98,6 +98,40 @@ export default function PlayerPartyPage() {
     loadPartyData();
   }, [loadPartyData]);
 
+  // Realtime subscription for party stash changes
+  useEffect(() => {
+    const channel = supabase
+      .channel(`party-stash-${campaignId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inventory_instances',
+          filter: `campaign_id=eq.${campaignId}`,
+        },
+        (payload) => {
+          console.log('[Party] Inventory change:', payload);
+          // Refresh when party stash items change
+          const newRecord = payload.new as Record<string, unknown> | null;
+          const oldRecord = payload.old as Record<string, unknown> | null;
+
+          if (
+            newRecord?.owner_type === 'party' ||
+            oldRecord?.owner_type === 'party' ||
+            newRecord?.owner_id === myCharacterId
+          ) {
+            loadPartyData();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [campaignId, supabase, myCharacterId, loadPartyData]);
+
   const claimItem = async (itemId: string, itemName: string) => {
     if (!myCharacterId) {
       toast.error('No character linked');
