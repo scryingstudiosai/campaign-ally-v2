@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { embedEntity } from '@/lib/ai/embedding';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -206,6 +207,12 @@ export async function PATCH(
     }
 
     console.log('[API PATCH] Update successful');
+
+    // Re-generate embedding on updates (fire and forget)
+    embedEntity(id).catch((err) =>
+      console.error('[Entity] Embedding re-generation failed:', err)
+    );
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('[API PATCH] Exception:', error);

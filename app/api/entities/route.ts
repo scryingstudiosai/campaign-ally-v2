@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { embedEntity } from '@/lib/ai/embedding';
 
 // POST /api/entities - Create a new entity
 export async function POST(request: NextRequest) {
@@ -96,6 +97,13 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       console.error('Failed to insert entity:', insertError);
       return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
+    // Trigger embedding generation (fire and forget - don't block response)
+    if (newEntity?.id) {
+      embedEntity(newEntity.id).catch((err) =>
+        console.error('[Entity] Embedding generation failed:', err)
+      );
     }
 
     return NextResponse.json(newEntity);
