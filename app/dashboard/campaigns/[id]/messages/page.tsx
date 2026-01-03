@@ -14,11 +14,9 @@ import {
   Loader2,
   ChevronLeft,
   User,
-  Check,
   CheckCheck
 } from 'lucide-react';
 import Image from 'next/image';
-import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 
 interface Message {
   id: string;
@@ -56,13 +54,31 @@ export default function DMMessagesPage() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Hook to mark portal_messages as read (clears sidebar badge)
-  const { markAsRead } = useUnreadNotifications({ campaignId, type: 'player_message' });
+  // Function to mark a specific player's messages as read
+  const markPlayerMessagesAsRead = useCallback(async (playerId: string) => {
+    try {
+      const res = await fetch('/api/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          type: 'player_message',
+          senderId: playerId,
+        }),
+      });
 
-  // Mark all portal messages as read when DM views this page
-  useEffect(() => {
-    markAsRead();
-  }, [markAsRead]);
+      if (res.ok) {
+        // Dispatch event to update sidebar badge
+        window.dispatchEvent(
+          new CustomEvent('notifications-marked-read', {
+            detail: { campaignId, type: 'player_message' },
+          })
+        );
+      }
+    } catch (error) {
+      console.error('Failed to mark messages as read:', error);
+    }
+  }, [campaignId]);
 
   // Fetch player conversations
   const fetchConversations = useCallback(async () => {
@@ -111,17 +127,18 @@ export default function DMMessagesPage() {
       });
     }
 
-    // Get unread counts from notifications
-    const { data: notifications } = await supabase
-      .from('dm_notifications')
-      .select('source_user_id')
+    // Get unread counts from portal_messages (player->DM private messages)
+    const { data: unreadMessages } = await supabase
+      .from('portal_messages')
+      .select('sender_id')
       .eq('campaign_id', campaignId)
-      .eq('type', 'player_message')
+      .eq('channel', 'dm_private')
+      .eq('sender_type', 'player')
       .eq('is_read', false);
 
-    if (notifications) {
-      for (const notif of notifications) {
-        const conv = convMap.get(notif.source_user_id);
+    if (unreadMessages) {
+      for (const msg of unreadMessages) {
+        const conv = convMap.get(msg.sender_id);
         if (conv) {
           conv.unreadCount++;
         }
@@ -161,14 +178,9 @@ export default function DMMessagesPage() {
 
     setMessages(data || []);
 
-    // Mark notifications as read for this player
-    await supabase
-      .from('dm_notifications')
-      .update({ is_read: true, read_at: new Date().toISOString() })
-      .eq('campaign_id', campaignId)
-      .eq('type', 'player_message')
-      .eq('source_user_id', playerId);
-  }, [campaignId, supabase]);
+    // Mark this player's messages as read (updates sidebar badge)
+    await markPlayerMessagesAsRead(playerId);
+  }, [campaignId, supabase, markPlayerMessagesAsRead]);
 
   // Initial load
   useEffect(() => {

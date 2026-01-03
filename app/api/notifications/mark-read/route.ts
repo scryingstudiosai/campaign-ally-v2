@@ -10,11 +10,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { notificationIds, campaignId, markAll, type } = await req.json();
+    const { notificationIds, campaignId, markAll, type, senderId } = await req.json();
 
     // Handle player_message type - update portal_messages table
     if (type === 'player_message') {
-      if (markAll && campaignId) {
+      if (campaignId) {
         // Verify user owns this campaign
         const { data: campaign } = await supabase
           .from('campaigns')
@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
         }
 
-        // Mark only PRIVATE messages FROM players as read (not DM's own messages)
-        const { error } = await supabase
+        // Build query to mark PRIVATE messages FROM players as read
+        let query = supabase
           .from('portal_messages')
           .update({
             is_read: true,
@@ -38,6 +38,13 @@ export async function POST(req: NextRequest) {
           .eq('is_read', false)
           .eq('sender_type', 'player')
           .eq('channel', 'dm_private');
+
+        // If senderId provided, only mark that player's messages
+        if (senderId) {
+          query = query.eq('sender_id', senderId);
+        }
+
+        const { error } = await query;
 
         if (error) throw error;
 
