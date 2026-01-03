@@ -59,26 +59,46 @@ export async function POST(request: NextRequest) {
       console.log(`[distribute-loot] Processing item ${i + 1}:`, JSON.stringify(item));
 
       try {
-        // Try to find SRD item if we have a slug
         let srdItemId: string | null = null;
-        if (item.srd_item_slug) {
-          console.log(`[distribute-loot] Looking up SRD item: ${item.srd_item_slug}`);
+        let finalCustomName: string | null = item.custom_name || null;
+
+        // First, try to match by name (case-insensitive)
+        if (item.custom_name) {
+          console.log(`[distribute-loot] Looking up SRD item by name: "${item.custom_name}"`);
+          const { data: srdMatch } = await supabase
+            .from('srd_items')
+            .select('id, name')
+            .ilike('name', item.custom_name)
+            .limit(1)
+            .maybeSingle();
+
+          if (srdMatch) {
+            console.log(`[distribute-loot] Matched "${item.custom_name}" to SRD item: ${srdMatch.name} (${srdMatch.id})`);
+            srdItemId = srdMatch.id;
+            finalCustomName = null; // Don't need custom_name if we have SRD reference
+          }
+        }
+
+        // If no name match, try by slug
+        if (!srdItemId && item.srd_item_slug) {
+          console.log(`[distribute-loot] Looking up SRD item by slug: ${item.srd_item_slug}`);
           const { data: srdItem } = await supabase
             .from('srd_items')
-            .select('id')
+            .select('id, name')
             .eq('slug', item.srd_item_slug)
-            .single();
+            .maybeSingle();
 
           if (srdItem) {
             srdItemId = srdItem.id;
-            console.log(`[distribute-loot] Found SRD item ID: ${srdItemId}`);
+            finalCustomName = null;
+            console.log(`[distribute-loot] Found SRD item by slug: ${srdItem.name} (${srdItemId})`);
           }
         }
 
         const insertData = {
           campaign_id: campaignId,
           srd_item_id: srdItemId,
-          custom_name: item.custom_name || null,
+          custom_name: finalCustomName,
           owner_type: 'party',
           owner_id: campaignId, // Use campaign ID as owner for party loot
           quantity: item.quantity || 1,
@@ -94,7 +114,8 @@ export async function POST(request: NextRequest) {
         const { data: insertedData, error: insertError } = await supabase
           .from('inventory_instances')
           .insert(insertData)
-          .select();
+          .select()
+          .single();
 
         console.log(`[distribute-loot] Insert result:`, { insertedData, insertError });
 
