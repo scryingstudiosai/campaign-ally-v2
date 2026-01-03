@@ -25,9 +25,14 @@ export async function POST(request: NextRequest) {
   }
 
   const body: DistributeLootRequest = await request.json();
-  const { campaignId, encounterId, encounterName, items, gold, xp } = body;
+  console.log('[distribute-loot] Received body:', JSON.stringify(body, null, 2));
 
-  if (!campaignId || ((items.length === 0) && !gold)) {
+  const { campaignId, encounterId, encounterName, items, gold, xp } = body;
+  console.log('[distribute-loot] Parsed items:', items?.length, 'items');
+  console.log('[distribute-loot] Items array:', JSON.stringify(items, null, 2));
+
+  if (!campaignId || ((items?.length === 0) && !gold)) {
+    console.log('[distribute-loot] Validation failed - no campaignId or items/gold');
     return NextResponse.json({ error: 'Missing campaignId or items/gold' }, { status: 400 });
   }
 
@@ -45,27 +50,32 @@ export async function POST(request: NextRequest) {
   const insertedItems: string[] = [];
   const errors: string[] = [];
 
+  console.log('[distribute-loot] Starting to process', items?.length || 0, 'items');
+
   // Add each item to party inventory
-  for (const item of items) {
-    try {
-      // Try to find SRD item if we have a slug
-      let srdItemId: string | null = null;
-      if (item.srd_item_slug) {
-        const { data: srdItem } = await supabase
-          .from('srd_items')
-          .select('id')
-          .eq('slug', item.srd_item_slug)
-          .single();
+  if (items && Array.isArray(items)) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      console.log(`[distribute-loot] Processing item ${i + 1}:`, JSON.stringify(item));
 
-        if (srdItem) {
-          srdItemId = srdItem.id;
+      try {
+        // Try to find SRD item if we have a slug
+        let srdItemId: string | null = null;
+        if (item.srd_item_slug) {
+          console.log(`[distribute-loot] Looking up SRD item: ${item.srd_item_slug}`);
+          const { data: srdItem } = await supabase
+            .from('srd_items')
+            .select('id')
+            .eq('slug', item.srd_item_slug)
+            .single();
+
+          if (srdItem) {
+            srdItemId = srdItem.id;
+            console.log(`[distribute-loot] Found SRD item ID: ${srdItemId}`);
+          }
         }
-      }
 
-      // Insert into inventory_instances with owner_type = 'party'
-      const { error: insertError } = await supabase
-        .from('inventory_instances')
-        .insert({
+        const insertData = {
           campaign_id: campaignId,
           srd_item_id: srdItemId,
           custom_name: item.custom_name || null,
@@ -74,20 +84,37 @@ export async function POST(request: NextRequest) {
           quantity: item.quantity || 1,
           is_equipped: false,
           source_type: 'loot',
-          source_entity_id: encounterId,
+          source_entity_id: encounterId || null,
           source_description: `Loot from ${encounterName}`,
           status: 'approved',
-        });
+        };
+        console.log(`[distribute-loot] Inserting:`, JSON.stringify(insertData));
 
-      if (insertError) {
-        errors.push(`Failed to add ${item.custom_name || item.srd_item_slug}: ${insertError.message}`);
-      } else {
-        insertedItems.push(item.custom_name || item.srd_item_slug || 'item');
+        // Insert into inventory_instances with owner_type = 'party'
+        const { data: insertedData, error: insertError } = await supabase
+          .from('inventory_instances')
+          .insert(insertData)
+          .select();
+
+        console.log(`[distribute-loot] Insert result:`, { insertedData, insertError });
+
+        if (insertError) {
+          console.error(`[distribute-loot] Insert error:`, insertError);
+          errors.push(`Failed to add ${item.custom_name || item.srd_item_slug}: ${insertError.message}`);
+        } else {
+          console.log(`[distribute-loot] Successfully inserted item: ${item.custom_name || item.srd_item_slug}`);
+          insertedItems.push(item.custom_name || item.srd_item_slug || 'item');
+        }
+      } catch (err) {
+        console.error(`[distribute-loot] Exception:`, err);
+        errors.push(`Error adding item: ${String(err)}`);
       }
-    } catch (err) {
-      errors.push(`Error adding item: ${String(err)}`);
     }
+  } else {
+    console.log('[distribute-loot] Items is not an array or is undefined');
   }
+
+  console.log('[distribute-loot] Finished processing. Inserted:', insertedItems.length, 'Errors:', errors.length);
 
   // Log XP if provided (could be stored in session or broadcast to players)
   if (xp && xp > 0) {
