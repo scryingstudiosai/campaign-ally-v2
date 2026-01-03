@@ -1,11 +1,29 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Users, Zap, Star, Skull } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, Zap, Star, Skull, MoreVertical, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface CharacterEntity {
   id: string;
@@ -29,6 +47,42 @@ interface PartyRosterProps {
 }
 
 export function PartyRoster({ members, campaignId, onUpdate }: PartyRosterProps) {
+  const [memberToRemove, setMemberToRemove] = useState<PartyMember | null>(null);
+
+  const removeMember = async (memberId: string, characterName: string) => {
+    const supabase = createClient();
+
+    // Get the user_id before deleting membership
+    const { data: membership } = await supabase
+      .from('campaign_members')
+      .select('user_id')
+      .eq('id', memberId)
+      .single();
+
+    // Delete the campaign membership
+    const { error: memberError } = await supabase
+      .from('campaign_members')
+      .delete()
+      .eq('id', memberId);
+
+    if (memberError) {
+      toast.error('Failed to remove member');
+      return;
+    }
+
+    // Also delete their messages
+    if (membership?.user_id) {
+      await supabase
+        .from('portal_messages')
+        .delete()
+        .eq('campaign_id', campaignId)
+        .eq('sender_id', membership.user_id);
+    }
+
+    toast.success(`${characterName} removed from party`);
+    setMemberToRemove(null);
+    onUpdate();
+  };
 
   const updateResource = async (entityId: string, field: string, value: unknown) => {
     const supabase = createClient();
@@ -176,11 +230,53 @@ export function PartyRoster({ members, campaignId, onUpdate }: PartyRosterProps)
                       HP {currentHp}/{maxHp}
                     </div>
                   </div>
+
+                  {/* Actions Menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-white">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-700">
+                      <DropdownMenuItem
+                        onClick={() => setMemberToRemove(member)}
+                        className="text-red-400 focus:text-red-400 focus:bg-red-950"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove from Party
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               );
             })}
           </div>
         )}
+
+        {/* Confirmation Dialog */}
+        <AlertDialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
+          <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Party Member?</AlertDialogTitle>
+              <AlertDialogDescription className="text-zinc-400">
+                This will remove {memberToRemove?.entities?.name} from the party and delete their messages.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => memberToRemove && removeMember(memberToRemove.id, memberToRemove.entities?.name || 'Unknown')}
+                className="bg-red-600 hover:bg-red-500"
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

@@ -41,6 +41,7 @@ interface PartyMember {
     soul: Record<string, unknown> | null;
     mechanics: Record<string, unknown> | null;
     resources: Record<string, unknown> | null;
+    deleted_at: string | null;
   } | null;
 }
 
@@ -92,13 +93,18 @@ export default function PartyCommandCenter() {
           image_url,
           soul,
           mechanics,
-          resources
+          resources,
+          deleted_at
         )
       `)
       .eq('campaign_id', campaignId)
       .not('character_entity_id', 'is', null);
 
-    setPartyMembers((members?.filter(m => m.entities) || []) as PartyMember[]);
+    // Filter out members with missing or deleted entities
+    const validMembers = (members || []).filter(m =>
+      m.entities && !m.entities.deleted_at
+    ) as PartyMember[];
+    setPartyMembers(validMembers);
 
     // Load factions for reputation matrix
     const { data: factionData } = await supabase
