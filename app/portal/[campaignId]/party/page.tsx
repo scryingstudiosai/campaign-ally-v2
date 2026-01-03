@@ -1,0 +1,281 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Users, Package, Coins, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface PartyMember {
+  id: string;
+  character_entity_id: string;
+  entities: {
+    id: string;
+    name: string;
+    image_url: string | null;
+    soul: Record<string, unknown> | null;
+  } | null;
+}
+
+interface StashItem {
+  id: string;
+  quantity: number;
+  srd_item: { id: string; name: string; item_type: string; rarity: string } | null;
+  custom_item: { id: string; name: string; image_url: string | null } | null;
+}
+
+export default function PlayerPartyPage() {
+  const params = useParams();
+  const campaignId = params.campaignId as string;
+  const supabase = createClient();
+
+  const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
+  const [partyStash, setPartyStash] = useState<StashItem[]>([]);
+  const [myCharacterId, setMyCharacterId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [claiming, setClaiming] = useState<string | null>(null);
+
+  const loadPartyData = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    // Get my character
+    const { data: membership } = await supabase
+      .from('campaign_members')
+      .select('character_entity_id')
+      .eq('campaign_id', campaignId)
+      .eq('user_id', user.id)
+      .single();
+
+    setMyCharacterId(membership?.character_entity_id || null);
+
+    // Get all party members
+    const { data: members } = await supabase
+      .from('campaign_members')
+      .select(`
+        id,
+        character_entity_id,
+        entities:character_entity_id (
+          id,
+          name,
+          image_url,
+          soul
+        )
+      `)
+      .eq('campaign_id', campaignId)
+      .not('character_entity_id', 'is', null);
+
+    // Filter and normalize members
+    const validMembers = (members || []).filter(m => m.entities) as PartyMember[];
+    setPartyMembers(validMembers);
+
+    // Get party stash
+    const { data: stash } = await supabase
+      .from('inventory_instances')
+      .select(`
+        id, quantity,
+        srd_item:srd_items!srd_item_id (id, name, item_type, rarity),
+        custom_item:entities!custom_entity_id (id, name, image_url)
+      `)
+      .eq('campaign_id', campaignId)
+      .eq('owner_type', 'party');
+
+    // Normalize stash items
+    const normalizedStash: StashItem[] = (stash || []).map(item => ({
+      ...item,
+      srd_item: Array.isArray(item.srd_item) ? item.srd_item[0] || null : item.srd_item,
+      custom_item: Array.isArray(item.custom_item) ? item.custom_item[0] || null : item.custom_item,
+    }));
+
+    setPartyStash(normalizedStash);
+    setLoading(false);
+  }, [campaignId, supabase]);
+
+  useEffect(() => {
+    loadPartyData();
+  }, [loadPartyData]);
+
+  const claimItem = async (itemId: string, itemName: string) => {
+    if (!myCharacterId) {
+      toast.error('No character linked');
+      return;
+    }
+
+    setClaiming(itemId);
+
+    try {
+      const res = await fetch('/api/portal/inventory/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId,
+          characterId: myCharacterId,
+          campaignId,
+        }),
+      });
+
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error || 'Failed to claim item');
+      }
+
+      toast.success(`Claimed ${itemName}!`);
+      loadPartyData();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to claim item');
+    } finally {
+      setClaiming(null);
+    }
+  };
+
+  const getItemName = (item: StashItem): string => {
+    return item.srd_item?.name || item.custom_item?.name || 'Unknown Item';
+  };
+
+  const getRarityColor = (rarity: string | undefined): string => {
+    switch (rarity?.toLowerCase()) {
+      case 'uncommon': return 'text-green-400';
+      case 'rare': return 'text-blue-400';
+      case 'very rare': return 'text-purple-400';
+      case 'legendary': return 'text-orange-400';
+      case 'artifact': return 'text-red-400';
+      default: return 'text-slate-400';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 pb-24 space-y-6">
+      <div className="flex items-center gap-3">
+        <Users className="h-6 w-6 text-teal-400" />
+        <h1 className="text-xl font-bold text-white">Party</h1>
+      </div>
+
+      {/* Party Stash */}
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Package className="h-5 w-5 text-amber-400" />
+            Party Stash
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {partyStash.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No items in party stash</p>
+              <p className="text-sm">Loot from encounters will appear here</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {partyStash.map((item) => {
+                const itemName = getItemName(item);
+                const rarity = item.srd_item?.rarity;
+                const itemType = item.srd_item?.item_type || 'Item';
+
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 bg-slate-800 rounded-lg"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className={`font-medium ${getRarityColor(rarity)}`}>
+                        {itemName}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {item.quantity > 1 && `x${item.quantity} · `}
+                        {itemType}
+                        {rarity && rarity !== 'common' && ` · ${rarity}`}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => claimItem(item.id, itemName)}
+                      disabled={claiming === item.id || !myCharacterId}
+                      className="bg-teal-600 hover:bg-teal-500 ml-3"
+                    >
+                      {claiming === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Claim'
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Party Members */}
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Users className="h-5 w-5 text-teal-400" />
+            Party Members
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {partyMembers.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No party members yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {partyMembers.map((member) => {
+                const char = member.entities;
+                if (!char) return null;
+
+                const isMe = member.character_entity_id === myCharacterId;
+                const soul = char.soul as Record<string, unknown> | null;
+
+                return (
+                  <div
+                    key={member.id}
+                    className={`flex items-center gap-4 p-3 bg-slate-800 rounded-lg ${
+                      isMe ? 'ring-1 ring-teal-500' : ''
+                    }`}
+                  >
+                    {char.image_url ? (
+                      <img
+                        src={char.image_url}
+                        alt={char.name}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center">
+                        <Users className="h-6 w-6 text-slate-500" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-white">
+                        {char.name}
+                        {isMe && <span className="ml-2 text-xs text-teal-400">(You)</span>}
+                      </p>
+                      <p className="text-sm text-slate-400">
+                        {soul?.race as string} {soul?.class as string}
+                        {soul?.level && ` ${soul.level}`}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

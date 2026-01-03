@@ -8,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Users, Package, Shield,
-  RefreshCw, Loader2, Coins
+  RefreshCw, Loader2, Coins, Plus
 } from 'lucide-react';
 import { TacticalProfile } from '@/components/party/TacticalProfile';
 import { ReputationMatrix } from '@/components/party/ReputationMatrix';
 import { PartyRoster } from '@/components/party/PartyRoster';
 import { PartyCheatSheet } from '@/components/party/PartyCheatSheet';
 import { InventoryList } from '@/components/inventory/InventoryList';
+import { AddItemDialog } from '@/components/party/AddItemDialog';
 
 interface Campaign {
   id: string;
@@ -61,6 +62,8 @@ export default function PartyCommandCenter() {
   const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [factions, setFactions] = useState<Faction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddItemDialog, setShowAddItemDialog] = useState(false);
+  const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0);
 
   useEffect(() => {
     loadPartyData();
@@ -183,11 +186,19 @@ export default function PartyCommandCenter() {
             {/* Treasury Tab */}
             <TabsContent value="treasury" className="mt-4">
               <Card className="bg-zinc-900 border-zinc-800">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Package className="h-5 w-5 text-amber-400" />
                     Party Stash
                   </CardTitle>
+                  <Button
+                    size="sm"
+                    onClick={() => setShowAddItemDialog(true)}
+                    className="bg-teal-600 hover:bg-teal-500"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Item
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   {/* Party Gold */}
@@ -203,6 +214,7 @@ export default function PartyCommandCenter() {
                     campaignId={campaignId}
                     ownerId={campaignId}
                     ownerType="party"
+                    refreshKey={inventoryRefreshKey}
                   />
                 </CardContent>
               </Card>
@@ -220,6 +232,14 @@ export default function PartyCommandCenter() {
           </Tabs>
         </div>
       </div>
+
+      {/* Add Item Dialog */}
+      <AddItemDialog
+        open={showAddItemDialog}
+        onOpenChange={setShowAddItemDialog}
+        campaignId={campaignId}
+        onItemAdded={() => setInventoryRefreshKey(k => k + 1)}
+      />
     </div>
   );
 }
