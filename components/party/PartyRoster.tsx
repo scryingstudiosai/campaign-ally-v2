@@ -82,10 +82,20 @@ export function PartyRoster({ members, campaignId, onUpdate }: PartyRosterProps)
               const soul = (char.soul || {}) as Record<string, unknown>;
               const mechanics = (char.mechanics || {}) as Record<string, unknown>;
               const resources = (char.resources || {}) as Record<string, unknown>;
-              const hitPoints = mechanics.hit_points as { current?: number; maximum?: number } | null;
+              const mechanicsHp = mechanics.hp as { max?: number; current?: number } | null;
 
-              const maxHD = (soul.level as number) || (mechanics.level as number) || 1;
-              const currentHD = (resources.hit_dice_current as number) ?? maxHD;
+              // Correct paths for level (used for hit dice max)
+              const level = (soul.level as number) || 1;
+
+              // Correct paths for AC - soul.armor_class is the primary location
+              const ac = (soul.armor_class as number) || '?';
+
+              // Correct paths for HP - soul.max_hp/current_hp or mechanics.hp.max/current
+              const maxHp = (soul.max_hp as number) || mechanicsHp?.max || (mechanics.hp_max as number) || '?';
+              const currentHp = (soul.current_hp as number) || mechanicsHp?.current || (mechanics.hp_current as number) || maxHp;
+
+              // Resources
+              const currentHD = (resources.hit_dice_current as number) ?? level;
               const exhaustion = (resources.exhaustion as number) || 0;
               const inspiration = (resources.inspiration as boolean) || false;
 
@@ -128,9 +138,9 @@ export function PartyRoster({ members, campaignId, onUpdate }: PartyRosterProps)
                           onChange={(e) => updateResource(char.id, 'hit_dice_current', parseInt(e.target.value) || 0)}
                           className="w-12 h-6 text-xs bg-zinc-700 border-zinc-600 p-1"
                           min={0}
-                          max={maxHD}
+                          max={level}
                         />
-                        <span className="text-xs text-zinc-500">/ {maxHD}</span>
+                        <span className="text-xs text-zinc-500">/ {level}</span>
                       </div>
 
                       {/* Exhaustion */}
@@ -161,11 +171,9 @@ export function PartyRoster({ members, campaignId, onUpdate }: PartyRosterProps)
 
                   {/* Quick Stats */}
                   <div className="text-right">
-                    <div className="text-sm text-zinc-400">
-                      AC {(mechanics.armor_class as number) || (soul.ac as number) || '?'}
-                    </div>
+                    <div className="text-sm text-zinc-400">AC {ac}</div>
                     <div className="text-sm text-red-400">
-                      HP {hitPoints?.current || (soul.hp as number) || '?'}
+                      HP {currentHp}/{maxHp}
                     </div>
                   </div>
                 </div>

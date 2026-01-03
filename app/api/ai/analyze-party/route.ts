@@ -59,22 +59,28 @@ export async function POST(req: NextRequest) {
     const charSummary = characters.map(char => {
       if (!char) return '';
       const soul = (char.soul || {}) as Record<string, unknown>;
-      const mechanics = (char.mechanics || {}) as Record<string, unknown>;
-      const abilities = (mechanics.abilities || soul.abilities || {}) as Record<string, number>;
-      const hitPoints = mechanics.hit_points as { maximum?: number } | null;
-      const savingThrows = mechanics.saving_throws as string[] | null;
-      const skills = mechanics.skills as Record<string, unknown> | null;
+
+      // Correct paths: ability_scores in soul
+      const abilityScores = (soul.ability_scores || {}) as Record<string, number>;
+      const savingThrows = soul.saving_throws as string[] | null;
+      const languages = soul.languages as string[] | null;
+
+      // Determine if spellcaster based on class
+      const charClass = (soul.class as string || '').toLowerCase();
+      const spellcasterClasses = ['wizard', 'sorcerer', 'warlock', 'cleric', 'druid', 'bard', 'paladin', 'ranger'];
+      const isSpellcaster = spellcasterClasses.some(c => charClass.includes(c));
 
       return `
 ${char.name}:
 - Class: ${soul.class || 'Unknown'}
-- Level: ${soul.level || mechanics.level || '?'}
-- AC: ${mechanics.armor_class || soul.ac || '?'}
-- HP: ${hitPoints?.maximum || soul.hp || '?'}
-- Abilities: STR ${abilities.strength || abilities.str || '?'}, DEX ${abilities.dexterity || abilities.dex || '?'}, CON ${abilities.constitution || abilities.con || '?'}, INT ${abilities.intelligence || abilities.int || '?'}, WIS ${abilities.wisdom || abilities.wis || '?'}, CHA ${abilities.charisma || abilities.cha || '?'}
-- Saving Throw Proficiencies: ${savingThrows?.join(', ') || 'Unknown'}
-- Skills: ${skills ? Object.keys(skills).join(', ') : 'Unknown'}
-- Spellcaster: ${mechanics.spellcasting ? 'Yes' : 'No'}
+- Level: ${soul.level || 1}
+- AC: ${soul.armor_class || '?'}
+- HP: ${soul.max_hp || '?'}
+- STR: ${abilityScores.str || '?'}, DEX: ${abilityScores.dex || '?'}, CON: ${abilityScores.con || '?'}
+- INT: ${abilityScores.int || '?'}, WIS: ${abilityScores.wis || '?'}, CHA: ${abilityScores.cha || '?'}
+- Saving Throws: ${savingThrows?.join(', ') || 'Unknown'}
+- Languages: ${languages?.join(', ') || 'Common'}
+- Spellcaster: ${isSpellcaster ? 'Yes' : 'No'}
 `;
     }).join('\n');
 

@@ -105,7 +105,7 @@ export default function PartyCommandCenter() {
       .from('entities')
       .select('id, name, description, image_url')
       .eq('campaign_id', campaignId)
-      .eq('type', 'faction')
+      .eq('entity_type', 'faction')
       .is('deleted_at', null);
 
     setFactions((factionData || []) as Faction[]);

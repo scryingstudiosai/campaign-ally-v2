@@ -23,18 +23,21 @@ export function PartyCheatSheet({ members }: PartyCheatSheetProps) {
   // Calculate party stats
   const characters = members.map(m => m.entities).filter(Boolean) as CharacterEntity[];
 
+  // Helper to calculate passive perception from WIS
+  const getPassivePerception = (char: CharacterEntity): number => {
+    const soul = char.soul as Record<string, unknown> | null;
+    const abilityScores = soul?.ability_scores as Record<string, number> | null;
+    const wis = abilityScores?.wis || 10;
+    const wisMod = Math.floor((wis - 10) / 2);
+    // Base passive perception is 10 + WIS modifier
+    return 10 + wisMod;
+  };
+
   // Passive Perception leader
   const perceptionLeader = characters.reduce<CharacterEntity | null>((best, char) => {
-    const soul = char.soul as Record<string, unknown> | null;
-    const mechanics = char.mechanics as Record<string, unknown> | null;
-    const pp = (mechanics?.passive_perception as number) || (soul?.passive_perception as number) || 10;
-
+    const pp = getPassivePerception(char);
     if (!best) return char;
-
-    const bestSoul = best.soul as Record<string, unknown> | null;
-    const bestMechanics = best.mechanics as Record<string, unknown> | null;
-    const bestPP = (bestMechanics?.passive_perception as number) || (bestSoul?.passive_perception as number) || 0;
-
+    const bestPP = getPassivePerception(best);
     return pp > bestPP ? char : best;
   }, null);
 
@@ -42,9 +45,8 @@ export function PartyCheatSheet({ members }: PartyCheatSheetProps) {
   const avgStealth = Math.round(
     characters.reduce((sum, char) => {
       const soul = char.soul as Record<string, unknown> | null;
-      const mechanics = char.mechanics as Record<string, unknown> | null;
-      const abilities = (mechanics?.abilities || soul?.abilities) as Record<string, number> | null;
-      const dex = abilities?.dexterity || abilities?.dex || 10;
+      const abilityScores = soul?.ability_scores as Record<string, number> | null;
+      const dex = abilityScores?.dex || 10;
       return sum + Math.floor((dex - 10) / 2);
     }, 0) / (characters.length || 1)
   );
@@ -53,8 +55,7 @@ export function PartyCheatSheet({ members }: PartyCheatSheetProps) {
   const allLanguages = new Set<string>();
   characters.forEach(char => {
     const soul = char.soul as Record<string, unknown> | null;
-    const mechanics = char.mechanics as Record<string, unknown> | null;
-    const langs = (soul?.languages || mechanics?.languages) as string[] | string | null;
+    const langs = soul?.languages as string[] | string | null;
     if (Array.isArray(langs)) {
       langs.forEach(l => allLanguages.add(l));
     } else if (typeof langs === 'string') {
@@ -62,29 +63,26 @@ export function PartyCheatSheet({ members }: PartyCheatSheetProps) {
     }
   });
 
-  // Average AC
+  // Average AC - soul.armor_class is the correct path
   const avgAC = Math.round(
     characters.reduce((sum, char) => {
       const soul = char.soul as Record<string, unknown> | null;
-      const mechanics = char.mechanics as Record<string, unknown> | null;
-      return sum + ((mechanics?.armor_class as number) || (soul?.ac as number) || 10);
+      return sum + ((soul?.armor_class as number) || 10);
     }, 0) / (characters.length || 1)
   );
 
-  // Total HP
+  // Total HP - soul.max_hp is the correct path
   const totalHP = characters.reduce((sum, char) => {
     const soul = char.soul as Record<string, unknown> | null;
     const mechanics = char.mechanics as Record<string, unknown> | null;
-    const hitPoints = mechanics?.hit_points as { maximum?: number } | null;
-    return sum + (hitPoints?.maximum || (soul?.hp as number) || 0);
+    const mechanicsHp = mechanics?.hp as { max?: number } | null;
+    return sum + ((soul?.max_hp as number) || mechanicsHp?.max || 0);
   }, 0);
 
-  // Get perception value for leader
+  // Get perception value for leader display
   const getPerceptionValue = (char: CharacterEntity | null): string => {
     if (!char) return '?';
-    const soul = char.soul as Record<string, unknown> | null;
-    const mechanics = char.mechanics as Record<string, unknown> | null;
-    return String((mechanics?.passive_perception as number) || (soul?.passive_perception as number) || '?');
+    return String(getPassivePerception(char));
   };
 
   return (
