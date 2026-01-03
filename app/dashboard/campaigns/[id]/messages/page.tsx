@@ -55,7 +55,9 @@ export default function DMMessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Function to mark a specific player's messages as read
-  const markPlayerMessagesAsRead = useCallback(async (playerId: string) => {
+  const markPlayerMessagesAsRead = useCallback(async (senderId: string) => {
+    console.log('[Messages] markPlayerMessagesAsRead called with senderId:', senderId);
+
     try {
       const res = await fetch('/api/notifications/mark-read', {
         method: 'POST',
@@ -63,9 +65,12 @@ export default function DMMessagesPage() {
         body: JSON.stringify({
           campaignId,
           type: 'player_message',
-          senderId: playerId,
+          senderId,
         }),
       });
+
+      const result = await res.json();
+      console.log('[Messages] mark-read API response:', result);
 
       if (res.ok) {
         // Dispatch event to update sidebar badge
@@ -74,6 +79,11 @@ export default function DMMessagesPage() {
             detail: { campaignId, type: 'player_message' },
           })
         );
+
+        // Also update the local unread count for this conversation
+        setConversations(prev => prev.map(conv =>
+          conv.userId === senderId ? { ...conv, unreadCount: 0 } : conv
+        ));
       }
     } catch (error) {
       console.error('Failed to mark messages as read:', error);
@@ -103,6 +113,11 @@ export default function DMMessagesPage() {
 
     if (!members) return;
 
+    console.log('[Messages] Building conversations from members:', members.map(m => ({
+      user_id: m.user_id,
+      character_entity_id: m.character_entity_id,
+    })));
+
     // Build conversations list
     const convMap = new Map<string, PlayerConversation>();
 
@@ -116,6 +131,8 @@ export default function DMMessagesPage() {
       );
       const lastMsg = playerMessages[0];
 
+      // IMPORTANT: userId is the user's auth ID (from campaign_members.user_id)
+      // This is the same as sender_id in portal_messages
       convMap.set(member.user_id, {
         userId: member.user_id,
         characterName: char?.name || 'Unknown Player',
@@ -167,6 +184,8 @@ export default function DMMessagesPage() {
 
   // Fetch conversation with specific player
   const fetchConversation = useCallback(async (playerId: string) => {
+    console.log('[Messages] fetchConversation called with playerId (user_id):', playerId);
+
     const { data } = await supabase
       .from('portal_messages')
       .select('*')
@@ -176,9 +195,12 @@ export default function DMMessagesPage() {
       .order('created_at', { ascending: true })
       .limit(100);
 
+    console.log('[Messages] Loaded messages, first message sender_id:', data?.[0]?.sender_id);
+
     setMessages(data || []);
 
     // Mark this player's messages as read (updates sidebar badge)
+    // playerId here is the user's auth ID from campaign_members.user_id
     await markPlayerMessagesAsRead(playerId);
   }, [campaignId, supabase, markPlayerMessagesAsRead]);
 
@@ -517,6 +539,11 @@ export default function DMMessagesPage() {
                   conv.unreadCount > 0 && "border-purple-500/50"
                 )}
                 onClick={() => {
+                  console.log('[Messages] Clicked conversation:', {
+                    characterName: conv.characterName,
+                    userId: conv.userId,
+                    characterId: conv.characterId,
+                  });
                   setSelectedPlayer(conv);
                   setActiveView('conversation');
                 }}
