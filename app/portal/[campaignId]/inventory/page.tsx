@@ -30,16 +30,29 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     redirect(`/portal/${campaignId}`);
   }
 
-  // 3. Fetch character entity to get gold from soul
+  // 3. Fetch character entity to get gold and ability scores from soul
   const { data: character } = await supabase
     .from('entities')
     .select('soul')
     .eq('id', membership.character_entity_id)
     .single();
 
-  // Get gold from soul.gold (primary) or soul.loadout.gold (fallback)
+  // Get currency from soul
   const soul = character?.soul as Record<string, unknown> | null;
-  const characterGold = (soul?.gold as number) ?? (soul?.loadout as Record<string, unknown>)?.gold as number ?? 0;
+  const soulCurrency = soul?.currency as Record<string, number> | undefined;
+
+  // Support new currency object or legacy gold field
+  const characterCurrency = {
+    pp: soulCurrency?.pp ?? 0,
+    gp: soulCurrency?.gp ?? (soul?.gold as number) ?? (soul?.loadout as Record<string, unknown>)?.gold as number ?? 0,
+    sp: soulCurrency?.sp ?? 0,
+    cp: soulCurrency?.cp ?? 0,
+  };
+
+  // Calculate max carry weight from STR (STR × 15)
+  const abilityScores = soul?.ability_scores as Record<string, number> | undefined;
+  const strength = abilityScores?.str ?? abilityScores?.strength ?? 10;
+  const maxCarryWeight = strength * 15;
 
   // 4. Fetch ALL items from inventory_instances table
   // Items are inserted here during character creation and when added later
@@ -97,21 +110,15 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     custom_item: Array.isArray(item.custom_item) ? item.custom_item[0] || null : item.custom_item,
   }));
 
-  // 6. Get currency from character's soul.gold
-  const currency = {
-    gold: characterGold,
-    silver: 0,
-    copper: 0,
-  };
-
-  // Use all items for display (no longer filtering out gold since it's in soul)
+  // Use all items for display
   const displayItems = normalizedInventoryItems;
 
   return (
     <InventoryView
       items={displayItems}
       partyStash={normalizedStash}
-      currency={currency}
+      currency={characterCurrency}
+      maxCarryWeight={maxCarryWeight}
       characterId={membership.character_entity_id}
       campaignId={campaignId}
     />

@@ -85,10 +85,17 @@ export function InventoryItem({ item, onClick }: Props) {
               <span className="text-sm text-slate-400">×{item.quantity}</span>
             )}
           </div>
-          <p className={cn("text-sm truncate", rarityTextColors[rarity] || 'text-slate-500')}>
-            {rarity !== 'common' && `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} `}
-            {itemType}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className={cn("text-sm truncate", rarityTextColors[rarity] || 'text-slate-500')}>
+              {rarity !== 'common' && `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} `}
+              {itemType}
+            </p>
+            {srd?.weight && (
+              <span className="text-xs text-slate-500">
+                • {(srd.weight * (item.quantity || 1)).toFixed(1)} lb
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Status Badges */}
