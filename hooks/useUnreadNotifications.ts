@@ -56,26 +56,33 @@ export function useUnreadNotifications(options: UseUnreadNotificationsOptions = 
           ? { notificationIds }
           : { campaignId, markAll: true, type };
 
-        await fetch('/api/notifications/mark-read', {
+        const res = await fetch('/api/notifications/mark-read', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
 
-        // Optimistically update count
-        if (notificationIds) {
-          setCount((prev) => Math.max(0, prev - notificationIds.length));
-        } else {
-          setCount(0);
-        }
+        if (res.ok) {
+          // Optimistically update count
+          if (notificationIds) {
+            setCount((prev) => Math.max(0, prev - notificationIds.length));
+          } else {
+            setCount(0);
+          }
 
-        // Refresh to get accurate count
-        fetchCount();
+          // Dispatch custom event to notify other hook instances
+          // This ensures sidebar updates when Messages page marks as read
+          window.dispatchEvent(
+            new CustomEvent('notifications-marked-read', {
+              detail: { campaignId, type },
+            })
+          );
+        }
       } catch (error) {
         console.error('Failed to mark as read:', error);
       }
     },
-    [campaignId, type, fetchCount]
+    [campaignId, type]
   );
 
   // Initial fetch and polling
@@ -87,6 +94,28 @@ export function useUnreadNotifications(options: UseUnreadNotificationsOptions = 
 
     return () => clearInterval(interval);
   }, [fetchCount, pollInterval]);
+
+  // Listen for cross-instance sync events
+  // When one hook instance marks messages as read, others should refetch
+  useEffect(() => {
+    const handleMarkRead = (event: CustomEvent<{ campaignId?: string; type?: string }>) => {
+      const { campaignId: eventCampaignId, type: eventType } = event.detail;
+
+      // Only refetch if this hook is for the same campaign/type that was marked read
+      const campaignMatches = !campaignId || !eventCampaignId || campaignId === eventCampaignId;
+      const typeMatches = !type || !eventType || type === eventType;
+
+      if (campaignMatches && typeMatches) {
+        fetchCount();
+      }
+    };
+
+    window.addEventListener('notifications-marked-read', handleMarkRead as EventListener);
+
+    return () => {
+      window.removeEventListener('notifications-marked-read', handleMarkRead as EventListener);
+    };
+  }, [campaignId, type, fetchCount]);
 
   // Realtime subscription
   useEffect(() => {
