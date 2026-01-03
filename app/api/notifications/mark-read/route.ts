@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
         }
 
-        // Mark all portal messages for this campaign as read
+        // Mark only PRIVATE messages FROM players as read (not DM's own messages)
         const { error } = await supabase
           .from('portal_messages')
           .update({
@@ -35,7 +35,9 @@ export async function POST(req: NextRequest) {
             read_at: new Date().toISOString(),
           })
           .eq('campaign_id', campaignId)
-          .eq('is_read', false);
+          .eq('is_read', false)
+          .eq('sender_type', 'player')
+          .eq('channel', 'dm_private');
 
         if (error) throw error;
 

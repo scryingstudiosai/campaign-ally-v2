@@ -29,11 +29,14 @@ export async function GET(req: NextRequest) {
           return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
         }
 
+        // Only count PRIVATE messages FROM players TO the DM
         const { count, error } = await supabase
           .from('portal_messages')
           .select('id', { count: 'exact', head: true })
           .eq('campaign_id', campaignId)
-          .eq('is_read', false);
+          .eq('is_read', false)
+          .eq('sender_type', 'player')
+          .eq('channel', 'dm_private');
 
         if (error) throw error;
 
@@ -52,11 +55,14 @@ export async function GET(req: NextRequest) {
 
         const campaignIds = campaigns.map(c => c.id);
 
+        // Only count PRIVATE messages FROM players TO the DM
         const { count, error } = await supabase
           .from('portal_messages')
           .select('id', { count: 'exact', head: true })
           .in('campaign_id', campaignIds)
-          .eq('is_read', false);
+          .eq('is_read', false)
+          .eq('sender_type', 'player')
+          .eq('channel', 'dm_private');
 
         if (error) throw error;
 
