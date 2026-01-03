@@ -41,7 +41,24 @@ export async function POST(req: NextRequest) {
 
         // If senderId provided, only mark that player's messages
         if (senderId) {
-          query = query.eq('sender_id', senderId);
+          // The senderId might be an entity_id (character) instead of user_id
+          // Check if it's an entity_id and convert to user_id if needed
+          let actualSenderId = senderId;
+
+          const { data: membership } = await supabase
+            .from('campaign_members')
+            .select('user_id')
+            .eq('character_entity_id', senderId)
+            .eq('campaign_id', campaignId)
+            .single();
+
+          if (membership) {
+            // senderId was an entity_id, use the user_id instead
+            actualSenderId = membership.user_id;
+          }
+          // If no membership found, assume senderId is already a user_id
+
+          query = query.eq('sender_id', actualSenderId);
         }
 
         const { error } = await query;
