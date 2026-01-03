@@ -14,7 +14,46 @@ export async function POST(req: NextRequest) {
 
     console.log('[MarkRead] Received:', { campaignId, type, senderId, markAll });
 
-    // Handle player_message type - update portal_messages table
+    // Handle party_message type - mark party chat messages as read
+    if (type === 'party_message') {
+      if (!campaignId) {
+        return NextResponse.json({ error: 'campaignId required for party_message' }, { status: 400 });
+      }
+
+      // Verify user owns this campaign
+      const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('id')
+        .eq('id', campaignId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!campaign) {
+        console.log('[MarkRead] Campaign not found for user:', user.id);
+        return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+      }
+
+      // Mark all PARTY messages (not from DM) as read
+      const { data: updated, error } = await supabase
+        .from('portal_messages')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString(),
+        })
+        .eq('campaign_id', campaignId)
+        .eq('channel', 'party')
+        .eq('is_read', false)
+        .neq('sender_id', user.id)  // Don't mark DM's own messages
+        .select('id');
+
+      console.log('[MarkRead] Marked party messages as read:', updated?.length || 0);
+
+      if (error) throw error;
+
+      return NextResponse.json({ success: true, count: updated?.length || 0 });
+    }
+
+    // Handle player_message type - update portal_messages table (private messages)
     if (type === 'player_message') {
       if (campaignId) {
         // Verify user owns this campaign

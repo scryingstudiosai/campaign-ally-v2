@@ -52,6 +52,7 @@ export default function DMMessagesPage() {
   const [partyMessages, setPartyMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [partyUnreadCount, setPartyUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Function to mark a specific player's messages as read
@@ -87,6 +88,39 @@ export default function DMMessagesPage() {
       }
     } catch (error) {
       console.error('Failed to mark messages as read:', error);
+    }
+  }, [campaignId]);
+
+  // Function to mark party messages as read
+  const markPartyMessagesAsRead = useCallback(async () => {
+    console.log('[Messages] markPartyMessagesAsRead called');
+
+    try {
+      const res = await fetch('/api/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId,
+          type: 'party_message',
+        }),
+      });
+
+      const result = await res.json();
+      console.log('[Messages] mark-read party API response:', result);
+
+      if (res.ok) {
+        // Dispatch event to update sidebar badge
+        window.dispatchEvent(
+          new CustomEvent('notifications-marked-read', {
+            detail: { campaignId, type: 'party_message' },
+          })
+        );
+
+        // Clear local party unread count
+        setPartyUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Failed to mark party messages as read:', error);
     }
   }, [campaignId]);
 
@@ -167,6 +201,20 @@ export default function DMMessagesPage() {
       if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount;
       return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
     }));
+
+    // Also fetch party chat unread count (messages from players, not DM)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { count: partyCount } = await supabase
+        .from('portal_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', campaignId)
+        .eq('channel', 'party')
+        .eq('is_read', false)
+        .neq('sender_id', user.id);  // Exclude DM's own messages
+
+      setPartyUnreadCount(partyCount || 0);
+    }
   }, [campaignId, supabase]);
 
   // Fetch party messages
@@ -221,8 +269,10 @@ export default function DMMessagesPage() {
   useEffect(() => {
     if (activeView === 'party') {
       fetchPartyMessages();
+      // Mark party messages as read when opening party chat
+      markPartyMessagesAsRead();
     }
-  }, [activeView, fetchPartyMessages]);
+  }, [activeView, fetchPartyMessages, markPartyMessagesAsRead]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -497,7 +547,10 @@ export default function DMMessagesPage() {
 
       {/* Party Chat Card */}
       <Card
-        className="bg-slate-900 border-slate-800 hover:border-teal-500/30 transition-colors cursor-pointer"
+        className={cn(
+          "bg-slate-900 border-slate-800 hover:border-teal-500/30 transition-colors cursor-pointer",
+          partyUnreadCount > 0 && "border-teal-500/50"
+        )}
         onClick={() => setActiveView('party')}
       >
         <CardContent className="p-4">
@@ -511,6 +564,11 @@ export default function DMMessagesPage() {
                 Group chat with all players
               </p>
             </div>
+            {partyUnreadCount > 0 && (
+              <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center">
+                <span className="text-xs font-bold text-white">{partyUnreadCount}</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
