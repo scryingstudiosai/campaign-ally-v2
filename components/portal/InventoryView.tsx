@@ -51,6 +51,7 @@ export interface InventoryItemData {
 export interface StashItemData {
   id: string;
   quantity: number;
+  custom_name: string | null;
   srd_item: { id: string; name: string; item_type: string | null; rarity: string | null } | null;
   custom_item: { id: string; name: string; image_url: string | null } | null;
 }

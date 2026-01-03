@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 interface StashItem {
   id: string;
   quantity: number;
+  custom_name?: string | null;
   srd_item?: { name: string; rarity: string; item_type: string } | null;
   custom_item?: { name: string; image_url: string } | null;
 }
@@ -61,7 +62,8 @@ export function PartyStash({ items, campaignId, characterId, onClaim }: Props) {
 
       <div className="space-y-2">
         {items.map((item) => {
-          const name = item.srd_item?.name || item.custom_item?.name || 'Unknown';
+          // Check SRD item, then custom entity, then custom_name field
+          const name = item.srd_item?.name || item.custom_item?.name || item.custom_name || 'Unknown';
           const rarity = item.srd_item?.rarity?.toLowerCase() || 'common';
 
           return (
