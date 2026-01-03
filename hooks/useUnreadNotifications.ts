@@ -1,22 +1,27 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 interface UseUnreadNotificationsOptions {
   campaignId?: string;
   type?: string; // Filter by notification type
-  pollInterval?: number; // Polling interval in ms (default: 30000)
+  pollInterval?: number; // Polling interval in ms (default: 60000 - fallback only)
   enableRealtime?: boolean; // Enable realtime subscription (default: true)
 }
+
+// Generate unique ID for each hook instance
+let hookInstanceId = 0;
 
 export function useUnreadNotifications(options: UseUnreadNotificationsOptions = {}) {
   const {
     campaignId,
     type,
-    pollInterval = 30000,
+    pollInterval = 60000, // Reduced priority - realtime is primary
     enableRealtime = true,
   } = options;
+
+  const instanceId = useRef(++hookInstanceId);
 
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -122,12 +127,21 @@ export function useUnreadNotifications(options: UseUnreadNotificationsOptions = 
     if (!enableRealtime || !campaignId) return;
 
     const supabase = createClient();
+    const id = instanceId.current;
 
     // Subscribe to different table based on type
     const tableName = type === 'player_message' ? 'portal_messages' : 'dm_notifications';
+    // Use unique channel name per hook instance to avoid conflicts
     const channelName = type === 'player_message'
-      ? `portal-messages:${campaignId}`
-      : `dm-notifications:${campaignId}`;
+      ? `sidebar-messages-${campaignId}-${id}`
+      : `sidebar-notifications-${campaignId}-${id}`;
+
+    console.log(`[useUnreadNotifications:${id}] Setting up realtime subscription`, {
+      table: tableName,
+      channel: channelName,
+      campaignId,
+      type,
+    });
 
     const channel = supabase
       .channel(channelName)
@@ -139,9 +153,20 @@ export function useUnreadNotifications(options: UseUnreadNotificationsOptions = 
           table: tableName,
           filter: `campaign_id=eq.${campaignId}`,
         },
-        () => {
-          // New notification/message received, increment count
-          setCount((prev) => prev + 1);
+        (payload) => {
+          console.log(`[useUnreadNotifications:${id}] INSERT received:`, payload.new);
+
+          // For player_message type, only count messages from players
+          if (type === 'player_message') {
+            const newMsg = payload.new as { sender_type?: string };
+            if (newMsg.sender_type === 'player') {
+              console.log(`[useUnreadNotifications:${id}] New player message - incrementing count`);
+              setCount((prev) => prev + 1);
+            }
+          } else {
+            // For other types, increment count
+            setCount((prev) => prev + 1);
+          }
         }
       )
       .on(
@@ -154,17 +179,26 @@ export function useUnreadNotifications(options: UseUnreadNotificationsOptions = 
         },
         (payload) => {
           // Check if notification/message was marked as read
-          const newRecord = payload.new as { is_read: boolean };
+          const newRecord = payload.new as { is_read: boolean; sender_type?: string };
           const oldRecord = payload.old as { is_read: boolean };
 
+          // For player_message type, only care about player messages
+          if (type === 'player_message' && newRecord.sender_type !== 'player') {
+            return;
+          }
+
           if (!oldRecord.is_read && newRecord.is_read) {
+            console.log(`[useUnreadNotifications:${id}] Message marked as read - decrementing count`);
             setCount((prev) => Math.max(0, prev - 1));
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[useUnreadNotifications:${id}] Subscription status:`, status);
+      });
 
     return () => {
+      console.log(`[useUnreadNotifications:${id}] Cleaning up subscription`);
       supabase.removeChannel(channel);
     };
   }, [campaignId, enableRealtime, type]);
