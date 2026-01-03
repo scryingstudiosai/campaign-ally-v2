@@ -7,6 +7,7 @@ export interface InventoryInstance {
   // Item reference (one will be set)
   srd_item_id: string | null;
   custom_entity_id: string | null;
+  custom_name: string | null; // For items with just a name (no SRD or entity reference)
 
   // Owner
   owner_type: OwnerType;

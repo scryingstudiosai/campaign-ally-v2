@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Package, Coins, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
 interface PartyMember {
@@ -22,6 +23,7 @@ interface PartyMember {
 interface StashItem {
   id: string;
   quantity: number;
+  custom_name: string | null;
   srd_item: { id: string; name: string; item_type: string; rarity: string } | null;
   custom_item: { id: string; name: string; image_url: string | null } | null;
 }
@@ -33,9 +35,12 @@ export default function PlayerPartyPage() {
 
   const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [partyStash, setPartyStash] = useState<StashItem[]>([]);
+  const [partyGold, setPartyGold] = useState(0);
   const [myCharacterId, setMyCharacterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState<string | null>(null);
+  const [takeAmount, setTakeAmount] = useState<number | ''>('');
+  const [takingGold, setTakingGold] = useState(false);
 
   const loadPartyData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -76,7 +81,7 @@ export default function PlayerPartyPage() {
     const { data: stash } = await supabase
       .from('inventory_instances')
       .select(`
-        id, quantity,
+        id, quantity, custom_name,
         srd_item:srd_items!srd_item_id (id, name, item_type, rarity),
         custom_item:entities!custom_entity_id (id, name, image_url)
       `)
@@ -86,11 +91,21 @@ export default function PlayerPartyPage() {
     // Normalize stash items
     const normalizedStash: StashItem[] = (stash || []).map(item => ({
       ...item,
+      custom_name: item.custom_name || null,
       srd_item: Array.isArray(item.srd_item) ? item.srd_item[0] || null : item.srd_item,
       custom_item: Array.isArray(item.custom_item) ? item.custom_item[0] || null : item.custom_item,
     }));
 
     setPartyStash(normalizedStash);
+
+    // Get party gold from campaign
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('party_gold')
+      .eq('id', campaignId)
+      .single();
+
+    setPartyGold(campaign?.party_gold || 0);
     setLoading(false);
   }, [campaignId, supabase]);
 
@@ -165,8 +180,45 @@ export default function PlayerPartyPage() {
     }
   };
 
+  const takeGold = async () => {
+    const amount = typeof takeAmount === 'number' ? takeAmount : 0;
+    if (amount <= 0 || amount > partyGold) {
+      toast.error('Invalid amount');
+      return;
+    }
+
+    setTakingGold(true);
+    try {
+      const response = await fetch('/api/portal/party/take-gold', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId, amount }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to take gold');
+      }
+
+      toast.success(`Took ${amount} gp!`);
+      setTakeAmount('');
+      loadPartyData();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to take gold');
+    } finally {
+      setTakingGold(false);
+    }
+  };
+
   const getItemName = (item: StashItem): string => {
-    return item.srd_item?.name || item.custom_item?.name || 'Unknown Item';
+    // Check SRD item first (has full descriptions)
+    if (item.srd_item?.name) return item.srd_item.name;
+    // Check custom entity
+    if (item.custom_item?.name) return item.custom_item.name;
+    // Check custom_name field (for loot items without SRD match)
+    if (item.custom_name) return item.custom_name;
+    // Fallback
+    return 'Unknown Item';
   };
 
   const getRarityColor = (rarity: string | undefined): string => {
@@ -194,6 +246,42 @@ export default function PlayerPartyPage() {
         <Users className="h-6 w-6 text-teal-400" />
         <h1 className="text-xl font-bold text-white">Party</h1>
       </div>
+
+      {/* Party Treasury */}
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Coins className="h-5 w-5 text-amber-400" />
+            Party Treasury
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-3xl font-bold text-amber-400">
+            {partyGold} gp
+          </div>
+
+          {partyGold > 0 && (
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                placeholder="Amount"
+                value={takeAmount}
+                onChange={(e) => setTakeAmount(e.target.value ? parseInt(e.target.value) : '')}
+                className="w-24 bg-slate-800 border-slate-700"
+                min={1}
+                max={partyGold}
+              />
+              <Button
+                onClick={takeGold}
+                disabled={takingGold || !takeAmount || takeAmount <= 0 || takeAmount > partyGold || !myCharacterId}
+                className="bg-amber-600 hover:bg-amber-500"
+              >
+                {takingGold ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Take Gold'}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Party Stash */}
       <Card className="bg-slate-900 border-slate-800">
