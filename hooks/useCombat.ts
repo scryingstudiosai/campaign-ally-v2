@@ -700,9 +700,22 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
           // Fetch encounter for loot data
           const encounterResponse = await fetch(`/api/entities/${combatState.encounterId}`);
           if (encounterResponse.ok) {
-            const encounter: EntityData = await encounterResponse.json();
-            const rewards = encounter.mechanics?.rewards || encounter.mechanics?.loot;
+            const encounter = await encounterResponse.json();
+            console.log('[Combat] Full encounter data:', encounter);
+
+            // Check multiple possible locations for rewards (different save paths)
+            const rewards = encounter.mechanics?.rewards ||
+                           encounter.mechanics?.loot ||
+                           encounter.attributes?.rewards ||
+                           {};
             console.log('[Combat] Encounter rewards:', rewards);
+
+            // Items can also be stored directly in mechanics
+            const rewardItems = rewards.items ||
+                               encounter.mechanics?.items ||
+                               encounter.mechanics?.loot ||
+                               [];
+            console.log('[Combat] Found reward items at:', rewardItems);
 
             if (rewards) {
               // Add loot items to party inventory (inventory_instances with owner_type = 'party')
@@ -713,9 +726,11 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
                 quantity: number;
               }> = [];
 
-              // Process reward items
-              if (rewards.items && Array.isArray(rewards.items)) {
-                for (const item of rewards.items) {
+              // Process reward items (use rewardItems we found above)
+              console.log('[Combat] Processing rewardItems:', rewardItems);
+              if (rewardItems && Array.isArray(rewardItems) && rewardItems.length > 0) {
+                for (const item of rewardItems) {
+                  console.log('[Combat] Processing item:', item);
                   if (typeof item === 'string') {
                     // Plain item name
                     lootItems.push({ custom_name: item, quantity: 1 });
@@ -730,6 +745,7 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
                   }
                 }
               }
+              console.log('[Combat] Built lootItems array:', lootItems);
 
               // Get gold amount (will be added to party treasury, not as item)
               const goldAmount = (rewards.gold && typeof rewards.gold === 'number' && rewards.gold > 0)
