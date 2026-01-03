@@ -74,10 +74,10 @@ export default function DMMessagesPage() {
       console.log('[Messages] mark-read API response:', result);
 
       if (res.ok) {
-        // Dispatch event to update sidebar badge
+        // Dispatch event to update sidebar badge (no type = refreshes all message hooks)
         window.dispatchEvent(
           new CustomEvent('notifications-marked-read', {
-            detail: { campaignId, type: 'player_message' },
+            detail: { campaignId },
           })
         );
 
@@ -109,10 +109,10 @@ export default function DMMessagesPage() {
       console.log('[Messages] mark-read party API response:', result);
 
       if (res.ok) {
-        // Dispatch event to update sidebar badge
+        // Dispatch event to update sidebar badge (no type = refreshes all message hooks)
         window.dispatchEvent(
           new CustomEvent('notifications-marked-read', {
-            detail: { campaignId, type: 'party_message' },
+            detail: { campaignId },
           })
         );
 
