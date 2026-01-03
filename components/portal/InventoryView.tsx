@@ -44,6 +44,7 @@ export interface InventoryItemData {
   is_identified: boolean;
   notes: string | null;
   acquired_from: string | null;
+  custom_name: string | null;
   srd_item: SrdItem | null;
   custom_item: CustomItem | null;
 }
@@ -75,14 +76,17 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
   const [filter, setFilter] = useState<'all' | 'equipped' | 'bag'>('all');
   const [stashItems, setStashItems] = useState(partyStash);
   const [showAddItem, setShowAddItem] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState(items);
 
   // Sync stash items when props change (from router.refresh())
   useEffect(() => {
     setStashItems(partyStash);
   }, [partyStash]);
 
-  // Use items directly from props - they're refreshed by router.refresh()
-  const inventoryItems = items;
+  // Sync inventory items when props change (from router.refresh())
+  useEffect(() => {
+    setInventoryItems(items);
+  }, [items]);
 
   const { newLoot, clearNewLoot } = useRealtimeInventory({
     campaignId,
@@ -117,6 +121,10 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
 
   const handleClaimItem = (itemId: string) => {
     setStashItems(prev => prev.filter(i => i.id !== itemId));
+  };
+
+  const handleDeleteItem = (itemId: string) => {
+    setInventoryItems(prev => prev.filter(i => i.id !== itemId));
   };
 
   return (
@@ -225,6 +233,9 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
       <ItemDetailSheet
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+        characterId={characterId}
+        campaignId={campaignId}
+        onDelete={handleDeleteItem}
       />
 
       {/* Loot Reveal Modal */}

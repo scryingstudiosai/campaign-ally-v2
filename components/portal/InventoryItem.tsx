@@ -48,7 +48,8 @@ export function InventoryItem({ item, onClick }: Props) {
   const srd = item.srd_item;
   const custom = item.custom_item;
 
-  const name = srd?.name || custom?.name || 'Unknown Item';
+  // Check SRD item, then custom entity, then custom_name field (for loot items)
+  const name = srd?.name || custom?.name || item.custom_name || 'Unknown Item';
   const itemType = srd?.item_type || custom?.sub_type || 'Item';
   const rarity = srd?.rarity?.toLowerCase() || 'common';
   const imageUrl = custom?.image_url;

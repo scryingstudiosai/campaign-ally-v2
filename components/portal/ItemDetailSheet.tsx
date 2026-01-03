@@ -1,20 +1,56 @@
 'use client';
 
-import { X, Sword, Shield, Scale, Coins, Sparkles, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { X, Sword, Shield, Scale, Coins, Sparkles, Zap, Trash2 } from 'lucide-react';
 import type { InventoryItemData } from './InventoryView';
 
 interface Props {
   item: InventoryItemData | null;
   onClose: () => void;
+  characterId?: string;
+  campaignId?: string;
+  onDelete?: (itemId: string) => void;
 }
 
-export function ItemDetailSheet({ item, onClose }: Props) {
+export function ItemDetailSheet({ item, onClose, characterId, campaignId, onDelete }: Props) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   if (!item) return null;
+
+  const handleDelete = async () => {
+    if (!characterId || !campaignId) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch('/api/portal/inventory/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: item.id,
+          characterId,
+          campaignId,
+        }),
+      });
+
+      if (res.ok) {
+        onDelete?.(item.id);
+        onClose();
+      } else {
+        console.error('Failed to delete item');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+    }
+    setIsDeleting(false);
+    setShowDeleteConfirm(false);
+  };
 
   const srd = item.srd_item;
   const custom = item.custom_item;
 
-  const name = srd?.name || custom?.name || 'Unknown Item';
+  // Check SRD item, then custom entity, then custom_name field (for loot items)
+  const name = srd?.name || custom?.name || item.custom_name || 'Unknown Item';
   const description = srd?.description || custom?.description || '';
   const mechanics = (srd?.mechanics || custom?.mechanics || {}) as Record<string, unknown>;
   const itemType = srd?.item_type || custom?.sub_type || 'Item';
@@ -170,6 +206,43 @@ export function ItemDetailSheet({ item, onClose }: Props) {
             <p className="text-xs text-slate-500">
               Acquired from: {item.acquired_from}
             </p>
+          )}
+
+          {/* Delete Button */}
+          {characterId && campaignId && onDelete && (
+            <div className="pt-4 border-t border-white/5">
+              {!showDeleteConfirm ? (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full py-3 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Item
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-300 text-center">
+                    Are you sure you want to delete <span className="text-white font-medium">{name}</span>?
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      disabled={isDeleting}
+                      className="flex-1 py-2.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="flex-1 py-2.5 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 

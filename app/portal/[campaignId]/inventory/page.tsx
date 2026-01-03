@@ -55,6 +55,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
       is_identified,
       notes,
       acquired_from,
+      custom_name,
       srd_item:srd_items!srd_item_id (
         id, name, item_type, subtype, rarity,
         description, mechanics, value_gp, weight,
@@ -72,6 +73,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
   // Normalize inventory items (handle array vs single object from Supabase)
   const normalizedInventoryItems: InventoryItemData[] = (inventoryItems || []).map(item => ({
     ...item,
+    custom_name: item.custom_name || null,
     srd_item: Array.isArray(item.srd_item) ? item.srd_item[0] || null : item.srd_item,
     custom_item: Array.isArray(item.custom_item) ? item.custom_item[0] || null : item.custom_item,
   }));
