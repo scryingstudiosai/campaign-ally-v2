@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -67,6 +68,9 @@ import {
   Heart,
   Beer,
   ChevronRight,
+  MapPin,
+  Package,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { renderWithBold } from '@/lib/text-utils'
@@ -334,75 +338,108 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
         {/* Header */}
         <div className="mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              {/* Quest Chain Breadcrumb - above title for arc context */}
-              {isQuest && questChain?.arc_name && (
-                <div className="flex items-center gap-2 text-sm mb-2">
-                  {questChain.arc_id ? (
-                    <Link
-                      href={`/dashboard/campaigns/${params.id}/memory/${questChain.arc_id}`}
-                      className="text-amber-400 hover:text-amber-300 transition-colors"
-                    >
-                      {questChain.arc_name}
-                    </Link>
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+            {/* Portrait */}
+            <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden border border-slate-700 shrink-0 bg-slate-800 mx-auto sm:mx-0">
+              {entity.image_url ? (
+                <Image
+                  src={entity.image_url}
+                  alt={entity.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {entity.entity_type === 'npc' || entity.entity_type === 'player' ? (
+                    <User className="h-12 w-12 text-slate-600" />
+                  ) : entity.entity_type === 'creature' ? (
+                    <Swords className="h-12 w-12 text-slate-600" />
+                  ) : entity.entity_type === 'location' ? (
+                    <MapPin className="h-12 w-12 text-slate-600" />
+                  ) : entity.entity_type === 'item' ? (
+                    <Package className="h-12 w-12 text-slate-600" />
+                  ) : entity.entity_type === 'faction' ? (
+                    <Users className="h-12 w-12 text-slate-600" />
                   ) : (
-                    <span className="text-amber-400">{questChain.arc_name}</span>
+                    <Sparkles className="h-12 w-12 text-slate-600" />
                   )}
-                  <ChevronRight className="w-4 h-4 text-slate-600" />
-                  <span className="text-slate-400">{questChain.chain_position || 'Part 1'}</span>
                 </div>
               )}
-              <h1 className="text-3xl font-bold">{entity.name}</h1>
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <EntityTypeBadge type={entity.entity_type as EntityType} size="lg" />
-                {entity.subtype && (
-                  <Badge variant="outline">{entity.subtype}</Badge>
-                )}
-                {statusConfig && (
-                  <Badge className={cn(statusConfig.color, statusConfig.bgColor, 'border-0')}>
-                    <statusConfig.icon className="w-3 h-3 mr-1" />
-                    {statusConfig.label}
-                  </Badge>
-                )}
-                {importanceConfig && (
-                  <Badge variant="outline" className={importanceConfig.color}>
-                    <importanceConfig.icon className="w-3 h-3 mr-1" />
-                    {importanceConfig.label}
-                  </Badge>
-                )}
-                {entity.visibility === 'dm_only' && (
-                  <Badge variant="outline" className="text-muted-foreground">
-                    <EyeOff className="w-3 h-3 mr-1" />
-                    DM Only
-                  </Badge>
-                )}
-                {entity.visibility === 'public' && (
-                  <Badge variant="outline" className="text-green-400">
-                    <Eye className="w-3 h-3 mr-1" />
-                    Public
-                  </Badge>
-                )}
-              </div>
-              {/* Summary as subtitle - the quick reference */}
-              {(entity.summary || entity.dm_slug) && (
-                <p className="text-slate-400 italic mt-3">
-                  {entity.summary || entity.dm_slug}
-                </p>
-              )}
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" asChild>
-                <Link href={`/dashboard/campaigns/${params.id}/memory/${params.entityId}/edit`}>
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </Link>
-              </Button>
-              <DeleteEntityButton
-                entityId={entity.id}
-                entityName={entity.name}
-                campaignId={params.id}
-              />
+
+            {/* Entity Info */}
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div>
+                  {/* Quest Chain Breadcrumb - above title for arc context */}
+                  {isQuest && questChain?.arc_name && (
+                    <div className="flex items-center justify-center sm:justify-start gap-2 text-sm mb-2">
+                      {questChain.arc_id ? (
+                        <Link
+                          href={`/dashboard/campaigns/${params.id}/memory/${questChain.arc_id}`}
+                          className="text-amber-400 hover:text-amber-300 transition-colors"
+                        >
+                          {questChain.arc_name}
+                        </Link>
+                      ) : (
+                        <span className="text-amber-400">{questChain.arc_name}</span>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-slate-600" />
+                      <span className="text-slate-400">{questChain.chain_position || 'Part 1'}</span>
+                    </div>
+                  )}
+                  <h1 className="text-3xl font-bold">{entity.name}</h1>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
+                    <EntityTypeBadge type={entity.entity_type as EntityType} size="lg" />
+                    {entity.subtype && (
+                      <Badge variant="outline">{entity.subtype}</Badge>
+                    )}
+                    {statusConfig && (
+                      <Badge className={cn(statusConfig.color, statusConfig.bgColor, 'border-0')}>
+                        <statusConfig.icon className="w-3 h-3 mr-1" />
+                        {statusConfig.label}
+                      </Badge>
+                    )}
+                    {importanceConfig && (
+                      <Badge variant="outline" className={importanceConfig.color}>
+                        <importanceConfig.icon className="w-3 h-3 mr-1" />
+                        {importanceConfig.label}
+                      </Badge>
+                    )}
+                    {entity.visibility === 'dm_only' && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        <EyeOff className="w-3 h-3 mr-1" />
+                        DM Only
+                      </Badge>
+                    )}
+                    {entity.visibility === 'public' && (
+                      <Badge variant="outline" className="text-green-400">
+                        <Eye className="w-3 h-3 mr-1" />
+                        Public
+                      </Badge>
+                    )}
+                  </div>
+                  {/* Summary as subtitle - the quick reference */}
+                  {(entity.summary || entity.dm_slug) && (
+                    <p className="text-slate-400 italic mt-3">
+                      {entity.summary || entity.dm_slug}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center justify-center sm:justify-start gap-2 shrink-0">
+                  <Button variant="outline" asChild>
+                    <Link href={`/dashboard/campaigns/${params.id}/memory/${params.entityId}/edit`}>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit
+                    </Link>
+                  </Button>
+                  <DeleteEntityButton
+                    entityId={entity.id}
+                    entityName={entity.name}
+                    campaignId={params.id}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -421,6 +458,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
         <LocationDetailWrapper
           campaignId={params.id}
           locationId={entity.id}
+          locationName={entity.name}
           mapImageUrl={locationSoul?.map_url as string | undefined}
           isLocation={isLocation}
         >
@@ -569,7 +607,12 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
                 {/* Location Mechanics - Hazards, encounters (player-facing) */}
                 {locationMechanics && Object.keys(locationMechanics).length > 0 && (
-                  <LocationMechanicsCard mechanics={locationMechanics} />
+                  <LocationMechanicsCard
+                    mechanics={locationMechanics}
+                    locationId={entity.id}
+                    locationName={entity.name}
+                    campaignId={params.id}
+                  />
                 )}
 
                 {/* Tavern/Inn Menu & Services - Room rates, drinks, meals */}
@@ -789,6 +832,30 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* --- QUEST SCRIPT CONTENT --- */}
             {isQuest && questBrain && Object.keys(questBrain).length > 0 && (
               <QuestBrainCard brain={questBrain} />
+            )}
+
+            {/* --- PLAYER SCRIPT CONTENT --- */}
+            {isPlayer && (
+              <div className="ca-panel p-4 border-l-2 border-red-500/50 bg-red-950/20">
+                <div className="flex items-center gap-2 text-red-400 mb-2">
+                  <EyeOff className="w-4 h-4" />
+                  <span className="text-sm font-medium">DM Secrets</span>
+                  <Badge variant="outline" className="ml-auto text-xs text-red-400 border-red-500/30 bg-red-500/10">
+                    Hidden from Players
+                  </Badge>
+                </div>
+                {(attributes.dm_secrets || (entity.brain as Record<string, unknown>)?.dm_secrets || (entity.brain as Record<string, unknown>)?.secrets) ? (
+                  <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                    {renderWithBold(
+                      attributes.dm_secrets as string ||
+                      (entity.brain as Record<string, unknown>)?.dm_secrets as string ||
+                      (entity.brain as Record<string, unknown>)?.secrets as string
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-500 italic">No DM secrets recorded</p>
+                )}
+              </div>
             )}
 
             {/* --- SHARED SCRIPT CONTENT --- */}

@@ -318,6 +318,8 @@ export default function ItemForgePage(): JSX.Element {
             subtype: forge.output.item_type || forge.output.category,
             summary: forge.output.public_description?.substring(0, 200),
             description: `**Public Description:** ${forge.output.public_description}\n\n**Secret Description:** ${forge.output.secret_description}`,
+            // Mark as complete (no longer a stub)
+            forge_status: 'complete',
             attributes: {
               item_type: forge.output.item_type || forge.output.category,
               category: forge.output.category,

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { PortalNav } from '@/components/portal/PortalNav';
+import { PortalHeader } from '@/components/portal/PortalHeader';
 
 interface PortalLayoutProps {
   children: React.ReactNode;
@@ -11,14 +12,10 @@ export default async function PortalLayout({ children, params }: PortalLayoutPro
   const { campaignId } = await params;
   const supabase = await createClient();
 
-  console.log('Portal Layout - campaignId:', campaignId);
-
   // Get current user
   const { data: { user } } = await supabase.auth.getUser();
-  console.log('Portal Layout - user:', user?.id || 'NO USER');
 
   if (!user) {
-    console.log('Portal Layout - No user, redirecting to login');
     redirect('/login');
   }
 
@@ -43,14 +40,20 @@ export default async function PortalLayout({ children, params }: PortalLayoutPro
     .eq('user_id', user.id)
     .single();
 
-  console.log('Portal Layout - membership:', membership);
-  console.log('Portal Layout - membershipError:', membershipError);
-
   if (membershipError || !membership) {
-    console.log('Portal Layout - No membership, redirecting to home');
     // Not a member - redirect to join or home
     redirect('/');
   }
+
+  // Check if user has their own campaigns (is a DM)
+  const { data: dmCampaigns } = await supabase
+    .from('campaigns')
+    .select('id')
+    .eq('user_id', user.id)
+    .is('deleted_at', null)
+    .limit(1);
+
+  const hasDMCampaigns = (dmCampaigns?.length || 0) > 0;
 
   // Handle Supabase joined table types
   const campaignData = membership.campaigns as unknown;
@@ -63,41 +66,14 @@ export default async function PortalLayout({ children, params }: PortalLayoutPro
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col pb-16">
-      {/* Top bar */}
-      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-sm border-b border-white/10">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Character avatar */}
-            <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden flex-shrink-0">
-              {character?.image_url ? (
-                <img
-                  src={character.image_url}
-                  alt={character.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-600 text-lg font-display">
-                  {character?.name?.[0] || '?'}
-                </div>
-              )}
-            </div>
-
-            <div className="min-w-0">
-              <h1 className="text-white font-display truncate">
-                {character?.name || 'Spectator'}
-              </h1>
-              <p className="text-xs text-slate-500 truncate">{campaign.name}</p>
-            </div>
-          </div>
-
-          {/* Role badge */}
-          {membership.role === 'spectator' && (
-            <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">
-              Spectator
-            </span>
-          )}
-        </div>
-      </header>
+      {/* Top bar with user menu */}
+      <PortalHeader
+        campaign={campaign}
+        character={character}
+        user={{ id: user.id, email: user.email }}
+        isSpectator={membership.role === 'spectator'}
+        hasDMCampaigns={hasDMCampaigns}
+      />
 
       {/* Main content */}
       <main className="flex-1 overflow-auto">

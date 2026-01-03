@@ -1,6 +1,6 @@
 'use client';
 
-import { User, Heart, Shield, Zap, Activity, BookOpen } from 'lucide-react';
+import { User, Heart, Shield, Zap, Activity, BookOpen, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   calculateModifier,
@@ -80,6 +80,13 @@ export function PlayerSoulCard({ soul }: PlayerSoulCardProps): JSX.Element | nul
     return 'bg-red-500';
   };
 
+  // Calculate Passive Perception: 10 + WIS mod + (proficiency if skilled in Perception)
+  const wisdomMod = abilityScores ? calculateModifier(abilityScores.wis ?? 10) : 0;
+  const hasPerceptionProficiency = (soul.skills || []).some(
+    skill => skill.toLowerCase().includes('perception')
+  );
+  const passivePerception = 10 + wisdomMod + (hasPerceptionProficiency ? profBonus : 0);
+
   return (
     <div className="ca-card p-4 space-y-4">
       <div className="flex items-center gap-2 text-teal-400 font-medium border-b border-teal-500/20 pb-2">
@@ -88,7 +95,7 @@ export function PlayerSoulCard({ soul }: PlayerSoulCardProps): JSX.Element | nul
       </div>
 
       {/* Combat Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         {/* HP */}
         <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-center">
           <Heart className="w-4 h-4 mx-auto text-red-400 mb-1" />
@@ -98,7 +105,7 @@ export function PlayerSoulCard({ soul }: PlayerSoulCardProps): JSX.Element | nul
               <span className="text-sm text-slate-400">/{soul.max_hp}</span>
             )}
           </div>
-          <div className="text-xs text-slate-400">Hit Points</div>
+          <div className="text-xs text-slate-400">HP</div>
           {soul.max_hp && (
             <div className="w-full h-1 bg-slate-700 rounded-full mt-1 overflow-hidden">
               <div
@@ -116,7 +123,7 @@ export function PlayerSoulCard({ soul }: PlayerSoulCardProps): JSX.Element | nul
         <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-center">
           <Shield className="w-4 h-4 mx-auto text-blue-400 mb-1" />
           <div className="text-2xl font-bold text-white">{soul.armor_class ?? '—'}</div>
-          <div className="text-xs text-slate-400">Armor Class</div>
+          <div className="text-xs text-slate-400">AC</div>
         </div>
 
         {/* Speed */}
@@ -126,11 +133,18 @@ export function PlayerSoulCard({ soul }: PlayerSoulCardProps): JSX.Element | nul
           <div className="text-xs text-slate-400">Speed</div>
         </div>
 
+        {/* Passive Perception */}
+        <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg text-center">
+          <Eye className="w-4 h-4 mx-auto text-purple-400 mb-1" />
+          <div className="text-2xl font-bold text-white">{passivePerception}</div>
+          <div className="text-xs text-slate-400">Passive</div>
+        </div>
+
         {/* Proficiency */}
         <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-center">
           <Activity className="w-4 h-4 mx-auto text-amber-400 mb-1" />
           <div className="text-2xl font-bold text-white">+{profBonus}</div>
-          <div className="text-xs text-slate-400">Proficiency</div>
+          <div className="text-xs text-slate-400">Prof</div>
         </div>
       </div>
 
@@ -166,13 +180,13 @@ export function PlayerSoulCard({ soul }: PlayerSoulCardProps): JSX.Element | nul
                   }`}
                   title={`${ABILITY_FULL_NAMES[ability]}${isSave ? ' (Saving Throw Proficiency)' : ''}`}
                 >
-                  <div className="text-xs text-slate-400">{ABILITY_LABELS[ability]}</div>
-                  <div className="text-lg font-bold text-white">{score}</div>
+                  <div className="text-xs text-slate-400 uppercase tracking-wide">{ABILITY_LABELS[ability]}</div>
                   <div
-                    className={`text-xs ${mod >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                    className={`text-2xl font-bold mt-1 ${mod >= 0 ? 'text-white' : 'text-red-400'}`}
                   >
                     {formatModifier(mod)}
                   </div>
+                  <div className="text-xs text-slate-500 mt-1">{score}</div>
                 </div>
               );
             })}

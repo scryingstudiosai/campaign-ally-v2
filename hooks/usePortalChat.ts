@@ -82,11 +82,27 @@ export function usePortalChat({ campaignId, userId, activeChannel }: UsePortalCh
     };
   }, [campaignId, userId, activeChannel, supabase]);
 
-  // Clear unread when viewing channel
+  // Clear unread when viewing channel and mark messages as read in database
   useEffect(() => {
-    if (activeChannel === 'party') setUnreadParty(0);
-    if (activeChannel === 'dm_private') setUnreadDM(0);
-  }, [activeChannel]);
+    if (activeChannel === 'party') {
+      setUnreadParty(0);
+      // Mark party messages as read in database
+      fetch('/api/portal/messages/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId, channel: 'party' }),
+      }).catch(console.error);
+    }
+    if (activeChannel === 'dm_private') {
+      setUnreadDM(0);
+      // Mark DM messages as read in database
+      fetch('/api/portal/messages/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId, channel: 'dm_private' }),
+      }).catch(console.error);
+    }
+  }, [activeChannel, campaignId]);
 
   // Send message function
   const sendMessage = async (content: string, recipientId?: string) => {

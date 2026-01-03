@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Package, MessageSquare, Book, Globe, Moon } from 'lucide-react';
+import { User, Package, MessageSquare, Book, Globe, Moon, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -82,10 +82,10 @@ export function PortalNav({ campaignId, userId, isSpectator = false }: Props) {
   const navItems = [
     { href: basePath, icon: User, label: 'Character', disabled: isSpectator },
     { href: `${basePath}/inventory`, icon: Package, label: 'Inventory', disabled: isSpectator },
+    { href: `${basePath}/party`, icon: Users, label: 'Party', disabled: false },
     { href: `${basePath}/messages`, icon: MessageSquare, label: 'Messages', badge: unreadCount > 0 ? unreadCount : undefined, disabled: false },
     { href: `${basePath}/journal`, icon: Book, label: 'Journal', disabled: false },
     { href: `${basePath}/world`, icon: Globe, label: 'World', disabled: false },
-    { href: `${basePath}/downtime`, icon: Moon, label: 'Downtime', disabled: isSpectator },
   ];
 
   return (

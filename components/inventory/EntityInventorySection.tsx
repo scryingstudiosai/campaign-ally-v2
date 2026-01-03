@@ -112,6 +112,16 @@ export function EntityInventorySection({
   // Show Stock Shelves button for ALL locations (any location can be stocked)
   const showStockButton = entityType === 'location';
 
+  // Total item count from inventory_instances (includes starting equipment)
+  const totalItemCount = items.length;
+
+  // Calculate gold from gold items in inventory
+  const goldItem = items.find(item =>
+    item.srd_item?.name?.toLowerCase() === 'gold pieces' ||
+    item.custom_entity?.name?.toLowerCase() === 'gold pieces'
+  );
+  const inventoryGold = goldItem?.quantity || 0;
+
   return (
     <div className="ca-panel p-4">
       {/* Header with Add Item button */}
@@ -120,8 +130,14 @@ export function EntityInventorySection({
           {isShop ? <Store className="w-5 h-5 text-amber-400" /> : <Package className="w-5 h-5" />}
           {isShop ? 'Shop Inventory' : 'Inventory'}
           <span className="text-sm text-slate-400 font-normal">
-            ({items.length} {items.length === 1 ? 'item' : 'items'})
+            ({totalItemCount} {totalItemCount === 1 ? 'item' : 'items'})
           </span>
+          {/* Gold display for players */}
+          {entityType === 'player' && inventoryGold > 0 && (
+            <Badge variant="outline" className="border-amber-500 text-amber-400 text-xs">
+              {inventoryGold} gp
+            </Badge>
+          )}
           {/* Price modifier badge for shops */}
           {isShop && priceModifier !== 1.0 && (
             <Badge

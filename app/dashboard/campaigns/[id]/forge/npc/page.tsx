@@ -809,7 +809,23 @@ export default function NpcForgePage(): JSX.Element {
           {/* NPC Type Tabs */}
           <Tabs
             value={npcType}
-            onValueChange={(v) => setNpcType(v as typeof npcType)}
+            onValueChange={(v) => {
+              const newType = v as typeof npcType;
+              // Sync concept when switching tabs (copy from standard if target is empty)
+              if (newType === 'villain' && !villainConcept && concept) {
+                setVillainConcept(concept);
+              } else if (newType === 'hero' && !heroConcept && concept) {
+                setHeroConcept(concept);
+              } else if (newType === 'standard') {
+                // Optionally sync back from villain/hero if standard is empty
+                if (!concept && villainConcept) {
+                  setConcept(villainConcept);
+                } else if (!concept && heroConcept) {
+                  setConcept(heroConcept);
+                }
+              }
+              setNpcType(newType);
+            }}
             className="w-full"
           >
             <TabsList className="grid w-full grid-cols-3 mb-4">

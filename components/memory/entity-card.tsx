@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { EntityTypeBadge, EntityType } from './entity-type-badge'
 import { cn } from '@/lib/utils'
@@ -42,6 +43,7 @@ export interface Entity {
   name: string
   summary?: string
   description?: string
+  image_url?: string    // Entity portrait/image URL
   status: 'active' | 'deceased' | 'destroyed' | 'missing' | 'archived'
   importance_tier: 'legendary' | 'major' | 'minor' | 'background'
   visibility: 'public' | 'dm_only' | 'revealable'
@@ -93,6 +95,12 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     borderClass: 'border-teal-500/30',
     glowClass: '',
     hoverClass: 'hover:border-teal-500/50 hover:shadow-[0_0_20px_rgba(45,212,191,0.15)]',
+  },
+  // Player characters
+  player_default: {
+    borderClass: 'border-yellow-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(234,179,8,0.15)]',
+    hoverClass: 'hover:border-yellow-500/60 hover:shadow-[0_0_20px_rgba(234,179,8,0.25)]',
   },
   // Default fallbacks for other entity types
   location_default: {
@@ -393,7 +401,7 @@ export function EntityCard({
       <div className="relative group">
         {selectionMode ? (
           <MaterialCard
-            entityType={entity.entity_type as 'npc' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
+            entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
             hoverable
             className={cn(
               'h-full p-4 cursor-pointer relative',
@@ -472,7 +480,7 @@ export function EntityCard({
         ) : (
           <Link href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}>
             <MaterialCard
-              entityType={entity.entity_type as 'npc' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
+              entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
               hoverable
               className={cn(
                 'h-full p-4 relative',
@@ -497,69 +505,88 @@ export function EntityCard({
                 <EntityTypeBadge type={entity.entity_type} subtype={entity.sub_type} size="sm" />
               </div>
 
-              <div className="pr-24">
-                <div className="pb-2">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-display font-semibold text-white group-hover:text-primary transition-colors truncate">
-                        {entity.name}
-                      </h3>
-                      {entity.subtype && (
-                        <p className="text-xs text-slate-500">{entity.subtype}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {importanceConfig && !isStub && (
-                        <span title={entity.importance_tier}>
-                          <importanceConfig.icon className={cn('w-4 h-4', importanceConfig.color)} />
-                        </span>
-                      )}
+              {/* Main content with optional thumbnail */}
+              <div className="flex gap-3">
+                {/* Thumbnail */}
+                {entity.image_url && (
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 rounded-md overflow-hidden bg-slate-800 border border-slate-700">
+                      <Image
+                        src={entity.image_url}
+                        alt={entity.name}
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
-                  {/* Status badges row */}
-                  {(isStub || statusConfig) && (
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      {isStub && (
-                        <span className="ca-inset px-2 py-0.5 text-xs text-amber-400 flex items-center gap-1">
-                          <Wand2 className="w-3 h-3" />
-                          Needs Details
-                        </span>
-                      )}
-                      {statusConfig && !isStub && (
-                        <span className={cn('ca-inset px-2 py-0.5 text-xs flex items-center gap-1', statusConfig.color)}>
-                          <statusConfig.icon className="w-3 h-3" />
-                          {statusConfig.label}
-                        </span>
-                      )}
+                )}
+
+                {/* Content */}
+                <div className={cn('flex-1 min-w-0', entity.image_url ? 'pr-16' : 'pr-24')}>
+                  <div className="pb-2">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-display font-semibold text-white group-hover:text-primary transition-colors truncate">
+                          {entity.name}
+                        </h3>
+                        {entity.subtype && (
+                          <p className="text-xs text-slate-500">{entity.subtype}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {importanceConfig && !isStub && (
+                          <span title={entity.importance_tier}>
+                            <importanceConfig.icon className={cn('w-4 h-4', importanceConfig.color)} />
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {/* Quest Chain Breadcrumb */}
-                  {entity.entity_type === 'quest' && entity.attributes?.chain?.arc_name && (
-                    <div className="flex items-center gap-1 text-xs mt-2">
-                      <span className="text-amber-400/80">{entity.attributes.chain.arc_name}</span>
-                      <ChevronRight className="w-3 h-3 text-slate-600" />
-                      <span className="text-slate-400">{entity.attributes.chain.chain_position || 'Part 1'}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="pt-0">
-                  {isStub && entity.attributes?.source_entity_name ? (
-                    <p className="text-xs text-slate-500 italic line-clamp-2">
-                      From: {entity.attributes.source_entity_name}
-                    </p>
-                  ) : entity.summary ? (
-                    <p className="text-xs text-slate-400 line-clamp-2">
-                      {renderWithBold(entity.summary)}
-                    </p>
-                  ) : entity.description ? (
-                    <p className="text-xs text-slate-400 line-clamp-2">
-                      {renderWithBold(entity.description)}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-600 italic">
-                      No description
-                    </p>
-                  )}
+                    {/* Status badges row */}
+                    {(isStub || statusConfig) && (
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        {isStub && (
+                          <span className="ca-inset px-2 py-0.5 text-xs text-amber-400 flex items-center gap-1">
+                            <Wand2 className="w-3 h-3" />
+                            Needs Details
+                          </span>
+                        )}
+                        {statusConfig && !isStub && (
+                          <span className={cn('ca-inset px-2 py-0.5 text-xs flex items-center gap-1', statusConfig.color)}>
+                            <statusConfig.icon className="w-3 h-3" />
+                            {statusConfig.label}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {/* Quest Chain Breadcrumb */}
+                    {entity.entity_type === 'quest' && entity.attributes?.chain?.arc_name && (
+                      <div className="flex items-center gap-1 text-xs mt-2">
+                        <span className="text-amber-400/80">{entity.attributes.chain.arc_name}</span>
+                        <ChevronRight className="w-3 h-3 text-slate-600" />
+                        <span className="text-slate-400">{entity.attributes.chain.chain_position || 'Part 1'}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="pt-0">
+                    {isStub && entity.attributes?.source_entity_name ? (
+                      <p className="text-xs text-slate-500 italic line-clamp-2">
+                        From: {entity.attributes.source_entity_name}
+                      </p>
+                    ) : entity.summary ? (
+                      <p className="text-xs text-slate-400 line-clamp-2">
+                        {renderWithBold(entity.summary)}
+                      </p>
+                    ) : entity.description ? (
+                      <p className="text-xs text-slate-400 line-clamp-2">
+                        {renderWithBold(entity.description)}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-slate-600 italic">
+                        No description
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </MaterialCard>

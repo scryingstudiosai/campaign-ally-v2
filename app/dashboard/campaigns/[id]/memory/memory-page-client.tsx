@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card'
 import { EntityCard, Entity } from '@/components/memory/entity-card'
 import { EntityListItem, EntityListHeader } from '@/components/memory/entity-list-item'
 import { EntityFiltersBar, EntityFilters } from '@/components/memory/entity-filters'
-import { RelationshipGraph } from '@/components/memory/relationship-graph'
+import { SpiderwebGraph } from '@/components/memory/SpiderwebGraph'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2, User, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
+import { PageTransition, StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion'
 
 const STORAGE_KEY = 'memory-view-mode'
 
@@ -29,7 +30,7 @@ interface Relationship {
   target_id: string
   relationship_type: string
   description?: string
-  is_secret?: boolean
+  visibility?: 'public' | 'dm_only' | 'revealable'
 }
 
 interface MemoryPageClientProps {
@@ -45,6 +46,14 @@ export function MemoryPageClient({
   initialEntities,
   initialRelationships,
 }: MemoryPageClientProps): JSX.Element {
+  // Debug: Log what we received from server
+  useEffect(() => {
+    console.log('[MemoryPageClient] Received from server - entities:', initialEntities.length, 'relationships:', initialRelationships.length)
+    if (initialRelationships.length > 0) {
+      console.log('[MemoryPageClient] Sample relationship:', initialRelationships[0])
+    }
+  }, [initialEntities.length, initialRelationships.length])
+
   // Track entities in state for optimistic updates on delete
   const [entities, setEntities] = useState<Entity[]>(initialEntities)
 
@@ -203,10 +212,11 @@ export function MemoryPageClient({
   }, [selectedIds, exitSelectionMode])
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
+    <PageTransition>
+      <div className="min-h-screen bg-background text-foreground p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <FadeIn className="mb-8">
           <Button variant="ghost" asChild className="mb-4">
             <Link href={`/dashboard/campaigns/${campaignId}`}>
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -273,7 +283,7 @@ export function MemoryPageClient({
               )}
             </div>
           </div>
-        </div>
+        </FadeIn>
 
         {/* Quick Stats */}
         {entities.length > 0 && (
@@ -281,6 +291,11 @@ export function MemoryPageClient({
             {typeCounts.npc && (
               <span className="px-3 py-1 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30">
                 {typeCounts.npc} NPCs
+              </span>
+            )}
+            {typeCounts.player && (
+              <span className="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                {typeCounts.player} Players
               </span>
             )}
             {typeCounts.location && (
@@ -362,28 +377,40 @@ export function MemoryPageClient({
             </Card>
           )
         ) : viewMode === 'graph' ? (
-          <Card className="overflow-hidden h-[600px]">
-            <RelationshipGraph
-              entities={filteredEntities}
-              relationships={initialRelationships}
+          <div className="h-[calc(100vh-300px)] min-h-[500px] rounded-lg overflow-hidden border border-stone-800">
+            <SpiderwebGraph
+              campaignId={campaignId}
+              initialEntities={filteredEntities.map(e => ({
+                id: e.id,
+                name: e.name,
+                entity_type: e.entity_type,
+                sub_type: e.sub_type,
+                summary: e.summary,
+                image_url: e.image_url,
+                status: e.status,
+                importance_tier: e.importance_tier,
+              }))}
+              initialRelationships={initialRelationships}
               onEntityClick={handleEntityClick}
-              className="w-full h-full"
             />
-          </Card>
-        ) : viewMode === 'card' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredEntities.map((entity) => (
-              <EntityCard
-                key={entity.id}
-                entity={entity}
-                campaignId={campaignId}
-                onDelete={handleEntityDelete}
-                selectionMode={selectionMode}
-                isSelected={selectedIds.has(entity.id)}
-                onToggleSelect={() => toggleSelection(entity.id)}
-              />
-            ))}
           </div>
+        ) : viewMode === 'card' ? (
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" staggerDelay={0.03}>
+            {filteredEntities.map((entity) => (
+              <StaggerItem key={entity.id}>
+                <HoverLift>
+                  <EntityCard
+                    entity={entity}
+                    campaignId={campaignId}
+                    onDelete={handleEntityDelete}
+                    selectionMode={selectionMode}
+                    isSelected={selectedIds.has(entity.id)}
+                    onToggleSelect={() => toggleSelection(entity.id)}
+                  />
+                </HoverLift>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
         ) : (
           <Card className="overflow-hidden">
             <EntityListHeader selectionMode={selectionMode} />
@@ -445,6 +472,7 @@ export function MemoryPageClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </PageTransition>
   )
 }

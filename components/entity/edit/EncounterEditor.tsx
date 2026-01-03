@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { ImageInput } from '@/components/ui/image-input';
 import {
   Select,
   SelectContent,
@@ -41,6 +42,7 @@ interface EncounterEditorProps {
     summary?: string;
     description?: string;
     read_aloud?: string;
+    image_url?: string | null;
     soul?: Record<string, unknown>;
     brain?: Record<string, unknown>;
     mechanics?: Record<string, unknown>;
@@ -66,6 +68,7 @@ interface EncounterFormData {
   name: string;
   summary: string;
   sub_type: string;
+  image_url: string | null;
   read_aloud: string;
   sights: string[];
   sounds: string[];
@@ -216,6 +219,7 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
       name: entity.name || '',
       summary: entity.summary || '',
       sub_type: entity.sub_type || entity.subtype || (attributes.subtype as string) || 'combat',
+      image_url: entity.image_url || null,
 
       // Scene Setup
       read_aloud: (entity.read_aloud as string) ||
@@ -374,6 +378,7 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
       sub_type: formData.sub_type,
       read_aloud: formData.read_aloud,
       description: formData.read_aloud,
+      image_url: formData.image_url,
 
       soul: {
         description: formData.read_aloud,
@@ -485,6 +490,19 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
               </Select>
             </div>
           </div>
+
+          <ImageInput
+            value={formData.image_url}
+            onChange={(url) => {
+              setFormData((prev) => ({ ...prev, image_url: url }));
+              setHasChanges(true);
+            }}
+            campaignId={campaignId}
+            entityId={entity.id}
+            entityType="encounter"
+            generationPrompt={formData.read_aloud}
+            label="Encounter Scene"
+          />
 
           {/* Summary */}
           <div>
@@ -836,6 +854,7 @@ export function EncounterEditor({ entity, campaignId }: EncounterEditorProps): J
               setFormData((prev) => ({ ...prev, rewards }));
               setHasChanges(true);
             }}
+            campaignId={campaignId}
           />
         </div>
       ),

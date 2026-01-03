@@ -1,15 +1,41 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { LocationMechanics } from '@/types/living-entity'
-import { Swords, AlertTriangle, Tent, Package } from 'lucide-react'
+import { Swords, AlertTriangle, Tent, Package, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 interface LocationMechanicsCardProps {
   mechanics: LocationMechanics
+  locationId?: string
+  locationName?: string
+  campaignId?: string
 }
 
-export function LocationMechanicsCard({ mechanics }: LocationMechanicsCardProps): JSX.Element | null {
+export function LocationMechanicsCard({
+  mechanics,
+  locationId,
+  locationName,
+  campaignId
+}: LocationMechanicsCardProps): JSX.Element | null {
+  const router = useRouter()
+
   if (!mechanics || Object.keys(mechanics).length === 0) return null
+
+  // Navigate to Encounter Forge with pre-populated location context
+  const handleCreateEncounter = (encounter: { name: string; cr_range?: string; likelihood: string }) => {
+    if (!campaignId || !locationId) return
+
+    const params = new URLSearchParams({
+      locationId,
+      locationName: locationName || '',
+      encounterName: encounter.name,
+      encounterCR: encounter.cr_range || '',
+    })
+
+    router.push(`/dashboard/campaigns/${campaignId}/forge/encounter?${params.toString()}`)
+  }
 
   return (
     <div className="ca-card p-4 space-y-4">
@@ -72,11 +98,24 @@ export function LocationMechanicsCard({ mechanics }: LocationMechanicsCardProps)
           <div className="space-y-1">
             {mechanics.encounters.map((enc, i) => (
               <div key={i} className="flex justify-between items-center p-2 bg-slate-800/50 rounded">
-                <span className="text-slate-300">{enc.name}</span>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs capitalize">{enc.likelihood}</Badge>
-                  {enc.cr_range && <span className="text-xs text-slate-500">CR {enc.cr_range}</span>}
+                <div>
+                  <span className="text-slate-300">{enc.name}</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="text-xs capitalize">{enc.likelihood}</Badge>
+                    {enc.cr_range && <span className="text-xs text-slate-500">CR {enc.cr_range}</span>}
+                  </div>
                 </div>
+                {campaignId && locationId && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleCreateEncounter(enc)}
+                    className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Create
+                  </Button>
+                )}
               </div>
             ))}
           </div>

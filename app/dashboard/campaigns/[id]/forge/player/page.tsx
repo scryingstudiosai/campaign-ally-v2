@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Plus,
   Minus,
+  ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { EntityTypeahead } from '@/components/forge/entity-typeahead';
+import { ImageInput } from '@/components/ui/image-input';
 import { cn } from '@/lib/utils';
 
 // SRD data
@@ -41,6 +43,9 @@ import {
   equipmentPacks,
   classWeapons,
   classArmor,
+  classSpellcastingFocus,
+  classRecommendedPacks,
+  classWeaponChoices,
   languages,
 } from '@/lib/data/srd-packs';
 
@@ -55,7 +60,7 @@ import {
   getClassSavingThrows,
 } from '@/lib/utils/player-stats';
 
-type Step = 'identity' | 'stats' | 'loadout' | 'anchors' | 'review';
+type Step = 'identity' | 'stats' | 'loadout' | 'anchors' | 'portrait' | 'review';
 
 interface AbilityScores {
   str: number;
@@ -84,13 +89,19 @@ const ABILITY_LABELS: Record<keyof AbilityScores, string> = {
 export default function PlayerForgePage(): JSX.Element {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const campaignId = params.id as string;
   const supabase = createClient();
+
+  // Player mode - when accessed from player portal
+  const isPlayerMode = searchParams.get('playerMode') === 'true';
+  const returnTo = searchParams.get('returnTo');
 
   // Loading and campaign state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [campaignName, setCampaignName] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Current step
   const [currentStep, setCurrentStep] = useState<Step>('identity');
@@ -102,6 +113,7 @@ export default function PlayerForgePage(): JSX.Element {
   const [level, setLevel] = useState(1);
   const [background, setBackground] = useState('');
   const [backstory, setBackstory] = useState('');
+  const [dmSecrets, setDmSecrets] = useState('');
 
   // Step 2: Stats
   type ScoreMethod = 'standard' | 'roll' | 'manual';
@@ -131,6 +143,7 @@ export default function PlayerForgePage(): JSX.Element {
 
   // Step 3: Loadout
   const [selectedPack, setSelectedPack] = useState('');
+  const [spellcastingFocus, setSpellcastingFocus] = useState('');
   const [additionalItems, setAdditionalItems] = useState<string[]>([]);
   const [startingGold, setStartingGold] = useState(10);
 
@@ -140,7 +153,10 @@ export default function PlayerForgePage(): JSX.Element {
   const [anchorFaction, setAnchorFaction] = useState('');
   const [anchorNpc, setAnchorNpc] = useState('');
 
-  // Step 5: Review - derived stats
+  // Step 5: Portrait
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  // Step 6: Review - derived stats
   const maxHP = calculateMaxHP(playerClass, level, abilityScores.con);
   const armorClass = calculateArmorClass(
     abilityScores.dex,
@@ -162,21 +178,41 @@ export default function PlayerForgePage(): JSX.Element {
         return;
       }
 
-      // Fetch campaign
-      const { data: campaignData, error: campaignError } = await supabase
-        .from('campaigns')
-        .select('id, name')
-        .eq('id', campaignId)
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .single();
+      setCurrentUserId(user.id);
 
-      if (campaignError || !campaignData) {
-        router.push('/dashboard');
-        return;
+      // In player mode, verify membership instead of ownership
+      if (isPlayerMode) {
+        const { data: membership } = await supabase
+          .from('campaign_members')
+          .select('id, campaign:campaigns(id, name)')
+          .eq('campaign_id', campaignId)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          router.push('/');
+          return;
+        }
+
+        const campaignInfo = membership.campaign as unknown as { id: string; name: string } | null;
+        setCampaignName(campaignInfo?.name || 'Campaign');
+      } else {
+        // Normal DM mode - require ownership
+        const { data: campaignData, error: campaignError } = await supabase
+          .from('campaigns')
+          .select('id, name')
+          .eq('id', campaignId)
+          .eq('user_id', user.id)
+          .is('deleted_at', null)
+          .single();
+
+        if (campaignError || !campaignData) {
+          router.push('/dashboard');
+          return;
+        }
+
+        setCampaignName(campaignData.name);
       }
-
-      setCampaignName(campaignData.name);
 
       // Fetch entities for anchoring
       const { data: entityData } = await supabase
@@ -195,11 +231,90 @@ export default function PlayerForgePage(): JSX.Element {
     }
 
     fetchData();
-  }, [campaignId, supabase, router]);
+  }, [campaignId, supabase, router, isPlayerMode]);
 
   // Navigation
-  const steps: Step[] = ['identity', 'stats', 'loadout', 'anchors', 'review'];
+  const steps: Step[] = ['identity', 'stats', 'loadout', 'anchors', 'portrait', 'review'];
   const currentIndex = steps.indexOf(currentStep);
+
+  // Build portrait generation prompt from character details
+  const buildPortraitPrompt = (): string => {
+    const parts: string[] = [];
+    if (race) {
+      const raceLabel = races.find((r) => r.value === race)?.label;
+      if (raceLabel) parts.push(raceLabel);
+    }
+    if (playerClass) {
+      const classLabel = classes.find((c) => c.value === playerClass)?.label;
+      if (classLabel) parts.push(classLabel);
+    }
+
+    // Add equipment from loadout
+    const weaponGroups = classWeaponChoices[playerClass] || [];
+    const armor = classArmor[playerClass] || [];
+    const focusData = classSpellcastingFocus[playerClass];
+
+    // Get primary weapon from first weapon group (skip ammo like bolts/arrows)
+    if (weaponGroups.length > 0) {
+      const primaryGroup = weaponGroups[0];
+      const visualWeapons = primaryGroup.items.filter(w =>
+        !w.toLowerCase().includes('bolt') &&
+        !w.toLowerCase().includes('arrow') &&
+        !w.toLowerCase().includes('ammunition')
+      );
+      if (visualWeapons.length > 0) {
+        const primaryWeapon = visualWeapons[0];
+        // Special handling for staff with wizard
+        if (playerClass === 'wizard' && primaryWeapon.toLowerCase().includes('staff')) {
+          parts.push('wielding a glowing arcane quarterstaff');
+        } else {
+          parts.push(`wielding ${primaryWeapon.toLowerCase()}`);
+        }
+      }
+    }
+
+    // Armor
+    if (armor.length > 0) {
+      parts.push(`wearing ${armor[0].toLowerCase()}`);
+    }
+
+    // Spellcasting focus or class-specific items
+    if (spellcastingFocus) {
+      if (spellcastingFocus.toLowerCase().includes('staff')) {
+        parts.push('with glowing magical staff');
+      } else if (spellcastingFocus.toLowerCase().includes('orb')) {
+        parts.push('holding a glowing arcane orb');
+      } else if (spellcastingFocus.toLowerCase().includes('wand')) {
+        parts.push('with magical wand');
+      } else if (spellcastingFocus.toLowerCase().includes('crystal')) {
+        parts.push('with glowing crystal focus');
+      } else if (spellcastingFocus.toLowerCase().includes('holy symbol')) {
+        parts.push('wearing holy symbol');
+      } else if (spellcastingFocus.toLowerCase().includes('druidic')) {
+        parts.push('with wooden druidic focus');
+      } else if (spellcastingFocus.toLowerCase().includes('lute') ||
+                 spellcastingFocus.toLowerCase().includes('lyre') ||
+                 spellcastingFocus.toLowerCase().includes('flute') ||
+                 spellcastingFocus.toLowerCase().includes('drum') ||
+                 spellcastingFocus.toLowerCase().includes('horn')) {
+        parts.push(`carrying a ${spellcastingFocus.toLowerCase()}`);
+      }
+    }
+
+    // Add spellbook for wizard if automatic
+    if (focusData?.automatic.includes('Spellbook')) {
+      parts.push('with leather-bound spellbook');
+    }
+
+    if (backstory) {
+      // Take first sentence of backstory as context
+      const firstSentence = backstory.split(/[.!?]/)[0].trim();
+      if (firstSentence && firstSentence.length < 100) {
+        parts.push(firstSentence);
+      }
+    }
+    return parts.join(', ') || 'Fantasy adventurer character portrait';
+  };
 
   const canProceed = (): boolean => {
     switch (currentStep) {
@@ -214,6 +329,8 @@ export default function PlayerForgePage(): JSX.Element {
         return selectedPack !== '';
       case 'anchors':
         return true; // Optional
+      case 'portrait':
+        return true; // Optional - can skip portrait
       case 'review':
         return true;
       default:
@@ -338,14 +455,30 @@ export default function PlayerForgePage(): JSX.Element {
     try {
       // Build inventory items list
       const packItems = selectedPack ? equipmentPacks[selectedPack]?.items || [] : [];
-      const classWeaponItems = classWeapons[playerClass] || [];
+      // Get all weapon items from the choice groups
+      const classWeaponItems = (classWeaponChoices[playerClass] || []).flatMap(group => group.items);
       const classArmorItems = classArmor[playerClass] || [];
+      const automaticItems = classSpellcastingFocus[playerClass]?.automatic || [];
+      const focusItems = spellcastingFocus ? [spellcastingFocus] : [];
       const allItems = [
         ...packItems,
         ...classWeaponItems,
         ...classArmorItems,
+        ...automaticItems,
+        ...focusItems,
         ...additionalItems,
       ];
+
+      // Build loadout data for soul
+      const loadoutData = {
+        weapons: classWeaponItems,
+        armor: classArmorItems.length > 0 ? classArmorItems[0] : null,
+        pack: selectedPack || null,
+        packContents: packItems,
+        focus: spellcastingFocus || null,
+        automaticItems: automaticItems,
+        gold: startingGold,
+      };
 
       // Create the player entity
       const { data: entity, error: entityError } = await supabase
@@ -357,6 +490,7 @@ export default function PlayerForgePage(): JSX.Element {
           subtype: `${races.find((r) => r.value === race)?.label} ${classes.find((c) => c.value === playerClass)?.label}`,
           summary: `Level ${level} ${races.find((r) => r.value === race)?.label} ${classes.find((c) => c.value === playerClass)?.label}`,
           description: backstory || undefined,
+          image_url: imageUrl || undefined,
           soul: {
             race,
             class: playerClass,
@@ -370,7 +504,9 @@ export default function PlayerForgePage(): JSX.Element {
             proficiency_bonus: proficiencyBonus,
             saving_throws: savingThrows,
             languages: ['Common'],
+            loadout: loadoutData,
           },
+          attributes: dmSecrets ? { dm_secrets: dmSecrets } : undefined,
           forge_status: 'complete',
         })
         .select('id')
@@ -378,6 +514,16 @@ export default function PlayerForgePage(): JSX.Element {
 
       if (entityError || !entity) {
         throw new Error(entityError?.message || 'Failed to create player');
+      }
+
+      // In player mode, link character to player's membership BEFORE adding inventory
+      // (so the bulk API can verify ownership)
+      if (isPlayerMode && currentUserId) {
+        await supabase
+          .from('campaign_members')
+          .update({ character_entity_id: entity.id })
+          .eq('campaign_id', campaignId)
+          .eq('user_id', currentUserId);
       }
 
       // Add inventory items via bulk API
@@ -413,11 +559,11 @@ export default function PlayerForgePage(): JSX.Element {
         }
       }
 
-      // Create anchor relationships
+      // Create anchor relationships (World Anchors)
       const anchors = [
-        { id: anchorLocation, type: 'lives_in' },
-        { id: anchorFaction, type: 'member_of' },
-        { id: anchorNpc, type: 'knows' },
+        { id: anchorLocation, type: 'lives_in', label: 'Home location' },
+        { id: anchorFaction, type: 'member_of', label: 'Faction affiliation' },
+        { id: anchorNpc, type: 'knows', label: 'Known NPC' },
       ].filter((a) => a.id);
 
       if (anchors.length > 0) {
@@ -426,15 +572,26 @@ export default function PlayerForgePage(): JSX.Element {
           source_id: entity.id,
           target_id: anchor.id,
           relationship_type: anchor.type,
-          surface_description: 'Created during character creation',
+          surface_description: `${anchor.label} selected during character creation`,
+          visibility: 'public', // Players can see their own world anchors
           is_active: true,
         }));
 
-        await supabase.from('relationships').insert(relationships);
+        const { error: relError } = await supabase.from('relationships').insert(relationships);
+        if (relError) {
+          console.error('Failed to save world anchors:', relError);
+          // Don't fail the whole creation, just log the error
+        }
       }
 
-      toast.success('Player character created!');
-      router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
+      // Navigate after creation
+      if (isPlayerMode) {
+        toast.success('Character created!');
+        router.push(returnTo || `/portal/${campaignId}`);
+      } else {
+        toast.success('Player character created!');
+        router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
+      }
     } catch (error) {
       console.error('Failed to save player:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to save player');
@@ -469,9 +626,9 @@ export default function PlayerForgePage(): JSX.Element {
         }}
       >
         <Button variant="ghost" asChild className="mb-2 -ml-2">
-          <Link href={`/dashboard/campaigns/${campaignId}`}>
+          <Link href={isPlayerMode ? (returnTo || `/portal/${campaignId}`) : `/dashboard/campaigns/${campaignId}`}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to {campaignName}
+            {isPlayerMode ? 'Back to Portal' : `Back to ${campaignName}`}
           </Link>
         </Button>
         <div className="flex items-center gap-3">
@@ -508,6 +665,7 @@ export default function PlayerForgePage(): JSX.Element {
               stats: <Dices className="w-4 h-4" />,
               loadout: <Sword className="w-4 h-4" />,
               anchors: <Users className="w-4 h-4" />,
+              portrait: <ImageIcon className="w-4 h-4" />,
               review: <CheckCircle className="w-4 h-4" />,
             };
 
@@ -648,6 +806,28 @@ export default function PlayerForgePage(): JSX.Element {
                     className="min-h-[100px] bg-slate-900/50 border-slate-700"
                   />
                 </div>
+
+                {/* DM Secrets - hidden in player mode */}
+                {!isPlayerMode && (
+                  <div className="col-span-2 space-y-2 p-4 bg-red-950/20 border border-red-500/30 rounded-lg">
+                    <Label htmlFor="dmSecrets" className="text-red-400 flex items-center gap-2">
+                      DM Secrets
+                      <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-300 rounded border border-red-500/30">
+                        Hidden from Players
+                      </span>
+                    </Label>
+                    <Textarea
+                      id="dmSecrets"
+                      placeholder="Secret information only the DM knows about this character..."
+                      value={dmSecrets}
+                      onChange={(e) => setDmSecrets(e.target.value)}
+                      className="min-h-[80px] bg-red-950/30 border-red-500/30 placeholder:text-red-300/50"
+                    />
+                    <p className="text-xs text-red-400/70">
+                      This won&apos;t appear in the Player Portal.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1033,22 +1213,96 @@ export default function PlayerForgePage(): JSX.Element {
                 </div>
               </div>
 
-              {/* Class Weapons & Armor */}
+              {/* Class Starting Gear - Organized by Category */}
               {playerClass && (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <Label>Class Starting Gear</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {[...(classWeapons[playerClass] || []), ...(classArmor[playerClass] || [])].map(
-                      (item, idx) => (
-                        <span
-                          key={`${item}-${idx}`}
-                          className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-slate-300"
-                        >
-                          {item}
-                        </span>
-                      )
-                    )}
-                  </div>
+
+                  {/* Weapons - Organized by choice groups */}
+                  {classWeaponChoices[playerClass]?.length > 0 && (
+                    <div className="space-y-2">
+                      {classWeaponChoices[playerClass].map((group, groupIdx) => (
+                        <div key={groupIdx} className="space-y-1">
+                          <div className="text-xs text-slate-500">{group.label}</div>
+                          <div className="flex flex-wrap gap-1">
+                            {group.items.map((item, idx) => (
+                              <span
+                                key={`${item}-${idx}`}
+                                className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-slate-300"
+                              >
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Armor */}
+                  {classArmor[playerClass]?.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-slate-500">Armor</div>
+                      <div className="flex flex-wrap gap-1">
+                        {classArmor[playerClass].map((item, idx) => (
+                          <span
+                            key={`${item}-${idx}`}
+                            className="px-2 py-1 bg-blue-900/30 border border-blue-700 rounded text-sm text-blue-300"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Automatic Items (like Spellbook) */}
+                  {classSpellcastingFocus[playerClass]?.automatic.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-slate-500">Automatic Equipment</div>
+                      <div className="flex flex-wrap gap-1">
+                        {classSpellcastingFocus[playerClass].automatic.map((item, idx) => (
+                          <span
+                            key={`${item}-${idx}`}
+                            className="px-2 py-1 bg-purple-900/30 border border-purple-700 rounded text-sm text-purple-300"
+                          >
+                            {item}
+                            <span className="ml-1 text-xs text-purple-400">✓</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Spellcasting Focus Choice */}
+              {playerClass && classSpellcastingFocus[playerClass]?.options.length > 0 && (
+                <div className="space-y-2">
+                  <Label>
+                    {playerClass === 'bard' ? 'Musical Instrument' : 'Spellcasting Focus'}
+                  </Label>
+                  <Select value={spellcastingFocus} onValueChange={setSpellcastingFocus}>
+                    <SelectTrigger className="bg-slate-900/50 border-slate-700">
+                      <SelectValue placeholder="Choose your focus..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classSpellcastingFocus[playerClass].options.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">
+                    {playerClass === 'wizard' && 'Wizards can use their arcane focus or component pouch for spellcasting.'}
+                    {playerClass === 'sorcerer' && 'Sorcerers can use their arcane focus or component pouch for spellcasting.'}
+                    {playerClass === 'warlock' && 'Warlocks can use their arcane focus or component pouch for spellcasting.'}
+                    {playerClass === 'cleric' && 'Clerics use a holy symbol to channel divine magic.'}
+                    {playerClass === 'paladin' && 'Paladins use a holy symbol to channel divine magic.'}
+                    {playerClass === 'druid' && 'Druids use a druidic focus to channel nature magic.'}
+                    {playerClass === 'bard' && 'Bards use a musical instrument as their spellcasting focus.'}
+                  </p>
                 </div>
               )}
 
@@ -1159,7 +1413,50 @@ export default function PlayerForgePage(): JSX.Element {
           </div>
         )}
 
-        {/* Step 5: Review */}
+        {/* Step 5: Portrait */}
+        {currentStep === 'portrait' && (
+          <div className="space-y-6">
+            <div className="ca-panel p-6 space-y-6">
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-white">Bring Your Character to Life</h2>
+                <p className="text-slate-400 mt-2">
+                  Generate a portrait based on your character&apos;s details, or upload your own.
+                </p>
+              </div>
+
+              {/* Character Summary for Context */}
+              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                <h3 className="font-medium text-white">{name}</h3>
+                <p className="text-sm text-slate-400 mt-1">
+                  {races.find((r) => r.value === race)?.label}{' '}
+                  {classes.find((c) => c.value === playerClass)?.label} • Level {level}
+                </p>
+                {backstory && (
+                  <p className="text-sm text-slate-300 mt-2 italic line-clamp-2">
+                    &quot;{backstory}&quot;
+                  </p>
+                )}
+              </div>
+
+              {/* Image Input */}
+              <ImageInput
+                value={imageUrl}
+                onChange={(url) => setImageUrl(url)}
+                campaignId={campaignId}
+                entityType="player"
+                generationPrompt={buildPortraitPrompt()}
+                label="Character Portrait"
+              />
+
+              {/* Skip Note */}
+              <p className="text-center text-sm text-slate-500">
+                You can always add or change your portrait later from the character page.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 6: Review */}
         {currentStep === 'review' && (
           <div className="space-y-6">
             <div className="ca-panel p-6 space-y-4">

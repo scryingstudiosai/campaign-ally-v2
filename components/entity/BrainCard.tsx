@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Heart,
   Lock,
+  EyeOff,
 } from 'lucide-react'
 import { MaterialCard } from '@/components/ui/material-card'
 
@@ -86,6 +87,22 @@ export function BrainCard({
             </div>
           </div>
         </div>
+
+        {/* DM Secret - Hidden from Players */}
+        {brain.secret && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg mt-2">
+            <div className="flex items-center gap-2 mb-2">
+              <EyeOff className="w-4 h-4 text-red-400" />
+              <span className="text-xs font-bold text-red-400 uppercase tracking-wide">
+                DM Secret
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-300 rounded">
+                Hidden from Players
+              </span>
+            </div>
+            <p className="text-sm text-slate-300">{brain.secret}</p>
+          </div>
+        )}
 
         {/* Villain-specific fields */}
         {isVillainBrain(brain) && (

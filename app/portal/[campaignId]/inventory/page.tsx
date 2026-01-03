@@ -1,20 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { InventoryView } from '@/components/portal/InventoryView';
+import type { InventoryItemData, StashItemData } from '@/components/portal/InventoryView';
+
+// Force dynamic rendering to ensure fresh data on each request
+export const dynamic = 'force-dynamic';
 
 interface InventoryPageProps {
   params: Promise<{ campaignId: string }>;
-}
-
-interface CharacterMechanics {
-  currency?: {
-    gold?: number;
-    silver?: number;
-    copper?: number;
-  };
-  gold?: number;
-  silver?: number;
-  copper?: number;
 }
 
 export default async function InventoryPage({ params }: InventoryPageProps) {
@@ -37,8 +30,9 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     redirect(`/portal/${campaignId}`);
   }
 
-  // 3. Fetch Inventory with correct joins
-  const { data: inventoryItems, error } = await supabase
+  // 3. Fetch ALL items from inventory_instances table
+  // Items are inserted here during character creation and when added later
+  const { data: inventoryItems } = await supabase
     .from('inventory_instances')
     .select(`
       id,
@@ -61,11 +55,15 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     `)
     .eq('owner_id', membership.character_entity_id)
     .eq('owner_type', 'player')
+    .order('is_equipped', { ascending: false })
     .order('sort_order', { ascending: true, nullsFirst: false });
 
-  if (error) {
-    console.error('Inventory fetch error:', error);
-  }
+  // Normalize inventory items (handle array vs single object from Supabase)
+  const normalizedInventoryItems: InventoryItemData[] = (inventoryItems || []).map(item => ({
+    ...item,
+    srd_item: Array.isArray(item.srd_item) ? item.srd_item[0] || null : item.srd_item,
+    custom_item: Array.isArray(item.custom_item) ? item.custom_item[0] || null : item.custom_item,
+  }));
 
   // 4. Fetch Party Stash
   const { data: partyStash } = await supabase
@@ -78,24 +76,35 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     .eq('campaign_id', campaignId)
     .eq('owner_type', 'party');
 
-  // 5. Fetch Character for currency
-  const { data: character } = await supabase
-    .from('entities')
-    .select('mechanics')
-    .eq('id', membership.character_entity_id)
-    .single();
+  // Normalize stash items
+  const normalizedStash: StashItemData[] = (partyStash || []).map(item => ({
+    ...item,
+    srd_item: Array.isArray(item.srd_item) ? item.srd_item[0] || null : item.srd_item,
+    custom_item: Array.isArray(item.custom_item) ? item.custom_item[0] || null : item.custom_item,
+  }));
 
-  const mechanics = (character?.mechanics || {}) as CharacterMechanics;
-  const currency = mechanics.currency || {
-    gold: mechanics.gold || 0,
-    silver: mechanics.silver || 0,
-    copper: mechanics.copper || 0,
+  // 5. Get currency - check for gold item in inventory
+  const goldItem = normalizedInventoryItems.find(item =>
+    item.srd_item?.name?.toLowerCase() === 'gold pieces' ||
+    item.custom_item?.name?.toLowerCase() === 'gold pieces'
+  );
+
+  const currency = {
+    gold: goldItem?.quantity || 0,
+    silver: 0,
+    copper: 0,
   };
+
+  // Filter out gold from regular items display
+  const displayItems = normalizedInventoryItems.filter(item =>
+    item.srd_item?.name?.toLowerCase() !== 'gold pieces' &&
+    item.custom_item?.name?.toLowerCase() !== 'gold pieces'
+  );
 
   return (
     <InventoryView
-      items={inventoryItems || []}
-      partyStash={partyStash || []}
+      items={displayItems}
+      partyStash={normalizedStash}
       currency={currency}
       characterId={membership.character_entity_id}
       campaignId={campaignId}

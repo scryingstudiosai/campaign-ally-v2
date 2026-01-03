@@ -18,6 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { motion } from 'framer-motion';
 
 type ForgeType = 'npc' | 'creature' | 'location' | 'item' | 'faction' | 'encounter' | 'quest' | 'player';
 
@@ -87,17 +88,20 @@ export function ForgeButton({ href, forgeType, label }: ForgeButtonProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <Link href={href}>
-            <div
+            <motion.div
+              whileHover={{ y: -3, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
               className={cn(
                 'flex items-center gap-2 p-3 rounded-lg',
                 'bg-slate-800/50 border border-white/5',
-                'hover:-translate-y-0.5 transition-all duration-200',
+                'transition-all duration-200',
                 config.hover
               )}
             >
               <Icon className={cn('w-4 h-4', config.iconColor)} />
               <span className="text-sm text-slate-200">{label}</span>
-            </div>
+            </motion.div>
           </Link>
         </TooltipTrigger>
         <TooltipContent

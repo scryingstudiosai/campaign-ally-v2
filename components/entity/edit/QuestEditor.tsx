@@ -9,6 +9,7 @@ import { RewardsEditor, type QuestRewards, type RewardItemInput } from '@/compon
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ImageInput } from '@/components/ui/image-input';
 import {
   Select,
   SelectContent,
@@ -26,6 +27,7 @@ interface QuestEditorProps {
     sub_type?: string;
     summary?: string;
     description?: string;
+    image_url?: string | null;
     soul?: Record<string, unknown>;
     brain?: Record<string, unknown>;
     mechanics?: Record<string, unknown>;
@@ -101,6 +103,7 @@ export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Eleme
     // Basic Info
     name: entity.name || '',
     summary: entity.summary || '',
+    image_url: entity.image_url || null as string | null,
 
     // Soul (Player-facing)
     soul: {
@@ -151,6 +154,7 @@ export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Eleme
     const saveData = {
       name: formData.name,
       summary: formData.summary,
+      image_url: formData.image_url,
       soul: formData.soul,
       brain: {
         ...formData.brain,
@@ -274,6 +278,19 @@ export function QuestEditor({ entity, campaignId }: QuestEditorProps): JSX.Eleme
               placeholder="The Lost Artifact"
             />
           </div>
+
+          <ImageInput
+            value={formData.image_url}
+            onChange={(url) => {
+              setFormData((prev) => ({ ...prev, image_url: url }));
+              setHasChanges(true);
+            }}
+            campaignId={campaignId}
+            entityId={entity.id}
+            entityType="quest"
+            generationPrompt={formData.soul.hook || formData.soul.description}
+            label="Quest Illustration"
+          />
 
           <div>
             <Label>Summary</Label>

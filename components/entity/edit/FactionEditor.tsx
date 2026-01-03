@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { ImageInput } from '@/components/ui/image-input';
 import {
   Select,
   SelectContent,
@@ -53,6 +54,7 @@ interface FactionEditorProps {
     subtype?: string;
     summary?: string;
     description?: string;
+    image_url?: string | null;
     soul?: Record<string, unknown>;
     brain?: Record<string, unknown>;
     mechanics?: Record<string, unknown>;
@@ -71,6 +73,7 @@ interface FactionFormData {
   name: string;
   summary: string;
   sub_type: string;
+  image_url: string | null;
 
   identity: {
     motto: string;
@@ -179,6 +182,7 @@ export function FactionEditor({ entity, campaignId }: FactionEditorProps): JSX.E
       name: entity.name || '',
       summary: entity.summary || '',
       sub_type: entity.sub_type || entity.subtype || (attributes.subtype as string) || 'guild',
+      image_url: entity.image_url || null,
 
       // ========== IDENTITY ==========
       identity: {
@@ -437,6 +441,7 @@ export function FactionEditor({ entity, campaignId }: FactionEditorProps): JSX.E
       summary: formData.summary,
       sub_type: formData.sub_type,
       description: formData.identity.description,
+      image_url: formData.image_url,
 
       soul: {
         description: formData.identity.description,
@@ -514,6 +519,19 @@ export function FactionEditor({ entity, campaignId }: FactionEditorProps): JSX.E
               placeholder="The Shadow Syndicate"
             />
           </div>
+
+          <ImageInput
+            value={formData.image_url}
+            onChange={(url) => {
+              setFormData((prev) => ({ ...prev, image_url: url }));
+              setHasChanges(true);
+            }}
+            campaignId={campaignId}
+            entityId={entity.id}
+            entityType="faction"
+            generationPrompt={formData.identity.symbol || formData.identity.description}
+            label="Faction Emblem/Image"
+          />
 
           {/* Type & Motto Row */}
           <div className="grid grid-cols-2 gap-4">

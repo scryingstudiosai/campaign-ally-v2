@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Insert message
+  // DM's own messages are always marked as read (they don't need to "see" their own messages)
   const { data: message, error } = await supabase
     .from('portal_messages')
     .insert({
@@ -59,6 +60,8 @@ export async function POST(request: NextRequest) {
       channel,
       recipient_id: channel === 'dm_private' ? recipientId : null,
       content,
+      is_read: isDM,
+      read_at: isDM ? new Date().toISOString() : null,
     })
     .select()
     .single();
@@ -66,6 +69,29 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error('Message insert error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Create DM notification if message is from a player
+  if (!isDM && message) {
+    // Get character entity ID for the notification
+    const { data: membershipData } = await supabase
+      .from('campaign_members')
+      .select('character_entity_id')
+      .eq('campaign_id', campaignId)
+      .eq('user_id', user.id)
+      .single();
+
+    const messagePreview = content.length > 80 ? content.substring(0, 80) + '...' : content;
+
+    await supabase.from('dm_notifications').insert({
+      campaign_id: campaignId,
+      type: 'player_message',
+      title: `Message from ${senderName}`,
+      message: messagePreview,
+      source_user_id: user.id,
+      source_entity_id: membershipData?.character_entity_id || null,
+      reference_id: message.id,
+    });
   }
 
   return NextResponse.json({ message });

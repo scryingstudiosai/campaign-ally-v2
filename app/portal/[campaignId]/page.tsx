@@ -54,6 +54,48 @@ export default async function CharacterPage({ params }: Props) {
     redirect('/portal');
   }
 
+  // Fetch world anchors (relationships) for the character
+  let worldAnchors: Array<{
+    id: string;
+    relationship_type: string;
+    surface_description: string | null;
+    target: {
+      id: string;
+      name: string;
+      entity_type: string;
+      image_url: string | null;
+    } | null;
+  }> = [];
+
+  if (membership.character_entity_id) {
+    const { data: relationships } = await supabase
+      .from('relationships')
+      .select(`
+        id,
+        relationship_type,
+        surface_description,
+        target:entities!target_id (
+          id,
+          name,
+          entity_type,
+          image_url
+        )
+      `)
+      .eq('source_id', membership.character_entity_id)
+      .eq('visibility', 'public')
+      .eq('is_active', true)
+      .is('deleted_at', null);
+
+    if (relationships) {
+      worldAnchors = relationships.map(r => ({
+        id: r.id,
+        relationship_type: r.relationship_type,
+        surface_description: r.surface_description,
+        target: Array.isArray(r.target) ? r.target[0] : r.target,
+      }));
+    }
+  }
+
   // Spectator view
   if (membership.role === 'spectator' || !membership.character) {
     return (
@@ -90,6 +132,7 @@ export default async function CharacterPage({ params }: Props) {
         image_url: string | null;
       }}
       membershipId={membership.id}
+      worldAnchors={worldAnchors}
     />
   );
 }

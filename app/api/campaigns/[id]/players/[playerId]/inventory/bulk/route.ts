@@ -60,17 +60,35 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Verify campaign belongs to user
-  const { data: campaign, error: campaignError } = await supabase
+  // Check authorization - either campaign owner OR player adding to their own character
+  const { data: campaign } = await supabase
     .from('campaigns')
-    .select('id')
+    .select('id, user_id')
     .eq('id', campaignId)
-    .eq('user_id', user.id)
     .is('deleted_at', null)
     .single();
 
-  if (campaignError || !campaign) {
+  if (!campaign) {
     return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+  }
+
+  const isDM = campaign.user_id === user.id;
+
+  // If not DM, check if user is adding to their own character
+  let isOwnCharacter = false;
+  if (!isDM) {
+    const { data: membership } = await supabase
+      .from('campaign_members')
+      .select('character_entity_id')
+      .eq('campaign_id', campaignId)
+      .eq('user_id', user.id)
+      .single();
+
+    isOwnCharacter = membership?.character_entity_id === playerId;
+  }
+
+  if (!isDM && !isOwnCharacter) {
+    return NextResponse.json({ error: 'Not authorized to add items to this inventory' }, { status: 403 });
   }
 
   // Verify player exists

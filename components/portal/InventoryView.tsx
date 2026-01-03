@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { Package, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Package, Search, Plus } from 'lucide-react';
 import { InventoryItem } from './InventoryItem';
 import { ItemDetailSheet } from './ItemDetailSheet';
 import { CurrencyDisplay } from './CurrencyDisplay';
 import { PartyStash } from './PartyStash';
 import { LootRevealModal } from './LootRevealModal';
 import { useRealtimeInventory } from '@/hooks/useRealtimeInventory';
+import { AddItemToInventoryDialog } from '@/components/inventory/AddItemToInventoryDialog';
+import { Button } from '@/components/ui/button';
 
 interface SrdItem {
   id: string;
@@ -65,10 +68,20 @@ interface Props {
 }
 
 export function InventoryView({ items, partyStash, currency, characterId, campaignId }: Props) {
+  const router = useRouter();
   const [selectedItem, setSelectedItem] = useState<InventoryItemData | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'equipped' | 'bag'>('all');
   const [stashItems, setStashItems] = useState(partyStash);
+  const [showAddItem, setShowAddItem] = useState(false);
+
+  // Sync stash items when props change (from router.refresh())
+  useEffect(() => {
+    setStashItems(partyStash);
+  }, [partyStash]);
+
+  // Use items directly from props - they're refreshed by router.refresh()
+  const inventoryItems = items;
 
   const { newLoot, clearNewLoot } = useRealtimeInventory({
     campaignId,
@@ -80,7 +93,7 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
     item.srd_item?.name || item.custom_item?.name || 'Unknown Item';
 
   // Filter items
-  const filteredItems = items.filter(inv => {
+  const filteredItems = inventoryItems.filter(inv => {
     const name = getItemName(inv);
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter =
@@ -91,8 +104,15 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
   });
 
   // Count for tabs
-  const equippedCount = items.filter(i => i.is_equipped).length;
-  const bagCount = items.filter(i => !i.is_equipped).length;
+  const equippedCount = inventoryItems.filter(i => i.is_equipped).length;
+  const bagCount = inventoryItems.filter(i => !i.is_equipped).length;
+
+  // Handle item added - refresh the inventory
+  const handleItemAdded = () => {
+    setShowAddItem(false);
+    // Use router.refresh() to properly refetch RSC data without full page reload
+    router.refresh();
+  };
 
   const handleClaimItem = (itemId: string) => {
     setStashItems(prev => prev.filter(i => i.id !== itemId));
@@ -106,7 +126,18 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
           <Package className="w-6 h-6 text-teal-400" />
           Backpack
         </h1>
-        <CurrencyDisplay currency={currency} />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAddItem(true)}
+            className="border-teal-700 text-teal-400 hover:bg-teal-900/30"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Item
+          </Button>
+          <CurrencyDisplay currency={currency} />
+        </div>
       </div>
 
       {/* Party Stash */}
@@ -132,7 +163,7 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
       {/* Filter Tabs */}
       <div className="flex gap-2">
         {[
-          { key: 'all', label: `All (${items.length})` },
+          { key: 'all', label: `All (${inventoryItems.length})` },
           { key: 'equipped', label: `Equipped (${equippedCount})` },
           { key: 'bag', label: `Bag (${bagCount})` },
         ].map(tab => (
@@ -151,13 +182,21 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
       </div>
 
       {/* Empty State */}
-      {items.length === 0 && stashItems.length === 0 && (
+      {inventoryItems.length === 0 && stashItems.length === 0 && (
         <div className="text-center py-12">
           <Package className="w-12 h-12 text-slate-600 mx-auto mb-4" />
           <h3 className="text-lg text-slate-300 mb-2">Backpack is Empty</h3>
-          <p className="text-slate-500">
+          <p className="text-slate-500 mb-4">
             Items you receive will appear here.
           </p>
+          <Button
+            variant="outline"
+            onClick={() => setShowAddItem(true)}
+            className="border-teal-700 text-teal-400 hover:bg-teal-900/30"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Your First Item
+          </Button>
         </div>
       )}
 
@@ -175,7 +214,7 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
       )}
 
       {/* No Results */}
-      {items.length > 0 && filteredItems.length === 0 && (
+      {inventoryItems.length > 0 && filteredItems.length === 0 && (
         <div className="text-center py-8">
           <p className="text-slate-500">No items match your search.</p>
         </div>
@@ -191,6 +230,17 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
       <LootRevealModal
         item={newLoot}
         onClose={clearNewLoot}
+      />
+
+      {/* Add Item Dialog */}
+      <AddItemToInventoryDialog
+        open={showAddItem}
+        onClose={() => setShowAddItem(false)}
+        campaignId={campaignId}
+        ownerType="player"
+        ownerId={characterId}
+        ownerName="Backpack"
+        onItemAdded={handleItemAdded}
       />
     </div>
   );

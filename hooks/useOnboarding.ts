@@ -222,15 +222,20 @@ export function useOnboarding() {
   const getCompletionPercentage = useCallback((): number => {
     if (!data) return 0
     const progress = data.checklist_progress
-    const completed = Object.values(progress).filter(Boolean).length
-    const total = Object.keys(progress).length
+    // Count only the keys defined in DEFAULT_CHECKLIST for consistency
+    const checklistKeys = Object.keys(DEFAULT_CHECKLIST) as (keyof ChecklistProgress)[]
+    const completed = checklistKeys.filter(key => progress[key]).length
+    const total = checklistKeys.length
     return Math.round((completed / total) * 100)
   }, [data])
 
   // Get completed count
   const getCompletedCount = useCallback((): number => {
     if (!data) return 0
-    return Object.values(data.checklist_progress).filter(Boolean).length
+    const progress = data.checklist_progress
+    // Count only the keys defined in DEFAULT_CHECKLIST for consistency
+    const checklistKeys = Object.keys(DEFAULT_CHECKLIST) as (keyof ChecklistProgress)[]
+    return checklistKeys.filter(key => progress[key]).length
   }, [data])
 
   // Get total count

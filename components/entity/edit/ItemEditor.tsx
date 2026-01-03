@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { ImageInput } from '@/components/ui/image-input';
 import {
   Select,
   SelectContent,
@@ -40,6 +41,7 @@ interface ItemEditorProps {
     sub_type?: string;
     summary?: string;
     description?: string;
+    image_url?: string | null;
     soul?: Record<string, unknown>;
     brain?: Record<string, unknown>;
     mechanics?: Record<string, unknown>;
@@ -52,6 +54,7 @@ interface ItemFormData {
   name: string;
   summary: string;
   sub_type: string;
+  image_url: string | null;
 
   soul: {
     description: string;
@@ -135,6 +138,7 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
       name: entity.name || '',
       summary: entity.summary || '',
       sub_type: entity.sub_type || (mechanics.item_type as string) || 'wondrous',
+      image_url: entity.image_url || null,
 
       soul: {
         description: (soul.description as string) || (soul.full_description as string) || entity.description || '',
@@ -261,6 +265,7 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
       sub_type: formData.sub_type,
       summary: formData.summary,
       description: formData.soul.description,
+      image_url: formData.image_url,
       soul: formData.soul,
       brain: formData.brain,
       mechanics: formData.mechanics,
@@ -310,6 +315,19 @@ export function ItemEditor({ entity, campaignId }: ItemEditorProps): JSX.Element
               placeholder="Flame Tongue Longsword"
             />
           </div>
+
+          <ImageInput
+            value={formData.image_url}
+            onChange={(url) => {
+              setFormData((prev) => ({ ...prev, image_url: url }));
+              setHasChanges(true);
+            }}
+            campaignId={campaignId}
+            entityId={entity.id}
+            entityType="item"
+            generationPrompt={formData.soul.visuals || formData.soul.description}
+            label="Item Image"
+          />
 
           {/* SRD Badge - if based on SRD item */}
           {formData.mechanics.is_srd_base && (

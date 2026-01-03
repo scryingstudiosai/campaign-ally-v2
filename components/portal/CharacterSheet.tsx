@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   User, Heart, Shield, Swords, Sparkles,
   Edit2, ChevronDown, ChevronUp,
-  Scroll, Star, Target
+  Scroll, Star, Target, Backpack, MapPin, Users, UserCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,17 +26,30 @@ interface Campaign {
   image_url: string | null;
 }
 
+interface WorldAnchor {
+  id: string;
+  relationship_type: string;
+  surface_description: string | null;
+  target: {
+    id: string;
+    name: string;
+    entity_type: string;
+    image_url: string | null;
+  } | null;
+}
+
 interface Props {
   campaignId: string;
   userId: string;
   campaign: Campaign | null;
   character: Character | null;
   membershipId: string;
+  worldAnchors?: WorldAnchor[];
 }
 
 type EditingSection = 'none' | 'backstory' | 'hp' | 'notes';
 
-export function CharacterSheet({ campaignId, character }: Props) {
+export function CharacterSheet({ campaignId, character, worldAnchors = [] }: Props) {
   const [char, setChar] = useState<Character | null>(character);
   const [editingSection, setEditingSection] = useState<EditingSection>('none');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['stats', 'combat']));
@@ -64,17 +77,24 @@ export function CharacterSheet({ campaignId, character }: Props) {
 
   const mechanics = (char.mechanics || {}) as Record<string, unknown>;
   const soul = (char.soul || {}) as Record<string, unknown>;
-  const stats = (mechanics.ability_scores || mechanics.stats || {}) as Record<string, number>;
 
-  // Handle HP - can be a number or an object {max, current}
-  const hpValue = mechanics.hp;
-  const isHpObject = hpValue && typeof hpValue === 'object' && 'max' in (hpValue as object);
-  const maxHp = (mechanics.max_hp || (isHpObject ? (hpValue as { max: number }).max : hpValue) || 0) as number;
-  const currentHp = (mechanics.current_hp ?? (isHpObject ? (hpValue as { current: number }).current : maxHp)) as number;
-  const tempHp = (mechanics.temp_hp || 0) as number;
-  const ac = (mechanics.ac || mechanics.armor_class || 10) as number;
-  const level = (mechanics.level || 1) as number;
-  const proficiencyBonus = Math.floor((level - 1) / 4) + 2;
+  // Read ability scores from soul first (where Player Forge saves them), fall back to mechanics
+  const abilityScores = (soul.ability_scores || mechanics.ability_scores || mechanics.stats || {}) as Record<string, number>;
+  const stats = abilityScores;
+
+  // Read stats from soul first (Player Forge saves here), fall back to mechanics
+  const maxHp = (soul.max_hp || mechanics.max_hp || 0) as number;
+  const currentHp = (soul.current_hp ?? mechanics.current_hp ?? maxHp) as number;
+  const tempHp = (soul.temp_hp || mechanics.temp_hp || 0) as number;
+  const ac = (soul.armor_class || mechanics.ac || mechanics.armor_class || 10) as number;
+  const level = (soul.level || mechanics.level || 1) as number;
+  const speed = (soul.speed || mechanics.speed || 30) as number;
+  const proficiencyBonus = (soul.proficiency_bonus || Math.floor((level - 1) / 4) + 2) as number;
+  const savingThrows = (soul.saving_throws || mechanics.saving_throws || []) as string[];
+  const languages = (soul.languages || mechanics.languages || ['Common']) as string[];
+
+  // Loadout data from soul
+  const loadout = (soul.loadout || {}) as Record<string, unknown>;
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => {
@@ -90,7 +110,8 @@ export function CharacterSheet({ campaignId, character }: Props) {
 
   const startEdit = (section: EditingSection) => {
     if (section === 'backstory') {
-      setEditBackstory((soul.backstory as string) || '');
+      // Fall back to entity description if soul.backstory is empty
+      setEditBackstory((soul.backstory as string) || char?.description || '');
       setEditPersonality((soul.personality as string) || '');
       setEditGoals((soul.goals as string) || '');
     } else if (section === 'hp') {
@@ -347,6 +368,181 @@ export function CharacterSheet({ campaignId, character }: Props) {
           </div>
         </CollapsibleSection>
 
+        {/* Equipment & Loadout */}
+        {(loadout.weapons || loadout.armor || loadout.focus || loadout.pack) && (
+          <CollapsibleSection
+            title="Equipment"
+            icon={<Backpack className="w-4 h-4" />}
+            isExpanded={expandedSections.has('equipment')}
+            onToggle={() => toggleSection('equipment')}
+          >
+            <div className="space-y-3">
+              {/* Weapons */}
+              {(loadout.weapons as string[])?.length > 0 && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Weapons</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {(loadout.weapons as string[]).map((weapon, i) => (
+                      <span key={i} className="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded-lg">
+                        {weapon}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Armor & Shield */}
+              {(loadout.armor || loadout.shield) && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Armor</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {loadout.armor && (
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-lg">
+                        {loadout.armor as string}
+                      </span>
+                    )}
+                    {loadout.shield && (
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-lg">
+                        {loadout.shield as string}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Focus / Spellcasting */}
+              {loadout.focus && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Spellcasting Focus</h4>
+                  <span className="px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-lg">
+                    {loadout.focus as string}
+                  </span>
+                </div>
+              )}
+
+              {/* Automatic Items (Spellbook, etc.) */}
+              {(loadout.automaticItems as string[])?.length > 0 && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Class Items</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {(loadout.automaticItems as string[]).map((item, i) => (
+                      <span key={i} className="px-2 py-1 bg-amber-500/20 text-amber-300 text-xs rounded-lg">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pack */}
+              {loadout.pack && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Equipment Pack</h4>
+                  <span className="px-2 py-1 bg-slate-600/50 text-slate-300 text-xs rounded-lg">
+                    {loadout.pack as string}
+                  </span>
+                </div>
+              )}
+
+              {/* Starting Gold */}
+              {loadout.gold !== undefined && (loadout.gold as number) > 0 && (
+                <div>
+                  <h4 className="text-xs text-slate-500 mb-2">Gold</h4>
+                  <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-lg">
+                    {loadout.gold as number} gp
+                  </span>
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* World Connections (Anchors) */}
+        {worldAnchors.length > 0 && (
+          <CollapsibleSection
+            title="World Connections"
+            icon={<MapPin className="w-4 h-4" />}
+            isExpanded={expandedSections.has('worldConnections')}
+            onToggle={() => toggleSection('worldConnections')}
+          >
+            <div className="space-y-2">
+              {worldAnchors.map((anchor) => {
+                if (!anchor.target) return null;
+
+                // Icon and color based on entity type
+                const getAnchorStyle = (entityType: string) => {
+                  switch (entityType) {
+                    case 'location':
+                      return {
+                        icon: <MapPin className="w-4 h-4" />,
+                        bgColor: 'bg-emerald-500/20',
+                        borderColor: 'border-emerald-500/30',
+                        textColor: 'text-emerald-400',
+                      };
+                    case 'faction':
+                      return {
+                        icon: <Users className="w-4 h-4" />,
+                        bgColor: 'bg-purple-500/20',
+                        borderColor: 'border-purple-500/30',
+                        textColor: 'text-purple-400',
+                      };
+                    case 'npc':
+                      return {
+                        icon: <UserCircle className="w-4 h-4" />,
+                        bgColor: 'bg-blue-500/20',
+                        borderColor: 'border-blue-500/30',
+                        textColor: 'text-blue-400',
+                      };
+                    default:
+                      return {
+                        icon: <Target className="w-4 h-4" />,
+                        bgColor: 'bg-slate-500/20',
+                        borderColor: 'border-slate-500/30',
+                        textColor: 'text-slate-400',
+                      };
+                  }
+                };
+
+                const style = getAnchorStyle(anchor.target.entity_type);
+                const relationshipLabel = anchor.relationship_type.replace(/_/g, ' ');
+
+                return (
+                  <div
+                    key={anchor.id}
+                    className={cn(
+                      'flex items-center gap-3 p-3 rounded-lg border',
+                      style.bgColor,
+                      style.borderColor
+                    )}
+                  >
+                    {anchor.target.image_url ? (
+                      <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-800">
+                        <img
+                          src={anchor.target.image_url}
+                          alt={anchor.target.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0', style.bgColor, style.textColor)}>
+                        {style.icon}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-white font-medium truncate">
+                        {anchor.target.name}
+                      </div>
+                      <div className={cn('text-xs capitalize', style.textColor)}>
+                        {relationshipLabel}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CollapsibleSection>
+        )}
+
         {/* Backstory & Personality - Editable */}
         <CollapsibleSection
           title="Backstory & Personality"
@@ -411,10 +607,13 @@ export function CharacterSheet({ campaignId, character }: Props) {
             </div>
           ) : (
             <div className="space-y-3">
-              {soul.backstory && (
+              {/* Show backstory from soul, or fall back to entity description */}
+              {(soul.backstory || char.description) && (
                 <div>
                   <h4 className="text-xs text-slate-500 mb-1">Backstory</h4>
-                  <p className="text-sm text-slate-300">{soul.backstory as string}</p>
+                  <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                    {(soul.backstory as string) || char.description}
+                  </p>
                 </div>
               )}
               {soul.personality && (
@@ -429,7 +628,7 @@ export function CharacterSheet({ campaignId, character }: Props) {
                   <p className="text-sm text-slate-300">{soul.goals as string}</p>
                 </div>
               )}
-              {!soul.backstory && !soul.personality && !soul.goals && (
+              {!soul.backstory && !char.description && !soul.personality && !soul.goals && (
                 <p className="text-slate-500 text-sm italic">
                   No backstory yet. Tap the edit button to add one!
                 </p>

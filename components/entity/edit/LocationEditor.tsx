@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { ImageInput } from '@/components/ui/image-input';
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ interface LocationEditorProps {
     sub_type?: string;
     summary?: string;
     description?: string;
+    image_url?: string | null;
     soul?: Record<string, unknown>;
     brain?: Record<string, unknown>;
     mechanics?: Record<string, unknown>;
@@ -40,6 +42,7 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
     sub_type: entity.sub_type || '',
     summary: entity.summary || '',
     description: entity.description || '',
+    image_url: entity.image_url || null as string | null,
 
     // Soul (Player-facing)
     soul: {
@@ -88,6 +91,7 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
       sub_type: formData.sub_type,
       summary: formData.summary,
       description: formData.description,
+      image_url: formData.image_url,
     };
 
     // Helper to check if an object has any non-empty values
@@ -190,6 +194,19 @@ export function LocationEditor({ entity, campaignId }: LocationEditorProps): JSX
               />
             </div>
           </div>
+
+          <ImageInput
+            value={formData.image_url}
+            onChange={(url) => {
+              setFormData((prev) => ({ ...prev, image_url: url }));
+              setHasChanges(true);
+            }}
+            campaignId={campaignId}
+            entityId={entity.id}
+            entityType="location"
+            generationPrompt={formData.soul?.atmosphere as string || formData.soul?.distinctive_feature as string}
+            label="Location Image"
+          />
 
           <div>
             <Label>Summary</Label>

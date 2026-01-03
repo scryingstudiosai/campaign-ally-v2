@@ -15,9 +15,57 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { X, Sparkles, Check, Loader2 } from 'lucide-react'
+import { X, Sparkles, Check, Loader2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { GameSystem, GAME_SYSTEMS } from '@/types/srd'
+
+interface PlayerSettings {
+  character_editing: {
+    backstory: boolean
+    personality: boolean
+    notes: boolean
+    appearance: boolean
+  }
+  inventory: {
+    can_add_items: boolean
+    requires_approval: boolean
+    can_see_party_stash: boolean
+  }
+  visibility: {
+    can_see_quests: boolean
+    can_see_world_map: boolean
+    can_see_party_members: boolean
+    can_see_revealed_lore: boolean
+  }
+  communication: {
+    can_message_dm: boolean
+    can_message_party: boolean
+  }
+}
+
+const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
+  character_editing: {
+    backstory: true,
+    personality: true,
+    notes: true,
+    appearance: false,
+  },
+  inventory: {
+    can_add_items: false,
+    requires_approval: true,
+    can_see_party_stash: true,
+  },
+  visibility: {
+    can_see_quests: true,
+    can_see_world_map: true,
+    can_see_party_members: true,
+    can_see_revealed_lore: true,
+  },
+  communication: {
+    can_message_dm: true,
+    can_message_party: true,
+  },
+}
 
 interface Codex {
   id: string
@@ -39,6 +87,7 @@ interface Codex {
   resolved_questions?: string[]
   proper_nouns?: string[]
   game_system?: string | null
+  player_settings?: PlayerSettings | null
 }
 
 interface CodexFormProps {
@@ -199,6 +248,14 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
   const [newQuestion, setNewQuestion] = useState('')
   const [newProperNoun, setNewProperNoun] = useState('')
 
+  // Tab 5: Player Settings
+  const [playerSettings, setPlayerSettings] = useState<PlayerSettings>(() => {
+    if (codex.player_settings) {
+      return { ...DEFAULT_PLAYER_SETTINGS, ...codex.player_settings }
+    }
+    return DEFAULT_PLAYER_SETTINGS
+  })
+
   const toggleArrayItem = (arr: string[], setArr: (val: string[]) => void, item: string) => {
     if (arr.includes(item)) {
       setArr(arr.filter((i) => i !== item))
@@ -246,6 +303,20 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
   const unresolveQuestion = (question: string) => {
     setResolvedQuestions(resolvedQuestions.filter(q => q !== question))
     setOpenQuestions([...openQuestions, question])
+  }
+
+  const updatePlayerSetting = <K extends keyof PlayerSettings>(
+    category: K,
+    key: keyof PlayerSettings[K],
+    value: boolean
+  ) => {
+    setPlayerSettings(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [key]: value,
+      },
+    }))
   }
 
   const getCalendarSystemValue = (): string | null => {
@@ -321,6 +392,7 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
           open_questions: openQuestions,
           resolved_questions: resolvedQuestions,
           proper_nouns: properNouns,
+          player_settings: playerSettings,
           updated_at: new Date().toISOString(),
         })
         .eq('id', codex.id)
@@ -342,11 +414,12 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
   return (
     <form onSubmit={handleSubmit} className="max-w-3xl">
       <Tabs defaultValue="foundation" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-5 mb-6">
           <TabsTrigger value="foundation">Foundation</TabsTrigger>
           <TabsTrigger value="style">Style & Safety</TabsTrigger>
           <TabsTrigger value="world">World Details</TabsTrigger>
           <TabsTrigger value="secrets">Secrets</TabsTrigger>
+          <TabsTrigger value="players">Players</TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Foundation */}
@@ -864,6 +937,188 @@ export function CodexForm({ codex, campaignId }: CodexFormProps): JSX.Element {
               </div>
             </div>
           )}
+        </TabsContent>
+
+        {/* Tab 5: Player Settings */}
+        <TabsContent value="players" className="space-y-6">
+          <div className="rounded-lg border border-teal-500/30 bg-teal-500/5 p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-5 h-5 text-teal-400" />
+              <h3 className="font-medium text-teal-400">Player Portal Settings</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Configure what your players can access and edit in the Player Portal. Players join via invite code and can view their character, inventory, and campaign info.
+            </p>
+          </div>
+
+          {/* Character Editing */}
+          <div className="space-y-4">
+            <div>
+              <Label className="text-base">Character Editing</Label>
+              <p className="text-sm text-muted-foreground">
+                What parts of their character can players edit?
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'backstory', label: 'Backstory', desc: 'Personal history and background' },
+                { key: 'personality', label: 'Personality', desc: 'Traits, bonds, ideals, flaws' },
+                { key: 'notes', label: 'Personal Notes', desc: 'Private notes only they can see' },
+                { key: 'appearance', label: 'Appearance', desc: 'Physical description' },
+              ].map(({ key, label, desc }) => (
+                <div
+                  key={key}
+                  onClick={() => updatePlayerSetting('character_editing', key as keyof PlayerSettings['character_editing'], !playerSettings.character_editing[key as keyof PlayerSettings['character_editing']])}
+                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                    playerSettings.character_editing[key as keyof PlayerSettings['character_editing']]
+                      ? 'border-teal-500/50 bg-teal-500/10'
+                      : 'border-white/10 bg-slate-900/50 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-sm">{label}</span>
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      playerSettings.character_editing[key as keyof PlayerSettings['character_editing']]
+                        ? 'bg-teal-500'
+                        : 'bg-slate-700'
+                    }`}>
+                      {playerSettings.character_editing[key as keyof PlayerSettings['character_editing']] && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Inventory */}
+          <div className="space-y-4">
+            <div>
+              <Label className="text-base">Inventory</Label>
+              <p className="text-sm text-muted-foreground">
+                How can players interact with inventory?
+              </p>
+            </div>
+            <div className="space-y-3">
+              {[
+                { key: 'can_add_items', label: 'Can Add Items', desc: 'Players can add items to their inventory' },
+                { key: 'requires_approval', label: 'Require DM Approval', desc: 'New items need DM approval before being added' },
+                { key: 'can_see_party_stash', label: 'See Party Stash', desc: 'Players can view shared party inventory' },
+              ].map(({ key, label, desc }) => (
+                <div
+                  key={key}
+                  onClick={() => updatePlayerSetting('inventory', key as keyof PlayerSettings['inventory'], !playerSettings.inventory[key as keyof PlayerSettings['inventory']])}
+                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                    playerSettings.inventory[key as keyof PlayerSettings['inventory']]
+                      ? 'border-teal-500/50 bg-teal-500/10'
+                      : 'border-white/10 bg-slate-900/50 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-medium text-sm">{label}</span>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      playerSettings.inventory[key as keyof PlayerSettings['inventory']]
+                        ? 'bg-teal-500'
+                        : 'bg-slate-700'
+                    }`}>
+                      {playerSettings.inventory[key as keyof PlayerSettings['inventory']] && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Visibility */}
+          <div className="space-y-4">
+            <div>
+              <Label className="text-base">Portal Visibility</Label>
+              <p className="text-sm text-muted-foreground">
+                What can players see in the Player Portal?
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'can_see_quests', label: 'Active Quests', desc: 'View current campaign quests' },
+                { key: 'can_see_world_map', label: 'World Map', desc: 'Access revealed locations' },
+                { key: 'can_see_party_members', label: 'Party Members', desc: 'See other player characters' },
+                { key: 'can_see_revealed_lore', label: 'Revealed Lore', desc: 'Access discovered world info' },
+              ].map(({ key, label, desc }) => (
+                <div
+                  key={key}
+                  onClick={() => updatePlayerSetting('visibility', key as keyof PlayerSettings['visibility'], !playerSettings.visibility[key as keyof PlayerSettings['visibility']])}
+                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                    playerSettings.visibility[key as keyof PlayerSettings['visibility']]
+                      ? 'border-teal-500/50 bg-teal-500/10'
+                      : 'border-white/10 bg-slate-900/50 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-sm">{label}</span>
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      playerSettings.visibility[key as keyof PlayerSettings['visibility']]
+                        ? 'bg-teal-500'
+                        : 'bg-slate-700'
+                    }`}>
+                      {playerSettings.visibility[key as keyof PlayerSettings['visibility']] && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Communication */}
+          <div className="space-y-4">
+            <div>
+              <Label className="text-base">Communication</Label>
+              <p className="text-sm text-muted-foreground">
+                How can players communicate through the portal?
+              </p>
+            </div>
+            <div className="space-y-3">
+              {[
+                { key: 'can_message_dm', label: 'Message DM', desc: 'Send private messages to the Dungeon Master' },
+                { key: 'can_message_party', label: 'Party Chat', desc: 'Participate in party-wide discussions' },
+              ].map(({ key, label, desc }) => (
+                <div
+                  key={key}
+                  onClick={() => updatePlayerSetting('communication', key as keyof PlayerSettings['communication'], !playerSettings.communication[key as keyof PlayerSettings['communication']])}
+                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                    playerSettings.communication[key as keyof PlayerSettings['communication']]
+                      ? 'border-teal-500/50 bg-teal-500/10'
+                      : 'border-white/10 bg-slate-900/50 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-medium text-sm">{label}</span>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      playerSettings.communication[key as keyof PlayerSettings['communication']]
+                        ? 'bg-teal-500'
+                        : 'bg-slate-700'
+                    }`}>
+                      {playerSettings.communication[key as keyof PlayerSettings['communication']] && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

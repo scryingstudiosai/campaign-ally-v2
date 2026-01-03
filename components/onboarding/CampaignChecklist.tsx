@@ -3,6 +3,7 @@
 import { useOnboarding, ChecklistProgress } from '@/hooks/useOnboarding'
 import { Progress } from '@/components/ui/progress'
 import { MaterialCard } from '@/components/ui/material-card'
+import { useCampaignActions } from '@/components/campaign/CampaignActionsContext'
 import {
   User,
   MapPin,
@@ -27,6 +28,7 @@ interface ChecklistItem {
   icon: typeof User
   href: (campaignId: string) => string
   color: string
+  action?: 'export' | 'invite' // Special action items
 }
 
 const CHECKLIST_ITEMS: ChecklistItem[] = [
@@ -101,14 +103,16 @@ const CHECKLIST_ITEMS: ChecklistItem[] = [
     icon: Download,
     href: (id) => `/dashboard/campaigns/${id}`,
     color: 'text-cyan-400',
+    action: 'export',
   },
   {
     key: 'invited_player',
     label: 'Invite a Player',
     description: 'Share with your party',
     icon: UserPlus,
-    href: (id) => `/dashboard/campaigns/${id}`,
+    href: (id) => `/dashboard/campaigns/${id}/invite`,
     color: 'text-pink-400',
+    action: 'invite',
   },
 ]
 
@@ -124,6 +128,7 @@ export function CampaignChecklist({
   className,
 }: CampaignChecklistProps) {
   const { data, isLoading, getCompletionPercentage, getCompletedCount, getTotalCount } = useOnboarding()
+  const { openExportModal, openInviteModal } = useCampaignActions()
 
   if (isLoading || !data) {
     return null
@@ -191,17 +196,17 @@ export function CampaignChecklist({
           const isComplete = progress[item.key]
           const Icon = item.icon
 
-          return (
-            <Link
-              key={item.key}
-              href={campaignId ? item.href(campaignId) : item.href('')}
-              className={cn(
-                'flex items-center gap-3 p-2 rounded-lg transition-all',
-                isComplete
-                  ? 'opacity-60 cursor-default'
-                  : 'hover:bg-slate-800/50 cursor-pointer'
-              )}
-            >
+          // Handle special action items (export, invite) with buttons
+          const handleClick = () => {
+            if (item.action === 'export') {
+              openExportModal()
+            } else if (item.action === 'invite') {
+              openInviteModal()
+            }
+          }
+
+          const itemContent = (
+            <>
               <div
                 className={cn(
                   'w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0',
@@ -229,6 +234,36 @@ export function CampaignChecklist({
               {!isComplete && (
                 <ChevronRight className="w-4 h-4 text-slate-600" />
               )}
+            </>
+          )
+
+          const itemClassName = cn(
+            'flex items-center gap-3 p-2 rounded-lg transition-all w-full text-left',
+            isComplete
+              ? 'opacity-60 cursor-default'
+              : 'hover:bg-slate-800/50 cursor-pointer'
+          )
+
+          // Use button for action items, Link for navigation items
+          if (item.action && !isComplete) {
+            return (
+              <button
+                key={item.key}
+                onClick={handleClick}
+                className={itemClassName}
+              >
+                {itemContent}
+              </button>
+            )
+          }
+
+          return (
+            <Link
+              key={item.key}
+              href={campaignId ? item.href(campaignId) : item.href('')}
+              className={itemClassName}
+            >
+              {itemContent}
             </Link>
           )
         })}

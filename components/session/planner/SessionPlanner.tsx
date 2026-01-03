@@ -16,8 +16,10 @@ import {
   EncounterBlockNode,
   QuestBlockNode,
 } from './extensions';
-import { EditorToolbar } from './EditorToolbar';
+import { EditorToolbar, FontSize } from './EditorToolbar';
+import { PrepHelpDialog } from './PrepHelpDialog';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface SessionPlannerProps {
   sessionId: string;
@@ -25,10 +27,33 @@ interface SessionPlannerProps {
   onContentChange?: (content: unknown) => void;
 }
 
+const FONT_SIZE_KEY = 'prep-font-size';
+const FONT_SIZE_CLASSES: Record<FontSize, string> = {
+  sm: 'text-sm',      // 14px
+  md: 'text-base',    // 16px
+  lg: 'text-lg',      // 18px
+};
+
 export function SessionPlanner({ sessionId, initialContent, onContentChange }: SessionPlannerProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [fontSize, setFontSize] = useState<FontSize>('md');
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Load font size preference from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(FONT_SIZE_KEY);
+    if (saved && ['sm', 'md', 'lg'].includes(saved)) {
+      setFontSize(saved as FontSize);
+    }
+  }, []);
+
+  // Save font size preference to localStorage
+  const handleFontSizeChange = useCallback((size: FontSize) => {
+    setFontSize(size);
+    localStorage.setItem(FONT_SIZE_KEY, size);
+  }, []);
 
   // Setup droppable area
   const { setNodeRef, isOver } = useDroppable({
@@ -179,6 +204,7 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
   }, [editor]);
 
   // Insert encounter block when encounter entity is dropped
+  // Inserts at the END of the document for predictable placement
   const insertEncounterBlock = useCallback((encounter: {
     id: string;
     name: string;
@@ -187,15 +213,22 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
   }) => {
     if (!editor) return;
 
-    editor.chain().focus().insertEncounterBlock({
-      title: encounter.name,
-      entityId: encounter.id,
-      difficulty: encounter.difficulty || 'medium',
-      creatures: JSON.stringify(encounter.creatures || []),
-    }).run();
+    // Move to end of document, then insert block
+    const endPos = editor.state.doc.content.size;
+    editor.chain()
+      .focus()
+      .setTextSelection(endPos)
+      .insertEncounterBlock({
+        title: encounter.name,
+        entityId: encounter.id,
+        difficulty: encounter.difficulty || 'medium',
+        creatures: JSON.stringify(encounter.creatures || []),
+      })
+      .run();
   }, [editor]);
 
   // Insert quest block when quest entity is dropped
+  // Inserts at the END of the document for predictable placement
   const insertQuestBlock = useCallback((quest: {
     id: string;
     name: string;
@@ -209,14 +242,21 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       completed: obj.completed || false,
     }));
 
-    editor.chain().focus().insertQuestBlock({
-      title: quest.name,
-      entityId: quest.id,
-      milestones: JSON.stringify(milestones),
-    }).run();
+    // Move to end of document, then insert block
+    const endPos = editor.state.doc.content.size;
+    editor.chain()
+      .focus()
+      .setTextSelection(endPos)
+      .insertQuestBlock({
+        title: quest.name,
+        entityId: quest.id,
+        milestones: JSON.stringify(milestones),
+      })
+      .run();
   }, [editor]);
 
   // Insert quest block with a specific objective/beat as initial content
+  // Inserts at the END of the document for predictable placement
   const insertQuestBlockWithObjective = useCallback((objective: {
     id: string;
     title: string;
@@ -226,30 +266,36 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
   }) => {
     if (!editor) return;
 
-    editor.chain().focus().insertContent({
-      type: 'questBlock',
-      attrs: {
-        id: crypto.randomUUID(),
-        title: objective.questName,
-        entityId: objective.questId,
-        milestones: '[]',
-        status: 'pending',
-        isCollapsed: false,
-      },
-      content: [
-        {
-          type: 'questObjective',
-          attrs: {
-            id: objective.id,
-            title: objective.title,
-            description: objective.description || '',
-            questId: objective.questId,
-            questName: objective.questName,
-          },
+    // Move to end of document, then insert block
+    const endPos = editor.state.doc.content.size;
+    editor.chain()
+      .focus()
+      .setTextSelection(endPos)
+      .insertContent({
+        type: 'questBlock',
+        attrs: {
+          id: crypto.randomUUID(),
+          title: objective.questName,
+          entityId: objective.questId,
+          milestones: '[]',
+          status: 'pending',
+          isCollapsed: false,
         },
-        { type: 'paragraph' },
-      ],
-    }).run();
+        content: [
+          {
+            type: 'questObjective',
+            attrs: {
+              id: objective.id,
+              title: objective.title,
+              description: objective.description || '',
+              questId: objective.questId,
+              questName: objective.questName,
+            },
+          },
+          { type: 'paragraph' },
+        ],
+      })
+      .run();
   }, [editor]);
 
   // Expose editor and insert functions for drag-drop handler
@@ -315,13 +361,22 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
 
   return (
     <div className="h-full flex flex-col">
-      <EditorToolbar editor={editor} />
+      <EditorToolbar
+        editor={editor}
+        fontSize={fontSize}
+        onFontSizeChange={handleFontSizeChange}
+        onHelpClick={() => setShowHelp(true)}
+      />
 
       <div
         ref={setNodeRef}
-        className={`flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg transition-colors ${
-          isOver ? 'ring-2 ring-teal-500 ring-inset bg-teal-900/10' : ''
-        }`}
+        className={cn(
+          'flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg transition-colors',
+          FONT_SIZE_CLASSES[fontSize],
+          // Only show global highlight when NOT holding shift (root level drop)
+          // When shift is held, individual blocks will highlight instead
+          isOver && 'ring-2 ring-teal-500/50 ring-inset'
+        )}
       >
         <EditorContent editor={editor} className="h-full" />
       </div>
@@ -339,6 +394,9 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
           <span>Auto-save enabled</span>
         )}
       </div>
+
+      {/* Help Dialog */}
+      <PrepHelpDialog open={showHelp} onOpenChange={setShowHelp} />
     </div>
   );
 }

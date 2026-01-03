@@ -4,7 +4,7 @@ import { Editor } from '@tiptap/react';
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered,
   Quote, BookOpen, Undo, Redo, Minus, Plus,
-  Clapperboard, Swords, Flag, StickyNote
+  Clapperboard, Swords, Flag, StickyNote, Type, HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,12 +14,18 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
+
+export type FontSize = 'sm' | 'md' | 'lg';
 
 interface EditorToolbarProps {
   editor: Editor | null;
+  fontSize?: FontSize;
+  onFontSizeChange?: (size: FontSize) => void;
+  onHelpClick?: () => void;
 }
 
-export function EditorToolbar({ editor }: EditorToolbarProps) {
+export function EditorToolbar({ editor, fontSize = 'md', onFontSizeChange, onHelpClick }: EditorToolbarProps) {
   if (!editor) return null;
 
   const ToolbarButton = ({
@@ -177,6 +183,32 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
 
       <div className="flex-1" />
 
+      {/* Font Size Toggle */}
+      {onFontSizeChange && (
+        <div className="flex items-center gap-1 border-l border-slate-700 pl-2 ml-2">
+          <Type className="h-4 w-4 text-slate-400" />
+          <div className="flex">
+            {(['sm', 'md', 'lg'] as const).map((size) => (
+              <button
+                key={size}
+                onClick={() => onFontSizeChange(size)}
+                className={cn(
+                  'h-7 w-7 text-xs font-medium rounded transition-colors',
+                  fontSize === size
+                    ? 'bg-slate-700 text-teal-400'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                )}
+                title={`Font size: ${size === 'sm' ? 'Small' : size === 'md' ? 'Medium' : 'Large'}`}
+              >
+                {size === 'sm' ? 'S' : size === 'md' ? 'M' : 'L'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="w-px h-6 bg-slate-700 mx-1" />
+
       {/* Undo/Redo */}
       <ToolbarButton
         onClick={() => editor.chain().focus().undo().run()}
@@ -188,6 +220,20 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         icon={Redo}
         title="Redo (Ctrl+Y)"
       />
+
+      {/* Help Button */}
+      {onHelpClick && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onHelpClick}
+          className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 ml-1"
+          title="Help"
+        >
+          <HelpCircle className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }

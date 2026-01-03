@@ -91,7 +91,7 @@ export function EntityFiltersBar({
             size="sm"
             onClick={() => onViewModeChange('graph')}
             className="rounded-l-none"
-            title="Relationship graph"
+            title="Spiderweb"
           >
             <Network className="w-4 h-4" />
           </Button>
@@ -110,6 +110,7 @@ export function EntityFiltersBar({
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="npc">NPCs</SelectItem>
+            <SelectItem value="player">Players</SelectItem>
             <SelectItem value="location">Locations</SelectItem>
             <SelectItem value="item">Items</SelectItem>
             <SelectItem value="faction">Factions</SelectItem>

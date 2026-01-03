@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
     let priceModifier: number;
     let specialty: string | undefined;
     let srdItems: string[];
+    let specialItems: ShopInventoryData['special_items'];
 
     if (inventoryData) {
       // Use provided data (from auto-stock during forge commit)
@@ -70,18 +71,23 @@ export async function POST(request: NextRequest) {
       priceModifier = inventoryData.price_modifier;
       specialty = inventoryData.specialty;
       srdItems = inventoryData.suggested_srd_stock;
+      specialItems = inventoryData.special_items || [];
       console.log('[Stock Route] Using provided inventory data');
+      console.log('[Stock Route] Special items from inventoryData:', specialItems?.length || 0);
     } else {
       // Infer from location (for manual "Stock Shelves" button)
       shopType = (mechanics.shop_type as string) || inferShopType(location);
       priceModifier = (mechanics.price_modifier as number) || 1.0;
       specialty = mechanics.specialty as string | undefined;
       srdItems = getSrdItemsForShopType(shopType);
+      // Also get specialty items from mechanics if they haven't been created yet
+      specialItems = (mechanics.special_items as ShopInventoryData['special_items']) || [];
       console.log('[Stock Route] Inferred from location');
+      console.log('[Stock Route] Special items from mechanics:', specialItems?.length || 0);
     }
 
     console.log('[Stock Route] Shop type:', shopType);
-    console.log('[Stock Route] SRD items to stock:', srdItems);
+    console.log('[Stock Route] SRD items to stock:', srdItems?.length || 0);
 
     // Stock the shop using our helper
     const result = await stockShopInventory(campaignId, locationId, {
@@ -89,7 +95,7 @@ export async function POST(request: NextRequest) {
       price_modifier: priceModifier,
       specialty,
       suggested_srd_stock: srdItems,
-      special_items: inventoryData?.special_items || [],
+      special_items: specialItems,
     });
 
     // Update location mechanics to mark as shop if not already
