@@ -12,6 +12,8 @@ export async function POST(req: NextRequest) {
 
     const { notificationIds, campaignId, markAll, type, senderId } = await req.json();
 
+    console.log('[MarkRead] Received:', { campaignId, type, senderId, markAll });
+
     // Handle player_message type - update portal_messages table
     if (type === 'player_message') {
       if (campaignId) {
@@ -24,7 +26,29 @@ export async function POST(req: NextRequest) {
           .single();
 
         if (!campaign) {
+          console.log('[MarkRead] Campaign not found for user:', user.id);
           return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+        }
+
+        // If senderId provided, resolve it to user_id
+        let actualSenderId = senderId;
+        if (senderId) {
+          // The senderId might be an entity_id (character) instead of user_id
+          // Check if it's an entity_id and convert to user_id if needed
+          const { data: membership } = await supabase
+            .from('campaign_members')
+            .select('user_id')
+            .eq('character_entity_id', senderId)
+            .eq('campaign_id', campaignId)
+            .single();
+
+          if (membership) {
+            // senderId was an entity_id, use the user_id instead
+            actualSenderId = membership.user_id;
+            console.log('[MarkRead] Converted entity_id to user_id:', senderId, '->', actualSenderId);
+          } else {
+            console.log('[MarkRead] senderId is already a user_id:', senderId);
+          }
         }
 
         // Build query to mark PRIVATE messages FROM players as read
@@ -39,33 +63,18 @@ export async function POST(req: NextRequest) {
           .eq('sender_type', 'player')
           .eq('channel', 'dm_private');
 
-        // If senderId provided, only mark that player's messages
-        if (senderId) {
-          // The senderId might be an entity_id (character) instead of user_id
-          // Check if it's an entity_id and convert to user_id if needed
-          let actualSenderId = senderId;
-
-          const { data: membership } = await supabase
-            .from('campaign_members')
-            .select('user_id')
-            .eq('character_entity_id', senderId)
-            .eq('campaign_id', campaignId)
-            .single();
-
-          if (membership) {
-            // senderId was an entity_id, use the user_id instead
-            actualSenderId = membership.user_id;
-          }
-          // If no membership found, assume senderId is already a user_id
-
+        // Only filter by sender if provided
+        if (actualSenderId) {
           query = query.eq('sender_id', actualSenderId);
         }
 
-        const { error } = await query;
+        const { data: updated, error } = await query.select('id');
+
+        console.log('[MarkRead] Updated messages:', updated?.length || 0, 'Error:', error?.message);
 
         if (error) throw error;
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, count: updated?.length || 0 });
       } else if (notificationIds?.length) {
         // Mark specific messages as read
         const { data: campaigns } = await supabase

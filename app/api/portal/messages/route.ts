@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Insert message
+  // DM's own messages are always marked as read (they don't need to "see" their own messages)
   const { data: message, error } = await supabase
     .from('portal_messages')
     .insert({
@@ -59,6 +60,8 @@ export async function POST(request: NextRequest) {
       channel,
       recipient_id: channel === 'dm_private' ? recipientId : null,
       content,
+      is_read: isDM,
+      read_at: isDM ? new Date().toISOString() : null,
     })
     .select()
     .single();

@@ -1,6 +1,13 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Shield } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -97,17 +104,25 @@ export function ReputationMatrix({ campaignId, factions, reputation, onUpdate }:
                     <span className="text-white font-medium">{faction.name}</span>
                   </div>
 
-                  <select
+                  <Select
                     value={current}
-                    onChange={(e) => updateReputation(faction.id, e.target.value)}
-                    className={`px-3 py-1 rounded text-sm cursor-pointer ${standingInfo.color}`}
+                    onValueChange={(value) => updateReputation(faction.id, value)}
                   >
-                    {STANDINGS.map((s) => (
-                      <option key={s.value} value={s.value} className="bg-zinc-800">
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className={`w-32 border-0 ${standingInfo.color}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 border-zinc-700">
+                      {STANDINGS.map((s) => (
+                        <SelectItem
+                          key={s.value}
+                          value={s.value}
+                          className={`${s.color} focus:${s.color}`}
+                        >
+                          {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               );
             })}
