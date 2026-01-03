@@ -701,83 +701,82 @@ export function useCombat({ sessionId, campaignId, onCombatEvent }: UseCombatPro
           const encounterResponse = await fetch(`/api/entities/${combatState.encounterId}`);
           if (encounterResponse.ok) {
             const encounter = await encounterResponse.json();
-            console.log('[Combat] Full encounter data:', encounter);
+            console.log('[Combat] Full encounter data:', JSON.stringify(encounter, null, 2));
 
             // Check multiple possible locations for rewards (different save paths)
             const rewards = encounter.mechanics?.rewards ||
                            encounter.mechanics?.loot ||
                            encounter.attributes?.rewards ||
                            {};
-            console.log('[Combat] Encounter rewards:', rewards);
+            console.log('[Combat] Encounter rewards:', JSON.stringify(rewards, null, 2));
 
-            // Items can also be stored directly in mechanics
-            const rewardItems = rewards.items ||
-                               encounter.mechanics?.items ||
-                               encounter.mechanics?.loot ||
-                               [];
-            console.log('[Combat] Found reward items at:', rewardItems);
+            // Get items directly from rewards.items (that's where they are based on logs)
+            const rewardItems = rewards?.items || [];
+            console.log('[Combat] rewardItems found:', rewardItems.length, 'items');
+            console.log('[Combat] rewardItems content:', JSON.stringify(rewardItems, null, 2));
 
-            if (rewards) {
-              // Add loot items to party inventory (inventory_instances with owner_type = 'party')
-              // This makes them available in the Player Portal party stash
-              const lootItems: Array<{
-                srd_item_slug?: string;
-                custom_name?: string;
-                quantity: number;
-              }> = [];
+            // Build loot items array
+            const lootItems: Array<{
+              srd_item_slug?: string;
+              custom_name?: string;
+              quantity: number;
+            }> = [];
 
-              // Process reward items (use rewardItems we found above)
-              console.log('[Combat] Processing rewardItems:', rewardItems);
-              if (rewardItems && Array.isArray(rewardItems) && rewardItems.length > 0) {
-                for (const item of rewardItems) {
-                  console.log('[Combat] Processing item:', item);
-                  if (typeof item === 'string') {
-                    // Plain item name
-                    lootItems.push({ custom_name: item, quantity: 1 });
-                  } else if (item && typeof item === 'object') {
-                    // Object with name/srd_id
-                    const itemObj = item as Record<string, unknown>;
-                    lootItems.push({
-                      srd_item_slug: itemObj.srd_id as string | undefined,
-                      custom_name: (itemObj.name as string) || undefined,
-                      quantity: (itemObj.quantity as number) || 1,
-                    });
-                  }
+            // Process reward items
+            if (Array.isArray(rewardItems) && rewardItems.length > 0) {
+              for (const item of rewardItems) {
+                console.log('[Combat] Processing item:', typeof item, item);
+                if (typeof item === 'string') {
+                  // Plain item name
+                  lootItems.push({ custom_name: item, quantity: 1 });
+                } else if (item && typeof item === 'object') {
+                  // Object with name/srd_id
+                  const itemObj = item as Record<string, unknown>;
+                  const itemName = (itemObj.name as string) || (itemObj.custom_name as string) || String(item);
+                  lootItems.push({
+                    srd_item_slug: (itemObj.srd_id as string) || (itemObj.slug as string) || undefined,
+                    custom_name: itemName,
+                    quantity: (itemObj.quantity as number) || 1,
+                  });
                 }
               }
-              console.log('[Combat] Built lootItems array:', lootItems);
+            }
+            console.log('[Combat] Built lootItems array:', lootItems.length, 'items');
+            console.log('[Combat] lootItems content:', JSON.stringify(lootItems, null, 2));
 
-              // Get gold amount (will be added to party treasury, not as item)
-              const goldAmount = (rewards.gold && typeof rewards.gold === 'number' && rewards.gold > 0)
-                ? rewards.gold
-                : 0;
+            // Get gold amount (will be added to party treasury, not as item)
+            const goldAmount = (rewards?.gold && typeof rewards.gold === 'number' && rewards.gold > 0)
+              ? rewards.gold
+              : 0;
 
-              // Insert loot into party inventory and add gold to party treasury
-              if (lootItems.length > 0 || goldAmount > 0) {
-                const lootResponse = await fetch('/api/portal/inventory/distribute-loot', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    campaignId,
-                    encounterId: combatState.encounterId,
-                    encounterName: encounter.name || 'Combat',
-                    items: lootItems,
-                    gold: goldAmount,
-                    xp: rewards.xp || 0,
-                  }),
-                });
+            // Insert loot into party inventory and add gold to party treasury
+            if (lootItems.length > 0 || goldAmount > 0) {
+              console.log('[Combat] Calling distribute-loot API with', lootItems.length, 'items and', goldAmount, 'gold');
+              const lootResponse = await fetch('/api/portal/inventory/distribute-loot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  campaignId,
+                  encounterId: combatState.encounterId,
+                  encounterName: encounter.name || 'Combat',
+                  items: lootItems,
+                  gold: goldAmount,
+                  xp: rewards?.xp || 0,
+                }),
+              });
 
-                if (lootResponse.ok) {
-                  const result = await lootResponse.json();
-                  lootPileId = result.itemsAdded;
-                  console.log('[Combat] Added loot to party inventory:', result);
-                  if (result.goldAdded > 0) {
-                    console.log(`[Combat] Added ${result.goldAdded} gp to party treasury`);
-                  }
-                } else {
-                  console.error('[Combat] Failed to add loot to party:', await lootResponse.text());
+              if (lootResponse.ok) {
+                const result = await lootResponse.json();
+                lootPileId = result.itemsAdded;
+                console.log('[Combat] Added loot to party inventory:', result);
+                if (result.goldAdded > 0) {
+                  console.log(`[Combat] Added ${result.goldAdded} gp to party treasury`);
                 }
+              } else {
+                console.error('[Combat] Failed to add loot to party:', await lootResponse.text());
               }
+            } else {
+              console.log('[Combat] No loot or gold to distribute');
             }
           }
         } catch (error) {
