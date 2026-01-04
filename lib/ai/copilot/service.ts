@@ -171,6 +171,56 @@ export class CopilotService {
       console.error('[Copilot] Semantic search failed:', error);
     }
 
+    // Keyword search fallback - catches cases where query mentions entity by name
+    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+
+    if (queryWords.length > 0) {
+      try {
+        const { data: keywordResults } = await this.supabase
+          .from('entities')
+          .select('id, name, summary, description, entity_type')
+          .eq('campaign_id', campaignId)
+          .is('deleted_at', null)
+          .or(queryWords.map(word => `name.ilike.%${word}%`).join(','))
+          .limit(10);
+
+        if (keywordResults && keywordResults.length > 0) {
+          console.log(`[Copilot] Keyword search found ${keywordResults.length} results`);
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          keywordResults.forEach((entity: any) => {
+            // Only add if not already in sources
+            if (!sources.find(s => s.id === entity.id)) {
+              // Check how many query words match the name
+              const nameWords = entity.name.toLowerCase();
+              const matchCount = queryWords.filter(w => nameWords.includes(w)).length;
+              const relevance = 0.5 + (matchCount * 0.2); // Higher relevance for more matches
+
+              sources.unshift({ // Add to front since these are direct matches
+                id: entity.id,
+                type: 'entity',
+                name: entity.name,
+                entityType: entity.entity_type,
+                relevance: Math.min(relevance, 1.0),
+                snippet: entity.summary || entity.description?.slice(0, 150),
+              });
+
+              // Also add to semanticResults so it appears in the knowledge base
+              semanticResults.unshift({
+                id: entity.id,
+                entity_type: entity.entity_type,
+                entity_name: entity.name,
+                content: entity.summary || entity.description || '',
+                similarity: relevance,
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error('[Copilot] Keyword search failed:', error);
+      }
+    }
+
     // Get active story threads
     const { data: threads } = await this.supabase
       .from('story_threads')
