@@ -203,7 +203,7 @@ export function SetupWizard({ open, onComplete }: SetupWizardProps) {
                 Welcome to Campaign Ally
               </h2>
               <p className="text-slate-400 max-w-md mx-auto">
-                Your AI-powered co-pilot for running unforgettable tabletop campaigns.
+                Your AI-powered companion for running unforgettable tabletop campaigns.
                 Let&apos;s get you set up in just a few steps.
               </p>
               <div className="mt-8 grid grid-cols-3 gap-4 text-center">

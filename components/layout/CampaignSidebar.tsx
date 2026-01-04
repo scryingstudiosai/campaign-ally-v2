@@ -61,7 +61,7 @@ function SidebarContent({
 
   const NAV_ITEMS = [
     { label: 'Overview', href: baseUrl, icon: LayoutDashboard, exact: true },
-    { label: 'AI Co-Pilot', href: `${baseUrl}/copilot`, icon: Sparkles, special: 'copilot' },
+    { label: 'Ally', href: `${baseUrl}/copilot`, icon: Sparkles, special: 'copilot' },
     { label: 'Session Prep', href: `${baseUrl}/prep`, icon: ClipboardList, special: 'prep' },
     { label: 'Chronicle', href: `${baseUrl}/chronicle`, icon: BookOpen, special: 'chronicle' },
     { label: 'Memory', href: `${baseUrl}/memory`, icon: Brain },

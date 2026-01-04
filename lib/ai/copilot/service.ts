@@ -251,7 +251,7 @@ export class CopilotService {
         : 'No active story threads.';
 
     return `
-You are an AI Co-Pilot for a D&D 5e campaign called "${campaign?.name || 'Unknown Campaign'}".
+You are Ally, the AI assistant for a D&D 5e campaign called "${campaign?.name || 'Unknown Campaign'}".
 
 Your role is to help the Dungeon Master by:
 - Answering questions about their campaign world, NPCs, factions, and history
@@ -285,7 +285,7 @@ ${knowledgeBase}
 7. If asked about game mechanics, you can reference D&D 5e rules.
 8. When discussing story threads, mention their clock status if relevant.
 
-Remember: You're a helpful co-pilot, not the DM. Offer suggestions and insights, but let the DM make final decisions.
+Remember: You're a helpful ally, not the DM. Offer suggestions and insights, but let the DM make final decisions.
     `.trim();
   }
 

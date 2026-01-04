@@ -44,7 +44,7 @@ export default async function CopilotPage({ params }: Props) {
         <div className="mb-6">
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <Brain className="h-7 w-7 text-purple-400" />
-            AI Co-Pilot
+            Ask Ally
           </h1>
           <p className="text-zinc-400 mt-1">
             Ask questions about your campaign, explore &quot;what if&quot; scenarios, and get
