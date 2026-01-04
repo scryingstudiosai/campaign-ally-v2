@@ -36,15 +36,8 @@ export async function GET(req: NextRequest) {
 
     // Build query
     let query = supabase
-      .from('story_threads')
-      .select(
-        `
-        *,
-        trigger_location:trigger_location_id (id, name),
-        related_quest:related_quest_id (id, name),
-        source_session:source_session_id (id, title)
-      `
-      )
+  .from('story_threads')
+  .select('*')
       .eq('campaign_id', campaignId)
       .order('priority', { ascending: true })
       .order('created_at', { ascending: false });
