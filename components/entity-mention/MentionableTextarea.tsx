@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useState, useRef } from 'react'
+import { useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
 import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Mention from '@tiptap/extension-mention'
@@ -52,103 +52,99 @@ interface SuggestionListProps {
   loading?: boolean
 }
 
-interface SuggestionListRef {
+export interface SuggestionListRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean
 }
 
-function SuggestionList({ items, command, loading }: SuggestionListProps): JSX.Element {
-  const [selectedIndex, setSelectedIndex] = useState(0)
+const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>(
+  ({ items, command, loading }, ref) => {
+    const [selectedIndex, setSelectedIndex] = useState(0)
 
-  const selectItem = useCallback((index: number) => {
-    const item = items[index]
-    if (item) {
-      command(item)
+    const selectItem = useCallback((index: number) => {
+      const item = items[index]
+      if (item) {
+        command(item)
+      }
+    }, [items, command])
+
+    useEffect(() => {
+      setSelectedIndex(0)
+    }, [items])
+
+    useImperativeHandle(ref, () => ({
+      onKeyDown: ({ event }: { event: KeyboardEvent }) => {
+        if (event.key === 'ArrowUp') {
+          event.preventDefault()
+          event.stopPropagation()
+          setSelectedIndex((prev) => (prev - 1 + items.length) % items.length)
+          return true
+        }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault()
+          event.stopPropagation()
+          setSelectedIndex((prev) => (prev + 1) % items.length)
+          return true
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          event.stopPropagation()
+          selectItem(selectedIndex)
+          return true
+        }
+        return false
+      },
+    }))
+
+    if (loading) {
+      return (
+        <div className="bg-zinc-900 border border-zinc-700 rounded-md shadow-lg p-2 text-zinc-400 text-sm z-[9999]">
+          Searching...
+        </div>
+      )
     }
-  }, [items, command])
 
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [items])
-
-  // Expose onKeyDown through a ref that the parent can access
-  const ref = useRef<SuggestionListRef>({
-    onKeyDown: ({ event }: { event: KeyboardEvent }) => {
-      if (event.key === 'ArrowUp') {
-        setSelectedIndex((prev) => (prev - 1 + items.length) % items.length)
-        return true
-      }
-      if (event.key === 'ArrowDown') {
-        setSelectedIndex((prev) => (prev + 1) % items.length)
-        return true
-      }
-      if (event.key === 'Enter') {
-        selectItem(selectedIndex)
-        return true
-      }
-      return false
-    },
-  })
-
-  // Keep ref updated
-  useEffect(() => {
-    ref.current.onKeyDown = ({ event }: { event: KeyboardEvent }) => {
-      if (event.key === 'ArrowUp') {
-        setSelectedIndex((prev) => (prev - 1 + items.length) % items.length)
-        return true
-      }
-      if (event.key === 'ArrowDown') {
-        setSelectedIndex((prev) => (prev + 1) % items.length)
-        return true
-      }
-      if (event.key === 'Enter') {
-        selectItem(selectedIndex)
-        return true
-      }
-      return false
+    if (items.length === 0) {
+      return (
+        <div className="bg-zinc-900 border border-zinc-700 rounded-md shadow-lg p-2 text-zinc-400 text-sm z-[9999]">
+          No entities found
+        </div>
+      )
     }
-  }, [items, selectedIndex, selectItem])
 
-  if (loading) {
     return (
-      <div className="bg-zinc-900 border border-zinc-700 rounded-md shadow-lg p-2 text-zinc-400 text-sm">
-        Searching...
+      <div className="bg-zinc-900 border border-zinc-700 rounded-md shadow-lg overflow-hidden max-h-64 overflow-y-auto z-[9999]">
+        {items.map((item, index) => {
+          const Icon = ENTITY_ICONS[item.entity_type] || Sparkles
+          const colorClass = ENTITY_COLORS[item.entity_type] || 'text-zinc-400'
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onMouseDown={(e) => {
+                // Use mousedown instead of click to fire before blur
+                e.preventDefault()
+                e.stopPropagation()
+                selectItem(index)
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-800 ${
+                index === selectedIndex ? 'bg-zinc-800' : ''
+              }`}
+            >
+              <Icon className={`h-4 w-4 ${colorClass}`} />
+              <span className="text-zinc-100">{item.name}</span>
+              <span className={`ml-auto text-xs ${colorClass}`}>
+                {item.entity_type}
+              </span>
+            </button>
+          )
+        })}
       </div>
     )
   }
+)
 
-  if (items.length === 0) {
-    return (
-      <div className="bg-zinc-900 border border-zinc-700 rounded-md shadow-lg p-2 text-zinc-400 text-sm">
-        No entities found
-      </div>
-    )
-  }
-
-  return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-md shadow-lg overflow-hidden max-h-64 overflow-y-auto">
-      {items.map((item, index) => {
-        const Icon = ENTITY_ICONS[item.entity_type] || Sparkles
-        const colorClass = ENTITY_COLORS[item.entity_type] || 'text-zinc-400'
-
-        return (
-          <button
-            key={item.id}
-            onClick={() => selectItem(index)}
-            className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-800 ${
-              index === selectedIndex ? 'bg-zinc-800' : ''
-            }`}
-          >
-            <Icon className={`h-4 w-4 ${colorClass}`} />
-            <span className="text-zinc-100">{item.name}</span>
-            <span className={`ml-auto text-xs ${colorClass}`}>
-              {item.entity_type}
-            </span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
+SuggestionList.displayName = 'SuggestionList'
 
 export function MentionableTextarea({
   campaignId,
@@ -215,6 +211,7 @@ export function MentionableTextarea({
                   interactive: true,
                   trigger: 'manual',
                   placement: 'bottom-start',
+                  zIndex: 9999,
                 })
               },
               onUpdate: (props) => {
@@ -232,9 +229,8 @@ export function MentionableTextarea({
                   return true
                 }
 
-                // Access the ref through the component element
-                const element = component?.element as HTMLElement & { __ref?: SuggestionListRef }
-                return element?.__ref?.onKeyDown?.(props) ?? false
+                // Access the ref through ReactRenderer
+                return (component?.ref as SuggestionListRef)?.onKeyDown?.(props) ?? false
               },
               onExit: () => {
                 popup?.[0]?.destroy()
