@@ -1,52 +1,52 @@
-'use client';
+'use client'
 
-import React from 'react';
-import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React from 'react'
+import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  children: React.ReactNode
+  fallback?: React.ReactNode
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void
 }
 
 interface ErrorBoundaryState {
-  hasError: boolean;
-  error: Error | null;
-  errorInfo: React.ErrorInfo | null;
+  hasError: boolean
+  error: Error | null
+  errorInfo: React.ErrorInfo | null
 }
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    super(props)
+    this.state = { hasError: false, error: null, errorInfo: null }
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
-    return { hasError: true, error };
+    return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    this.setState({ errorInfo });
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    this.setState({ errorInfo })
 
     // Log to console in development
-    console.error('Error Boundary caught:', error, errorInfo);
+    console.error('Error Boundary caught:', error, errorInfo)
 
     // Call optional error handler (for Sentry later)
-    this.props.onError?.(error, errorInfo);
+    this.props.onError?.(error, errorInfo)
 
     // TODO: Send to Sentry when integrated
     // Sentry.captureException(error, { extra: errorInfo });
   }
 
-  handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
-  };
+  handleReset = (): void => {
+    this.setState({ hasError: false, error: null, errorInfo: null })
+  }
 
-  render() {
+  render(): React.ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return this.props.fallback;
+        return this.props.fallback
       }
 
       return (
@@ -68,7 +68,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Try Again
               </Button>
-              <Button onClick={() => window.location.href = '/dashboard'} variant="outline">
+              <Button onClick={() => (window.location.href = '/dashboard')} variant="outline">
                 <Home className="w-4 h-4 mr-2" />
                 Go to Dashboard
               </Button>
@@ -88,9 +88,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             )}
           </div>
         </div>
-      );
+      )
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }

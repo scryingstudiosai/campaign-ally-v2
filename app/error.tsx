@@ -1,20 +1,20 @@
-'use client';
+'use client'
 
-import { useEffect } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect } from 'react'
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export default function Error({
   error,
   reset,
 }: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+  error: Error & { digest?: string }
+  reset: () => void
+}): JSX.Element {
   useEffect(() => {
     // Log error to console (Sentry later)
-    console.error('App Error:', error);
-  }, [error]);
+    console.error('App Error:', error)
+  }, [error])
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
@@ -38,18 +38,14 @@ export default function Error({
             <RefreshCw className="w-4 h-4 mr-2" />
             Try Again
           </Button>
-          <Button onClick={() => window.location.href = '/dashboard'} variant="outline" size="lg">
+          <Button onClick={() => (window.location.href = '/dashboard')} variant="outline" size="lg">
             <Home className="w-4 h-4 mr-2" />
             Dashboard
           </Button>
         </div>
 
         {/* Error ID for support */}
-        {error.digest && (
-          <p className="text-xs text-slate-600">
-            Error ID: {error.digest}
-          </p>
-        )}
+        {error.digest && <p className="text-xs text-slate-600">Error ID: {error.digest}</p>}
 
         {/* Dev details */}
         {process.env.NODE_ENV === 'development' && (
@@ -66,5 +62,5 @@ export default function Error({
         )}
       </div>
     </div>
-  );
+  )
 }

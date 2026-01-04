@@ -1,19 +1,19 @@
-'use client';
+'use client'
 
-import { useEffect } from 'react';
-import { Sword, RefreshCw, Home } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect } from 'react'
+import { Sword, RefreshCw, Home } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export default function CampaignError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+  error: Error & { digest?: string }
+  reset: () => void
+}): JSX.Element {
   useEffect(() => {
-    console.error('Campaign Error:', error);
-  }, [error]);
+    console.error('Campaign Error:', error)
+  }, [error])
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
@@ -25,8 +25,8 @@ export default function CampaignError({
         <div className="space-y-3">
           <h1 className="text-2xl font-bold text-white">Campaign Error</h1>
           <p className="text-slate-400 max-w-sm mx-auto">
-            Something went wrong loading this campaign. Your data is safe -
-            this is just a temporary issue.
+            Something went wrong loading this campaign. Your data is safe - this is just a
+            temporary issue.
           </p>
         </div>
 
@@ -35,31 +35,14 @@ export default function CampaignError({
             <RefreshCw className="w-4 h-4 mr-2" />
             Try Again
           </Button>
-          <Button onClick={() => window.location.href = '/dashboard'} variant="outline" size="lg">
+          <Button onClick={() => (window.location.href = '/dashboard')} variant="outline" size="lg">
             <Home className="w-4 h-4 mr-2" />
             All Campaigns
           </Button>
         </div>
 
-        {error.digest && (
-          <p className="text-xs text-slate-600">
-            Error ID: {error.digest}
-          </p>
-        )}
-
-        {process.env.NODE_ENV === 'development' && (
-          <details className="text-left mt-8">
-            <summary className="text-sm text-slate-500 cursor-pointer hover:text-slate-400">
-              Developer Details
-            </summary>
-            <pre className="mt-2 p-4 bg-slate-900 rounded-lg text-xs text-red-400 overflow-auto max-h-64">
-              {error.message}
-              {'\n\n'}
-              {error.stack}
-            </pre>
-          </details>
-        )}
+        {error.digest && <p className="text-xs text-slate-600">Error ID: {error.digest}</p>}
       </div>
     </div>
-  );
+  )
 }

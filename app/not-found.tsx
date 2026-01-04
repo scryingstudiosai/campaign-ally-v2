@@ -1,8 +1,8 @@
-import Link from 'next/link';
-import { Map, Home, Compass } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link'
+import { Map, Home, Compass } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
-export default function NotFound() {
+export default function NotFound(): JSX.Element {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
       <div className="max-w-lg w-full text-center space-y-8">
@@ -44,5 +44,5 @@ export default function NotFound() {
         </p>
       </div>
     </div>
-  );
+  )
 }

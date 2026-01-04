@@ -1,8 +1,8 @@
-import Link from 'next/link';
-import { ScrollText, Home, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link'
+import { ScrollText, Home, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
-export default function CampaignNotFound() {
+export default function CampaignNotFound(): JSX.Element {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
       <div className="max-w-lg w-full text-center space-y-8">
@@ -13,8 +13,8 @@ export default function CampaignNotFound() {
         <div className="space-y-3">
           <h1 className="text-2xl font-bold text-white">Campaign Not Found</h1>
           <p className="text-slate-400 max-w-sm mx-auto">
-            This campaign doesn&apos;t exist or you don&apos;t have access to it.
-            It may have been deleted or the link might be incorrect.
+            This campaign doesn&apos;t exist or you don&apos;t have access to it. It may have been
+            deleted or the link might be incorrect.
           </p>
         </div>
 
@@ -34,5 +34,5 @@ export default function CampaignNotFound() {
         </div>
       </div>
     </div>
-  );
+  )
 }

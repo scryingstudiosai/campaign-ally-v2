@@ -1,5 +1,5 @@
-import { notFound } from 'next/navigation';
+import { notFound } from 'next/navigation'
 
-export default function CatchAllNotFound() {
-  notFound();
+export default function CatchAllNotFound(): never {
+  notFound()
 }
