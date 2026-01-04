@@ -9,6 +9,7 @@ import {
   ContextSourceReference,
   StoryThreadContext,
 } from './types';
+import { describeRelationship } from '@/lib/relationships/types';
 
 interface CampaignMember {
   character_entity_id: string;
@@ -25,10 +26,20 @@ interface FactionReputation {
 }
 
 interface EntityRelationship {
-  relationship_type: string;
+  relationship_id: string;
+  direction: string;
+  related_entity_id: string;
+  related_entity_name: string;
+  related_entity_type: string;
+  category: string;
+  type_key: string | null;
+  descriptor: string | null;
   description: string | null;
-  source: { id: string; name: string; entity_type: string } | null;
-  target: { id: string; name: string; entity_type: string } | null;
+  strength: number;
+  volatility: number;
+  state: string;
+  visibility: string;
+  focal_entity_name?: string;
 }
 
 interface SessionEvent {
@@ -479,56 +490,76 @@ ${recentEvents}
       return { layer: 'relationships', content: '', tokens: 0, sources: [] };
     }
 
-    const { data: relationships } = await this.supabase
-      .from('entity_relationships')
-      .select(
-        `
-        relationship_type,
-        description,
-        source:source_entity_id (id, name, entity_type),
-        target:target_entity_id (id, name, entity_type)
-      `
-      )
-      .eq('campaign_id', campaignId)
-      .or(`source_entity_id.in.(${entityIds.join(',')}),target_entity_id.in.(${entityIds.join(',')})`)
-      .limit(15);
+    // Sort entities by relevance, take top 3 for graph traversal
+    const topEntityIds = entityIds.slice(0, 3);
 
-    if (!relationships?.length) {
+    const allRelationships: EntityRelationship[] = [];
+
+    for (const entityId of topEntityIds) {
+      const { data, error } = await this.supabase.rpc('get_entity_relationships', {
+        p_entity_id: entityId,
+        p_campaign_id: campaignId,
+        p_include_secrets: true, // DM sees all
+        p_limit: 20,
+      });
+
+      if (data && !error) {
+        // Get the entity name for context
+        const { data: entity } = await this.supabase
+          .from('entities')
+          .select('name')
+          .eq('id', entityId)
+          .single();
+
+        data.forEach((rel: EntityRelationship) => {
+          allRelationships.push({
+            ...rel,
+            focal_entity_name: entity?.name || 'Unknown',
+          });
+        });
+      }
+    }
+
+    if (allRelationships.length === 0) {
       return { layer: 'relationships', content: '', tokens: 0, sources: [] };
     }
 
-    const relLines = (relationships as EntityRelationship[]).map(
-      (r) =>
-        `- ${r.source?.name} → ${r.target?.name}: ${r.relationship_type}${r.description ? ` (${r.description})` : ''}`
-    );
+    // Dedupe by relationship_id
+    const seen = new Set<string>();
+    const uniqueRelationships = allRelationships.filter((r) => {
+      if (seen.has(r.relationship_id)) return false;
+      seen.add(r.relationship_id);
+      return true;
+    });
+
+    // Format for AI context with full nuance
+    const relLines = uniqueRelationships.map((r) => {
+      const desc = describeRelationship({
+        category: r.category,
+        descriptor: r.descriptor || undefined,
+        strength: r.strength,
+        volatility: r.volatility,
+        state: r.state,
+      });
+
+      const direction = r.direction === 'outgoing' ? '→' : '←';
+
+      return `- ${r.focal_entity_name} ${direction} ${r.related_entity_name} [${r.related_entity_type}]: ${desc}`;
+    });
 
     const content = `Entity Relationships:\n${relLines.join('\n')}`;
-
-    const sources: ContextSourceReference[] = [];
-    (relationships as EntityRelationship[]).forEach((r) => {
-      if (r.source)
-        sources.push({
-          id: r.source.id,
-          type: 'entity',
-          name: r.source.name,
-          entityType: r.source.entity_type,
-          relevance: 0.6,
-        });
-      if (r.target)
-        sources.push({
-          id: r.target.id,
-          type: 'entity',
-          name: r.target.name,
-          entityType: r.target.entity_type,
-          relevance: 0.6,
-        });
-    });
 
     return {
       layer: 'relationships',
       content,
       tokens: estimateTokens(content),
-      sources,
+      sources: uniqueRelationships.map((r) => ({
+        id: r.related_entity_id,
+        type: 'entity' as const,
+        name: r.related_entity_name,
+        entityType: r.related_entity_type,
+        relevance: r.strength / 5,
+      })),
     };
   }
 
