@@ -162,6 +162,7 @@ export function MentionableTextarea({
   const supabase = createClient()
 
   const editor = useEditor({
+    immediatelyRender: false, // Prevent SSR hydration mismatch
     extensions: [
       StarterKit.configure({
         // Disable features we don't need for a simple textarea
