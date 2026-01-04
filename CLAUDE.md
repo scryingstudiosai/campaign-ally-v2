@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Campaign Ally is an AI-powered campaign management tool designed specifically for D&D Dungeon Masters. It serves as an intelligent co-pilot that helps DMs organize, manage, and enhance their tabletop RPG campaigns.
+Campaign Ally is an AI-powered campaign management tool designed specifically for D&D Dungeon Masters. It serves as an intelligent ally that helps DMs organize, manage, and enhance their tabletop RPG campaigns.
 
 ### Core Purpose
 - Assist Dungeon Masters with campaign organization and management
