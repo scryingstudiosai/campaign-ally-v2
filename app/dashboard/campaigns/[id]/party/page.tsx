@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Users, Package, Shield,
-  RefreshCw, Loader2, Coins, Plus
+  RefreshCw, Loader2, Coins, Plus, Pencil
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import { TacticalProfile } from '@/components/party/TacticalProfile';
 import { ReputationMatrix } from '@/components/party/ReputationMatrix';
 import { PartyRoster } from '@/components/party/PartyRoster';
@@ -64,6 +66,8 @@ export default function PartyCommandCenter() {
   const [loading, setLoading] = useState(true);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0);
+  const [editingGold, setEditingGold] = useState(false);
+  const [goldValue, setGoldValue] = useState(0);
 
   useEffect(() => {
     loadPartyData();
@@ -118,7 +122,23 @@ export default function PartyCommandCenter() {
       .is('deleted_at', null);
 
     setFactions((factionData || []) as Faction[]);
+    setGoldValue(campaignData?.party_gold || 0);
     setLoading(false);
+  };
+
+  const saveGold = async () => {
+    const { error } = await supabase
+      .from('campaigns')
+      .update({ party_gold: goldValue })
+      .eq('id', campaignId);
+
+    if (!error) {
+      toast.success('Party gold updated');
+      setEditingGold(false);
+      loadPartyData();
+    } else {
+      toast.error('Failed to update gold');
+    }
   };
 
   if (loading) {
@@ -204,9 +224,41 @@ export default function PartyCommandCenter() {
                   {/* Party Gold */}
                   <div className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg mb-4">
                     <span className="text-zinc-400">Party Treasury</span>
-                    <span className="text-xl font-bold text-amber-400">
-                      {campaign?.party_gold || 0} gp
-                    </span>
+                    {editingGold ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={goldValue}
+                          onChange={(e) => setGoldValue(parseInt(e.target.value) || 0)}
+                          className="w-28 h-8 bg-zinc-700 border-zinc-600"
+                        />
+                        <span className="text-zinc-400">gp</span>
+                        <Button size="sm" onClick={saveGold} className="bg-teal-600 hover:bg-teal-500 h-8">
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8"
+                          onClick={() => {
+                            setEditingGold(false);
+                            setGoldValue(campaign?.party_gold || 0);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <div
+                        className="flex items-center gap-2 cursor-pointer hover:bg-zinc-700 px-2 py-1 rounded transition-colors"
+                        onClick={() => setEditingGold(true)}
+                      >
+                        <span className="text-xl font-bold text-amber-400">
+                          {campaign?.party_gold || 0} gp
+                        </span>
+                        <Pencil className="h-4 w-4 text-zinc-500" />
+                      </div>
+                    )}
                   </div>
 
                   {/* Party Inventory */}

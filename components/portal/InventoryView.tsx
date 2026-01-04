@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, Search, Plus } from 'lucide-react';
+import { Package, Search, Plus, Scale } from 'lucide-react';
 import { InventoryItem } from './InventoryItem';
 import { ItemDetailSheet } from './ItemDetailSheet';
-import { CurrencyDisplay } from './CurrencyDisplay';
+import { CurrencyDisplay, type Currency } from './CurrencyDisplay';
 import { PartyStash } from './PartyStash';
 import { LootRevealModal } from './LootRevealModal';
 import { useRealtimeInventory } from '@/hooks/useRealtimeInventory';
@@ -44,6 +44,7 @@ export interface InventoryItemData {
   is_identified: boolean;
   notes: string | null;
   acquired_from: string | null;
+  custom_name: string | null;
   srd_item: SrdItem | null;
   custom_item: CustomItem | null;
 }
@@ -51,6 +52,7 @@ export interface InventoryItemData {
 export interface StashItemData {
   id: string;
   quantity: number;
+  custom_name: string | null;
   srd_item: { id: string; name: string; item_type: string | null; rarity: string | null } | null;
   custom_item: { id: string; name: string; image_url: string | null } | null;
 }
@@ -58,30 +60,41 @@ export interface StashItemData {
 interface Props {
   items: InventoryItemData[];
   partyStash: StashItemData[];
-  currency: {
-    gold?: number;
-    silver?: number;
-    copper?: number;
-  };
+  currency: Currency;
+  maxCarryWeight?: number;  // STR × 15
   characterId: string;
   campaignId: string;
 }
 
-export function InventoryView({ items, partyStash, currency, characterId, campaignId }: Props) {
+export function InventoryView({ items, partyStash, currency, maxCarryWeight = 150, characterId, campaignId }: Props) {
   const router = useRouter();
   const [selectedItem, setSelectedItem] = useState<InventoryItemData | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'equipped' | 'bag'>('all');
   const [stashItems, setStashItems] = useState(partyStash);
   const [showAddItem, setShowAddItem] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState(items);
+
+  // Calculate total carry weight
+  const totalWeight = useMemo(() => {
+    return inventoryItems.reduce((sum, item) => {
+      const weight = item.srd_item?.weight || 0;
+      const quantity = item.quantity || 1;
+      return sum + (weight * quantity);
+    }, 0);
+  }, [inventoryItems]);
+
+  const isEncumbered = totalWeight > maxCarryWeight;
 
   // Sync stash items when props change (from router.refresh())
   useEffect(() => {
     setStashItems(partyStash);
   }, [partyStash]);
 
-  // Use items directly from props - they're refreshed by router.refresh()
-  const inventoryItems = items;
+  // Sync inventory items when props change (from router.refresh())
+  useEffect(() => {
+    setInventoryItems(items);
+  }, [items]);
 
   const { newLoot, clearNewLoot } = useRealtimeInventory({
     campaignId,
@@ -118,6 +131,10 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
     setStashItems(prev => prev.filter(i => i.id !== itemId));
   };
 
+  const handleDeleteItem = (itemId: string) => {
+    setInventoryItems(prev => prev.filter(i => i.id !== itemId));
+  };
+
   return (
     <div className="p-4 space-y-4 pb-24">
       {/* Header */}
@@ -138,6 +155,17 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
           </Button>
           <CurrencyDisplay currency={currency} />
         </div>
+      </div>
+
+      {/* Carry Weight */}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/50 border border-white/10">
+        <Scale className={`w-4 h-4 ${isEncumbered ? 'text-red-400' : 'text-slate-400'}`} />
+        <span className={`text-sm ${isEncumbered ? 'text-red-400 font-medium' : 'text-slate-300'}`}>
+          {totalWeight.toFixed(1)} / {maxCarryWeight} lb
+        </span>
+        {isEncumbered && (
+          <span className="text-xs text-red-400 ml-1">(Encumbered!)</span>
+        )}
       </div>
 
       {/* Party Stash */}
@@ -224,6 +252,9 @@ export function InventoryView({ items, partyStash, currency, characterId, campai
       <ItemDetailSheet
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+        characterId={characterId}
+        campaignId={campaignId}
+        onDelete={handleDeleteItem}
       />
 
       {/* Loot Reveal Modal */}

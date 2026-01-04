@@ -30,7 +30,31 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
     redirect(`/portal/${campaignId}`);
   }
 
-  // 3. Fetch ALL items from inventory_instances table
+  // 3. Fetch character entity to get gold and ability scores from soul
+  const { data: character } = await supabase
+    .from('entities')
+    .select('soul')
+    .eq('id', membership.character_entity_id)
+    .single();
+
+  // Get currency from soul
+  const soul = character?.soul as Record<string, unknown> | null;
+  const soulCurrency = soul?.currency as Record<string, number> | undefined;
+
+  // Support new currency object or legacy gold field
+  const characterCurrency = {
+    pp: soulCurrency?.pp ?? 0,
+    gp: soulCurrency?.gp ?? (soul?.gold as number) ?? (soul?.loadout as Record<string, unknown>)?.gold as number ?? 0,
+    sp: soulCurrency?.sp ?? 0,
+    cp: soulCurrency?.cp ?? 0,
+  };
+
+  // Calculate max carry weight from STR (STR × 15)
+  const abilityScores = soul?.ability_scores as Record<string, number> | undefined;
+  const strength = abilityScores?.str ?? abilityScores?.strength ?? 10;
+  const maxCarryWeight = strength * 15;
+
+  // 4. Fetch ALL items from inventory_instances table
   // Items are inserted here during character creation and when added later
   const { data: inventoryItems } = await supabase
     .from('inventory_instances')
@@ -44,6 +68,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
       is_identified,
       notes,
       acquired_from,
+      custom_name,
       srd_item:srd_items!srd_item_id (
         id, name, item_type, subtype, rarity,
         description, mechanics, value_gp, weight,
@@ -61,15 +86,16 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
   // Normalize inventory items (handle array vs single object from Supabase)
   const normalizedInventoryItems: InventoryItemData[] = (inventoryItems || []).map(item => ({
     ...item,
+    custom_name: item.custom_name || null,
     srd_item: Array.isArray(item.srd_item) ? item.srd_item[0] || null : item.srd_item,
     custom_item: Array.isArray(item.custom_item) ? item.custom_item[0] || null : item.custom_item,
   }));
 
-  // 4. Fetch Party Stash
+  // 5. Fetch Party Stash
   const { data: partyStash } = await supabase
     .from('inventory_instances')
     .select(`
-      id, quantity,
+      id, quantity, custom_name,
       srd_item:srd_items!srd_item_id (id, name, item_type, rarity),
       custom_item:entities!custom_entity_id (id, name, image_url)
     `)
@@ -79,33 +105,20 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
   // Normalize stash items
   const normalizedStash: StashItemData[] = (partyStash || []).map(item => ({
     ...item,
+    custom_name: item.custom_name || null,
     srd_item: Array.isArray(item.srd_item) ? item.srd_item[0] || null : item.srd_item,
     custom_item: Array.isArray(item.custom_item) ? item.custom_item[0] || null : item.custom_item,
   }));
 
-  // 5. Get currency - check for gold item in inventory
-  const goldItem = normalizedInventoryItems.find(item =>
-    item.srd_item?.name?.toLowerCase() === 'gold pieces' ||
-    item.custom_item?.name?.toLowerCase() === 'gold pieces'
-  );
-
-  const currency = {
-    gold: goldItem?.quantity || 0,
-    silver: 0,
-    copper: 0,
-  };
-
-  // Filter out gold from regular items display
-  const displayItems = normalizedInventoryItems.filter(item =>
-    item.srd_item?.name?.toLowerCase() !== 'gold pieces' &&
-    item.custom_item?.name?.toLowerCase() !== 'gold pieces'
-  );
+  // Use all items for display
+  const displayItems = normalizedInventoryItems;
 
   return (
     <InventoryView
       items={displayItems}
       partyStash={normalizedStash}
-      currency={currency}
+      currency={characterCurrency}
+      maxCarryWeight={maxCarryWeight}
       characterId={membership.character_entity_id}
       campaignId={campaignId}
     />

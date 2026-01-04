@@ -23,6 +23,8 @@ import {
   Globe,
   MessageSquare,
   UserPlus,
+  ClipboardList,
+  BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -59,6 +61,9 @@ function SidebarContent({
 
   const NAV_ITEMS = [
     { label: 'Overview', href: baseUrl, icon: LayoutDashboard, exact: true },
+    { label: 'AI Co-Pilot', href: `${baseUrl}/copilot`, icon: Sparkles, special: 'copilot' },
+    { label: 'Session Prep', href: `${baseUrl}/prep`, icon: ClipboardList, special: 'prep' },
+    { label: 'Chronicle', href: `${baseUrl}/chronicle`, icon: BookOpen, special: 'chronicle' },
     { label: 'Memory', href: `${baseUrl}/memory`, icon: Brain },
     { label: 'Atlas', href: `${baseUrl}/atlas`, icon: Globe },
     { label: 'Codex', href: `${baseUrl}/codex`, icon: Book },
@@ -115,6 +120,9 @@ function SidebarContent({
             {NAV_ITEMS.map((item) => {
               const active = isActive(item.href, item.exact)
               const hasBadge = 'badge' in item && typeof item.badge === 'number' && item.badge > 0
+              const isCopilot = 'special' in item && item.special === 'copilot'
+              const isPrep = 'special' in item && item.special === 'prep'
+              const isChronicle = 'special' in item && item.special === 'chronicle'
               return (
                 <StaggerItem key={item.href}>
                   <HoverScale scale={1.02}>
@@ -124,12 +132,29 @@ function SidebarContent({
                       className={cn(
                         'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors relative',
                         active
-                          ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
-                          : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
+                          ? isCopilot
+                            ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                            : isPrep
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : isChronicle
+                                ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
+                                : 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
+                          : isCopilot
+                            ? 'text-purple-400/80 hover:text-purple-300 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/20'
+                            : isPrep
+                              ? 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20'
+                              : isChronicle
+                                ? 'text-teal-400/80 hover:text-teal-300 hover:bg-teal-500/10 border border-transparent hover:border-teal-500/20'
+                                : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
                       )}
                     >
                       <div className="relative">
-                        <item.icon className="w-4 h-4 flex-shrink-0" />
+                        <item.icon className={cn(
+                          'w-4 h-4 flex-shrink-0',
+                          isCopilot && !active && 'text-purple-400',
+                          isPrep && !active && 'text-amber-400',
+                          isChronicle && !active && 'text-teal-400'
+                        )} />
                         {hasBadge && <NotificationBadge count={item.badge} className="-top-1.5 -right-1.5" />}
                       </div>
                       <span className="flex-1">{item.label}</span>

@@ -48,7 +48,8 @@ export function InventoryItem({ item, onClick }: Props) {
   const srd = item.srd_item;
   const custom = item.custom_item;
 
-  const name = srd?.name || custom?.name || 'Unknown Item';
+  // Check SRD item, then custom entity, then custom_name field (for loot items)
+  const name = srd?.name || custom?.name || item.custom_name || 'Unknown Item';
   const itemType = srd?.item_type || custom?.sub_type || 'Item';
   const rarity = srd?.rarity?.toLowerCase() || 'common';
   const imageUrl = custom?.image_url;
@@ -84,10 +85,17 @@ export function InventoryItem({ item, onClick }: Props) {
               <span className="text-sm text-slate-400">×{item.quantity}</span>
             )}
           </div>
-          <p className={cn("text-sm truncate", rarityTextColors[rarity] || 'text-slate-500')}>
-            {rarity !== 'common' && `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} `}
-            {itemType}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className={cn("text-sm truncate", rarityTextColors[rarity] || 'text-slate-500')}>
+              {rarity !== 'common' && `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} `}
+              {itemType}
+            </p>
+            {srd?.weight && (
+              <span className="text-xs text-slate-500">
+                • {(srd.weight * (item.quantity || 1)).toFixed(1)} lb
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Status Badges */}

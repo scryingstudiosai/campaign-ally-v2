@@ -26,6 +26,10 @@ import {
   Package,
   User,
 } from 'lucide-react'
+import {
+  CATEGORY_COLORS,
+  getRelationshipLineStyle,
+} from '@/lib/relationships/types'
 
 // Types
 interface Entity {
@@ -46,6 +50,13 @@ interface Relationship {
   relationship_type: string
   description?: string
   visibility?: 'public' | 'dm_only' | 'revealable'
+  // New Sprint 7 fields
+  category?: string
+  type_key?: string
+  descriptor?: string
+  strength?: number
+  volatility?: number
+  state?: string
 }
 
 interface GraphNode {
@@ -78,6 +89,15 @@ interface GraphLink {
   visibility?: 'public' | 'dm_only' | 'revealable'
   isSecret: boolean // Derived from visibility === 'dm_only'
   color: string
+  // New Sprint 7 styling fields
+  category: string
+  descriptor?: string
+  strength: number
+  volatility: number
+  state: string
+  strokeWidth: number
+  dashArray: number[] | null
+  opacity: number
 }
 
 interface SpiderwebGraphProps {
@@ -324,20 +344,106 @@ export function SpiderwebGraph({
 
     const links: GraphLink[] = visibleRelationships.map(rel => {
       const isSecret = rel.visibility === 'dm_only' || rel.visibility === 'revealable'
+
+      // Get category (with fallback to mapping old relationship_type)
+      const category = rel.category || mapOldTypeToCategory(rel.relationship_type) || 'other'
+
+      // Get styling from new Sprint 7 fields
+      const lineStyle = getRelationshipLineStyle(
+        rel.strength ?? 3,
+        rel.volatility ?? 3,
+        rel.state ?? 'active'
+      )
+
+      // Get color from category
+      const categoryColors = CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS]
+      const color = categoryColors?.line || '#6b7280'
+
       return {
         id: rel.id,
         source: rel.source_id,
         target: rel.target_id,
-        relationshipType: rel.relationship_type || 'unknown',
+        relationshipType: rel.descriptor || rel.type_key || rel.relationship_type || 'unknown',
         description: rel.description,
         visibility: rel.visibility,
         isSecret,
-        color: isSecret ? '#fbbf24' : '#ffffff',
+        color: isSecret ? '#fbbf24' : color, // Secret relationships stay amber
+        // New styling fields
+        category,
+        descriptor: rel.descriptor,
+        strength: rel.strength ?? 3,
+        volatility: rel.volatility ?? 3,
+        state: rel.state ?? 'active',
+        strokeWidth: lineStyle.strokeWidth,
+        dashArray: lineStyle.strokeDasharray ? lineStyle.strokeDasharray.split(',').map(Number) : null,
+        opacity: lineStyle.opacity,
       }
     })
 
     return { nodes, links }
   }, [entities, relationships, selectedTypes, searchHighlightedNodes, showSecrets])
+
+  // Map old relationship types to new categories (fallback for legacy data)
+  function mapOldTypeToCategory(oldType?: string): string {
+    if (!oldType) return 'other'
+
+    const typeMap: Record<string, string> = {
+      // Alliance
+      'friend': 'alliance',
+      'ally': 'alliance',
+      'lover': 'alliance',
+      'patron': 'alliance',
+      'protector': 'alliance',
+      'client': 'alliance',
+      'ward': 'alliance',
+
+      // Conflict
+      'enemy': 'conflict',
+      'rival': 'conflict',
+      'nemesis': 'conflict',
+      'opposes': 'conflict',
+      'hunter': 'conflict',
+      'prey': 'conflict',
+      'betrayer': 'conflict',
+      'betrayed': 'conflict',
+
+      // Kinship
+      'parent': 'kinship',
+      'child': 'kinship',
+      'sibling': 'kinship',
+      'spouse': 'kinship',
+      'creator': 'kinship',
+      'creation': 'kinship',
+      'ancestor': 'kinship',
+      'descendant': 'kinship',
+
+      // Organization
+      'leader': 'organization',
+      'follower': 'organization',
+      'member': 'organization',
+      'member_of': 'organization',
+      'boss': 'organization',
+      'employee': 'organization',
+      'mentor': 'organization',
+      'student': 'organization',
+      'partner': 'organization',
+
+      // Geography
+      'located_in': 'geography',
+      'contains': 'geography',
+      'controls': 'geography',
+      'controlled_by': 'geography',
+      'borders': 'geography',
+
+      // Other
+      'knows': 'other',
+      'connected': 'other',
+      'owes_debt': 'other',
+      'owed_by': 'other',
+    }
+
+    return typeMap[oldType.toLowerCase()] || 'other'
+  }
 
   // Node canvas rendering - hide labels by default, show on hover
   const paintNode = useCallback((node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
@@ -418,7 +524,7 @@ export function SpiderwebGraph({
     }
   }, [hoveredNode, connectedNodes, searchHighlightedNodes])
 
-  // Link canvas rendering - show prominently on hover
+  // Link canvas rendering - uses Sprint 7 styling fields
   const paintLink = useCallback((link: GraphLink, ctx: CanvasRenderingContext2D, globalScale: number) => {
     const source = link.source as GraphNode
     const target = link.target as GraphNode
@@ -436,27 +542,40 @@ export function SpiderwebGraph({
     ctx.lineTo(target.x, target.y)
 
     if (isHighlighted) {
-      // Bright, visible line for highlighted relationships
+      // Bright, visible line for highlighted relationships - use Sprint 7 styling
       if (link.isSecret) {
         ctx.setLineDash([5 / globalScale, 5 / globalScale])
         ctx.strokeStyle = '#fbbf24'
       } else {
-        ctx.setLineDash([])
-        ctx.strokeStyle = link.color || '#ffffff'
+        // Use volatility-based dash pattern
+        if (link.dashArray) {
+          ctx.setLineDash(link.dashArray.map(d => d / globalScale))
+        } else {
+          ctx.setLineDash([])
+        }
+        ctx.strokeStyle = link.color
       }
-      ctx.lineWidth = 2.5 / globalScale
+      // Use strength-based line width (boosted when highlighted)
+      ctx.lineWidth = Math.max(2, link.strokeWidth * 1.5) / globalScale
       ctx.globalAlpha = 1
     } else if (!hoveredNode) {
-      // Subtle lines when nothing is hovered
+      // Subtle lines when nothing is hovered - still show category colors
       if (link.isSecret) {
         ctx.setLineDash([5 / globalScale, 5 / globalScale])
         ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)'
       } else {
-        ctx.setLineDash([])
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
+        // Use volatility-based dash pattern even when not highlighted
+        if (link.dashArray) {
+          ctx.setLineDash(link.dashArray.map(d => d / globalScale))
+        } else {
+          ctx.setLineDash([])
+        }
+        // Use category color with reduced opacity
+        ctx.strokeStyle = link.color
       }
-      ctx.lineWidth = 0.5 / globalScale
-      ctx.globalAlpha = 1
+      // Use strength-based line width
+      ctx.lineWidth = link.strokeWidth / globalScale
+      ctx.globalAlpha = link.opacity * 0.4 // Dimmed but visible
     } else {
       // Very dim when hovering but not connected
       ctx.setLineDash([])
@@ -824,8 +943,8 @@ export function SpiderwebGraph({
 
       {/* Legend */}
       <div className="absolute bottom-20 right-4 z-10">
-        <Card className="p-3 bg-stone-900/90 border-stone-700">
-          <div className="text-xs font-medium text-stone-400 mb-2">Legend</div>
+        <Card className="p-3 bg-stone-900/90 border-stone-700 max-h-[400px] overflow-y-auto">
+          <div className="text-xs font-medium text-stone-400 mb-2">Entity Types</div>
           <div className="space-y-1.5">
             {availableTypes.slice(0, 6).map(type => {
               const colorConfig = ENTITY_COLORS[type] || ENTITY_COLORS.npc
@@ -839,15 +958,41 @@ export function SpiderwebGraph({
                 </div>
               )
             })}
-            <div className="pt-2 border-t border-stone-700 mt-2 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 bg-white/30" />
-                <span className="text-xs text-stone-400">Relationship</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 border-t-2 border-dashed border-amber-400/60" />
-                <span className="text-xs text-stone-400">DM Only</span>
-              </div>
+          </div>
+
+          {/* Relationship Categories */}
+          <div className="pt-2 border-t border-stone-700 mt-2">
+            <div className="text-xs font-medium text-stone-400 mb-1.5">Relationships</div>
+            <div className="space-y-1">
+              {Object.entries(CATEGORY_COLORS).map(([category, colors]) => (
+                <div key={category} className="flex items-center gap-2">
+                  <div
+                    className="w-4 h-0.5"
+                    style={{ backgroundColor: colors.line }}
+                  />
+                  <span className="text-xs text-stone-300 capitalize">{category}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Line Styles */}
+          <div className="pt-2 border-t border-stone-700 mt-2 space-y-1">
+            <div className="text-xs font-medium text-stone-400 mb-1">Line Styles</div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 bg-stone-400" />
+              <span className="text-xs text-stone-500">Solid = Stable</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 border-t-2 border-dashed border-stone-400" />
+              <span className="text-xs text-stone-500">Dashed = Volatile</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 border-t-2 border-dashed border-amber-400" />
+              <span className="text-xs text-stone-500">🔒 DM Only</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-stone-600 italic">Thickness = Strength</span>
             </div>
           </div>
         </Card>

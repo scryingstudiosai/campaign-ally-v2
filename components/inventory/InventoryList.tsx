@@ -205,7 +205,8 @@ function InventoryItemRow({
 }: InventoryItemRowProps): JSX.Element {
   // Resolve item data from either SRD or custom entity
   const itemData = item.srd_item || item.custom_entity;
-  const name = itemData?.name || 'Unknown Item';
+  // Check SRD item name, then custom entity name, then custom_name field (for loot items)
+  const name = itemData?.name || item.custom_name || 'Unknown Item';
   const rarity = item.srd_item?.rarity?.toLowerCase() || 'common';
   const itemType = item.srd_item?.item_type || item.custom_entity?.sub_type || 'item';
   const mechanics = item.srd_item?.mechanics || item.custom_entity?.mechanics || {};

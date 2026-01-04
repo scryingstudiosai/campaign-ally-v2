@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card'
 import { EntityCard, Entity } from '@/components/memory/entity-card'
 import { EntityListItem, EntityListHeader } from '@/components/memory/entity-list-item'
 import { EntityFiltersBar, EntityFilters } from '@/components/memory/entity-filters'
-import { SpiderwebGraph } from '@/components/memory/SpiderwebGraph'
+import { SpiderwebGraphWrapper as SpiderwebGraph } from '@/components/memory/SpiderwebWrapper'
 import {
   AlertDialog,
   AlertDialogAction,
