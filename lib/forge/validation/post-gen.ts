@@ -135,25 +135,119 @@ export async function scanGeneratedContent(
     return true
   })
 
+  // Apply additional filtering for generic patterns
+  const qualityFiltered = filterGenericDiscoveries(filteredDiscoveries)
+  console.log(`Filtered ${filteredDiscoveries.length - qualityFiltered.length} generic discoveries`)
+
+  // Apply quantity limits per type
+  const limitedDiscoveries = limitDiscoveriesByType(qualityFiltered)
+  console.log(`Limited to ${limitedDiscoveries.length} discoveries (from ${qualityFiltered.length})`)
+
   // Calculate canon score based on how well the content fits existing lore
   const canonScore = calculateCanonScore(
-    filteredDiscoveries.length,
+    limitedDiscoveries.length,
     existingEntityMentions.length
   )
 
   // DEBUG: Final results
   console.log('=== SCANNER RESULTS ===')
-  console.log('discoveries before self-filter:', discoveries.map(d => ({ text: d.text, type: d.suggestedType })))
-  console.log('discoveries after self-filter:', filteredDiscoveries.map(d => ({ text: d.text, type: d.suggestedType })))
+  console.log('discoveries before filtering:', discoveries.length)
+  console.log('discoveries after self-filter:', filteredDiscoveries.length)
+  console.log('discoveries after quality filter:', qualityFiltered.length)
+  console.log('discoveries after limits:', limitedDiscoveries.length)
+  console.log('final discoveries:', limitedDiscoveries.map(d => ({ text: d.text, type: d.suggestedType })))
   console.log('existingEntityMentions:', existingEntityMentions.map(e => e.name))
   console.log('canonScore:', canonScore)
 
   return {
-    discoveries: filteredDiscoveries,
+    discoveries: limitedDiscoveries,
     conflicts: [], // Post-gen conflicts can be added later
     canonScore,
     existingEntityMentions,
   }
+}
+
+/**
+ * Filter out generic/low-quality discoveries
+ */
+function filterGenericDiscoveries(discoveries: Discovery[]): Discovery[] {
+  // Patterns that indicate generic/non-specific terms
+  const genericPatterns = [
+    /^the\s+(leader|enemy|guard|merchant|soldier|commander|captain)/i,
+    /^(a|an)\s+\w+$/i, // "a wizard", "an elf" - too generic
+    /^the\s+\w+$/i, // "the dungeon", "the forest" - needs more specificity
+    /^(some|many|few|several)\s+/i, // "some guards", "many soldiers"
+  ]
+
+  return discoveries.filter(d => {
+    const text = d.text.trim()
+
+    // Filter out very short names (likely generic)
+    if (text.length < 4) {
+      console.log(`Filtering short discovery: "${text}"`)
+      return false
+    }
+
+    // Filter out generic patterns
+    if (genericPatterns.some(pattern => pattern.test(text))) {
+      console.log(`Filtering generic pattern: "${text}"`)
+      return false
+    }
+
+    // Filter out single common words
+    const singleWordGeneric = [
+      'guards', 'soldiers', 'mercenaries', 'bandits', 'villagers',
+      'townsfolk', 'citizens', 'people', 'council', 'party',
+    ]
+    if (singleWordGeneric.includes(text.toLowerCase())) {
+      console.log(`Filtering generic word: "${text}"`)
+      return false
+    }
+
+    return true
+  })
+}
+
+/**
+ * Limit discoveries by type to prevent overwhelming the user
+ */
+function limitDiscoveriesByType(discoveries: Discovery[]): Discovery[] {
+  const limits: Record<string, number> = {
+    npc: 7,
+    location: 4,
+    faction: 3,
+    item: 3,
+    creature: 3,
+    quest: 2,
+    encounter: 2,
+    other: 3,
+  }
+
+  const result: Discovery[] = []
+  const counts: Record<string, number> = {}
+
+  // Sort by text length (longer = more specific = higher priority)
+  const sorted = [...discoveries].sort((a, b) => b.text.length - a.text.length)
+
+  for (const d of sorted) {
+    const type = d.suggestedType || 'other'
+    counts[type] = (counts[type] || 0) + 1
+
+    const limit = limits[type] || 5
+    if (counts[type] <= limit) {
+      result.push(d)
+    } else {
+      console.log(`Limiting ${type}: skipping "${d.text}" (${counts[type]} > ${limit})`)
+    }
+  }
+
+  // Total cap of 15 discoveries
+  if (result.length > 15) {
+    console.log(`Applying total cap: ${result.length} -> 15`)
+    return result.slice(0, 15)
+  }
+
+  return result
 }
 
 function calculateCanonScore(

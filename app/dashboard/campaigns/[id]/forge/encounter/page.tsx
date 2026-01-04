@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { useForge } from '@/hooks/useForge'
@@ -81,6 +82,13 @@ const ENCOUNTER_CONFIG: Record<
 export default function EncounterForgePage({ params }: PageProps) {
   const campaignId = params.id
   const supabase = createClient()
+  const searchParams = useSearchParams()
+
+  // Pre-populate from URL params (from location card)
+  const prePopulateLocationId = searchParams.get('locationId') || ''
+  const prePopulateLocationName = searchParams.get('locationName') || ''
+  const prePopulateEncounterName = searchParams.get('encounterName') || ''
+  const prePopulateEncounterCR = searchParams.get('encounterCR') || ''
 
   // Form state
   const [encounterType, setEncounterType] = useState<EncounterSubType>('combat')
@@ -91,6 +99,29 @@ export default function EncounterForgePage({ params }: PageProps) {
   const [partySize, setPartySize] = useState<number>(4)
   const [partyLevel, setPartyLevel] = useState<string>('')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [prePopulated, setPrePopulated] = useState(false)
+
+  // Pre-populate from URL params on mount
+  useEffect(() => {
+    if (!prePopulated && (prePopulateLocationId || prePopulateEncounterName)) {
+      if (prePopulateLocationId) {
+        setLocationId(prePopulateLocationId)
+      }
+      if (prePopulateEncounterName) {
+        setName(prePopulateEncounterName)
+        // Build a concept from the encounter info
+        let conceptText = `${prePopulateEncounterName}`
+        if (prePopulateLocationName) {
+          conceptText += ` at ${prePopulateLocationName}`
+        }
+        if (prePopulateEncounterCR) {
+          conceptText += ` (CR ${prePopulateEncounterCR})`
+        }
+        setConcept(conceptText)
+      }
+      setPrePopulated(true)
+    }
+  }, [prePopulateLocationId, prePopulateLocationName, prePopulateEncounterName, prePopulateEncounterCR, prePopulated])
 
   // Forge hook
   const forge = useForge<EncounterInputData, GeneratedEncounter>({
@@ -524,17 +555,19 @@ export default function EncounterForgePage({ params }: PageProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No location</SelectItem>
-                {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={loc.id}>
-                    <span className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-teal-400" />
-                      {loc.name}
-                      {loc.sub_type && (
-                        <span className="text-xs text-slate-500">({loc.sub_type})</span>
-                      )}
-                    </span>
-                  </SelectItem>
-                ))}
+                {locations
+                  .filter((loc) => loc.id)
+                  .map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      <span className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-teal-400" />
+                        {loc.name}
+                        {loc.sub_type && (
+                          <span className="text-xs text-slate-500">({loc.sub_type})</span>
+                        )}
+                      </span>
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-slate-500">

@@ -1,0 +1,239 @@
+'use client';
+
+import { Editor } from '@tiptap/react';
+import {
+  Bold, Italic, Heading1, Heading2, List, ListOrdered,
+  Quote, BookOpen, Undo, Redo, Minus, Plus,
+  Clapperboard, Swords, Flag, StickyNote, Type, HelpCircle
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
+
+export type FontSize = 'sm' | 'md' | 'lg';
+
+interface EditorToolbarProps {
+  editor: Editor | null;
+  fontSize?: FontSize;
+  onFontSizeChange?: (size: FontSize) => void;
+  onHelpClick?: () => void;
+}
+
+export function EditorToolbar({ editor, fontSize = 'md', onFontSizeChange, onHelpClick }: EditorToolbarProps) {
+  if (!editor) return null;
+
+  const ToolbarButton = ({
+    onClick,
+    isActive,
+    icon: Icon,
+    title
+  }: {
+    onClick: () => void;
+    isActive?: boolean;
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+  }) => (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={onClick}
+      className={`h-8 w-8 p-0 ${isActive ? 'bg-slate-700 text-teal-400' : 'text-slate-400 hover:text-slate-200'}`}
+      title={title}
+    >
+      <Icon className="h-4 w-4" />
+    </Button>
+  );
+
+  return (
+    <div className="flex items-center gap-1 p-2 border-b border-slate-700 bg-slate-800/50 rounded-t-lg flex-wrap">
+      {/* Text Formatting */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        isActive={editor.isActive('bold')}
+        icon={Bold}
+        title="Bold (Ctrl+B)"
+      />
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        isActive={editor.isActive('italic')}
+        icon={Italic}
+        title="Italic (Ctrl+I)"
+      />
+
+      <div className="w-px h-6 bg-slate-700 mx-1" />
+
+      {/* Headings */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        isActive={editor.isActive('heading', { level: 1 })}
+        icon={Heading1}
+        title="Heading 1"
+      />
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        isActive={editor.isActive('heading', { level: 2 })}
+        icon={Heading2}
+        title="Heading 2"
+      />
+
+      <div className="w-px h-6 bg-slate-700 mx-1" />
+
+      {/* Lists */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        isActive={editor.isActive('bulletList')}
+        icon={List}
+        title="Bullet List"
+      />
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        isActive={editor.isActive('orderedList')}
+        icon={ListOrdered}
+        title="Numbered List"
+      />
+
+      <div className="w-px h-6 bg-slate-700 mx-1" />
+
+      {/* Block Elements */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        isActive={editor.isActive('blockquote')}
+        icon={Quote}
+        title="Quote"
+      />
+      <ToolbarButton
+        onClick={() => editor.chain().focus().setHorizontalRule().run()}
+        icon={Minus}
+        title="Horizontal Rule"
+      />
+
+      {/* Read Aloud Button - Special styling */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => editor.chain().focus().toggleWrap('readAloud').run()}
+        className={`ml-2 h-8 px-3 border-teal-700 ${
+          editor.isActive('readAloud')
+            ? 'bg-teal-900/50 text-teal-300'
+            : 'text-teal-400 hover:bg-teal-900/30'
+        }`}
+        title="Read Aloud Block (Ctrl+Shift+R)"
+      >
+        <BookOpen className="h-4 w-4 mr-1" />
+        Read Aloud
+      </Button>
+
+      {/* Insert Block Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="ml-2 h-8 px-3 border-slate-600 text-slate-300 hover:bg-slate-700"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Block
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="bg-slate-900 border-slate-700">
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().insertSceneBlock().run()}
+            className="gap-2"
+          >
+            <Clapperboard className="h-4 w-4 text-blue-400" />
+            <span>Scene</span>
+            <span className="ml-auto text-xs text-slate-500">Roleplay / Exploration</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().insertEncounterBlock().run()}
+            className="gap-2"
+          >
+            <Swords className="h-4 w-4 text-orange-400" />
+            <span>Encounter</span>
+            <span className="ml-auto text-xs text-slate-500">Combat</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().insertQuestBlock().run()}
+            className="gap-2"
+          >
+            <Flag className="h-4 w-4 text-purple-400" />
+            <span>Quest</span>
+            <span className="ml-auto text-xs text-slate-500">Objectives</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="bg-slate-700" />
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().insertNoteBlock().run()}
+            className="gap-2"
+          >
+            <StickyNote className="h-4 w-4 text-slate-400" />
+            <span>Note</span>
+            <span className="ml-auto text-xs text-slate-500">DM Notes</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <div className="flex-1" />
+
+      {/* Font Size Toggle */}
+      {onFontSizeChange && (
+        <div className="flex items-center gap-1 border-l border-slate-700 pl-2 ml-2">
+          <Type className="h-4 w-4 text-slate-400" />
+          <div className="flex">
+            {(['sm', 'md', 'lg'] as const).map((size) => (
+              <button
+                key={size}
+                onClick={() => onFontSizeChange(size)}
+                className={cn(
+                  'h-7 w-7 text-xs font-medium rounded transition-colors',
+                  fontSize === size
+                    ? 'bg-slate-700 text-teal-400'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                )}
+                title={`Font size: ${size === 'sm' ? 'Small' : size === 'md' ? 'Medium' : 'Large'}`}
+              >
+                {size === 'sm' ? 'S' : size === 'md' ? 'M' : 'L'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="w-px h-6 bg-slate-700 mx-1" />
+
+      {/* Undo/Redo */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().undo().run()}
+        icon={Undo}
+        title="Undo (Ctrl+Z)"
+      />
+      <ToolbarButton
+        onClick={() => editor.chain().focus().redo().run()}
+        icon={Redo}
+        title="Redo (Ctrl+Y)"
+      />
+
+      {/* Help Button */}
+      {onHelpClick && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onHelpClick}
+          className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 ml-1"
+          title="Help"
+        >
+          <HelpCircle className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}

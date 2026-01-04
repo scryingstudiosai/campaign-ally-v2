@@ -1,8 +1,8 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Target, Swords, Lock, AlertTriangle, Zap, Scale, Key } from 'lucide-react'
 import type { EncounterBrain } from '@/types/living-entity'
+import { MaterialCard } from '@/components/ui/material-card'
 
 interface EncounterBrainCardProps {
   brain: EncounterBrain
@@ -15,19 +15,21 @@ export function EncounterBrainCard({ brain, subType }: EncounterBrainCardProps):
   }
 
   return (
-    <Card className="ca-card">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
-          <Target className="w-4 h-4 text-red-400" />
-          Encounter Brain
+    <MaterialCard entityType="creature" className="p-0">
+      <div className="p-4 pb-2 border-b border-white/5">
+        <div className="flex items-center justify-between">
+          <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+            <Target className="w-5 h-5 text-blood" />
+            Encounter Brain
+          </h3>
           {subType && (
-            <span className="text-xs text-slate-500 ml-auto capitalize">
+            <span className="text-xs text-smoke capitalize">
               {subType.replace('_', ' ')}
             </span>
           )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </div>
+      </div>
+      <div className="p-4 space-y-4">
         {/* Solution - Answer Key (at top for puzzles/traps/skill challenges) */}
         {brain.solution && (
           <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
@@ -121,7 +123,7 @@ export function EncounterBrainCard({ brain, subType }: EncounterBrainCardProps):
             <p className="text-sm text-slate-300">{brain.failure_consequence}</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </MaterialCard>
   )
 }

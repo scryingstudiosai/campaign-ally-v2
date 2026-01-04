@@ -20,7 +20,9 @@ import {
   TrendingUp,
   Heart,
   Lock,
+  EyeOff,
 } from 'lucide-react'
+import { MaterialCard } from '@/components/ui/material-card'
 
 interface BrainCardProps {
   brain: NpcBrain | VillainBrain | HeroBrain
@@ -35,13 +37,15 @@ export function BrainCard({
   if (viewMode === 'player') return null
 
   return (
-    <div className="ca-card p-4 space-y-3">
-      <div className="flex items-center gap-2 text-amber-400 font-medium">
-        <Brain className="w-5 h-5" />
-        <span>NPC Brain</span>
+    <MaterialCard entityType="npc" className="p-0">
+      <div className="p-4 pb-2 border-b border-white/5">
+        <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+          <Brain className="w-5 h-5 text-purple" />
+          NPC Brain
+        </h3>
       </div>
-
-      <div className="space-y-2">
+      <div className="p-4 space-y-3">
+        <div className="space-y-2">
         <div className="flex gap-3">
           <Target className="w-4 h-4 text-teal-400 mt-1 shrink-0" />
           <div>
@@ -83,6 +87,22 @@ export function BrainCard({
             </div>
           </div>
         </div>
+
+        {/* DM Secret - Hidden from Players */}
+        {brain.secret && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg mt-2">
+            <div className="flex items-center gap-2 mb-2">
+              <EyeOff className="w-4 h-4 text-red-400" />
+              <span className="text-xs font-bold text-red-400 uppercase tracking-wide">
+                DM Secret
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-300 rounded">
+                Hidden from Players
+              </span>
+            </div>
+            <p className="text-sm text-slate-300">{brain.secret}</p>
+          </div>
+        )}
 
         {/* Villain-specific fields */}
         {isVillainBrain(brain) && (
@@ -188,7 +208,8 @@ export function BrainCard({
             </div>
           </>
         )}
+        </div>
       </div>
-    </div>
+    </MaterialCard>
   )
 }

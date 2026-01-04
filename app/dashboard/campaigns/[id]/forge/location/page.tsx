@@ -175,6 +175,9 @@ export default function LocationForgePage(): JSX.Element {
       hook?: string
     }> | undefined
 
+    console.log('[LocationForge] inhabitants useEffect triggered')
+    console.log('[LocationForge] forge.output?.brain?.inhabitants:', inhabitants)
+
     if (inhabitants && inhabitants.length > 0) {
       setReviewDiscoveries((prev) => {
         // Avoid duplicates - check both existing discoveries and existing entities
@@ -204,7 +207,7 @@ export default function LocationForgePage(): JSX.Element {
               text: cleanName,
               suggestedType: 'npc' as EntityType,
               context,
-              status: 'create_stub', // Auto-create NPCs as stubs by default
+              status: 'pending', // Default to pending - user chooses to create stub, link, or ignore
             })
             // Add to set to prevent duplicates within the same inhabitants array
             existingDiscoveryTexts.add(nameLower)
@@ -212,10 +215,18 @@ export default function LocationForgePage(): JSX.Element {
         })
 
         if (newNpcDiscoveries.length > 0) {
+          console.log('[LocationForge] Adding NPC discoveries to state:', newNpcDiscoveries.map(d => ({
+            id: d.id,
+            text: d.text,
+            status: d.status,
+          })))
           return [...prev, ...newNpcDiscoveries]
         }
+        console.log('[LocationForge] No new NPC discoveries to add (already exist or empty)')
         return prev
       })
+    } else {
+      console.log('[LocationForge] No inhabitants found in forge.output.brain')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forge.output?.brain?.inhabitants, forge.output?.name])
@@ -331,18 +342,37 @@ export default function LocationForgePage(): JSX.Element {
     entityId: string,
     mechanics: Record<string, unknown> | undefined
   ): Promise<void> => {
-    if (!mechanics?.is_shop) return
+    console.log('[LocationForge] autoStockShopIfNeeded called')
+    console.log('[LocationForge] mechanics?.is_shop:', mechanics?.is_shop)
+    console.log('[LocationForge] mechanics?.special_items:', mechanics?.special_items)
+
+    if (!mechanics?.is_shop) {
+      console.log('[LocationForge] Not a shop, skipping auto-stock')
+      return
+    }
 
     const inventoryData: ShopInventoryData = {
       shop_type: (mechanics.shop_type as string) || 'general',
       price_modifier: (mechanics.price_modifier as number) || 1.0,
       suggested_srd_stock: (mechanics.suggested_stock as string[]) || [],
+      special_items: (mechanics.special_items as ShopInventoryData['special_items']) || [],
     }
 
+    console.log('[LocationForge] inventoryData:', {
+      shop_type: inventoryData.shop_type,
+      special_items_count: inventoryData.special_items?.length || 0,
+      special_items: inventoryData.special_items?.map(i => i.name),
+    })
+
     // Only stock if we have items to stock
-    if (inventoryData.suggested_srd_stock.length === 0) return
+    const hasItems = inventoryData.suggested_srd_stock.length > 0 || (inventoryData.special_items && inventoryData.special_items.length > 0)
+    if (!hasItems) {
+      console.log('[LocationForge] No items to stock, skipping')
+      return
+    }
 
     try {
+      console.log('[LocationForge] Calling /api/location/stock...')
       const response = await fetch('/api/location/stock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -354,15 +384,22 @@ export default function LocationForgePage(): JSX.Element {
       })
 
       if (!response.ok) {
-        console.error('Failed to auto-stock shop:', await response.text())
+        console.error('[LocationForge] Failed to auto-stock shop:', await response.text())
       } else {
         const result = await response.json()
+        console.log('[LocationForge] Stock result:', result)
         if (result.itemsAdded > 0) {
-          toast.success(`Shop stocked with ${result.itemsAdded} items!`)
+          const specialCount = result.stocked?.specialItems || 0
+          const srdCount = result.stocked?.srdItems || 0
+          if (specialCount > 0) {
+            toast.success(`Shop stocked with ${specialCount} specialty items and ${srdCount} standard items!`)
+          } else {
+            toast.success(`Shop stocked with ${result.itemsAdded} items!`)
+          }
         }
       }
     } catch (error) {
-      console.error('Error auto-stocking shop:', error)
+      console.error('[LocationForge] Error auto-stocking shop:', error)
     }
   }
 
@@ -433,6 +470,21 @@ export default function LocationForgePage(): JSX.Element {
   const handleCommit = async (): Promise<void> => {
     if (!forge.output) return
 
+    // DEBUG: Log all discoveries being committed
+    console.log('[LocationForge] handleCommit called')
+    console.log('[LocationForge] reviewDiscoveries count:', reviewDiscoveries.length)
+    console.log('[LocationForge] reviewDiscoveries:', reviewDiscoveries.map(d => ({
+      id: d.id,
+      text: d.text,
+      status: d.status,
+      suggestedType: d.suggestedType,
+      isNpc: d.id.startsWith('npc-'),
+      isContains: d.id.startsWith('contains-'),
+    })))
+    const npcDiscoveries = reviewDiscoveries.filter(d => d.id.startsWith('npc-'))
+    console.log('[LocationForge] NPC discoveries:', npcDiscoveries)
+    console.log('[LocationForge] NPC discoveries with create_stub status:', npcDiscoveries.filter(d => d.status === 'create_stub'))
+
     // If fleshing out a stub, update the existing entity instead of creating new
     if (stubId) {
       try {
@@ -457,6 +509,8 @@ export default function LocationForgePage(): JSX.Element {
           read_aloud: forge.output.read_aloud,
           dm_slug: forge.output.dm_slug,
           summary: forge.output.dm_slug || forge.output.read_aloud?.substring(0, 200),
+          // Mark as complete (no longer a stub)
+          forge_status: 'complete',
           attributes: {
             is_stub: false,
             needs_review: false,

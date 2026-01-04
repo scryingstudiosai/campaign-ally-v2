@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { EntityCard, Entity } from '@/components/memory/entity-card'
 import { EntityListItem, EntityListHeader } from '@/components/memory/entity-list-item'
 import { EntityFiltersBar, EntityFilters } from '@/components/memory/entity-filters'
+import { SpiderwebGraphWrapper as SpiderwebGraph } from '@/components/memory/SpiderwebWrapper'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,22 +18,42 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2, User, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
+import { PageTransition, StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion'
 
 const STORAGE_KEY = 'memory-view-mode'
+
+interface Relationship {
+  id: string
+  source_id: string
+  target_id: string
+  relationship_type: string
+  description?: string
+  visibility?: 'public' | 'dm_only' | 'revealable'
+}
 
 interface MemoryPageClientProps {
   campaignId: string
   campaignName: string
   initialEntities: Entity[]
+  initialRelationships: Relationship[]
 }
 
 export function MemoryPageClient({
   campaignId,
   campaignName,
   initialEntities,
+  initialRelationships,
 }: MemoryPageClientProps): JSX.Element {
+  // Debug: Log what we received from server
+  useEffect(() => {
+    console.log('[MemoryPageClient] Received from server - entities:', initialEntities.length, 'relationships:', initialRelationships.length)
+    if (initialRelationships.length > 0) {
+      console.log('[MemoryPageClient] Sample relationship:', initialRelationships[0])
+    }
+  }, [initialEntities.length, initialRelationships.length])
+
   // Track entities in state for optimistic updates on delete
   const [entities, setEntities] = useState<Entity[]>(initialEntities)
 
@@ -42,21 +63,26 @@ export function MemoryPageClient({
   }, [initialEntities])
 
   // Initialize with default, then hydrate from localStorage
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
+  const [viewMode, setViewMode] = useState<'card' | 'list' | 'graph'>('card')
 
   // Hydrate view mode from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'card' || stored === 'list') {
+    if (stored === 'card' || stored === 'list' || stored === 'graph') {
       setViewMode(stored)
     }
   }, [])
 
   // Persist view mode changes to localStorage
-  const handleViewModeChange = (mode: 'card' | 'list') => {
+  const handleViewModeChange = (mode: 'card' | 'list' | 'graph') => {
     setViewMode(mode)
     localStorage.setItem(STORAGE_KEY, mode)
   }
+
+  // Handle entity click in graph view
+  const handleEntityClick = useCallback((entityId: string) => {
+    window.location.href = `/dashboard/campaigns/${campaignId}/memory/${entityId}`
+  }, [campaignId])
 
   // Handle entity deletion - optimistic update
   const handleEntityDelete = (deletedId: string) => {
@@ -186,10 +212,11 @@ export function MemoryPageClient({
   }, [selectedIds, exitSelectionMode])
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
+    <PageTransition>
+      <div className="min-h-screen bg-background text-foreground p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <FadeIn className="mb-8">
           <Button variant="ghost" asChild className="mb-4">
             <Link href={`/dashboard/campaigns/${campaignId}`}>
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -256,43 +283,48 @@ export function MemoryPageClient({
               )}
             </div>
           </div>
-        </div>
+        </FadeIn>
 
         {/* Quick Stats */}
         {entities.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6 text-sm">
             {typeCounts.npc && (
-              <span className="px-3 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/30">
+              <span className="px-3 py-1 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30">
                 {typeCounts.npc} NPCs
               </span>
             )}
+            {typeCounts.player && (
+              <span className="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                {typeCounts.player} Players
+              </span>
+            )}
             {typeCounts.location && (
-              <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/30">
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                 {typeCounts.location} Locations
               </span>
             )}
             {typeCounts.item && (
-              <span className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/30">
+              <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
                 {typeCounts.item} Items
               </span>
             )}
             {typeCounts.faction && (
-              <span className="px-3 py-1 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/30">
+              <span className="px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
                 {typeCounts.faction} Factions
               </span>
             )}
             {typeCounts.quest && (
-              <span className="px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
+              <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
                 {typeCounts.quest} Quests
               </span>
             )}
             {typeCounts.encounter && (
-              <span className="px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/30">
+              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                 {typeCounts.encounter} Encounters
               </span>
             )}
             {typeCounts.creature && (
-              <span className="px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30">
+              <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
                 {typeCounts.creature} Creatures
               </span>
             )}
@@ -311,56 +343,79 @@ export function MemoryPageClient({
 
         {/* Entity Display */}
         {filteredEntities.length === 0 ? (
-          <Card className="p-12 text-center">
-            <Database className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            {entities.length === 0 ? (
-              <>
-                <h3 className="text-lg font-semibold mb-2">No entities yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Start building your campaign memory by adding NPCs, locations, items, and more.
-                </p>
-                <div className="flex flex-wrap justify-center gap-3">
-                  <Button asChild>
-                    <Link href={`/dashboard/campaigns/${campaignId}/memory/new`}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Entity Manually
-                    </Link>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link href={`/dashboard/campaigns/${campaignId}/forge/npc`}>
-                      Generate with NPC Forge
-                    </Link>
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3 className="text-lg font-semibold mb-2">No matching entities</h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your filters or search terms.
-                </p>
-              </>
-            )}
-          </Card>
-        ) : viewMode === 'card' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredEntities.map((entity) => (
-              <EntityCard
-                key={entity.id}
-                entity={entity}
-                campaignId={campaignId}
-                onDelete={handleEntityDelete}
-                selectionMode={selectionMode}
-                isSelected={selectedIds.has(entity.id)}
-                onToggleSelect={() => toggleSelection(entity.id)}
-              />
-            ))}
+          entities.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4">
+                <Brain className="w-8 h-8 text-slate-500" />
+              </div>
+              <h3 className="text-xl font-display text-slate-300 mb-2">Your world awaits</h3>
+              <p className="text-sm text-slate-500 mb-6 max-w-md">
+                Entities you create in the Forges will appear here. Build NPCs, locations, items, and more to populate your campaign.
+              </p>
+              <div className="flex gap-3">
+                <Button asChild className="bg-teal-600 hover:bg-teal-700">
+                  <Link href={`/dashboard/campaigns/${campaignId}/forge/npc`}>
+                    <User className="w-4 h-4 mr-2" />
+                    Create NPC
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href={`/dashboard/campaigns/${campaignId}/forge/location`}>
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Create Location
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Card className="p-12 text-center">
+              <Database className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No matching entities</h3>
+              <p className="text-muted-foreground">
+                Try adjusting your filters or search terms.
+              </p>
+            </Card>
+          )
+        ) : viewMode === 'graph' ? (
+          <div className="h-[calc(100vh-300px)] min-h-[500px] rounded-lg overflow-hidden border border-stone-800">
+            <SpiderwebGraph
+              campaignId={campaignId}
+              initialEntities={filteredEntities.map(e => ({
+                id: e.id,
+                name: e.name,
+                entity_type: e.entity_type,
+                sub_type: e.sub_type,
+                summary: e.summary,
+                image_url: e.image_url,
+                status: e.status,
+                importance_tier: e.importance_tier,
+              }))}
+              initialRelationships={initialRelationships}
+              onEntityClick={handleEntityClick}
+            />
           </div>
+        ) : viewMode === 'card' ? (
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" staggerDelay={0.03}>
+            {filteredEntities.map((entity) => (
+              <StaggerItem key={entity.id}>
+                <HoverLift>
+                  <EntityCard
+                    entity={entity}
+                    campaignId={campaignId}
+                    onDelete={handleEntityDelete}
+                    selectionMode={selectionMode}
+                    isSelected={selectedIds.has(entity.id)}
+                    onToggleSelect={() => toggleSelection(entity.id)}
+                  />
+                </HoverLift>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
         ) : (
           <Card className="overflow-hidden">
             <EntityListHeader selectionMode={selectionMode} />
-            <div className="divide-y divide-border">
-              {filteredEntities.map((entity) => (
+            <div>
+              {filteredEntities.map((entity, index) => (
                 <EntityListItem
                   key={entity.id}
                   entity={entity}
@@ -369,6 +424,7 @@ export function MemoryPageClient({
                   selectionMode={selectionMode}
                   isSelected={selectedIds.has(entity.id)}
                   onToggleSelect={() => toggleSelection(entity.id)}
+                  isEven={index % 2 === 0}
                 />
               ))}
             </div>
@@ -416,6 +472,7 @@ export function MemoryPageClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </PageTransition>
   )
 }

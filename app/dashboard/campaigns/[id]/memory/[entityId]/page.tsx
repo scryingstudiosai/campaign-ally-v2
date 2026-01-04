@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,7 +10,8 @@ import { Relationship } from '@/components/memory/relationship-display'
 import { EntityRelationshipsSection } from '@/components/memory/entity-relationships-section'
 import { DeleteEntityButton } from '@/components/memory/delete-entity-button'
 import { StubBanner } from '@/components/memory/stub-banner'
-import { LootDisplay } from '@/components/memory/loot-display'
+// LootDisplay removed - items are now in inventory system
+// import { LootDisplay } from '@/components/memory/loot-display'
 import { BrainCard } from '@/components/entity/BrainCard'
 import { VoiceCard } from '@/components/entity/VoiceCard'
 import { ReadAloudCard } from '@/components/entity/ReadAloudCard'
@@ -28,9 +30,21 @@ import { EncounterBrainCard } from '@/components/entity/EncounterBrainCard'
 import { EncounterSoulCard } from '@/components/entity/EncounterSoulCard'
 import { EncounterMechanicsCard } from '@/components/entity/EncounterMechanicsCard'
 import { EncounterRewardsCard } from '@/components/entity/EncounterRewardsCard'
+import { CreatureBrainCard } from '@/components/entity/CreatureBrainCard'
+import { CreatureSoulCard } from '@/components/entity/CreatureSoulCard'
+import { CreatureMechanicsCard } from '@/components/entity/CreatureMechanicsCard'
+import { NpcMechanicsCard } from '@/components/entity/NpcMechanicsCard'
+import { PlayerSoulCard } from '@/components/entity/PlayerSoulCard'
+import { QuestSoulCard } from '@/components/entity/QuestSoulCard'
+import { QuestBrainCard } from '@/components/entity/QuestBrainCard'
+import { QuestObjectivesCard } from '@/components/entity/QuestObjectivesCard'
+import { QuestRewardsCard } from '@/components/entity/QuestRewardsCard'
+import { QuestChainCard } from '@/components/entity/QuestChainCard'
+import { TavernMenuCard } from '@/components/entity/TavernMenuCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
-import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, isNpcBrain } from '@/types/living-entity'
+import { LocationDetailWrapper } from '@/components/entity/LocationDetailWrapper'
+import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, NpcMechanics, QuestBrain, QuestSoul, QuestObjective, QuestRewards, QuestChain, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
   Pencil,
@@ -52,9 +66,19 @@ import {
   Calendar,
   Wand2,
   Heart,
+  Beer,
+  ChevronRight,
+  MapPin,
+  Package,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { renderWithBold } from '@/lib/text-utils'
+
+// Disable all caching - always fetch fresh data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 interface PageProps {
   params: { id: string; entityId: string }
@@ -119,6 +143,15 @@ export default async function EntityDetailPage({ params }: PageProps) {
     notFound()
   }
 
+  // DEBUG: Log what we fetched from database
+  console.log('=== DETAIL PAGE DEBUG ===');
+  console.log('entity.id:', entity.id);
+  console.log('entity.name:', entity.name);
+  console.log('entity.summary:', entity.summary);
+  console.log('entity.dm_slug:', entity.dm_slug);
+  console.log('entity.description:', entity.description?.slice(0, 100));
+  console.log('Timestamp:', new Date().toISOString());
+
   // Fetch relationships
   const { data: rawRelationships } = await supabase
     .from('relationships')
@@ -149,7 +182,9 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const statusConfig = STATUS_CONFIG[entity.status]
   const importanceConfig = IMPORTANCE_CONFIG[entity.importance_tier]
   const attributes = entity.attributes || {}
-  const isStub = attributes.is_stub || attributes.needs_review
+  // Stub detection: forge_status === 'stub' or legacy attributes flags (when forge_status not set)
+  const isStub = entity.forge_status === 'stub' ||
+    ((attributes.is_stub || attributes.needs_review) && !entity.forge_status)
 
   // Item-specific helpers
   const isItem = entity.entity_type === 'item'
@@ -178,10 +213,51 @@ export default async function EntityDetailPage({ params }: PageProps) {
   const encounterMechanics = entity.mechanics as EncounterMechanics | null
   const encounterRewards = entity.attributes?.rewards as EncounterRewards | null
 
+  // Creature-specific helpers
+  const isCreature = entity.entity_type === 'creature'
+  const creatureBrain = entity.brain as CreatureBrain | null
+  const creatureSoul = entity.soul as CreatureSoul | null
+  const creatureMechanics = entity.mechanics as CreatureMechanics | null
+  const creatureTreasure = attributes.treasure as CreatureTreasure | null
+
+  // NPC-specific helpers
+  const isNpc = entity.entity_type === 'npc'
+  const npcMechanics = isNpc ? (entity.mechanics as NpcMechanics | null) : null
+  const hasNpcMechanics = npcMechanics && Object.keys(npcMechanics).length > 0
+
+  // Quest-specific helpers
+  const isQuest = entity.entity_type === 'quest'
+  const questBrain = entity.brain as QuestBrain | null
+  const questSoul = entity.soul as QuestSoul | null
+  const questObjectives = attributes.objectives as QuestObjective[] | null
+  const questRewards = attributes.rewards as QuestRewards | null
+  const questChain = attributes.chain as QuestChain | null
+
+  // Player-specific helpers
+  const isPlayer = entity.entity_type === 'player'
+  const playerSoul = entity.soul as {
+    race?: string
+    class?: string
+    level?: number
+    background?: string
+    ability_scores?: { str: number; dex: number; con: number; int: number; wis: number; cha: number }
+    max_hp?: number
+    current_hp?: number
+    temp_hp?: number
+    armor_class?: number
+    speed?: number
+    proficiency_bonus?: number
+    saving_throws?: string[]
+    languages?: string[]
+    skills?: string[]
+    hit_dice?: { current: number; max: number; face: number }
+  } | null
+
   // Check if Stage column has content for this entity type
   const hasNpcStageContent =
     (entity.voice && (entity.voice as Voice).style?.length > 0) ||
     attributes.appearance ||
+    hasNpcMechanics ||
     attributes.combatStats ||
     attributes.loot ||
     attributes.voiceAndMannerisms ||
@@ -204,12 +280,35 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (encounterMechanics && Object.keys(encounterMechanics).length > 0) ||
     (encounterRewards && Object.keys(encounterRewards).length > 0)
 
+  const hasCreatureTreasureContent = creatureTreasure && (
+    creatureTreasure.treasure_description ||
+    (creatureTreasure.treasure_items && creatureTreasure.treasure_items.length > 0)
+  )
+
+  const hasCreatureStageContent =
+    (creatureSoul && Object.keys(creatureSoul).length > 0) ||
+    (creatureMechanics && Object.keys(creatureMechanics).length > 0) ||
+    hasCreatureTreasureContent
+
+  const hasQuestStageContent =
+    (questSoul && Object.keys(questSoul).length > 0) ||
+    (questObjectives && questObjectives.length > 0) ||
+    (questRewards && Object.keys(questRewards).length > 0) ||
+    (questChain && Object.keys(questChain).length > 0)
+
+  const hasPlayerStageContent =
+    (playerSoul && Object.keys(playerSoul).length > 0) ||
+    entity.description
+
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
     (isItem && hasItemStageContent) ||
     (isLocation && hasLocationStageContent) ||
     (isFaction && hasFactionStageContent) ||
     (isEncounter && hasEncounterStageContent) ||
+    (isCreature && hasCreatureStageContent) ||
+    (isQuest && hasQuestStageContent) ||
+    (isPlayer && hasPlayerStageContent) ||
     entity.public_notes ||
     entity.dm_notes
 
@@ -239,58 +338,108 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
         {/* Header */}
         <div className="mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">{entity.name}</h1>
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <EntityTypeBadge type={entity.entity_type as EntityType} size="lg" />
-                {entity.subtype && (
-                  <Badge variant="outline">{entity.subtype}</Badge>
-                )}
-                {statusConfig && (
-                  <Badge className={cn(statusConfig.color, statusConfig.bgColor, 'border-0')}>
-                    <statusConfig.icon className="w-3 h-3 mr-1" />
-                    {statusConfig.label}
-                  </Badge>
-                )}
-                {importanceConfig && (
-                  <Badge variant="outline" className={importanceConfig.color}>
-                    <importanceConfig.icon className="w-3 h-3 mr-1" />
-                    {importanceConfig.label}
-                  </Badge>
-                )}
-                {entity.visibility === 'dm_only' && (
-                  <Badge variant="outline" className="text-muted-foreground">
-                    <EyeOff className="w-3 h-3 mr-1" />
-                    DM Only
-                  </Badge>
-                )}
-                {entity.visibility === 'public' && (
-                  <Badge variant="outline" className="text-green-400">
-                    <Eye className="w-3 h-3 mr-1" />
-                    Public
-                  </Badge>
-                )}
-              </div>
-              {/* Summary as subtitle - the quick reference */}
-              {(entity.dm_slug || entity.summary) && (
-                <p className="text-slate-400 italic mt-3">
-                  {entity.dm_slug || entity.summary}
-                </p>
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+            {/* Portrait */}
+            <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden border border-slate-700 shrink-0 bg-slate-800 mx-auto sm:mx-0">
+              {entity.image_url ? (
+                <Image
+                  src={entity.image_url}
+                  alt={entity.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {entity.entity_type === 'npc' || entity.entity_type === 'player' ? (
+                    <User className="h-12 w-12 text-slate-600" />
+                  ) : entity.entity_type === 'creature' ? (
+                    <Swords className="h-12 w-12 text-slate-600" />
+                  ) : entity.entity_type === 'location' ? (
+                    <MapPin className="h-12 w-12 text-slate-600" />
+                  ) : entity.entity_type === 'item' ? (
+                    <Package className="h-12 w-12 text-slate-600" />
+                  ) : entity.entity_type === 'faction' ? (
+                    <Users className="h-12 w-12 text-slate-600" />
+                  ) : (
+                    <Sparkles className="h-12 w-12 text-slate-600" />
+                  )}
+                </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" asChild>
-                <Link href={`/dashboard/campaigns/${params.id}/memory/${params.entityId}/edit`}>
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </Link>
-              </Button>
-              <DeleteEntityButton
-                entityId={entity.id}
-                entityName={entity.name}
-                campaignId={params.id}
-              />
+
+            {/* Entity Info */}
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div>
+                  {/* Quest Chain Breadcrumb - above title for arc context */}
+                  {isQuest && questChain?.arc_name && (
+                    <div className="flex items-center justify-center sm:justify-start gap-2 text-sm mb-2">
+                      {questChain.arc_id ? (
+                        <Link
+                          href={`/dashboard/campaigns/${params.id}/memory/${questChain.arc_id}`}
+                          className="text-amber-400 hover:text-amber-300 transition-colors"
+                        >
+                          {questChain.arc_name}
+                        </Link>
+                      ) : (
+                        <span className="text-amber-400">{questChain.arc_name}</span>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-slate-600" />
+                      <span className="text-slate-400">{questChain.chain_position || 'Part 1'}</span>
+                    </div>
+                  )}
+                  <h1 className="text-3xl font-bold">{entity.name}</h1>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
+                    <EntityTypeBadge type={entity.entity_type as EntityType} size="lg" />
+                    {entity.subtype && (
+                      <Badge variant="outline">{entity.subtype}</Badge>
+                    )}
+                    {statusConfig && (
+                      <Badge className={cn(statusConfig.color, statusConfig.bgColor, 'border-0')}>
+                        <statusConfig.icon className="w-3 h-3 mr-1" />
+                        {statusConfig.label}
+                      </Badge>
+                    )}
+                    {importanceConfig && (
+                      <Badge variant="outline" className={importanceConfig.color}>
+                        <importanceConfig.icon className="w-3 h-3 mr-1" />
+                        {importanceConfig.label}
+                      </Badge>
+                    )}
+                    {entity.visibility === 'dm_only' && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        <EyeOff className="w-3 h-3 mr-1" />
+                        DM Only
+                      </Badge>
+                    )}
+                    {entity.visibility === 'public' && (
+                      <Badge variant="outline" className="text-green-400">
+                        <Eye className="w-3 h-3 mr-1" />
+                        Public
+                      </Badge>
+                    )}
+                  </div>
+                  {/* Summary as subtitle - the quick reference */}
+                  {(entity.summary || entity.dm_slug) && (
+                    <p className="text-slate-400 italic mt-3">
+                      {entity.summary || entity.dm_slug}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center justify-center sm:justify-start gap-2 shrink-0">
+                  <Button variant="outline" asChild>
+                    <Link href={`/dashboard/campaigns/${params.id}/memory/${params.entityId}/edit`}>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit
+                    </Link>
+                  </Button>
+                  <DeleteEntityButton
+                    entityId={entity.id}
+                    entityName={entity.name}
+                    campaignId={params.id}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -305,6 +454,14 @@ export default async function EntityDetailPage({ params }: PageProps) {
         {/* === MASTER DASHBOARD LAYOUT === */}
         {/* Left (2/3): "The Stage" - Player-facing content */}
         {/* Right (1/3): "The Script" - DM-facing content */}
+        {/* For locations, wrap in LocationDetailWrapper for Atlas tab */}
+        <LocationDetailWrapper
+          campaignId={params.id}
+          locationId={entity.id}
+          locationName={entity.name}
+          mapImageUrl={locationSoul?.map_url as string | undefined}
+          isLocation={isLocation}
+        >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
 
           {/* === LEFT COLUMN (The Stage) - What players see/experience === */}
@@ -340,8 +497,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {/* Combat Stats */}
-                {attributes.combatStats && (
+                {/* NPC Mechanics - Full Stat Block */}
+                {hasNpcMechanics && npcMechanics ? (
+                  <NpcMechanicsCard mechanics={npcMechanics} name={entity.name} />
+                ) : attributes.combatStats && (
+                  /* Legacy Combat Stats fallback */
                   <div className="ca-panel p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Shield className="w-4 h-4 text-slate-400" />
@@ -363,16 +523,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {/* Loot */}
-                {attributes.loot && (
-                  <LootDisplay
-                    loot={attributes.loot}
-                    entityId={entity.id}
-                    entityName={entity.name}
-                    entityType={entity.entity_type}
-                    campaignId={params.id}
-                  />
-                )}
+                {/* Legacy Loot - deprecated in favor of Inventory system */}
+                {/* LootDisplay removed - items are now shown in EntityInventorySection */}
 
                 {/* Legacy Voice/Mannerisms - Only if no Voice profile */}
                 {!(entity.voice && (entity.voice as Voice).style?.length > 0) && attributes.voiceAndMannerisms && (
@@ -455,7 +607,34 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
                 {/* Location Mechanics - Hazards, encounters (player-facing) */}
                 {locationMechanics && Object.keys(locationMechanics).length > 0 && (
-                  <LocationMechanicsCard mechanics={locationMechanics} />
+                  <LocationMechanicsCard
+                    mechanics={locationMechanics}
+                    locationId={entity.id}
+                    locationName={entity.name}
+                    campaignId={params.id}
+                  />
+                )}
+
+                {/* Tavern/Inn Menu & Services - Room rates, drinks, meals */}
+                {locationMechanics && (locationMechanics.is_tavern || locationMechanics.lodging || locationMechanics.menu) && (
+                  <div className="ca-panel p-4">
+                    <h3 className="text-lg font-semibold text-amber-400 mb-3 flex items-center gap-2">
+                      <Beer className="w-5 h-5" />
+                      Menu & Services
+                    </h3>
+                    <TavernMenuCard mechanics={locationMechanics as {
+                      establishment_quality?: string;
+                      lodging?: {
+                        available: boolean;
+                        rooms: Array<{ type: string; price_per_night: number; description: string }>;
+                      };
+                      menu?: {
+                        drinks: Array<{ name: string; price: number; description: string }>;
+                        meals: Array<{ name: string; price: number; description: string }>;
+                        specialty?: { name: string; price: number; description: string };
+                      };
+                    }} />
+                  </div>
                 )}
               </>
             )}
@@ -491,6 +670,79 @@ export default async function EntityDetailPage({ params }: PageProps) {
                 {/* Encounter Rewards - XP, gold, loot */}
                 {encounterRewards && Object.keys(encounterRewards).length > 0 && (
                   <EncounterRewardsCard rewards={encounterRewards} />
+                )}
+              </>
+            )}
+
+            {/* --- CREATURE STAGE CONTENT --- */}
+            {isCreature && (
+              <>
+                {/* Creature Mechanics - Full stat block (player-facing for combat) */}
+                {creatureMechanics && Object.keys(creatureMechanics).length > 0 && (
+                  <CreatureMechanicsCard mechanics={creatureMechanics} name={entity.name} />
+                )}
+
+                {/* Creature Soul - Appearance, behavior, habitat (player-facing) */}
+                {creatureSoul && Object.keys(creatureSoul).length > 0 && (
+                  <CreatureSoulCard soul={creatureSoul} />
+                )}
+              </>
+            )}
+
+            {/* --- QUEST STAGE CONTENT --- */}
+            {isQuest && (
+              <>
+                {/* Quest Soul - Hook, summary, stakes (player-facing) */}
+                {questSoul && Object.keys(questSoul).length > 0 && (
+                  <QuestSoulCard soul={questSoul} />
+                )}
+
+                {/* Quest Objectives - Interactive objective tracker */}
+                {questObjectives && questObjectives.length > 0 && (
+                  <QuestObjectivesCard
+                    objectives={questObjectives}
+                    questId={entity.id}
+                    campaignId={params.id}
+                  />
+                )}
+
+                {/* Quest Rewards - XP, gold, items, reputation */}
+                {questRewards && Object.keys(questRewards).length > 0 && (
+                  <QuestRewardsCard
+                    rewards={questRewards}
+                    questId={entity.id}
+                    campaignId={params.id}
+                  />
+                )}
+
+                {/* Quest Chain - Position in quest chain */}
+                <QuestChainCard
+                  chain={questChain || {}}
+                  campaignId={params.id}
+                  questId={entity.id}
+                  questName={entity.name}
+                  brainNextHook={(questBrain as Record<string, unknown>)?.next_quest_hook as string | undefined}
+                />
+              </>
+            )}
+
+            {/* --- PLAYER STAGE CONTENT --- */}
+            {isPlayer && (
+              <>
+                {/* Player Soul Card - Character stats and abilities */}
+                {playerSoul && Object.keys(playerSoul).length > 0 && (
+                  <PlayerSoulCard soul={playerSoul} />
+                )}
+
+                {/* Backstory/Description */}
+                {entity.description && (
+                  <div className="ca-panel p-4">
+                    <div className="ca-section-header mb-2">
+                      <User className="w-4 h-4" />
+                      <span>Backstory</span>
+                    </div>
+                    <p className="text-sm text-slate-300 whitespace-pre-wrap">{renderWithBold(entity.description)}</p>
+                  </div>
                 )}
               </>
             )}
@@ -570,6 +822,40 @@ export default async function EntityDetailPage({ params }: PageProps) {
             {/* --- ENCOUNTER SCRIPT CONTENT --- */}
             {isEncounter && encounterBrain && Object.keys(encounterBrain).length > 0 && (
               <EncounterBrainCard brain={encounterBrain} subType={entity.sub_type} />
+            )}
+
+            {/* --- CREATURE SCRIPT CONTENT --- */}
+            {isCreature && ((creatureBrain && Object.keys(creatureBrain).length > 0) || hasCreatureTreasureContent) && (
+              <CreatureBrainCard brain={creatureBrain || {}} treasure={creatureTreasure} />
+            )}
+
+            {/* --- QUEST SCRIPT CONTENT --- */}
+            {isQuest && questBrain && Object.keys(questBrain).length > 0 && (
+              <QuestBrainCard brain={questBrain} />
+            )}
+
+            {/* --- PLAYER SCRIPT CONTENT --- */}
+            {isPlayer && (
+              <div className="ca-panel p-4 border-l-2 border-red-500/50 bg-red-950/20">
+                <div className="flex items-center gap-2 text-red-400 mb-2">
+                  <EyeOff className="w-4 h-4" />
+                  <span className="text-sm font-medium">DM Secrets</span>
+                  <Badge variant="outline" className="ml-auto text-xs text-red-400 border-red-500/30 bg-red-500/10">
+                    Hidden from Players
+                  </Badge>
+                </div>
+                {(attributes.dm_secrets || (entity.brain as Record<string, unknown>)?.dm_secrets || (entity.brain as Record<string, unknown>)?.secrets) ? (
+                  <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                    {renderWithBold(
+                      attributes.dm_secrets as string ||
+                      (entity.brain as Record<string, unknown>)?.dm_secrets as string ||
+                      (entity.brain as Record<string, unknown>)?.secrets as string
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-500 italic">No DM secrets recorded</p>
+                )}
+              </div>
             )}
 
             {/* --- SHARED SCRIPT CONTENT --- */}
@@ -671,6 +957,7 @@ export default async function EntityDetailPage({ params }: PageProps) {
             </Card>
           </div>
         </div>
+        </LocationDetailWrapper>
       </div>
     </div>
   )

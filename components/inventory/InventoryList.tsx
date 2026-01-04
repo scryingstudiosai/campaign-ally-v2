@@ -18,6 +18,8 @@ import {
   Trash2,
   ArrowRightLeft,
   MoreHorizontal,
+  Gift,
+  Users,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -32,18 +34,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { getItemPrice, formatPrice } from '@/lib/inventory/price-utils';
 
 interface InventoryListProps {
   campaignId: string;
   ownerType: OwnerType;
   ownerId: string;
-  viewMode?: 'default' | 'compact' | 'shop';
+  viewMode?: 'default' | 'compact' | 'shop' | 'rewards';
+  priceModifier?: number; // For shops: multiply base prices (1.1 = 10% markup, 0.9 = 10% discount)
   onTransfer?: (item: InventoryInstanceWithItem) => void;
+  onClaimToParty?: (item: InventoryInstanceWithItem) => void; // For rewards: claim to party stash
   onViewDetails?: (item: InventoryInstanceWithItem) => void;
   readOnly?: boolean;
   title?: string;
   showHeader?: boolean; // Whether to show the header with title and item count
   refreshKey?: number; // Increment to trigger a refetch
+  emptyMessage?: string; // Custom message when no items
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -60,12 +66,15 @@ export function InventoryList({
   ownerType,
   ownerId,
   viewMode = 'default',
+  priceModifier = 1.0,
   onTransfer,
+  onClaimToParty,
   onViewDetails,
   readOnly = false,
   title = 'Inventory',
   showHeader = true,
   refreshKey,
+  emptyMessage,
 }: InventoryListProps): JSX.Element {
   const {
     items,
@@ -118,7 +127,7 @@ export function InventoryList({
       {items.length === 0 ? (
         <div className="p-8 text-center text-slate-500 bg-slate-900/50 rounded-lg border border-slate-800 border-dashed">
           <Package className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p>No items in inventory</p>
+          <p>{emptyMessage || 'No items in inventory'}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -127,6 +136,7 @@ export function InventoryList({
               key={item.id}
               item={item}
               viewMode={viewMode}
+              priceModifier={priceModifier}
               readOnly={readOnly}
               onUse={() => consumeItem(item.id)}
               onUseCharge={() => spendCharge(item.id)}
@@ -135,6 +145,7 @@ export function InventoryList({
               onIdentify={() => updateItem(item.id, { is_identified: true })}
               onRemove={() => removeItem(item.id)}
               onTransfer={() => onTransfer?.(item)}
+              onClaimToParty={() => onClaimToParty?.(item)}
               onViewDetails={() => onViewDetails?.(item)}
             />
           ))}
@@ -163,7 +174,8 @@ export function InventoryList({
 // Individual item row component
 interface InventoryItemRowProps {
   item: InventoryInstanceWithItem;
-  viewMode: 'default' | 'compact' | 'shop';
+  viewMode: 'default' | 'compact' | 'shop' | 'rewards';
+  priceModifier: number;
   readOnly: boolean;
   onUse: () => void;
   onUseCharge: () => void;
@@ -172,12 +184,14 @@ interface InventoryItemRowProps {
   onIdentify: () => void;
   onRemove: () => void;
   onTransfer: () => void;
+  onClaimToParty?: () => void;
   onViewDetails: () => void;
 }
 
 function InventoryItemRow({
   item,
   viewMode,
+  priceModifier,
   readOnly,
   onUse,
   onUseCharge,
@@ -186,20 +200,25 @@ function InventoryItemRow({
   onIdentify,
   onRemove,
   onTransfer,
+  onClaimToParty,
   onViewDetails,
 }: InventoryItemRowProps): JSX.Element {
   // Resolve item data from either SRD or custom entity
   const itemData = item.srd_item || item.custom_entity;
-  const name = itemData?.name || 'Unknown Item';
+  // Check SRD item name, then custom entity name, then custom_name field (for loot items)
+  const name = itemData?.name || item.custom_name || 'Unknown Item';
   const rarity = item.srd_item?.rarity?.toLowerCase() || 'common';
   const itemType = item.srd_item?.item_type || item.custom_entity?.sub_type || 'item';
   const mechanics = item.srd_item?.mechanics || item.custom_entity?.mechanics || {};
   const weight = (item.srd_item?.weight || (mechanics as Record<string, unknown>).weight) as
     | number
     | undefined;
-  const value = (item.value_override ??
+  // Get explicit value from override or SRD data
+  const explicitValue = item.value_override ??
     item.srd_item?.value_gp ??
-    (mechanics as Record<string, unknown>).value_gp) as number | undefined;
+    (mechanics as Record<string, unknown>).value_gp as number | undefined;
+  // Use price utility to get value (with fallback for common items and rarity-based pricing)
+  const value = getItemPrice(name, explicitValue, rarity, itemType, priceModifier);
   const isSrd = !!item.srd_item_id;
   const isConsumable =
     itemType?.toLowerCase().includes('potion') || itemType?.toLowerCase().includes('scroll');
@@ -293,12 +312,6 @@ function InventoryItemRow({
               {weight} lb.
             </span>
           )}
-          {viewMode === 'shop' && value != null && (
-            <span className="flex items-center gap-1 text-yellow-500">
-              <Coins className="w-3 h-3" />
-              {value} gp
-            </span>
-          )}
           {hasCharges && (
             <span className="flex items-center gap-1 text-blue-400">
               <Zap className="w-3 h-3" />
@@ -307,6 +320,16 @@ function InventoryItemRow({
           )}
         </div>
       </div>
+
+      {/* Shop Price Display - More prominent for shop mode */}
+      {viewMode === 'shop' && (
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-900/30 rounded-md border border-amber-700/50">
+          <Coins className="w-4 h-4 text-amber-400" />
+          <span className={`font-medium ${value != null ? 'text-amber-400' : 'text-slate-500 text-xs'}`}>
+            {formatPrice(value)}
+          </span>
+        </div>
+      )}
 
       {/* Actions */}
       {!readOnly && (
@@ -370,10 +393,21 @@ function InventoryItemRow({
               <DropdownMenuSeparator className="bg-slate-700" />
 
               {viewMode === 'shop' ? (
-                <DropdownMenuItem onSelect={onTransfer} className="text-yellow-400">
+                <DropdownMenuItem onSelect={onTransfer} className="text-amber-400">
                   <Coins className="w-4 h-4 mr-2" />
-                  Buy ({value ?? '??'} gp)
+                  Buy ({formatPrice(value)})
                 </DropdownMenuItem>
+              ) : viewMode === 'rewards' ? (
+                <>
+                  <DropdownMenuItem onSelect={onTransfer} className="text-green-400">
+                    <Gift className="w-4 h-4 mr-2" />
+                    Award to Player
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={onClaimToParty} className="text-blue-400">
+                    <Users className="w-4 h-4 mr-2" />
+                    Claim to Party Stash
+                  </DropdownMenuItem>
+                </>
               ) : (
                 <DropdownMenuItem onSelect={onTransfer} className="text-slate-200">
                   <ArrowRightLeft className="w-4 h-4 mr-2" />

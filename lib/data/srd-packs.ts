@@ -1,0 +1,373 @@
+// Starting Equipment Packs (SRD)
+export const equipmentPacks: Record<string, { name: string; items: string[] }> = {
+  explorers: {
+    name: "Explorer's Pack",
+    items: [
+      'Backpack',
+      'Bedroll',
+      'Mess Kit',
+      'Tinderbox',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Waterskin',
+      'Hempen Rope (50 feet)',
+    ],
+  },
+  dungeoneers: {
+    name: "Dungeoneer's Pack",
+    items: [
+      'Backpack',
+      'Crowbar',
+      'Hammer',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Torch',
+      'Tinderbox',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Waterskin',
+      'Hempen Rope (50 feet)',
+    ],
+  },
+  burglars: {
+    name: "Burglar's Pack",
+    items: [
+      'Backpack',
+      'Bag of 1,000 Ball Bearings',
+      'String (10 feet)',
+      'Bell',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Crowbar',
+      'Hammer',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Piton',
+      'Hooded Lantern',
+      'Oil (flask)',
+      'Oil (flask)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Tinderbox',
+      'Waterskin',
+      'Hempen Rope (50 feet)',
+    ],
+  },
+  diplomats: {
+    name: "Diplomat's Pack",
+    items: [
+      'Chest',
+      'Case, Map or Scroll',
+      'Case, Map or Scroll',
+      'Fine Clothes',
+      'Ink (1 ounce bottle)',
+      'Ink Pen',
+      'Lamp',
+      'Oil (flask)',
+      'Oil (flask)',
+      'Paper (one sheet)',
+      'Paper (one sheet)',
+      'Paper (one sheet)',
+      'Paper (one sheet)',
+      'Paper (one sheet)',
+      'Perfume (vial)',
+      'Sealing Wax',
+      'Soap',
+    ],
+  },
+  entertainers: {
+    name: "Entertainer's Pack",
+    items: [
+      'Backpack',
+      'Bedroll',
+      'Costume Clothes',
+      'Costume Clothes',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Waterskin',
+      'Disguise Kit',
+    ],
+  },
+  priests: {
+    name: "Priest's Pack",
+    items: [
+      'Backpack',
+      'Blanket',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Candle',
+      'Tinderbox',
+      'Alms Box',
+      'Block of Incense',
+      'Block of Incense',
+      'Censer',
+      'Vestments',
+      'Rations (1 day)',
+      'Rations (1 day)',
+      'Waterskin',
+    ],
+  },
+  scholars: {
+    name: "Scholar's Pack",
+    items: [
+      'Backpack',
+      'Book of Lore',
+      'Ink (1 ounce bottle)',
+      'Ink Pen',
+      'Parchment (one sheet)',
+      'Parchment (one sheet)',
+      'Parchment (one sheet)',
+      'Parchment (one sheet)',
+      'Parchment (one sheet)',
+      'Parchment (one sheet)',
+      'Parchment (one sheet)',
+      'Parchment (one sheet)',
+      'Parchment (one sheet)',
+      'Parchment (one sheet)',
+      'Little Bag of Sand',
+      'Small Knife',
+    ],
+  },
+};
+
+// Standard Array for ability scores
+export const standardArray = [15, 14, 13, 12, 10, 8];
+
+// Races (SRD)
+export const races = [
+  { value: 'human', label: 'Human', speed: 30 },
+  { value: 'elf', label: 'Elf', speed: 30 },
+  { value: 'dwarf', label: 'Dwarf', speed: 25 },
+  { value: 'halfling', label: 'Halfling', speed: 25 },
+  { value: 'dragonborn', label: 'Dragonborn', speed: 30 },
+  { value: 'gnome', label: 'Gnome', speed: 25 },
+  { value: 'half-elf', label: 'Half-Elf', speed: 30 },
+  { value: 'half-orc', label: 'Half-Orc', speed: 30 },
+  { value: 'tiefling', label: 'Tiefling', speed: 30 },
+];
+
+// Classes (SRD)
+export const classes = [
+  { value: 'barbarian', label: 'Barbarian', hitDie: 12, savingThrows: ['str', 'con'] },
+  { value: 'bard', label: 'Bard', hitDie: 8, savingThrows: ['dex', 'cha'] },
+  { value: 'cleric', label: 'Cleric', hitDie: 8, savingThrows: ['wis', 'cha'] },
+  { value: 'druid', label: 'Druid', hitDie: 8, savingThrows: ['int', 'wis'] },
+  { value: 'fighter', label: 'Fighter', hitDie: 10, savingThrows: ['str', 'con'] },
+  { value: 'monk', label: 'Monk', hitDie: 8, savingThrows: ['str', 'dex'] },
+  { value: 'paladin', label: 'Paladin', hitDie: 10, savingThrows: ['wis', 'cha'] },
+  { value: 'ranger', label: 'Ranger', hitDie: 10, savingThrows: ['str', 'dex'] },
+  { value: 'rogue', label: 'Rogue', hitDie: 8, savingThrows: ['dex', 'int'] },
+  { value: 'sorcerer', label: 'Sorcerer', hitDie: 6, savingThrows: ['con', 'cha'] },
+  { value: 'warlock', label: 'Warlock', hitDie: 8, savingThrows: ['wis', 'cha'] },
+  { value: 'wizard', label: 'Wizard', hitDie: 6, savingThrows: ['int', 'wis'] },
+];
+
+// Starting weapons by class
+export const classWeapons: Record<string, string[]> = {
+  barbarian: ['Greataxe', 'Handaxe', 'Handaxe', 'Javelin', 'Javelin', 'Javelin', 'Javelin'],
+  bard: ['Rapier', 'Dagger'],
+  cleric: ['Mace', 'Shield', 'Light Crossbow', 'Crossbow Bolts (20)'],
+  druid: ['Wooden Shield', 'Scimitar'],
+  fighter: ['Longsword', 'Shield', 'Longbow', 'Arrows (20)'],
+  monk: ['Shortsword', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart'],
+  paladin: ['Longsword', 'Shield', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin'],
+  ranger: ['Longbow', 'Arrows (20)', 'Shortsword', 'Shortsword'],
+  rogue: ['Rapier', 'Shortbow', 'Arrows (20)', 'Dagger', 'Dagger'],
+  sorcerer: ['Light Crossbow', 'Crossbow Bolts (20)', 'Dagger', 'Dagger'],
+  warlock: ['Light Crossbow', 'Crossbow Bolts (20)', 'Dagger', 'Dagger'],
+  wizard: ['Quarterstaff', 'Dagger'],
+};
+
+// Starting armor by class
+export const classArmor: Record<string, string[]> = {
+  barbarian: [],
+  bard: ['Leather Armor'],
+  cleric: ['Scale Mail'],
+  druid: ['Leather Armor'],
+  fighter: ['Chain Mail'],
+  monk: [],
+  paladin: ['Chain Mail'],
+  ranger: ['Leather Armor'],
+  rogue: ['Leather Armor'],
+  sorcerer: [],
+  warlock: ['Leather Armor'],
+  wizard: [],
+};
+
+// Spellcasting focus options by class
+export const classSpellcastingFocus: Record<string, { options: string[]; automatic: string[] }> = {
+  barbarian: { options: [], automatic: [] },
+  bard: { options: ['Lute', 'Lyre', 'Flute', 'Drum', 'Horn'], automatic: [] },
+  cleric: { options: ['Holy Symbol (Amulet)', 'Holy Symbol (Emblem)', 'Holy Symbol (Reliquary)'], automatic: [] },
+  druid: { options: ['Druidic Focus (Sprig of Mistletoe)', 'Druidic Focus (Totem)', 'Druidic Focus (Wooden Staff)', 'Druidic Focus (Yew Wand)'], automatic: [] },
+  fighter: { options: [], automatic: [] },
+  monk: { options: [], automatic: [] },
+  paladin: { options: ['Holy Symbol (Amulet)', 'Holy Symbol (Emblem)', 'Holy Symbol (Reliquary)'], automatic: [] },
+  ranger: { options: [], automatic: [] },
+  rogue: { options: [], automatic: [] },
+  sorcerer: { options: ['Arcane Focus (Crystal)', 'Arcane Focus (Orb)', 'Arcane Focus (Rod)', 'Arcane Focus (Staff)', 'Arcane Focus (Wand)', 'Component Pouch'], automatic: [] },
+  warlock: { options: ['Arcane Focus (Crystal)', 'Arcane Focus (Orb)', 'Arcane Focus (Rod)', 'Arcane Focus (Staff)', 'Arcane Focus (Wand)', 'Component Pouch'], automatic: [] },
+  wizard: { options: ['Arcane Focus (Crystal)', 'Arcane Focus (Orb)', 'Arcane Focus (Rod)', 'Arcane Focus (Staff)', 'Arcane Focus (Wand)', 'Component Pouch'], automatic: ['Spellbook'] },
+};
+
+// Class-specific recommended packs
+export const classRecommendedPacks: Record<string, string[]> = {
+  barbarian: ['explorers'],
+  bard: ['diplomats', 'entertainers'],
+  cleric: ['priests', 'explorers'],
+  druid: ['explorers'],
+  fighter: ['dungeoneers', 'explorers'],
+  monk: ['dungeoneers', 'explorers'],
+  paladin: ['priests', 'explorers'],
+  ranger: ['dungeoneers', 'explorers'],
+  rogue: ['burglars', 'dungeoneers'],
+  sorcerer: ['dungeoneers', 'explorers'],
+  warlock: ['dungeoneers', 'scholars'],
+  wizard: ['scholars', 'explorers'],
+};
+
+// Weapon choices (either/or options) by class - each array is a choice, pick one set
+export const classWeaponChoices: Record<string, { label: string; items: string[] }[]> = {
+  barbarian: [
+    { label: 'Primary Weapon', items: ['Greataxe'] },
+    { label: 'Secondary Weapons', items: ['Handaxe', 'Handaxe'] },
+    { label: 'Javelins', items: ['Javelin', 'Javelin', 'Javelin', 'Javelin'] },
+  ],
+  bard: [
+    { label: 'Weapon Choice', items: ['Rapier'] }, // or Longsword or any simple
+    { label: 'Dagger', items: ['Dagger'] },
+  ],
+  cleric: [
+    { label: 'Weapon Choice', items: ['Mace'] }, // or Warhammer if dwarf
+    { label: 'Ranged Option', items: ['Light Crossbow', 'Crossbow Bolts (20)'] },
+    { label: 'Shield', items: ['Shield'] },
+  ],
+  druid: [
+    { label: 'Shield', items: ['Wooden Shield'] },
+    { label: 'Weapon Choice', items: ['Scimitar'] }, // or any simple melee
+  ],
+  fighter: [
+    { label: 'Melee Setup', items: ['Longsword', 'Shield'] }, // or two martial weapons
+    { label: 'Ranged Option', items: ['Longbow', 'Arrows (20)'] }, // or two handaxes
+  ],
+  monk: [
+    { label: 'Weapon Choice', items: ['Shortsword'] }, // or any simple weapon
+    { label: 'Darts', items: ['Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart', 'Dart'] },
+  ],
+  paladin: [
+    { label: 'Melee Setup', items: ['Longsword', 'Shield'] }, // or two martial weapons
+    { label: 'Javelins', items: ['Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin'] },
+  ],
+  ranger: [
+    { label: 'Ranged Weapon', items: ['Longbow', 'Arrows (20)'] },
+    { label: 'Melee Weapons', items: ['Shortsword', 'Shortsword'] }, // or two simple melee
+  ],
+  rogue: [
+    { label: 'Melee Weapon', items: ['Rapier'] }, // or shortsword
+    { label: 'Ranged Weapon', items: ['Shortbow', 'Arrows (20)'] },
+    { label: 'Daggers', items: ['Dagger', 'Dagger'] },
+  ],
+  sorcerer: [
+    { label: 'Weapon Choice', items: ['Light Crossbow', 'Crossbow Bolts (20)'] }, // or any simple
+    { label: 'Daggers', items: ['Dagger', 'Dagger'] },
+  ],
+  warlock: [
+    { label: 'Weapon Choice', items: ['Light Crossbow', 'Crossbow Bolts (20)'] }, // or any simple
+    { label: 'Daggers', items: ['Dagger', 'Dagger'] },
+  ],
+  wizard: [
+    { label: 'Weapon Choice', items: ['Quarterstaff'] }, // or dagger
+    { label: 'Backup Dagger', items: ['Dagger'] },
+  ],
+};
+
+// Languages
+export const languages = [
+  'Common',
+  'Dwarvish',
+  'Elvish',
+  'Giant',
+  'Gnomish',
+  'Goblin',
+  'Halfling',
+  'Orc',
+  'Abyssal',
+  'Celestial',
+  'Draconic',
+  'Deep Speech',
+  'Infernal',
+  'Primordial',
+  'Sylvan',
+  'Undercommon',
+];

@@ -13,9 +13,10 @@ import {
   Shield,
   Swords,
   Bug,
+  Crown,
 } from 'lucide-react'
 
-export type EntityType = 'npc' | 'location' | 'item' | 'faction' | 'quest' | 'encounter' | 'creature' | 'other'
+export type EntityType = 'npc' | 'player' | 'location' | 'item' | 'faction' | 'quest' | 'encounter' | 'creature' | 'other'
 export type EntitySubType = 'standard' | 'villain' | 'hero' | string
 
 interface EntityTypeBadgeProps {
@@ -56,56 +57,63 @@ const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
   npc: {
     label: 'NPC',
     color: 'text-teal-400',
-    bgColor: 'bg-teal-500/10',
+    bgColor: 'bg-teal-500/20',
     borderColor: 'border-teal-500/30',
     icon: User,
   },
+  player: {
+    label: 'Player',
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/20',
+    borderColor: 'border-amber-500/30',
+    icon: Crown,
+  },
   location: {
     label: 'Location',
-    color: 'text-green-400',
-    bgColor: 'bg-green-500/10',
-    borderColor: 'border-green-500/30',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/20',
+    borderColor: 'border-emerald-500/30',
     icon: MapPin,
   },
   item: {
     label: 'Item',
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    borderColor: 'border-purple-500/30',
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/20',
+    borderColor: 'border-blue-500/30',
     icon: Sword,
   },
   faction: {
     label: 'Faction',
     color: 'text-orange-400',
-    bgColor: 'bg-orange-500/10',
+    bgColor: 'bg-orange-500/20',
     borderColor: 'border-orange-500/30',
     icon: Users,
   },
   quest: {
     label: 'Quest',
-    color: 'text-yellow-400',
-    bgColor: 'bg-yellow-500/10',
-    borderColor: 'border-yellow-500/30',
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/20',
+    borderColor: 'border-purple-500/30',
     icon: Scroll,
   },
   encounter: {
     label: 'Encounter',
-    color: 'text-red-400',
-    bgColor: 'bg-red-500/10',
-    borderColor: 'border-red-500/30',
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/20',
+    borderColor: 'border-amber-500/30',
     icon: Swords,
   },
   creature: {
     label: 'Creature',
     color: 'text-rose-400',
-    bgColor: 'bg-rose-500/10',
+    bgColor: 'bg-rose-500/20',
     borderColor: 'border-rose-500/30',
     icon: Bug,
   },
   other: {
     label: 'Other',
     color: 'text-slate-400',
-    bgColor: 'bg-slate-500/10',
+    bgColor: 'bg-slate-500/20',
     borderColor: 'border-slate-500/30',
     icon: HelpCircle,
   },

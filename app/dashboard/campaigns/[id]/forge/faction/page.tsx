@@ -358,6 +358,8 @@ export default function FactionForgePage({ params }: PageProps) {
         dm_slug: forge.output?.dm_slug,
         summary: forge.output?.dm_slug,
         status: 'active',
+        // Mark as complete (no longer a stub)
+        forge_status: 'complete',
         attributes: {
           is_stub: false,
           needs_review: false,

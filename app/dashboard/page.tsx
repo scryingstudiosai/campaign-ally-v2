@@ -2,9 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { LogoutButton } from '@/components/auth/logout-button'
-import { CampaignCard } from '@/components/campaigns/campaign-card'
-import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Shield } from 'lucide-react'
+import { DashboardClient } from './dashboard-client'
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -39,36 +38,19 @@ export default async function DashboardPage() {
           <h1 className="text-3xl font-bold">
             Welcome, {displayName}!
           </h1>
-          <LogoutButton />
-        </div>
-
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Your Campaigns</h2>
-          <Button asChild>
-            <Link href="/dashboard/campaigns/new">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Campaign
+          <div className="flex items-center gap-3">
+            <Link
+              href="/portal"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+            >
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Player Portal</span>
             </Link>
-          </Button>
+            <LogoutButton />
+          </div>
         </div>
 
-        {campaigns && campaigns.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {campaigns.map((campaign) => (
-              <CampaignCard key={campaign.id} campaign={campaign} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 border border-dashed border-muted rounded-lg">
-            <p className="text-muted-foreground mb-4">No campaigns yet.</p>
-            <Button asChild>
-              <Link href="/dashboard/campaigns/new">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Your First Campaign
-              </Link>
-            </Button>
-          </div>
-        )}
+        <DashboardClient campaigns={campaigns} />
       </div>
     </div>
   )

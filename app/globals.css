@@ -2,7 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Material System Design Tokens & Components */
+/* Arcane Artifact Design System */
+@import '../styles/arcane-tokens.css';
 @import '../styles/tokens.css';
 @import '../styles/materials.css';
 
@@ -62,4 +63,269 @@
     background-color: var(--ca-bg-base);
     @apply text-foreground antialiased;
   }
+}
+
+/* Tiptap Editor Styles */
+.ProseMirror {
+  min-height: 300px;
+  outline: none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #64748b;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.ProseMirror h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #e2e8f0;
+}
+
+.ProseMirror h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #e2e8f0;
+}
+
+.ProseMirror p {
+  margin-bottom: 0.75rem;
+  color: #cbd5e1;
+}
+
+.ProseMirror ul, .ProseMirror ol {
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Fix Tiptap list bullets and numbers */
+.ProseMirror ul {
+  list-style-type: disc !important;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal !important;
+}
+
+.ProseMirror ul li::marker,
+.ProseMirror ol li::marker {
+  color: #94a3b8; /* slate-400 */
+}
+
+.ProseMirror blockquote {
+  border-left: 3px solid #475569;
+  padding-left: 1rem;
+  margin-left: 0;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 1px solid #334155;
+  margin: 1rem 0;
+}
+
+/* Read Aloud Block */
+.ProseMirror [data-read-aloud] {
+  background: rgba(30, 41, 59, 0.5);
+  border-left: 4px solid #14b8a6;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  position: relative;
+}
+
+.ProseMirror [data-read-aloud]::before {
+  content: '📖 Read Aloud';
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.75rem;
+  color: #14b8a6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* ═══════════════════════════════════════════
+   ARCANE ARTIFACT DESIGN SYSTEM
+   Noise Texture Overlay for tactile feel
+═══════════════════════════════════════════ */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Void background for body */
+body {
+  background-color: var(--void);
+}
+
+/* ═══════════════════════════════════════════
+   Entity Mention Styles
+   @ mention inline styles
+═══════════════════════════════════════════ */
+.entity-mention {
+  @apply inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-sm font-medium cursor-pointer transition-all;
+  @apply bg-slate-800/70 border border-slate-700 text-slate-300;
+}
+
+.entity-mention:hover {
+  @apply bg-slate-700 border-slate-600 ring-1 ring-white/20;
+}
+
+.entity-mention--npc {
+  @apply bg-blue-900/50 border-blue-700 text-blue-300;
+}
+.entity-mention--npc:hover {
+  @apply bg-blue-800/50 border-blue-600;
+}
+
+.entity-mention--player {
+  @apply bg-green-900/50 border-green-700 text-green-300;
+}
+.entity-mention--player:hover {
+  @apply bg-green-800/50 border-green-600;
+}
+
+.entity-mention--location {
+  @apply bg-emerald-900/50 border-emerald-700 text-emerald-300;
+}
+.entity-mention--location:hover {
+  @apply bg-emerald-800/50 border-emerald-600;
+}
+
+.entity-mention--item {
+  @apply bg-amber-900/50 border-amber-700 text-amber-300;
+}
+.entity-mention--item:hover {
+  @apply bg-amber-800/50 border-amber-600;
+}
+
+.entity-mention--creature {
+  @apply bg-red-900/50 border-red-700 text-red-300;
+}
+.entity-mention--creature:hover {
+  @apply bg-red-800/50 border-red-600;
+}
+
+.entity-mention--faction {
+  @apply bg-purple-900/50 border-purple-700 text-purple-300;
+}
+.entity-mention--faction:hover {
+  @apply bg-purple-800/50 border-purple-600;
+}
+
+.entity-mention--quest {
+  @apply bg-teal-900/50 border-teal-700 text-teal-300;
+}
+.entity-mention--quest:hover {
+  @apply bg-teal-800/50 border-teal-600;
+}
+
+.entity-mention--encounter {
+  @apply bg-orange-900/50 border-orange-700 text-orange-300;
+}
+.entity-mention--encounter:hover {
+  @apply bg-orange-800/50 border-orange-600;
+}
+
+/* Tippy.js mention popup styling */
+.tippy-box[data-theme~='dark'] {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+
+.tippy-box[data-theme~='dark'] > .tippy-content {
+  padding: 0;
+}
+
+.tippy-box[data-theme~='dark'] > .tippy-arrow::before {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════
+   ReactFlow Relationship Graph Styles
+   Custom theming for dark mode
+═══════════════════════════════════════════ */
+.react-flow__pane {
+  cursor: grab;
+}
+
+.react-flow__pane:active {
+  cursor: grabbing;
+}
+
+.react-flow__node {
+  cursor: pointer;
+}
+
+.react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+/* Attribution - hide the ReactFlow watermark */
+.react-flow__attribution {
+  display: none;
+}
+
+/* Controls styling for dark theme */
+.react-flow__controls {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+.react-flow__controls-button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.react-flow__controls-button svg {
+  max-width: 14px;
+  max-height: 14px;
+}
+
+/* Minimap styling for dark theme */
+.react-flow__minimap {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Edge interaction */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3;
+}
+
+/* Selection box */
+.react-flow__selection {
+  background: rgba(20, 184, 166, 0.1);
+  border: 1px dashed rgba(20, 184, 166, 0.5);
+}
+
+/* ═══════════════════════════════════════════
+   Relationship Graph Animations
+   Volatility-based subtle pulse for unstable relationships
+═══════════════════════════════════════════ */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
 }

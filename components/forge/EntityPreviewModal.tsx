@@ -10,6 +10,14 @@ interface Entity {
   id: string
   name: string
   entity_type: string
+  sub_type?: string
+  summary?: string
+  dm_slug?: string
+  description?: string
+  read_aloud?: string
+  brain?: Record<string, unknown>
+  soul?: Record<string, unknown>
+  voice?: Record<string, unknown>
   attributes?: {
     summary?: string
     description?: string
@@ -19,6 +27,7 @@ interface Entity {
     motivation?: string
     voice_notes?: string
     origin_history?: string
+    is_stub?: boolean
   }
 }
 
@@ -117,26 +126,102 @@ export function EntityPreviewModal({
             </div>
           ) : entity ? (
             <div className="space-y-4">
-              {/* Summary */}
-              {entity.attributes?.summary && (
-                <p className="text-slate-300 italic">{entity.attributes.summary}</p>
+              {/* Stub Warning */}
+              {entity.attributes?.is_stub && (
+                <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-amber-400 text-sm">
+                  ⚠️ Stub entity - needs details
+                </div>
+              )}
+
+              {/* Summary / DM Slug (new architecture) */}
+              {(entity.dm_slug || entity.summary || entity.attributes?.summary) && (
+                <p className="text-slate-300 italic">
+                  {entity.dm_slug || entity.summary || entity.attributes?.summary}
+                </p>
+              )}
+
+              {/* Read Aloud (new architecture) */}
+              {entity.read_aloud && (
+                <div className="p-3 bg-amber-900/20 border-l-2 border-amber-500 rounded-r">
+                  <p className="text-slate-200 italic">&ldquo;{entity.read_aloud}&rdquo;</p>
+                </div>
               )}
 
               {/* Description */}
-              {(entity.attributes?.description ||
+              {(entity.description ||
+                entity.attributes?.description ||
                 entity.attributes?.public_description) && (
                 <div>
                   <h3 className="text-sm font-semibold text-slate-400 mb-1">
                     Description
                   </h3>
-                  <p className="text-slate-300">
-                    {entity.attributes?.description ||
+                  <p className="text-slate-300 whitespace-pre-wrap">
+                    {entity.description ||
+                      entity.attributes?.description ||
                       entity.attributes?.public_description}
                   </p>
                 </div>
               )}
 
-              {/* Appearance (for NPCs) */}
+              {/* NPC Brain Psychology (new architecture) */}
+              {entity.entity_type === 'npc' && entity.brain && (
+                <>
+                  {(entity.brain as { psychology?: { core_trait?: string } }).psychology?.core_trait && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-400 mb-1">
+                        Core Trait
+                      </h3>
+                      <p className="text-slate-300">
+                        {(entity.brain as { psychology: { core_trait: string } }).psychology.core_trait}
+                      </p>
+                    </div>
+                  )}
+                  {(entity.brain as { goals?: { primary?: string } }).goals?.primary && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-400 mb-1">
+                        Goal
+                      </h3>
+                      <p className="text-slate-300">
+                        {(entity.brain as { goals: { primary: string } }).goals.primary}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Location Soul (new architecture) */}
+              {entity.entity_type === 'location' && entity.soul && (
+                <>
+                  {(entity.soul as { atmosphere?: string }).atmosphere && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-400 mb-1">
+                        Atmosphere
+                      </h3>
+                      <p className="text-slate-300">
+                        {(entity.soul as { atmosphere: string }).atmosphere}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Location Brain (new architecture) */}
+              {entity.entity_type === 'location' && entity.brain && (
+                <>
+                  {(entity.brain as { purpose?: string }).purpose && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-400 mb-1">
+                        Purpose
+                      </h3>
+                      <p className="text-slate-300">
+                        {(entity.brain as { purpose: string }).purpose}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Appearance (legacy NPCs) */}
               {entity.attributes?.appearance && (
                 <div>
                   <h3 className="text-sm font-semibold text-slate-400 mb-1">
@@ -146,7 +231,7 @@ export function EntityPreviewModal({
                 </div>
               )}
 
-              {/* Personality (for NPCs) */}
+              {/* Personality (legacy NPCs) */}
               {entity.attributes?.personality && (
                 <div>
                   <h3 className="text-sm font-semibold text-slate-400 mb-1">
@@ -156,7 +241,7 @@ export function EntityPreviewModal({
                 </div>
               )}
 
-              {/* Motivation (for NPCs) */}
+              {/* Motivation (legacy NPCs) */}
               {entity.attributes?.motivation && (
                 <div>
                   <h3 className="text-sm font-semibold text-slate-400 mb-1">
@@ -173,6 +258,15 @@ export function EntityPreviewModal({
                     Origin & History
                   </h3>
                   <p className="text-slate-300">{entity.attributes.origin_history}</p>
+                </div>
+              )}
+
+              {/* Sub-type badge */}
+              {entity.sub_type && (
+                <div className="pt-2 border-t border-slate-700">
+                  <Badge variant="outline" className="text-xs">
+                    {entity.sub_type}
+                  </Badge>
                 </div>
               )}
             </div>

@@ -252,6 +252,68 @@ Focus on:
 Contains: List room or area NAMES within (for larger buildings). Names only, no descriptions.
 `;
 
+export const TAVERN_INN_PROMPT = `
+## TAVERN/INN SPECIFIC GUIDELINES
+
+If the location is a TAVERN, INN, ALE HOUSE, or similar establishment, include these additional mechanics:
+
+In the "mechanics" object, add:
+{
+  "is_tavern": true,
+  "establishment_quality": "poor" | "modest" | "comfortable" | "wealthy" | "aristocratic",
+
+  "lodging": {
+    "available": true,
+    "rooms": [
+      { "type": "Common Room (floor space)", "price_per_night": 0.07, "description": "A spot on the floor near the fire" },
+      { "type": "Shared Room (bunk)", "price_per_night": 0.5, "description": "A bunk in a room with 3-4 others" },
+      { "type": "Private Room", "price_per_night": 2, "description": "A small but private room with a bed and chamber pot" }
+    ]
+  },
+
+  "menu": {
+    "drinks": [
+      { "name": "House Ale", "price": 0.04, "description": "Weak but refreshing" },
+      { "name": "Dwarven Stout", "price": 0.1, "description": "Dark and bitter, imported from the mountains" },
+      { "name": "Elven Wine", "price": 0.5, "description": "Light and fruity, a rare treat" }
+    ],
+    "meals": [
+      { "name": "Bowl of Stew", "price": 0.1, "description": "Mystery meat and root vegetables" },
+      { "name": "Meat Pie", "price": 0.3, "description": "Hearty and filling" },
+      { "name": "Roast Chicken", "price": 0.5, "description": "Half a bird with bread and gravy" }
+    ],
+    "specialty": {
+      "name": "The Flaming Dragon",
+      "price": 1,
+      "description": "A fiery whiskey cocktail, served aflame"
+    }
+  }
+}
+
+### ESTABLISHMENT QUALITY affects pricing:
+- **Poor**: Ale 4cp, Meal 1sp, Common room 7cp/night. Rough crowd, questionable cleanliness.
+- **Modest**: Ale 5cp, Meal 3sp, Shared room 5sp/night. Working class, decent food.
+- **Comfortable**: Wine 2sp, Meal 5sp, Private room 8sp/night. Clean, good service.
+- **Wealthy**: Fine wine 5sp+, Fine meal 8sp+, Suite 2gp/night. Luxury, excellent service.
+- **Aristocratic**: Premium everything 1gp+, Royal suite 5gp+/night. Exclusive clientele.
+
+### MENU GUIDELINES:
+Generate 2-4 drinks with character-appropriate names (not just "ale" but "Grumbold's Dark Brew")
+Generate 2-3 meals that fit the establishment's quality and regional flavor
+Create ONE unique "house specialty" with a creative name and description that players will remember
+
+### LODGING GUIDELINES:
+Generate 2-3 room types appropriate to the establishment quality
+Poor/Modest places might only have common room and shared bunks
+Comfortable+ should have private rooms
+Wealthy+ might have suites or themed rooms
+
+All prices should be in gold pieces (gp). Use decimal values:
+- 1 cp = 0.01 gp
+- 1 sp = 0.1 gp
+- 1 gp = 1 gp
+`;
+
 export const ROOM_PROMPT = `
 ## ROOM-SPECIFIC GUIDELINES
 

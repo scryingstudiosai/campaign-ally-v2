@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Search, X, LayoutGrid, List } from 'lucide-react'
+import { Search, X, LayoutGrid, List, Network } from 'lucide-react'
 import { EntityType } from './entity-type-badge'
 
 export interface EntityFilters {
@@ -23,8 +23,8 @@ export interface EntityFilters {
 interface EntityFiltersProps {
   filters: EntityFilters
   onFiltersChange: (filters: EntityFilters) => void
-  viewMode: 'card' | 'list'
-  onViewModeChange: (mode: 'card' | 'list') => void
+  viewMode: 'card' | 'list' | 'graph'
+  onViewModeChange: (mode: 'card' | 'list' | 'graph') => void
 }
 
 export function EntityFiltersBar({
@@ -73,6 +73,7 @@ export function EntityFiltersBar({
             size="sm"
             onClick={() => onViewModeChange('card')}
             className="rounded-r-none"
+            title="Card view"
           >
             <LayoutGrid className="w-4 h-4" />
           </Button>
@@ -80,9 +81,19 @@ export function EntityFiltersBar({
             variant={viewMode === 'list' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => onViewModeChange('list')}
-            className="rounded-l-none"
+            className="rounded-none border-x"
+            title="List view"
           >
             <List className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'graph' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => onViewModeChange('graph')}
+            className="rounded-l-none"
+            title="Spiderweb"
+          >
+            <Network className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -93,12 +104,13 @@ export function EntityFiltersBar({
           value={filters.entityType}
           onValueChange={(v) => updateFilter('entityType', v as EntityType | 'all')}
         >
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-[130px] h-9 rounded-lg bg-slate-800/50 border-slate-700 text-sm">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="npc">NPCs</SelectItem>
+            <SelectItem value="player">Players</SelectItem>
             <SelectItem value="location">Locations</SelectItem>
             <SelectItem value="item">Items</SelectItem>
             <SelectItem value="faction">Factions</SelectItem>
@@ -113,7 +125,7 @@ export function EntityFiltersBar({
           value={filters.status}
           onValueChange={(v) => updateFilter('status', v as EntityFilters['status'])}
         >
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-[130px] h-9 rounded-lg bg-slate-800/50 border-slate-700 text-sm">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -130,7 +142,7 @@ export function EntityFiltersBar({
           value={filters.importance}
           onValueChange={(v) => updateFilter('importance', v as EntityFilters['importance'])}
         >
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-[130px] h-9 rounded-lg bg-slate-800/50 border-slate-700 text-sm">
             <SelectValue placeholder="Importance" />
           </SelectTrigger>
           <SelectContent>
@@ -146,7 +158,7 @@ export function EntityFiltersBar({
           value={filters.visibility}
           onValueChange={(v) => updateFilter('visibility', v as EntityFilters['visibility'])}
         >
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-[130px] h-9 rounded-lg bg-slate-800/50 border-slate-700 text-sm">
             <SelectValue placeholder="Visibility" />
           </SelectTrigger>
           <SelectContent>
@@ -158,9 +170,9 @@ export function EntityFiltersBar({
         </Select>
 
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-9 text-sm text-muted-foreground hover:text-foreground">
             <X className="w-3 h-3" />
-            Clear
+            Clear filters
           </Button>
         )}
       </div>
