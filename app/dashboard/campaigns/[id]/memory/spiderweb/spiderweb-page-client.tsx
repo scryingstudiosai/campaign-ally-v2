@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { SpiderwebGraph } from '@/components/memory/SpiderwebGraph'
+import { SpiderwebGraphWrapper as SpiderwebGraph } from '@/components/memory/SpiderwebWrapper'
 import { ArrowLeft, Network, LayoutGrid } from 'lucide-react'
 import { PageTransition, FadeIn } from '@/components/ui/motion'
 
