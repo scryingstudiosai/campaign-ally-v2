@@ -293,7 +293,7 @@ export function ThreadFormDialog({
             <Select value={triggerType} onValueChange={(value) => {
               setTriggerType(value)
               // Auto-set clock type when selecting time-based trigger
-              if (value === 'time-based' && clockType === 'none') {
+              if (value === 'time' && clockType === 'none') {
                 setClockType('sessions')
               }
             }}>
@@ -311,7 +311,7 @@ export function ThreadFormDialog({
           </div>
 
           {/* Clock Section - Only visible when trigger is time-based */}
-          {triggerType === 'time-based' && (
+          {triggerType === 'time' && (
             <div className="p-4 bg-zinc-800/50 rounded-lg space-y-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-amber-400" />
