@@ -221,6 +221,72 @@ export class CopilotService {
       }
     }
 
+    // TYPE-BASED SEARCH - if query mentions an entity type, fetch all of that type
+    const typeKeywords: Record<string, string> = {
+      'faction': 'faction',
+      'factions': 'faction',
+      'npc': 'npc',
+      'npcs': 'npc',
+      'character': 'npc',
+      'characters': 'npc',
+      'location': 'location',
+      'locations': 'location',
+      'place': 'location',
+      'places': 'location',
+      'item': 'item',
+      'items': 'item',
+      'quest': 'quest',
+      'quests': 'quest',
+      'creature': 'creature',
+      'creatures': 'creature',
+      'monster': 'creature',
+      'monsters': 'creature',
+    };
+
+    const queryLowerForType = query.toLowerCase();
+    for (const [keyword, entityType] of Object.entries(typeKeywords)) {
+      if (queryLowerForType.includes(keyword)) {
+        try {
+          const { data: typeMatches } = await this.supabase
+            .from('entities')
+            .select('id, name, entity_type, summary, description')
+            .eq('campaign_id', campaignId)
+            .eq('entity_type', entityType)
+            .is('deleted_at', null)
+            .limit(10);
+
+          if (typeMatches && typeMatches.length > 0) {
+            console.log(`[Copilot] Type search found ${typeMatches.length} ${entityType}s`);
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            typeMatches.forEach((entity: any) => {
+              if (!sources.some(s => s.id === entity.id)) {
+                sources.unshift({
+                  id: entity.id,
+                  type: 'entity',
+                  name: entity.name,
+                  entityType: entity.entity_type,
+                  relevance: 0.85,
+                  snippet: entity.summary || entity.description?.slice(0, 150) || '',
+                });
+
+                semanticResults.unshift({
+                  id: entity.id,
+                  entity_name: entity.name,
+                  entity_type: entity.entity_type,
+                  content: entity.summary || entity.description || '',
+                  similarity: 0.85,
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error(`[Copilot] Type search failed for ${entityType}:`, error);
+        }
+        break; // Only match one type per query
+      }
+    }
+
     // Get active story threads
     const { data: threads } = await this.supabase
       .from('story_threads')
