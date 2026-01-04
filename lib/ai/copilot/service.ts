@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
+import { generateEmbedding } from '@/lib/ai/embedding';
 import { CopilotMessage, CopilotSource, CopilotRequest, CopilotResponse } from './types';
 
 const openai = new OpenAI({
@@ -136,39 +137,38 @@ export class CopilotService {
     const sources: CopilotSource[] = [];
 
     try {
-      // Call the working context search API instead of duplicating RPC logic
-      const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/context/search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          campaignId,
-          query,
-          threshold: 0.3,
-          limit: 15,
-        }),
+      const embeddingArray = await generateEmbedding(query);
+      const embeddingString = `[${embeddingArray.join(',')}]`;
+
+      console.log(`[Copilot] Generated embedding with ${embeddingArray.length} dimensions`);
+
+      // Use match_campaign_context_text which accepts text instead of vector type
+      const { data: results, error } = await this.supabase.rpc('match_campaign_context_text', {
+        query_embedding_text: embeddingString,
+        match_threshold: 0.3,
+        match_count: 15,
+        p_campaign_id: campaignId,
       });
 
-      if (searchResponse.ok) {
-        const searchData = await searchResponse.json();
-        semanticResults = searchData.results || [];
-        console.log(`[Copilot] Semantic search returned ${semanticResults.length} results`);
-
-        // Add to sources
-        semanticResults.forEach((r: SemanticResult) => {
-          sources.push({
-            id: r.id,
-            type: 'entity',
-            name: r.entity_name || 'Unknown',
-            entityType: r.entity_type,
-            relevance: r.similarity,
-            snippet: r.content?.slice(0, 150),
-          });
-        });
+      if (error) {
+        console.error('[Copilot] Semantic search RPC error:', error);
+        console.error('[Copilot] Error details:', JSON.stringify(error));
       } else {
-        console.error('[Copilot] Context search API failed:', await searchResponse.text());
+        semanticResults = (results as SemanticResult[]) || [];
+        console.log(`[Copilot] Semantic search returned ${semanticResults.length} results`);
       }
+
+      // Add to sources
+      semanticResults.forEach((r) => {
+        sources.push({
+          id: r.id,
+          type: 'entity',
+          name: r.entity_name || 'Unknown',
+          entityType: r.entity_type,
+          relevance: r.similarity,
+          snippet: r.content?.slice(0, 150),
+        });
+      });
     } catch (error) {
       console.error('[Copilot] Semantic search failed:', error);
     }
