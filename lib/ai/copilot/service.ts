@@ -142,14 +142,21 @@ export class CopilotService {
       // Convert to string format for Supabase vector type
       const embeddingString = `[${embeddingArray.join(',')}]`;
 
-      const { data: results } = await this.supabase.rpc('match_campaign_context', {
+      console.log(`[Copilot] Generated embedding with ${embeddingArray.length} dimensions`);
+
+      const { data: results, error } = await this.supabase.rpc('match_campaign_context', {
         query_embedding: embeddingString,
-        match_threshold: 0.4, // Lower threshold for broader results
+        match_threshold: 0.3, // Lower threshold for broader results
         match_count: 15,
         p_campaign_id: campaignId,
       });
 
-      semanticResults = (results as SemanticResult[]) || [];
+      if (error) {
+        console.error('[Copilot] Semantic search RPC error:', error);
+      } else {
+        console.log(`[Copilot] Semantic search returned ${results?.length || 0} results`);
+        semanticResults = (results as SemanticResult[]) || [];
+      }
 
       // Add to sources
       semanticResults.forEach((r) => {
