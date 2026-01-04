@@ -137,10 +137,13 @@ export class CopilotService {
     const sources: CopilotSource[] = [];
 
     try {
-      const embedding = await generateEmbedding(query);
+      const embeddingArray = await generateEmbedding(query);
+
+      // Convert to string format for Supabase vector type
+      const embeddingString = `[${embeddingArray.join(',')}]`;
 
       const { data: results } = await this.supabase.rpc('match_campaign_context', {
-        query_embedding: embedding,
+        query_embedding: embeddingString,
         match_threshold: 0.4, // Lower threshold for broader results
         match_count: 15,
         p_campaign_id: campaignId,

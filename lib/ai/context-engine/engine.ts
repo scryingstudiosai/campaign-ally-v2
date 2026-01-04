@@ -351,11 +351,14 @@ ${recentEvents}
 
     try {
       // Generate embedding for semantic search
-      const embedding = await generateEmbedding(query);
+      const embeddingArray = await generateEmbedding(query);
+
+      // Convert to string format for Supabase vector type
+      const embeddingString = `[${embeddingArray.join(',')}]`;
 
       // Search entities using the semantic search RPC
       const { data: results, error } = await this.supabase.rpc('match_campaign_context', {
-        query_embedding: embedding,
+        query_embedding: embeddingString,
         match_threshold: this.options.semanticThreshold || 0.5,
         match_count: this.options.maxSemanticResults || 8,
         p_campaign_id: campaignId,
