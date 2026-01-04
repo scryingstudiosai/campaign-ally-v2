@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { MentionableTextarea } from '@/components/entity-mention/MentionableTextarea'
 import {
   Dialog,
   DialogContent,
@@ -198,12 +199,13 @@ export function ThreadFormDialog({
                 }
               />
             </div>
-            <Textarea
-              id="description"
+            <MentionableTextarea
+              campaignId={campaignId}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="The party owes money to the blacksmith and skipped town..."
-              className="mt-1 bg-zinc-800 border-zinc-700"
+              onChange={setDescription}
+              onEntityMention={handleAddEntity}
+              placeholder="Type @ to mention entities... e.g. @Gandalf owes money to @The Blacksmith"
+              className="mt-1"
               rows={3}
             />
             {relatedEntities.length > 0 && (
