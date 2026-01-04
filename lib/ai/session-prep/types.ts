@@ -76,3 +76,14 @@ export interface PrepGeneratorOptions {
   includeOpeningScene?: boolean;
   maxSuggestions?: number;
 }
+
+export interface BlockOption {
+  title: string;
+  approach: 'Combat' | 'Social' | 'Mystery' | 'Exploration';
+  summary: string;
+  blocks: Array<{
+    type: 'scene' | 'encounter' | 'quest';
+    title: string;
+    content: Record<string, unknown>;
+  }>;
+}

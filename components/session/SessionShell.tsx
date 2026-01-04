@@ -305,7 +305,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
                 </div>
                 <div className="flex-1 overflow-hidden">
                   {usePlaybook ? (
-                    <PlaybookContainer sessionId={currentSession.id} />
+                    <PlaybookContainer sessionId={currentSession.id} campaignId={campaignId} />
                   ) : (
                     <SessionPlanner
                       sessionId={currentSession.id}

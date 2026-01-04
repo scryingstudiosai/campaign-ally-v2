@@ -17,13 +17,14 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { SceneBlock, EncounterBlock, QuestBlock, InfoBlock, AddBlockMenu } from './blocks';
+import { AiGenesisBlock } from './blocks/AiGenesisBlock';
 import { LiveSpine } from '../LiveSpine';
 import { Loader2 } from 'lucide-react';
 
 interface PlaybookBlock {
   id: string;
   session_id: string;
-  block_type: 'scene' | 'encounter' | 'quest' | 'info';
+  block_type: 'scene' | 'encounter' | 'quest' | 'info' | 'ai-genesis';
   title: string;
   content: any;
   sort_order: number;
@@ -35,9 +36,10 @@ interface PlaybookBlock {
 
 interface PlaybookContainerProps {
   sessionId: string;
+  campaignId: string;
 }
 
-export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
+export function PlaybookContainer({ sessionId, campaignId }: PlaybookContainerProps) {
   const [blocks, setBlocks] = useState<PlaybookBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -87,7 +89,22 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
   };
 
   // Add a new block
-  const handleAddBlock = async (type: 'scene' | 'encounter' | 'quest' | 'info') => {
+  const handleAddBlock = async (type: 'scene' | 'encounter' | 'quest' | 'info' | 'ai-genesis') => {
+    // AI Genesis blocks are handled locally, not persisted to API
+    if (type === 'ai-genesis') {
+      const genesisBlock: PlaybookBlock = {
+        id: `ai-genesis-${Date.now()}`,
+        session_id: sessionId,
+        block_type: 'ai-genesis',
+        title: 'AI Genesis',
+        content: {},
+        sort_order: blocks.length,
+        status: 'pending',
+      };
+      setBlocks(prev => [...prev, genesisBlock]);
+      return;
+    }
+
     const defaultTitles: Record<string, string> = {
       scene: 'New Scene',
       encounter: 'New Encounter',
@@ -227,8 +244,67 @@ export function PlaybookContainer({ sessionId }: PlaybookContainerProps) {
     }));
   }, []);
 
+  // Handle replacing AI Genesis block with generated blocks
+  const handleReplaceGenesisBlock = useCallback(async (
+    genesisBlockId: string,
+    generatedBlocks: Array<{
+      id: string;
+      type: 'scene' | 'encounter' | 'quest';
+      title: string;
+      status: 'pending';
+      content: Record<string, unknown>;
+    }>
+  ) => {
+    // Save each generated block to the API
+    const savedBlocks: PlaybookBlock[] = [];
+
+    for (const genBlock of generatedBlocks) {
+      try {
+        const response = await fetch(`/api/sessions/${sessionId}/blocks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            block_type: genBlock.type,
+            title: genBlock.title,
+            content: genBlock.content,
+            status: 'pending',
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const newBlock = data.block || data;
+          if (newBlock && newBlock.id) {
+            savedBlocks.push(newBlock);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to save generated block:', error);
+      }
+    }
+
+    // Replace the genesis block with the saved blocks
+    setBlocks(prev => {
+      const index = prev.findIndex(b => b.id === genesisBlockId);
+      if (index === -1) return prev;
+      return [...prev.slice(0, index), ...savedBlocks, ...prev.slice(index + 1)];
+    });
+  }, [sessionId]);
+
   // Render a block based on its type
   const renderBlock = (block: PlaybookBlock) => {
+    // Handle AI Genesis blocks separately (they're not draggable)
+    if (block.block_type === 'ai-genesis') {
+      return (
+        <AiGenesisBlock
+          key={block.id}
+          campaignId={campaignId}
+          onReplace={(newBlocks) => handleReplaceGenesisBlock(block.id, newBlocks)}
+          onRemove={() => setBlocks(prev => prev.filter(b => b.id !== block.id))}
+        />
+      );
+    }
+
     const commonProps = {
       block,
       onUpdate: (updates: any) => handleUpdateBlock(block.id, updates),
