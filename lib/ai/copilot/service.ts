@@ -141,6 +141,25 @@ export class CopilotService {
       const embeddingString = `[${embeddingArray.join(',')}]`;
 
       console.log(`[Copilot] Generated embedding with ${embeddingArray.length} dimensions`);
+      console.log(`[Copilot] Embedding string preview: ${embeddingString.slice(0, 50)}...`);
+      console.log(`[Copilot] Embedding string length: ${embeddingString.length}`);
+      console.log(`[Copilot] Campaign ID: ${campaignId}`);
+
+      // DEBUG: Test RPC with threshold 0 to see if ANY results come back
+      const { data: debugResults, error: debugError } = await this.supabase.rpc('match_campaign_context_text', {
+        query_embedding_text: embeddingString,
+        match_threshold: 0.0,
+        match_count: 5,
+        p_campaign_id: campaignId,
+      });
+      console.log(`[Copilot] DEBUG RPC (threshold=0):`, {
+        hasData: !!debugResults,
+        dataType: typeof debugResults,
+        isArray: Array.isArray(debugResults),
+        length: debugResults?.length,
+        error: debugError,
+        firstResult: debugResults?.[0],
+      });
 
       // Use match_campaign_context_text which accepts text instead of vector type
       const { data: results, error } = await this.supabase.rpc('match_campaign_context_text', {
@@ -156,6 +175,9 @@ export class CopilotService {
       } else {
         semanticResults = (results as SemanticResult[]) || [];
         console.log(`[Copilot] Semantic search returned ${semanticResults.length} results`);
+        if (semanticResults.length > 0) {
+          console.log(`[Copilot] First result:`, semanticResults[0]);
+        }
       }
 
       // Add to sources
