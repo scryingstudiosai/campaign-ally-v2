@@ -4,7 +4,7 @@ import { AuthProvider } from '@/contexts/auth-context'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Campaign Ally - AI Co-Pilot for Dungeon Masters',
+  title: 'Campaign Ally - Your DM Companion',
   description: 'An AI-powered campaign management tool for D&D Dungeon Masters',
   icons: {
     icon: '/favicon.ico',

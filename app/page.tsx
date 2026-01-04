@@ -18,7 +18,7 @@ export default async function Home() {
           priority
         />
         <p className="text-muted-foreground text-center max-w-md">
-          Your AI co-pilot for managing D&amp;D campaigns.
+          Your ally for managing D&amp;D campaigns.
         </p>
 
         <div className="flex gap-4 mt-4">
