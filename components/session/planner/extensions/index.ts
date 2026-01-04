@@ -10,4 +10,5 @@ export {
   SceneBlockNode,
   EncounterBlockNode,
   QuestBlockNode,
+  AiGenesisBlockNode,
 } from './blocks';

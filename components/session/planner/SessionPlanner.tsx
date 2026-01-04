@@ -15,6 +15,7 @@ import {
   SceneBlockNode,
   EncounterBlockNode,
   QuestBlockNode,
+  AiGenesisBlockNode,
 } from './extensions';
 import { EditorToolbar, FontSize } from './EditorToolbar';
 import { PrepHelpDialog } from './PrepHelpDialog';
@@ -106,6 +107,7 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       SceneBlockNode,
       EncounterBlockNode,
       QuestBlockNode,
+      AiGenesisBlockNode,
     ],
     content: (initialContent as object) || { type: 'doc', content: [] },
     editorProps: {

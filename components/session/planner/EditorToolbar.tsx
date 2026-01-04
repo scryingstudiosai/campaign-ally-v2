@@ -4,7 +4,7 @@ import { Editor } from '@tiptap/react';
 import {
   Bold, Italic, Heading1, Heading2, List, ListOrdered,
   Quote, BookOpen, Undo, Redo, Minus, Plus,
-  Clapperboard, Swords, Flag, StickyNote, Type, HelpCircle
+  Clapperboard, Swords, Flag, StickyNote, Type, HelpCircle, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -177,6 +177,15 @@ export function EditorToolbar({ editor, fontSize = 'md', onFontSizeChange, onHel
             <StickyNote className="h-4 w-4 text-slate-400" />
             <span>Note</span>
             <span className="ml-auto text-xs text-slate-500">DM Notes</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="bg-slate-700" />
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().insertAiGenesisBlock().run()}
+            className="gap-2"
+          >
+            <Sparkles className="h-4 w-4 text-purple-400" />
+            <span>AI Assistant</span>
+            <span className="ml-auto text-xs text-slate-500">Generate with AI</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
