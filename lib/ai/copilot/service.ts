@@ -221,39 +221,43 @@ export class CopilotService {
       }
     }
 
-    // TYPE-BASED SEARCH - if query mentions an entity type, fetch all of that type
+    // TYPE-BASED SEARCH - if query mentions an entity type, fetch the most relevant ones
+    // Sorted by updated_at to prioritize recently active entities (not random ones)
     const typeKeywords: Record<string, string> = {
-      'faction': 'faction',
-      'factions': 'faction',
-      'npc': 'npc',
-      'npcs': 'npc',
-      'character': 'npc',
-      'characters': 'npc',
-      'location': 'location',
-      'locations': 'location',
-      'place': 'location',
-      'places': 'location',
-      'item': 'item',
-      'items': 'item',
-      'quest': 'quest',
-      'quests': 'quest',
-      'creature': 'creature',
-      'creatures': 'creature',
-      'monster': 'creature',
-      'monsters': 'creature',
+      // Factions
+      'faction': 'faction', 'factions': 'faction', 'guild': 'faction', 'guilds': 'faction',
+      'cult': 'faction', 'cults': 'faction', 'organization': 'faction', 'organizations': 'faction',
+      // NPCs
+      'npc': 'npc', 'npcs': 'npc', 'character': 'npc', 'characters': 'npc',
+      'person': 'npc', 'people': 'npc',
+      // Locations
+      'location': 'location', 'locations': 'location', 'place': 'location', 'places': 'location',
+      'city': 'location', 'cities': 'location', 'town': 'location', 'towns': 'location',
+      'area': 'location', 'areas': 'location', 'region': 'location', 'regions': 'location',
+      // Items
+      'item': 'item', 'items': 'item', 'loot': 'item', 'artifact': 'item', 'artifacts': 'item',
+      'weapon': 'item', 'weapons': 'item', 'armor': 'item',
+      // Quests
+      'quest': 'quest', 'quests': 'quest', 'mission': 'quest', 'missions': 'quest',
+      // Creatures
+      'creature': 'creature', 'creatures': 'creature', 'monster': 'creature', 'monsters': 'creature',
+      'beast': 'creature', 'beasts': 'creature',
     };
 
     const queryLowerForType = query.toLowerCase();
     for (const [keyword, entityType] of Object.entries(typeKeywords)) {
       if (queryLowerForType.includes(keyword)) {
         try {
+          console.log(`[Copilot] Detected type query for: ${entityType}`);
+
           const { data: typeMatches } = await this.supabase
             .from('entities')
-            .select('id, name, entity_type, summary, description')
+            .select('id, name, entity_type, summary, description, updated_at')
             .eq('campaign_id', campaignId)
             .eq('entity_type', entityType)
             .is('deleted_at', null)
-            .limit(10);
+            .order('updated_at', { ascending: false }) // Prioritize recently active entities
+            .limit(8); // Save token budget
 
           if (typeMatches && typeMatches.length > 0) {
             console.log(`[Copilot] Type search found ${typeMatches.length} ${entityType}s`);
@@ -274,7 +278,7 @@ export class CopilotService {
                   id: entity.id,
                   entity_name: entity.name,
                   entity_type: entity.entity_type,
-                  content: entity.summary || entity.description || '',
+                  content: `[${entity.entity_type.toUpperCase()}] ${entity.name}: ${entity.summary || entity.description || ''}`,
                   similarity: 0.85,
                 });
               }
