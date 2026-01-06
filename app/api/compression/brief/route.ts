@@ -17,7 +17,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { campaignId, forceRegenerate } = body;
 
+    console.log('[Brief API] Request:', { campaignId, forceRegenerate, userId: user.id });
+
     if (!campaignId) {
+      console.log('[Brief API] No campaignId provided');
       return NextResponse.json(
         { error: 'Missing required field: campaignId' },
         { status: 400 }
@@ -25,14 +28,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify campaign ownership
-    const { data: campaign } = await supabase
+    const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
-      .select('id, name, description, codex')
+      .select('id, name, description')
       .eq('id', campaignId)
       .eq('user_id', user.id)
       .single();
 
+    console.log('[Brief API] Campaign query:', {
+      found: !!campaign,
+      campaignId,
+      userId: user.id,
+      error: campaignError?.message
+    });
+
     if (!campaign) {
+      // Check if campaign exists at all (for debugging)
+      const { data: anyMatch } = await supabase
+        .from('campaigns')
+        .select('id, user_id')
+        .eq('id', campaignId)
+        .single();
+
+      console.log('[Brief API] Campaign exists check:', {
+        exists: !!anyMatch,
+        actualOwner: anyMatch?.user_id,
+        requestingUser: user.id,
+        ownerMatch: anyMatch?.user_id === user.id
+      });
+
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
     }
 

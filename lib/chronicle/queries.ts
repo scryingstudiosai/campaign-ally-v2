@@ -125,11 +125,18 @@ export async function getArcData(campaignId: string): Promise<{ quests: QuestArc
 export async function getCampaignBriefDerived(campaignId: string): Promise<CampaignBriefData> {
   const supabase = await createClient();
 
-  // Get campaign codex
+  // Get campaign info
   const { data: campaign } = await supabase
     .from('campaigns')
-    .select('name, description, codex')
+    .select('name, description')
     .eq('id', campaignId)
+    .single();
+
+  // Get codex from separate table
+  const { data: codex } = await supabase
+    .from('codex')
+    .select('premise, themes, tone')
+    .eq('campaign_id', campaignId)
     .single();
 
   // Get top 3 urgent threads
@@ -151,7 +158,11 @@ export async function getCampaignBriefDerived(campaignId: string): Promise<Campa
     .limit(2);
 
   return {
-    campaign: campaign as CampaignBriefData['campaign'],
+    campaign: campaign ? {
+      name: campaign.name,
+      description: campaign.description,
+      codex: codex || null,
+    } : null,
     urgentThreads: (urgentThreads || []) as CampaignBriefData['urgentThreads'],
     recentSessions: (recentSessions || []) as CampaignBriefData['recentSessions'],
   };
