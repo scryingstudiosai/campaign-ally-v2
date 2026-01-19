@@ -23,6 +23,7 @@ import {
   Crown,
   Globe,
   MessageSquare,
+  Calendar,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -61,6 +62,7 @@ function SidebarContent({
     { label: 'Overview', href: baseUrl, icon: LayoutDashboard, exact: true },
     { label: 'Ally', href: `${baseUrl}/copilot`, icon: Sparkles, special: 'copilot' },
     { label: 'Memory', href: `${baseUrl}/memory`, icon: Brain },
+    { label: 'Timeline', href: `${baseUrl}/timeline`, icon: Calendar },
     { label: 'Atlas', href: `${baseUrl}/atlas`, icon: Globe },
     { label: 'Codex', href: `${baseUrl}/codex`, icon: Book },
     { label: 'Sessions', href: `${baseUrl}/sessions`, icon: History },
