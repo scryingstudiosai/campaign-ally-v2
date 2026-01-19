@@ -13,6 +13,10 @@ import {
   EyeOff,
   Copy,
   Check,
+  Plus,
+  ExternalLink,
+  X,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +31,8 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/motion'
-import { EVENT_SUB_TYPES, EventSubType, LoreDrop, GeneratedLore } from '@/types/event'
+import { EVENT_SUB_TYPES, EventSubType, LoreDrop, GeneratedLore, LoreDiscovery, DiscoveryEntityType } from '@/types/event'
+import { EntityTypeBadge } from '@/components/memory/entity-type-badge'
 
 export default function LoreForgePage() {
   const params = useParams()
@@ -50,6 +55,8 @@ export default function LoreForgePage() {
   // UI state
   const [showDmContent, setShowDmContent] = useState(true)
   const [copiedDropId, setCopiedDropId] = useState<string | null>(null)
+  const [savingDiscoveryId, setSavingDiscoveryId] = useState<string | null>(null)
+  const [savedDiscoveries, setSavedDiscoveries] = useState<Set<string>>(new Set())
 
   const handleGenerate = async () => {
     if (!concept.trim()) {
@@ -129,6 +136,54 @@ export default function LoreForgePage() {
     setCopiedDropId(drop.id)
     setTimeout(() => setCopiedDropId(null), 2000)
     toast.success('Lore drop copied!')
+  }
+
+  const handleQuickSaveDiscovery = async (discovery: LoreDiscovery) => {
+    setSavingDiscoveryId(discovery.id)
+    try {
+      const { error } = await supabase.from('entities').insert({
+        campaign_id: campaignId,
+        entity_type: discovery.entity_type,
+        name: discovery.name,
+        status: 'stub',
+        soul: { brief: discovery.brief },
+        brain: { connection_notes: discovery.connection },
+        mechanics: {},
+      })
+
+      if (error) throw error
+
+      setSavedDiscoveries(prev => new Set([...prev, discovery.id]))
+      toast.success(`${discovery.name} saved as stub!`)
+    } catch (error) {
+      console.error('Quick save error:', error)
+      toast.error('Failed to save discovery')
+    } finally {
+      setSavingDiscoveryId(null)
+    }
+  }
+
+  const handleExpandInForge = (discovery: LoreDiscovery) => {
+    // Map entity types to forge routes
+    const forgeRoutes: Record<DiscoveryEntityType, string> = {
+      npc: 'npc',
+      location: 'location',
+      faction: 'faction',
+      item: 'item',
+      event: 'lore',
+      creature: 'creature',
+      quest: 'quest',
+    }
+    const route = forgeRoutes[discovery.entity_type] || 'npc'
+
+    // Store discovery info in sessionStorage for the target forge to pick up
+    sessionStorage.setItem('forge_prefill', JSON.stringify({
+      name: discovery.name,
+      brief: discovery.brief,
+      connection: discovery.connection,
+    }))
+
+    router.push(`/dashboard/campaigns/${campaignId}/forge/${route}`)
   }
 
   const selectedTypeInfo = EVENT_SUB_TYPES.find(t => t.value === subType)
@@ -492,33 +547,82 @@ export default function LoreForgePage() {
               )}
 
               {/* Discoveries */}
-              {generatedData.discoveries && Object.values(generatedData.discoveries).some((arr) => arr && arr.length > 0) && (
+              {generatedData.discoveries && generatedData.discoveries.length > 0 && (
                 <StaggerItem>
-                  <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
-                    <h3 className="text-sm font-semibold text-slate-400 mb-3 flex items-center gap-2">
-                      <span className="text-base">🔗</span> Discovered References
+                  <div className="bg-slate-900/50 border border-purple-500/30 rounded-lg p-6">
+                    <h3 className="text-sm font-semibold text-purple-400 mb-4 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" />
+                      Discoveries
+                      <span className="text-xs font-normal text-slate-500">
+                        (Related entities to expand your world)
+                      </span>
                     </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {generatedData.discoveries.npcs?.map((npc: string, i: number) => (
-                        <span key={`npc-${i}`} className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded text-xs">
-                          👤 {npc}
-                        </span>
-                      ))}
-                      {generatedData.discoveries.locations?.map((loc: string, i: number) => (
-                        <span key={`loc-${i}`} className="px-2 py-1 bg-teal-500/10 text-teal-400 rounded text-xs">
-                          📍 {loc}
-                        </span>
-                      ))}
-                      {generatedData.discoveries.items?.map((item: string, i: number) => (
-                        <span key={`item-${i}`} className="px-2 py-1 bg-purple-500/10 text-purple-400 rounded text-xs">
-                          ⚔️ {item}
-                        </span>
-                      ))}
-                      {generatedData.discoveries.events?.map((evt: string, i: number) => (
-                        <span key={`evt-${i}`} className="px-2 py-1 bg-amber-500/10 text-amber-400 rounded text-xs">
-                          📜 {evt}
-                        </span>
-                      ))}
+                    <div className="space-y-3">
+                      {generatedData.discoveries.map((discovery: LoreDiscovery) => {
+                        const isSaved = savedDiscoveries.has(discovery.id)
+                        const isSaving = savingDiscoveryId === discovery.id
+
+                        return (
+                          <div
+                            key={discovery.id}
+                            className={`p-4 rounded-lg border transition-all ${
+                              isSaved
+                                ? 'bg-green-500/5 border-green-500/30'
+                                : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <EntityTypeBadge type={discovery.entity_type as 'npc' | 'location' | 'faction' | 'item' | 'event' | 'creature' | 'quest' | 'other'} size="sm" />
+                                  <span className="font-medium text-slate-100">{discovery.name}</span>
+                                  {isSaved && (
+                                    <span className="text-[10px] px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">
+                                      Saved
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-slate-300 mb-1">{discovery.brief}</p>
+                                <p className="text-xs text-slate-500 italic">Connection: {discovery.connection}</p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {!isSaved && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleQuickSaveDiscovery(discovery)}
+                                      disabled={isSaving}
+                                      className="h-8 text-xs"
+                                    >
+                                      {isSaving ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <Plus className="w-3 h-3 mr-1" />
+                                          Quick Save
+                                        </>
+                                      )}
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleExpandInForge(discovery)}
+                                      className="h-8 text-xs text-purple-400 hover:text-purple-300"
+                                    >
+                                      <ExternalLink className="w-3 h-3 mr-1" />
+                                      Expand
+                                    </Button>
+                                  </>
+                                )}
+                                {isSaved && (
+                                  <Check className="w-4 h-4 text-green-400" />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </StaggerItem>

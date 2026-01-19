@@ -115,12 +115,14 @@ Generate this historical event with the following JSON structure:
       }
     ]
   },
-  "discoveries": {
-    "npcs": ["Any new NPCs mentioned that should be created"],
-    "locations": ["Any new locations mentioned"],
-    "items": ["Any artifacts or items created by this event"],
-    "events": ["Any related events this connects to"]
-  }
+  "discoveries": [
+    {
+      "name": "Name of discovered entity",
+      "entity_type": "npc | location | faction | item | event | creature | quest",
+      "brief": "1-2 sentence description of this entity",
+      "connection": "How this entity connects to the event being generated"
+    }
+  ]
 }
 
 IMPORTANT:
@@ -128,7 +130,10 @@ IMPORTANT:
 - At least one lore drop should be "public" (easy to learn)
 - At least one should reveal "dm_truth" (hard to learn)
 - Lore drops should feel like moments a DM can actually use in play
-- The true history should make the common knowledge make sense while adding depth`;
+- The true history should make the common knowledge make sense while adding depth
+- Generate 3-5 discoveries - related entities (NPCs, locations, factions, items, or other events) that connect to this lore
+- Discoveries should be worldbuilding hooks that help expand the campaign
+- Each discovery must have a clear connection to the event being generated`;
 }
 
 // Sub-type specific guidance

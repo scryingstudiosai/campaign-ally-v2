@@ -90,6 +90,19 @@ export interface EventEntity {
   updated_at: string;
 }
 
+// Entity types for discoveries
+export type DiscoveryEntityType = 'npc' | 'location' | 'faction' | 'item' | 'event' | 'creature' | 'quest';
+
+// Structured discovery from lore generation
+export interface LoreDiscovery {
+  id: string;
+  name: string;
+  entity_type: DiscoveryEntityType;
+  brief: string;
+  connection: string;
+  status?: 'pending' | 'saved' | 'ignored';
+}
+
 // Generated lore response structure
 export interface GeneratedLore {
   name: string;
@@ -100,10 +113,13 @@ export interface GeneratedLore {
   soul: EventSoul;
   brain: EventBrain;
   mechanics: EventMechanics;
-  discoveries: {
-    npcs?: string[];
-    locations?: string[];
-    items?: string[];
-    events?: string[];
-  };
+  discoveries: LoreDiscovery[];
+}
+
+// Rumor sharing for player portal
+export interface RumorSharing {
+  shared_with_players: boolean;
+  shared_at?: string;
+  investigated_by_players?: boolean;
+  player_notes?: string;
 }

@@ -109,6 +109,58 @@ export async function POST(request: NextRequest) {
       }))
     }
 
+    // Process discoveries - ensure they have IDs and proper structure
+    let processedDiscoveries: Array<{
+      id: string
+      name: string
+      entity_type: string
+      brief: string
+      connection: string
+      status: string
+    }> = []
+
+    if (Array.isArray(generated.discoveries)) {
+      // New format: array of discovery objects
+      processedDiscoveries = generated.discoveries.map((disc: Record<string, unknown>) => ({
+        id: uuidv4(),
+        name: String(disc.name || 'Unknown'),
+        entity_type: String(disc.entity_type || 'npc'),
+        brief: String(disc.brief || ''),
+        connection: String(disc.connection || ''),
+        status: 'pending',
+      }))
+    } else if (generated.discoveries && typeof generated.discoveries === 'object') {
+      // Legacy format: object with arrays of strings by type
+      const legacyDiscoveries = generated.discoveries as Record<string, string[]>
+      const typeMapping: Record<string, string> = {
+        npcs: 'npc',
+        locations: 'location',
+        items: 'item',
+        events: 'event',
+        factions: 'faction',
+        creatures: 'creature',
+        quests: 'quest',
+      }
+
+      for (const [key, values] of Object.entries(legacyDiscoveries)) {
+        if (Array.isArray(values)) {
+          const entityType = typeMapping[key] || 'npc'
+          for (const name of values) {
+            if (name && typeof name === 'string') {
+              processedDiscoveries.push({
+                id: uuidv4(),
+                name,
+                entity_type: entityType,
+                brief: `Discovered from ${generated.name || 'this event'}`,
+                connection: `Related to the ${subType.replace('_', ' ')}`,
+                status: 'pending',
+              })
+            }
+          }
+        }
+      }
+    }
+
     // Construct the final response
     const loreData: GeneratedLore = {
       name: generated.name,
@@ -125,7 +177,7 @@ export async function POST(request: NextRequest) {
         current_evidence: generated.mechanics?.current_evidence || '',
         lore_drops: generated.mechanics?.lore_drops || [],
       },
-      discoveries: generated.discoveries || {},
+      discoveries: processedDiscoveries,
     }
 
     // Track generation in database (for analytics)
