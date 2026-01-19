@@ -118,6 +118,7 @@ export function EntityFiltersBar({
             <SelectItem value="encounter">Encounters</SelectItem>
             <SelectItem value="creature">Creatures</SelectItem>
             <SelectItem value="event">Events</SelectItem>
+            <SelectItem value="deity">Deities</SelectItem>
             <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>

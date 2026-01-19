@@ -349,6 +349,47 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     glowClass: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
     hoverClass: 'hover:border-amber-400/70 hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]',
   },
+  // Deity subtypes
+  deity_default: {
+    borderClass: 'border-purple-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
+    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
+  },
+  deity_greater_deity: {
+    borderClass: 'border-amber-400/50',
+    glowClass: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
+    hoverClass: 'hover:border-amber-400/70 hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]',
+  },
+  deity_intermediate_deity: {
+    borderClass: 'border-purple-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
+    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
+  },
+  deity_lesser_deity: {
+    borderClass: 'border-purple-400/30',
+    glowClass: '',
+    hoverClass: 'hover:border-purple-400/50 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)]',
+  },
+  deity_demigod: {
+    borderClass: 'border-indigo-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(99,102,241,0.15)]',
+    hoverClass: 'hover:border-indigo-500/60 hover:shadow-[0_0_20px_rgba(99,102,241,0.25)]',
+  },
+  deity_dead_god: {
+    borderClass: 'border-slate-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(100,116,139,0.15)]',
+    hoverClass: 'hover:border-slate-500/60 hover:shadow-[0_0_20px_rgba(100,116,139,0.25)]',
+  },
+  deity_primordial: {
+    borderClass: 'border-orange-500/50',
+    glowClass: 'shadow-[0_0_20px_rgba(249,115,22,0.2)]',
+    hoverClass: 'hover:border-orange-500/70 hover:shadow-[0_0_25px_rgba(249,115,22,0.35)]',
+  },
+  deity_ascended: {
+    borderClass: 'border-cyan-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(6,182,212,0.15)]',
+    hoverClass: 'hover:border-cyan-500/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)]',
+  },
 }
 
 function getEntityStyle(entityType: EntityType, subtype?: string): EntityStyle {

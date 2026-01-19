@@ -24,6 +24,7 @@ import {
   Globe,
   MessageSquare,
   Calendar,
+  Sun,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -79,6 +80,7 @@ function SidebarContent({
     { label: 'Encounter', href: `${baseUrl}/forge/encounter`, icon: Swords },
     { label: 'Quest', href: `${baseUrl}/forge/quest`, icon: Scroll },
     { label: 'Lore', href: `${baseUrl}/forge/lore`, icon: BookOpen },
+    { label: 'Pantheon', href: `${baseUrl}/forge/pantheon`, icon: Sun },
     { label: 'Player', href: `${baseUrl}/forge/player`, icon: Crown, special: true },
   ]
 
