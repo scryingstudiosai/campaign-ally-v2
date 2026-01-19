@@ -14,9 +14,10 @@ import {
   Swords,
   Bug,
   Crown,
+  BookOpen,
 } from 'lucide-react'
 
-export type EntityType = 'npc' | 'player' | 'location' | 'item' | 'faction' | 'quest' | 'encounter' | 'creature' | 'other'
+export type EntityType = 'npc' | 'player' | 'location' | 'item' | 'faction' | 'quest' | 'encounter' | 'creature' | 'event' | 'other'
 export type EntitySubType = 'standard' | 'villain' | 'hero' | string
 
 interface EntityTypeBadgeProps {
@@ -109,6 +110,13 @@ const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
     bgColor: 'bg-rose-500/20',
     borderColor: 'border-rose-500/30',
     icon: Bug,
+  },
+  event: {
+    label: 'Event',
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/20',
+    borderColor: 'border-amber-500/30',
+    icon: BookOpen,
   },
   other: {
     label: 'Other',

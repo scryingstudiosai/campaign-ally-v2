@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Brain,
   Book,
+  BookOpen,
   History,
   User,
   Users,
@@ -22,7 +23,6 @@ import {
   Crown,
   Globe,
   MessageSquare,
-
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -76,6 +76,7 @@ function SidebarContent({
     { label: 'Faction', href: `${baseUrl}/forge/faction`, icon: Users },
     { label: 'Encounter', href: `${baseUrl}/forge/encounter`, icon: Swords },
     { label: 'Quest', href: `${baseUrl}/forge/quest`, icon: Scroll },
+    { label: 'Lore', href: `${baseUrl}/forge/lore`, icon: BookOpen },
     { label: 'Player', href: `${baseUrl}/forge/player`, icon: Crown, special: true },
   ]
 

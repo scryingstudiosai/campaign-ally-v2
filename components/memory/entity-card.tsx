@@ -22,6 +22,7 @@ import {
   Wand2,
   Trash2,
   ChevronRight,
+  Calendar,
 } from 'lucide-react'
 import {
   AlertDialog,
@@ -49,6 +50,14 @@ export interface Entity {
   visibility: 'public' | 'dm_only' | 'revealable'
   created_at: string
   updated_at: string
+  // Event-specific fields
+  event_sort?: number
+  event_era?: string
+  event_ongoing?: boolean
+  mechanics?: {
+    date_display?: string
+    [key: string]: unknown
+  }
   attributes?: {
     is_stub?: boolean
     needs_review?: boolean
@@ -297,6 +306,47 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     glowClass: 'shadow-[0_0_15px_rgba(6,182,212,0.15)]',
     hoverClass: 'hover:border-cyan-500/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)]',
   },
+  // Event subtypes
+  event_default: {
+    borderClass: 'border-amber-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]',
+  },
+  event_historical_event: {
+    borderClass: 'border-amber-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]',
+  },
+  event_legend: {
+    borderClass: 'border-purple-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
+    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
+  },
+  event_prophecy: {
+    borderClass: 'border-violet-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(139,92,246,0.15)]',
+    hoverClass: 'hover:border-violet-500/60 hover:shadow-[0_0_20px_rgba(139,92,246,0.25)]',
+  },
+  event_rumor: {
+    borderClass: 'border-slate-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-slate-500/50',
+  },
+  event_war: {
+    borderClass: 'border-red-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
+    hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
+  },
+  event_catastrophe: {
+    borderClass: 'border-red-600/50',
+    glowClass: 'shadow-[0_0_20px_rgba(220,38,38,0.2)]',
+    hoverClass: 'hover:border-red-600/70 hover:shadow-[0_0_25px_rgba(220,38,38,0.35)]',
+  },
+  event_miracle: {
+    borderClass: 'border-amber-400/50',
+    glowClass: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
+    hoverClass: 'hover:border-amber-400/70 hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]',
+  },
 }
 
 function getEntityStyle(entityType: EntityType, subtype?: string): EntityStyle {
@@ -401,7 +451,7 @@ export function EntityCard({
       <div className="relative group">
         {selectionMode ? (
           <MaterialCard
-            entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
+            entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter' | 'event'}
             hoverable
             className={cn(
               'h-full p-4 cursor-pointer relative',
@@ -463,6 +513,24 @@ export function EntityCard({
                     <span className="text-slate-400">{entity.attributes.chain.chain_position || 'Part 1'}</span>
                   </div>
                 )}
+                {/* Event Timeline Info (selection mode) */}
+                {entity.entity_type === 'event' && (
+                  <div className="flex items-center gap-2 text-xs mt-2 text-slate-400">
+                    <Calendar className="w-3 h-3" />
+                    <span>{entity.mechanics?.date_display || 'Unknown date'}</span>
+                    {entity.event_era && (
+                      <>
+                        <span className="text-slate-600">•</span>
+                        <span>{entity.event_era}</span>
+                      </>
+                    )}
+                    {entity.event_ongoing && (
+                      <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">
+                        Ongoing
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="pt-0">
                 {entity.summary ? (
@@ -480,7 +548,7 @@ export function EntityCard({
         ) : (
           <Link href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}>
             <MaterialCard
-              entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
+              entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter' | 'event'}
               hoverable
               className={cn(
                 'h-full p-4 relative',
@@ -565,6 +633,24 @@ export function EntityCard({
                         <span className="text-amber-400/80">{entity.attributes.chain.arc_name}</span>
                         <ChevronRight className="w-3 h-3 text-slate-600" />
                         <span className="text-slate-400">{entity.attributes.chain.chain_position || 'Part 1'}</span>
+                      </div>
+                    )}
+                    {/* Event Timeline Info */}
+                    {entity.entity_type === 'event' && (
+                      <div className="flex items-center gap-2 text-xs mt-2 text-slate-400">
+                        <Calendar className="w-3 h-3" />
+                        <span>{entity.mechanics?.date_display || 'Unknown date'}</span>
+                        {entity.event_era && (
+                          <>
+                            <span className="text-slate-600">•</span>
+                            <span>{entity.event_era}</span>
+                          </>
+                        )}
+                        {entity.event_ongoing && (
+                          <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">
+                            Ongoing
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
