@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -15,6 +15,7 @@ import {
   Calendar,
   Search,
   Loader2,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { PageTransition, StaggerContainer, StaggerItem, Expandable } from '@/components/ui/motion';
 import { EVENT_SUB_TYPES, EventSubType, LoreDrop } from '@/types/event';
+import { EventDetailDrawer } from '@/components/lore/EventDetailDrawer';
 import Link from 'next/link';
 
 interface TimelineEvent {
@@ -90,6 +92,13 @@ export default function TimelinePage() {
   // UI state
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
   const [collapsedEras, setCollapsedEras] = useState<Set<string>>(new Set());
+  const [showConnections, setShowConnections] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
+
+  // Refs for connection line drawing
+  const eventRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const timelineRef = useRef<HTMLDivElement>(null);
 
   // Fetch events
   useEffect(() => {
@@ -244,6 +253,39 @@ export default function TimelinePage() {
     return event.mechanics?.lore_drops?.length || 0;
   };
 
+  const handleEventClick = (event: TimelineEvent) => {
+    setSelectedEvent(event);
+    setShowDrawer(true);
+  };
+
+  const handleDrawerClose = () => {
+    setShowDrawer(false);
+    setSelectedEvent(null);
+  };
+
+  // Build connection pairs for visualization
+  const connectionPairs = useMemo(() => {
+    if (!showConnections) return [];
+
+    const pairs: { sourceId: string; targetId: string; type: string }[] = [];
+    const eventIds = new Set(events.map(e => e.id));
+
+    events.forEach(event => {
+      event.relationships?.forEach(rel => {
+        // Only show connections to other events that are visible
+        if (rel.target_type === 'event' && eventIds.has(rel.target_id)) {
+          pairs.push({
+            sourceId: event.id,
+            targetId: rel.target_id,
+            type: rel.type,
+          });
+        }
+      });
+    });
+
+    return pairs;
+  }, [events, showConnections]);
+
   if (loading) {
     return (
       <PageTransition>
@@ -341,6 +383,16 @@ export default function TimelinePage() {
             >
               <Clock className="w-4 h-4 mr-1" />
               Ongoing
+            </Button>
+
+            <Button
+              variant={showConnections ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowConnections(!showConnections)}
+              className={showConnections ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : ''}
+            >
+              <LinkIcon className="w-4 h-4 mr-1" />
+              Connections
             </Button>
           </div>
         </div>
@@ -452,6 +504,15 @@ export default function TimelinePage() {
                                               <span>•</span>
                                               <span className="text-teal-400">
                                                 {getLoreDropCount(event)} lore drop{getLoreDropCount(event) !== 1 ? 's' : ''}
+                                              </span>
+                                            </>
+                                          )}
+                                          {showConnections && event.relationships && event.relationships.length > 0 && (
+                                            <>
+                                              <span>•</span>
+                                              <span className="text-purple-400 flex items-center gap-1">
+                                                <LinkIcon className="w-3 h-3" />
+                                                {event.relationships.length}
                                               </span>
                                             </>
                                           )}
@@ -588,10 +649,21 @@ export default function TimelinePage() {
                                       )}
 
                                       {/* View Full Button */}
-                                      <div className="pt-2">
-                                        <Link href={`/dashboard/campaigns/${campaignId}/memory/${event.id}`}>
+                                      <div className="pt-2 flex gap-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="flex-1"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEventClick(event);
+                                          }}
+                                        >
+                                          Quick View
+                                        </Button>
+                                        <Link href={`/dashboard/campaigns/${campaignId}/memory/${event.id}`} className="flex-1">
                                           <Button variant="outline" size="sm" className="w-full">
-                                            View Full Details
+                                            Full Details
                                           </Button>
                                         </Link>
                                       </div>
@@ -611,6 +683,27 @@ export default function TimelinePage() {
           )}
         </div>
       </div>
+
+      {/* Event Detail Drawer */}
+      <EventDetailDrawer
+        event={selectedEvent ? {
+          id: selectedEvent.id,
+          name: selectedEvent.name,
+          entity_type: 'event',
+          sub_type: selectedEvent.sub_type,
+          event_era: selectedEvent.event_era,
+          event_sort: selectedEvent.event_sort,
+          event_ongoing: selectedEvent.event_ongoing,
+          soul: selectedEvent.soul,
+          brain: selectedEvent.brain,
+          mechanics: selectedEvent.mechanics,
+        } : null}
+        isOpen={showDrawer}
+        onClose={handleDrawerClose}
+        campaignId={campaignId}
+        onDeleted={fetchEvents}
+        onUpdated={fetchEvents}
+      />
     </PageTransition>
   );
 }

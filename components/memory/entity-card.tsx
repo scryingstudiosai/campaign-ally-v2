@@ -10,6 +10,7 @@ import { renderWithBold } from '@/lib/text-utils'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { MaterialCard } from '@/components/ui/material-card'
+import { AddConnectionModal } from '@/components/lore/AddConnectionModal'
 import {
   Skull,
   AlertTriangle,
@@ -23,6 +24,7 @@ import {
   Trash2,
   ChevronRight,
   Calendar,
+  Link as LinkIcon,
 } from 'lucide-react'
 import {
   AlertDialog,
@@ -388,6 +390,7 @@ export function EntityCard({
   onToggleSelect,
 }: EntityCardProps): JSX.Element {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showLinkModal, setShowLinkModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const supabase = createClient()
   const router = useRouter()
@@ -679,15 +682,32 @@ export function EntityCard({
           </Link>
         )}
 
-        {/* Delete Button - appears on hover (only when not in selection mode) */}
+        {/* Hover Actions - appears on hover (only when not in selection mode) */}
         {!selectionMode && (
-          <button
-            onClick={handleDeleteClick}
-            className="absolute top-2 right-2 p-1.5 rounded-md bg-slate-800/80 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20 hover:border-red-500/50"
-            title="Delete entity"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-400" />
-          </button>
+          <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Link to Lore - only for event entities */}
+            {entity.entity_type === 'event' && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowLinkModal(true)
+                }}
+                className="p-1.5 rounded-md bg-slate-800/80 border border-slate-700 hover:bg-amber-500/20 hover:border-amber-500/50"
+                title="Link to other entities"
+              >
+                <LinkIcon className="w-3.5 h-3.5 text-slate-400 hover:text-amber-400" />
+              </button>
+            )}
+            {/* Delete Button */}
+            <button
+              onClick={handleDeleteClick}
+              className="p-1.5 rounded-md bg-slate-800/80 border border-slate-700 hover:bg-red-500/20 hover:border-red-500/50"
+              title="Delete entity"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-400" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -712,6 +732,20 @@ export function EntityCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Link to Lore Modal - for event entities */}
+      {entity.entity_type === 'event' && (
+        <AddConnectionModal
+          open={showLinkModal}
+          onOpenChange={setShowLinkModal}
+          eventId={entity.id}
+          eventName={entity.name}
+          campaignId={campaignId}
+          onSaved={() => {
+            router.refresh()
+          }}
+        />
+      )}
     </>
   )
 }
