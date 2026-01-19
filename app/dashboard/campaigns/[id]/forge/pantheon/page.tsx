@@ -300,12 +300,12 @@ export default function PantheonForgePage() {
             {/* Alignment */}
             <div className="space-y-2">
               <Label>Alignment (Optional)</Label>
-              <Select value={alignment} onValueChange={setAlignment}>
+              <Select value={alignment || '_auto'} onValueChange={(v) => setAlignment(v === '_auto' ? '' : v)}>
                 <SelectTrigger className="bg-slate-800/50">
                   <SelectValue placeholder="Let AI decide..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Let AI decide</SelectItem>
+                  <SelectItem value="_auto">Let AI decide</SelectItem>
                   {DEITY_ALIGNMENTS.map((a) => (
                     <SelectItem key={a} value={a}>{a}</SelectItem>
                   ))}
