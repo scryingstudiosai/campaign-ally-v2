@@ -15,13 +15,13 @@ import {
   Check,
   Plus,
   ExternalLink,
-  X,
   Loader2,
+  Wand2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -33,6 +33,8 @@ import { toast } from 'sonner'
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/motion'
 import { EVENT_SUB_TYPES, EventSubType, LoreDrop, GeneratedLore, LoreDiscovery, DiscoveryEntityType } from '@/types/event'
 import { EntityTypeBadge } from '@/components/memory/entity-type-badge'
+import { EntityMultiSelect } from '@/components/entities/EntityMultiSelect'
+import { TIMEFRAMES } from '@/lib/forge/prompts/lore-prompts'
 
 export default function LoreForgePage() {
   const params = useParams()
@@ -40,12 +42,12 @@ export default function LoreForgePage() {
   const campaignId = params?.id as string
   const supabase = createClient()
 
-  // Form state
+  // Form state - simplified with timeframe instead of sort/era
   const [subType, setSubType] = useState<EventSubType>('historical_event')
-  const [concept, setConcept] = useState('')
-  const [dateDisplay, setDateDisplay] = useState('')
-  const [eventSort, setEventSort] = useState<number>(0)
-  const [era, setEra] = useState('')
+  const [timeframe, setTimeframe] = useState<string>('ancient')
+  const [involvedEntities, setInvolvedEntities] = useState<string[]>([])
+  const [description, setDescription] = useState('')
+  const [surpriseMe, setSurpriseMe] = useState(false)
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false)
@@ -58,15 +60,20 @@ export default function LoreForgePage() {
   const [savingDiscoveryId, setSavingDiscoveryId] = useState<string | null>(null)
   const [savedDiscoveries, setSavedDiscoveries] = useState<Set<string>>(new Set())
 
+  const selectedTypeInfo = EVENT_SUB_TYPES.find(t => t.value === subType)
+  const selectedTimeframe = TIMEFRAMES.find(t => t.value === timeframe)
+
+  // Check if we can generate (either description, surpriseMe, or entities selected)
+  const canGenerate = description.trim() || surpriseMe || involvedEntities.length > 0
+
   const handleGenerate = async () => {
-    if (!concept.trim()) {
-      toast.error('Please describe the event')
+    if (!canGenerate) {
+      toast.error('Please describe the event, select entities, or use Surprise Me')
       return
     }
-    if (!dateDisplay.trim()) {
-      toast.error('Please specify when this happened')
-      return
-    }
+
+    // Get timeframe data
+    const timeframeData = TIMEFRAMES.find(t => t.value === timeframe)
 
     setIsGenerating(true)
     try {
@@ -76,10 +83,13 @@ export default function LoreForgePage() {
         body: JSON.stringify({
           campaignId,
           subType,
-          concept,
-          dateDisplay,
-          eventSort,
-          era: era || null,
+          concept: description || null,
+          dateDisplay: timeframeData?.label || 'Unknown time',
+          eventSort: timeframeData?.sort ?? 0,
+          era: timeframeData?.era ?? null,
+          timeframe,
+          involvedEntityIds: involvedEntities,
+          surpriseMe,
         }),
       })
 
@@ -93,7 +103,7 @@ export default function LoreForgePage() {
       toast.success('Lore generated!')
     } catch (error) {
       console.error('Generation error:', error)
-      toast.error('Failed to generate lore')
+      toast.error(error instanceof Error ? error.message : 'Failed to generate lore')
     } finally {
       setIsGenerating(false)
     }
@@ -104,7 +114,8 @@ export default function LoreForgePage() {
 
     setIsSaving(true)
     try {
-      const { error } = await supabase.from('entities').insert({
+      // Save the event entity
+      const { data: savedEntity, error } = await supabase.from('entities').insert({
         campaign_id: campaignId,
         entity_type: 'event',
         sub_type: generatedData.sub_type,
@@ -116,9 +127,29 @@ export default function LoreForgePage() {
         soul: generatedData.soul,
         brain: generatedData.brain,
         mechanics: generatedData.mechanics,
-      })
+      }).select('id').single()
 
       if (error) throw error
+
+      // Create relationships to involved entities
+      if (savedEntity?.id && generatedData.involvedEntityIds?.length) {
+        const relationships = generatedData.involvedEntityIds.map(targetId => ({
+          campaign_id: campaignId,
+          source_entity_id: savedEntity.id,
+          target_entity_id: targetId,
+          relationship_type: 'involved_in',
+          category: 'other',
+          descriptor: 'involved in',
+          description: `Connected via Lore Forge generation`,
+          visibility: 'public' as const,
+        }))
+
+        const { error: relError } = await supabase.from('relationships').insert(relationships)
+        if (relError) {
+          console.error('Failed to create relationships:', relError)
+          // Don't fail the whole save if relationships fail
+        }
+      }
 
       toast.success('Event saved to Memory!')
       router.push(`/dashboard/campaigns/${campaignId}/memory`)
@@ -186,8 +217,6 @@ export default function LoreForgePage() {
     router.push(`/dashboard/campaigns/${campaignId}/forge/${route}`)
   }
 
-  const selectedTypeInfo = EVENT_SUB_TYPES.find(t => t.value === subType)
-
   return (
     <PageTransition>
       <div className="min-h-screen" style={{ backgroundColor: 'var(--ca-bg-base)' }}>
@@ -208,81 +237,109 @@ export default function LoreForgePage() {
         <div className="max-w-6xl mx-auto p-6 space-y-6">
           {/* Input Form */}
           <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6 space-y-6">
-            {/* Event Type */}
-            <div className="space-y-2">
-              <Label>Event Type</Label>
-              <Select value={subType} onValueChange={(v) => setSubType(v as EventSubType)}>
-                <SelectTrigger className="bg-slate-800/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EVENT_SUB_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      <span className="flex items-center gap-2">
-                        <span>{type.icon}</span>
-                        <span>{type.label}</span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedTypeInfo && (
-                <p className="text-xs text-slate-500">{selectedTypeInfo.description}</p>
-              )}
-            </div>
-
-            {/* When */}
+            {/* Event Type & Timeframe Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Event Type */}
               <div className="space-y-2">
-                <Label>When did this happen?</Label>
-                <Input
-                  placeholder="500 years ago, Year of the Serpent, etc."
-                  value={dateDisplay}
-                  onChange={(e) => setDateDisplay(e.target.value)}
-                  className="bg-slate-800/50"
-                />
-                <p className="text-xs text-slate-500">How it appears on the timeline</p>
+                <Label>Event Type</Label>
+                <Select value={subType} onValueChange={(v) => setSubType(v as EventSubType)}>
+                  <SelectTrigger className="bg-slate-800/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EVENT_SUB_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        <span className="flex items-center gap-2">
+                          <span>{type.icon}</span>
+                          <span>{type.label}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedTypeInfo && (
+                  <p className="text-xs text-slate-500">{selectedTypeInfo.description}</p>
+                )}
               </div>
+
+              {/* Timeframe */}
               <div className="space-y-2">
-                <Label>Sort Order (for timeline)</Label>
-                <Input
-                  type="number"
-                  placeholder="-500 for past, 1492 for dated"
-                  value={eventSort}
-                  onChange={(e) => setEventSort(parseFloat(e.target.value) || 0)}
-                  className="bg-slate-800/50"
-                />
-                <p className="text-xs text-slate-500">Negative = past, positive = recent/future</p>
+                <Label>When in History?</Label>
+                <Select value={timeframe} onValueChange={setTimeframe}>
+                  <SelectTrigger className="bg-slate-800/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEFRAMES.map((tf) => (
+                      <SelectItem key={tf.value} value={tf.value}>
+                        <span className="flex items-center gap-2">
+                          <span>{tf.label}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedTimeframe && (
+                  <p className="text-xs text-slate-500">{selectedTimeframe.hint}</p>
+                )}
               </div>
             </div>
 
-            {/* Era */}
+            {/* Involved Entities */}
             <div className="space-y-2">
-              <Label>Era (Optional)</Label>
-              <Input
-                placeholder="Age of Myth, Modern Era, etc."
-                value={era}
-                onChange={(e) => setEra(e.target.value)}
-                className="bg-slate-800/50"
+              <Label>Who&apos;s Involved? (Optional)</Label>
+              <EntityMultiSelect
+                campaignId={campaignId}
+                entityTypes={['npc', 'faction', 'location', 'deity']}
+                selected={involvedEntities}
+                onChange={setInvolvedEntities}
+                placeholder="Search NPCs, factions, locations, deities..."
               />
-              <p className="text-xs text-slate-500">Groups events on the timeline</p>
+              <p className="text-xs text-slate-500">
+                Select existing entities to connect this lore to your world
+              </p>
             </div>
 
-            {/* Concept */}
+            {/* Description with Surprise Me */}
             <div className="space-y-2">
-              <Label>What happened?</Label>
+              <div className="flex items-center justify-between">
+                <Label>What Happened? (Optional)</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setDescription('')
+                    setSurpriseMe(true)
+                  }}
+                  className={`text-xs gap-1.5 ${surpriseMe ? 'text-amber-400' : 'text-slate-400 hover:text-amber-400'}`}
+                >
+                  <Wand2 className="w-3 h-3" />
+                  Surprise Me
+                </Button>
+              </div>
               <Textarea
-                placeholder="Describe the event, its causes, and aftermath. Include any key details you want the AI to incorporate..."
-                value={concept}
-                onChange={(e) => setConcept(e.target.value)}
-                className="bg-slate-800/50 min-h-[120px]"
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value)
+                  if (e.target.value) setSurpriseMe(false)
+                }}
+                placeholder={surpriseMe
+                  ? "AI will generate based on your campaign's tone and themes..."
+                  : "Describe the event, or leave blank for AI to create one..."
+                }
+                className={`bg-slate-800/50 min-h-[100px] ${surpriseMe ? 'bg-amber-500/5 border-amber-500/20' : ''}`}
               />
+              {surpriseMe && (
+                <p className="text-xs text-amber-400/80">
+                  AI will create an unexpected event that fits your campaign
+                </p>
+              )}
             </div>
 
             {/* Generate Button */}
             <Button
               onClick={handleGenerate}
-              disabled={isGenerating || !concept.trim() || !dateDisplay.trim()}
+              disabled={isGenerating || !canGenerate}
               className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
             >
               {isGenerating ? (
@@ -297,6 +354,12 @@ export default function LoreForgePage() {
                 </>
               )}
             </Button>
+
+            {!canGenerate && (
+              <p className="text-xs text-center text-slate-500">
+                Describe the event, select involved entities, or click &quot;Surprise Me&quot;
+              </p>
+            )}
           </div>
 
           {/* Generated Output */}
@@ -310,10 +373,21 @@ export default function LoreForgePage() {
                       <h2 className="text-2xl font-bold text-slate-100">
                         {selectedTypeInfo?.icon} {generatedData.name}
                       </h2>
-                      <p className="text-slate-400">
-                        {selectedTypeInfo?.label} • {generatedData.mechanics?.date_display}
-                        {generatedData.event_era && ` • ${generatedData.event_era}`}
-                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="text-amber-400 border-amber-500/30">
+                          {selectedTypeInfo?.label}
+                        </Badge>
+                        {generatedData.event_era && (
+                          <Badge variant="outline" className="text-slate-400 border-slate-600">
+                            {generatedData.event_era}
+                          </Badge>
+                        )}
+                        {generatedData.event_ongoing && (
+                          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                            Ongoing
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <Button
                       variant="ghost"

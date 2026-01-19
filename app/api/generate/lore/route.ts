@@ -9,10 +9,13 @@ import { v4 as uuidv4 } from 'uuid'
 interface LoreInputs {
   campaignId: string
   subType: EventSubType
-  concept: string
+  concept?: string
   dateDisplay: string
   eventSort: number
   era?: string
+  timeframe?: string
+  involvedEntityIds?: string[]
+  surpriseMe?: boolean
   linkedEntities?: {
     locations?: string[]
     npcs?: string[]
@@ -38,12 +41,24 @@ export async function POST(request: NextRequest) {
       dateDisplay,
       eventSort,
       era,
+      timeframe,
+      involvedEntityIds,
+      surpriseMe,
       linkedEntities,
     } = body
 
-    if (!campaignId || !subType || !concept || !dateDisplay) {
+    // Concept is now optional if surpriseMe is true or involvedEntities are provided
+    if (!campaignId || !subType || !dateDisplay) {
       return NextResponse.json(
-        { error: 'Campaign ID, event type, concept, and date are required' },
+        { error: 'Campaign ID, event type, and date are required' },
+        { status: 400 }
+      )
+    }
+
+    // Require either concept, surpriseMe, or involvedEntities
+    if (!concept && !surpriseMe && (!involvedEntityIds || involvedEntityIds.length === 0)) {
+      return NextResponse.json(
+        { error: 'Please describe the event, select involved entities, or use Surprise Me' },
         { status: 400 }
       )
     }
@@ -65,7 +80,25 @@ export async function POST(request: NextRequest) {
     const campaignContext = await fetchCampaignContext(campaignId)
 
     // Build codex context string for the prompt
-    let codexContext = campaignContext || 'No campaign context available.'
+    const codexContext = campaignContext || 'No campaign context available.'
+
+    // Fetch involved entities if provided
+    let involvedEntities: { name: string; type: string; brief?: string }[] = []
+
+    if (involvedEntityIds?.length) {
+      const { data: entities } = await supabase
+        .from('entities')
+        .select('id, name, entity_type, soul')
+        .in('id', involvedEntityIds)
+
+      if (entities) {
+        involvedEntities = entities.map(e => ({
+          name: e.name,
+          type: e.entity_type,
+          brief: e.soul?.brief || e.soul?.description?.substring(0, 100) || undefined,
+        }))
+      }
+    }
 
     // Add event type-specific guidance
     const typeGuidance = EVENT_TYPE_PROMPTS[subType]
@@ -74,9 +107,12 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildLoreSystemPrompt() + (typeGuidance ? `\n\n## EVENT TYPE GUIDANCE\n${typeGuidance}` : '')
     const userPrompt = buildLoreUserPrompt({
       subType,
-      concept,
+      concept: concept || undefined,
       dateDisplay,
       era,
+      timeframe,
+      involvedEntities: involvedEntities.length > 0 ? involvedEntities : undefined,
+      surpriseMe,
       linkedEntities,
       codexContext,
     })
@@ -178,6 +214,8 @@ export async function POST(request: NextRequest) {
         lore_drops: generated.mechanics?.lore_drops || [],
       },
       discoveries: processedDiscoveries,
+      // Include involved entity IDs for relationship creation
+      involvedEntityIds: involvedEntityIds || [],
     }
 
     // Track generation in database (for analytics)

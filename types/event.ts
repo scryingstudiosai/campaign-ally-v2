@@ -114,6 +114,8 @@ export interface GeneratedLore {
   brain: EventBrain;
   mechanics: EventMechanics;
   discoveries: LoreDiscovery[];
+  // Involved entity IDs for relationship creation after save
+  involvedEntityIds?: string[];
 }
 
 // Rumor sharing for player portal

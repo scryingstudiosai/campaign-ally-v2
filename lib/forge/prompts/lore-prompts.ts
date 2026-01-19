@@ -1,10 +1,80 @@
 import { EventSubType } from '@/types/event';
 
+// Timeframe configuration for user-friendly timeline placement
+export const TIMEFRAMES = [
+  {
+    label: 'Mythic Age',
+    value: 'mythic',
+    sort: -10000,
+    era: 'Mythic',
+    hint: 'Creation myths, gods walking the earth',
+  },
+  {
+    label: 'Ancient History',
+    value: 'ancient',
+    sort: -1000,
+    era: 'Ancient',
+    hint: 'Fallen empires, legendary heroes',
+  },
+  {
+    label: 'Past Century',
+    value: 'past_century',
+    sort: -100,
+    era: 'Historical',
+    hint: 'Grandparents remember this',
+  },
+  {
+    label: 'Recent Event',
+    value: 'recent',
+    sort: -10,
+    era: 'Recent',
+    hint: 'Within living memory',
+  },
+  {
+    label: 'Current/Ongoing',
+    value: 'current',
+    sort: 0,
+    era: 'Current',
+    hint: 'Happening now',
+  },
+  {
+    label: 'Prophecy/Future',
+    value: 'future',
+    sort: 100,
+    era: 'Prophecy',
+    hint: 'Foretold events yet to come',
+  },
+] as const;
+
+export type TimeframeValue = typeof TIMEFRAMES[number]['value'];
+
+// Get context description for each timeframe
+function getTimeframeContext(timeframe: string): string {
+  const contexts: Record<string, string> = {
+    mythic: 'This is from the Mythic Age. Focus on gods, primordial forces, creation, and world-shaping events. Names should sound ancient and legendary.',
+    ancient: 'This is Ancient History. Focus on fallen empires, legendary heroes, great wars, and events that shaped civilizations. Some details may be lost to time.',
+    past_century: 'This happened in the Past Century. Focus on politics, power shifts, and events grandparents might remember. Details are recorded but may be biased.',
+    recent: 'This is a Recent Event. Focus on current politics, recent crimes, ongoing conflicts. People have strong opinions about this.',
+    current: 'This is Ongoing right now. Focus on active conflicts, current mysteries, and unresolved situations. The outcome is uncertain.',
+    future: 'This is a Prophecy or foretold event. Focus on cryptic language, symbolic imagery, and multiple possible interpretations.',
+  };
+  return contexts[timeframe] || '';
+}
+
+interface InvolvedEntity {
+  name: string;
+  type: string;
+  brief?: string;
+}
+
 interface LorePromptParams {
   subType: EventSubType;
-  concept: string;
+  concept?: string;
   dateDisplay: string;
   era?: string;
+  timeframe?: string;
+  involvedEntities?: InvolvedEntity[];
+  surpriseMe?: boolean;
   linkedEntities?: {
     locations?: string[];
     npcs?: string[];
@@ -43,8 +113,30 @@ LORE DROP GUIDELINES:
 }
 
 export function buildLoreUserPrompt(params: LorePromptParams): string {
-  const { subType, concept, dateDisplay, era, linkedEntities, codexContext } = params;
+  const { subType, concept, dateDisplay, era, timeframe, involvedEntities, surpriseMe, linkedEntities, codexContext } = params;
 
+  let prompt = `CAMPAIGN CONTEXT:\n${codexContext}\n\n`;
+
+  // Add timeframe context if available
+  if (timeframe) {
+    const timeframeContextText = getTimeframeContext(timeframe);
+    if (timeframeContextText) {
+      prompt += `TIMEFRAME GUIDANCE:\n${timeframeContextText}\n\n`;
+    }
+  }
+
+  prompt += `EVENT DETAILS:\nType: ${subType.replace('_', ' ')}\nWhen: ${dateDisplay}${era ? ` (${era})` : ''}\n`;
+
+  // Add involved entities
+  if (involvedEntities?.length) {
+    prompt += '\nINVOLVED ENTITIES:\nThis event involves these entities:\n';
+    involvedEntities.forEach(e => {
+      prompt += `- ${e.name} (${e.type})${e.brief ? `: ${e.brief}` : ''}\n`;
+    });
+    prompt += '\nThe event should center on the relationship, conflict, or connection between these entities.\n';
+  }
+
+  // Legacy linked entities support
   let linkedContext = '';
   if (linkedEntities) {
     if (linkedEntities.locations?.length) {
@@ -60,15 +152,22 @@ export function buildLoreUserPrompt(params: LorePromptParams): string {
       linkedContext += `\nRelated events: ${linkedEntities.events.join(', ')}`;
     }
   }
+  if (linkedContext) {
+    prompt += linkedContext;
+  }
 
-  return `CAMPAIGN CONTEXT:
-${codexContext}
+  // Handle concept or surprise me
+  if (concept) {
+    prompt += `\nConcept: ${concept}\n`;
+  } else if (surpriseMe) {
+    prompt += `\nThe user wants a SURPRISE. Generate an interesting ${subType.replace('_', ' ')} that:\n`;
+    prompt += '- Fits the campaign tone and themes\n';
+    prompt += '- Could explain the origin of a landmark, faction, tradition, or current conflict\n';
+    prompt += '- Creates hooks for adventure\n';
+    prompt += '- Feels fresh and unexpected\n';
+  }
 
-EVENT DETAILS:
-Type: ${subType.replace('_', ' ')}
-When: ${dateDisplay}${era ? ` (${era})` : ''}
-Concept: ${concept}
-${linkedContext}
+  prompt += `
 
 Generate this historical event with the following JSON structure:
 
