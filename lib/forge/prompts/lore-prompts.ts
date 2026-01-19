@@ -109,7 +109,9 @@ LORE DROP GUIDELINES:
 - Each needs a DELIVERY method (skill check, freely given, overheard, etc.)
 - The TEXT should be 1-2 sentences of actual, usable information
 - Include DCs for skill checks (History, Arcana, Religion, etc.)
-- Vary the reveal_level: public (easy to learn), partial (some effort), dm_truth (hard to learn)`;
+- Vary the reveal_level: public (easy to learn), partial (some effort), dm_truth (hard to learn)
+
+You must respond with valid JSON matching the requested structure.`;
 }
 
 export function buildLoreUserPrompt(params: LorePromptParams): string {
