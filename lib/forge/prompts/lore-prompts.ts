@@ -235,6 +235,8 @@ IMPORTANT:
 - Generate 3-5 discoveries - related entities (NPCs, locations, factions, items, or other events) that connect to this lore
 - Discoveries should be worldbuilding hooks that help expand the campaign
 - Each discovery must have a clear connection to the event being generated`;
+
+  return prompt;
 }
 
 // Sub-type specific guidance

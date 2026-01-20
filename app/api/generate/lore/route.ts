@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getOpenAIClient } from '@/lib/openai'
 import { fetchCampaignContext } from '@/lib/forge/context-fetcher'
 import { buildLoreSystemPrompt, buildLoreUserPrompt, EVENT_TYPE_PROMPTS } from '@/lib/forge/prompts/lore-prompts'
-import { EventSubType, GeneratedLore } from '@/types/event'
+import { EventSubType, GeneratedLore, DiscoveryEntityType, LoreDiscovery } from '@/types/event'
 import { v4 as uuidv4 } from 'uuid'
 
 interface LoreInputs {
@@ -92,10 +92,10 @@ export async function POST(request: NextRequest) {
         .in('id', involvedEntityIds)
 
       if (entities) {
-        involvedEntities = entities.map(e => ({
+        involvedEntities = entities.map((e: { id: string; name: string; entity_type: string; soul: Record<string, unknown> | null }) => ({
           name: e.name,
           type: e.entity_type,
-          brief: e.soul?.brief || e.soul?.description?.substring(0, 100) || undefined,
+          brief: (e.soul?.brief as string) || (e.soul?.description as string)?.substring(0, 100) || undefined,
         }))
       }
     }
@@ -146,24 +146,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Process discoveries - ensure they have IDs and proper structure
-    let processedDiscoveries: Array<{
-      id: string
-      name: string
-      entity_type: string
-      brief: string
-      connection: string
-      status: string
-    }> = []
+    let processedDiscoveries: LoreDiscovery[] = []
 
     if (Array.isArray(generated.discoveries)) {
       // New format: array of discovery objects
       processedDiscoveries = generated.discoveries.map((disc: Record<string, unknown>) => ({
         id: uuidv4(),
         name: String(disc.name || 'Unknown'),
-        entity_type: String(disc.entity_type || 'npc'),
+        entity_type: String(disc.entity_type || 'npc') as DiscoveryEntityType,
         brief: String(disc.brief || ''),
         connection: String(disc.connection || ''),
-        status: 'pending',
+        status: 'pending' as const,
       }))
     } else if (generated.discoveries && typeof generated.discoveries === 'object') {
       // Legacy format: object with arrays of strings by type
@@ -180,7 +173,7 @@ export async function POST(request: NextRequest) {
 
       for (const [key, values] of Object.entries(legacyDiscoveries)) {
         if (Array.isArray(values)) {
-          const entityType = typeMapping[key] || 'npc'
+          const entityType = (typeMapping[key] || 'npc') as DiscoveryEntityType
           for (const name of values) {
             if (name && typeof name === 'string') {
               processedDiscoveries.push({
@@ -189,7 +182,7 @@ export async function POST(request: NextRequest) {
                 entity_type: entityType,
                 brief: `Discovered from ${generated.name || 'this event'}`,
                 connection: `Related to the ${subType.replace('_', ' ')}`,
-                status: 'pending',
+                status: 'pending' as const,
               })
             }
           }
