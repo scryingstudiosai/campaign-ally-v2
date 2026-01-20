@@ -5,4 +5,5 @@ export type {
   PrepSuggestion,
   SessionPrepReport,
   PrepGeneratorOptions,
+  BlockOption,
 } from './types';

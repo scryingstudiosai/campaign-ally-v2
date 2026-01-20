@@ -10,6 +10,7 @@ import { renderWithBold } from '@/lib/text-utils'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { MaterialCard } from '@/components/ui/material-card'
+import { AddConnectionModal } from '@/components/lore/AddConnectionModal'
 import {
   Skull,
   AlertTriangle,
@@ -22,6 +23,8 @@ import {
   Wand2,
   Trash2,
   ChevronRight,
+  Calendar,
+  Link as LinkIcon,
 } from 'lucide-react'
 import {
   AlertDialog,
@@ -49,6 +52,14 @@ export interface Entity {
   visibility: 'public' | 'dm_only' | 'revealable'
   created_at: string
   updated_at: string
+  // Event-specific fields
+  event_sort?: number
+  event_era?: string
+  event_ongoing?: boolean
+  mechanics?: {
+    date_display?: string
+    [key: string]: unknown
+  }
   attributes?: {
     is_stub?: boolean
     needs_review?: boolean
@@ -297,6 +308,88 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     glowClass: 'shadow-[0_0_15px_rgba(6,182,212,0.15)]',
     hoverClass: 'hover:border-cyan-500/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)]',
   },
+  // Event subtypes
+  event_default: {
+    borderClass: 'border-amber-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]',
+  },
+  event_historical_event: {
+    borderClass: 'border-amber-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]',
+  },
+  event_legend: {
+    borderClass: 'border-purple-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
+    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
+  },
+  event_prophecy: {
+    borderClass: 'border-violet-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(139,92,246,0.15)]',
+    hoverClass: 'hover:border-violet-500/60 hover:shadow-[0_0_20px_rgba(139,92,246,0.25)]',
+  },
+  event_rumor: {
+    borderClass: 'border-slate-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-slate-500/50',
+  },
+  event_war: {
+    borderClass: 'border-red-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
+    hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
+  },
+  event_catastrophe: {
+    borderClass: 'border-red-600/50',
+    glowClass: 'shadow-[0_0_20px_rgba(220,38,38,0.2)]',
+    hoverClass: 'hover:border-red-600/70 hover:shadow-[0_0_25px_rgba(220,38,38,0.35)]',
+  },
+  event_miracle: {
+    borderClass: 'border-amber-400/50',
+    glowClass: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
+    hoverClass: 'hover:border-amber-400/70 hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]',
+  },
+  // Deity subtypes
+  deity_default: {
+    borderClass: 'border-purple-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
+    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
+  },
+  deity_greater_deity: {
+    borderClass: 'border-amber-400/50',
+    glowClass: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
+    hoverClass: 'hover:border-amber-400/70 hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]',
+  },
+  deity_intermediate_deity: {
+    borderClass: 'border-purple-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
+    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
+  },
+  deity_lesser_deity: {
+    borderClass: 'border-purple-400/30',
+    glowClass: '',
+    hoverClass: 'hover:border-purple-400/50 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)]',
+  },
+  deity_demigod: {
+    borderClass: 'border-indigo-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(99,102,241,0.15)]',
+    hoverClass: 'hover:border-indigo-500/60 hover:shadow-[0_0_20px_rgba(99,102,241,0.25)]',
+  },
+  deity_dead_god: {
+    borderClass: 'border-slate-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(100,116,139,0.15)]',
+    hoverClass: 'hover:border-slate-500/60 hover:shadow-[0_0_20px_rgba(100,116,139,0.25)]',
+  },
+  deity_primordial: {
+    borderClass: 'border-orange-500/50',
+    glowClass: 'shadow-[0_0_20px_rgba(249,115,22,0.2)]',
+    hoverClass: 'hover:border-orange-500/70 hover:shadow-[0_0_25px_rgba(249,115,22,0.35)]',
+  },
+  deity_ascended: {
+    borderClass: 'border-cyan-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(6,182,212,0.15)]',
+    hoverClass: 'hover:border-cyan-500/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)]',
+  },
 }
 
 function getEntityStyle(entityType: EntityType, subtype?: string): EntityStyle {
@@ -338,6 +431,7 @@ export function EntityCard({
   onToggleSelect,
 }: EntityCardProps): JSX.Element {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showLinkModal, setShowLinkModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const supabase = createClient()
   const router = useRouter()
@@ -401,7 +495,7 @@ export function EntityCard({
       <div className="relative group">
         {selectionMode ? (
           <MaterialCard
-            entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
+            entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter' | 'event'}
             hoverable
             className={cn(
               'h-full p-4 cursor-pointer relative',
@@ -463,6 +557,24 @@ export function EntityCard({
                     <span className="text-slate-400">{entity.attributes.chain.chain_position || 'Part 1'}</span>
                   </div>
                 )}
+                {/* Event Timeline Info (selection mode) */}
+                {entity.entity_type === 'event' && (
+                  <div className="flex items-center gap-2 text-xs mt-2 text-slate-400">
+                    <Calendar className="w-3 h-3" />
+                    <span>{entity.mechanics?.date_display || 'Unknown date'}</span>
+                    {entity.event_era && (
+                      <>
+                        <span className="text-slate-600">•</span>
+                        <span>{entity.event_era}</span>
+                      </>
+                    )}
+                    {entity.event_ongoing && (
+                      <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">
+                        Ongoing
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="pt-0">
                 {entity.summary ? (
@@ -480,7 +592,7 @@ export function EntityCard({
         ) : (
           <Link href={`/dashboard/campaigns/${campaignId}/memory/${entity.id}`}>
             <MaterialCard
-              entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter'}
+              entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter' | 'event'}
               hoverable
               className={cn(
                 'h-full p-4 relative',
@@ -567,6 +679,24 @@ export function EntityCard({
                         <span className="text-slate-400">{entity.attributes.chain.chain_position || 'Part 1'}</span>
                       </div>
                     )}
+                    {/* Event Timeline Info */}
+                    {entity.entity_type === 'event' && (
+                      <div className="flex items-center gap-2 text-xs mt-2 text-slate-400">
+                        <Calendar className="w-3 h-3" />
+                        <span>{entity.mechanics?.date_display || 'Unknown date'}</span>
+                        {entity.event_era && (
+                          <>
+                            <span className="text-slate-600">•</span>
+                            <span>{entity.event_era}</span>
+                          </>
+                        )}
+                        {entity.event_ongoing && (
+                          <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">
+                            Ongoing
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="pt-0">
                     {isStub && entity.attributes?.source_entity_name ? (
@@ -593,15 +723,32 @@ export function EntityCard({
           </Link>
         )}
 
-        {/* Delete Button - appears on hover (only when not in selection mode) */}
+        {/* Hover Actions - appears on hover (only when not in selection mode) */}
         {!selectionMode && (
-          <button
-            onClick={handleDeleteClick}
-            className="absolute top-2 right-2 p-1.5 rounded-md bg-slate-800/80 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20 hover:border-red-500/50"
-            title="Delete entity"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-400" />
-          </button>
+          <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Link to Lore - only for event entities */}
+            {entity.entity_type === 'event' && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowLinkModal(true)
+                }}
+                className="p-1.5 rounded-md bg-slate-800/80 border border-slate-700 hover:bg-amber-500/20 hover:border-amber-500/50"
+                title="Link to other entities"
+              >
+                <LinkIcon className="w-3.5 h-3.5 text-slate-400 hover:text-amber-400" />
+              </button>
+            )}
+            {/* Delete Button */}
+            <button
+              onClick={handleDeleteClick}
+              className="p-1.5 rounded-md bg-slate-800/80 border border-slate-700 hover:bg-red-500/20 hover:border-red-500/50"
+              title="Delete entity"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-400" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -626,6 +773,20 @@ export function EntityCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Link to Lore Modal - for event entities */}
+      {entity.entity_type === 'event' && (
+        <AddConnectionModal
+          open={showLinkModal}
+          onOpenChange={setShowLinkModal}
+          eventId={entity.id}
+          eventName={entity.name}
+          campaignId={campaignId}
+          onSaved={() => {
+            router.refresh()
+          }}
+        />
+      )}
     </>
   )
 }

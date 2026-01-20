@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { MentionableTextarea } from '@/components/entity-mention/MentionableTextarea'
 import {
   Dialog,
   DialogContent,
@@ -198,12 +199,13 @@ export function ThreadFormDialog({
                 }
               />
             </div>
-            <Textarea
-              id="description"
+            <MentionableTextarea
+              campaignId={campaignId}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="The party owes money to the blacksmith and skipped town..."
-              className="mt-1 bg-zinc-800 border-zinc-700"
+              onChange={setDescription}
+              onEntityMention={handleAddEntity}
+              placeholder="Type @ to mention entities... e.g. @Gandalf owes money to @The Blacksmith"
+              className="mt-1"
               rows={3}
             />
             {relatedEntities.length > 0 && (
@@ -270,83 +272,103 @@ export function ThreadFormDialog({
             </div>
           </div>
 
-          {/* Clock Section */}
-          <div className="p-4 bg-zinc-800/50 rounded-lg space-y-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-400" />
-              <span className="font-medium">Clock Settings</span>
-            </div>
+          {/* Stakes */}
+          <div>
+            <Label>Stakes</Label>
+            <Select value={stakeType} onValueChange={setStakeType}>
+              <SelectTrigger className="mt-1 bg-zinc-800 border-zinc-700">
+                <SelectValue placeholder="Select stakes..." />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-zinc-700">
+                {STAKE_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Clock Type</Label>
-                <Select value={clockType} onValueChange={setClockType}>
-                  <SelectTrigger className="mt-1 bg-zinc-800 border-zinc-700">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700">
-                    {CLOCK_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {/* Trigger Type */}
+          <div>
+            <Label>Trigger Type</Label>
+            <Select value={triggerType} onValueChange={(value) => {
+              setTriggerType(value)
+              // Auto-set clock type when selecting time-based trigger
+              if (value === 'time' && clockType === 'none') {
+                setClockType('sessions')
+              }
+            }}>
+              <SelectTrigger className="mt-1 bg-zinc-800 border-zinc-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-zinc-700">
+                {TRIGGER_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Clock Section - Only visible when trigger is time-based */}
+          {triggerType === 'time' && (
+            <div className="p-4 bg-zinc-800/50 rounded-lg space-y-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-amber-400" />
+                <span className="font-medium">Clock Settings</span>
               </div>
 
-              {clockType !== 'none' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Clock Type</Label>
+                  <Select value={clockType} onValueChange={setClockType}>
+                    <SelectTrigger className="mt-1 bg-zinc-800 border-zinc-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 border-zinc-700">
+                      {CLOCK_TYPES.filter(t => t.value !== 'none').map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div>
                   <Label className="flex items-center justify-between">
-                    <span>Clock Size</span>
-                    <span className="text-zinc-400 text-sm">{clockMax} segments</span>
+                    <span>Duration</span>
+                    <span className="text-zinc-400 text-sm">
+                      {clockMax} {clockType === 'sessions' ? 'sessions' : clockType === 'days' ? 'days' : clockType === 'events' ? 'events' : 'ticks'}
+                    </span>
                   </Label>
                   <Slider
                     value={[clockMax]}
                     onValueChange={([v]) => setClockMax(v)}
                     min={1}
-                    max={20}
+                    max={12}
                     step={1}
                     className="mt-3"
                   />
+                  {/* Urgency Indicator */}
+                  <div className="flex justify-between text-xs mt-2">
+                    <span className={
+                      clockMax <= 2 ? 'text-red-400' :
+                      clockMax <= 4 ? 'text-yellow-400' :
+                      'text-zinc-500'
+                    }>
+                      {clockMax <= 2 ? '🔥 Critical' : clockMax <= 4 ? '⚠️ Urgent' : clockMax <= 6 ? 'Standard' : 'Long-term'}
+                    </span>
+                    <span className="text-zinc-500">
+                      {clockMax <= 2 ? 'Immediate pressure' : clockMax <= 4 ? 'Near-term deadline' : clockMax <= 6 ? 'Moderate timeline' : 'Background tension'}
+                    </span>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-
-          {/* Stakes and Trigger Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Stakes</Label>
-              <Select value={stakeType} onValueChange={setStakeType}>
-                <SelectTrigger className="mt-1 bg-zinc-800 border-zinc-700">
-                  <SelectValue placeholder="Select stakes..." />
-                </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-700">
-                  {STAKE_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Trigger Type</Label>
-              <Select value={triggerType} onValueChange={setTriggerType}>
-                <SelectTrigger className="mt-1 bg-zinc-800 border-zinc-700">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-700">
-                  {TRIGGER_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          )}
 
           {/* Consequences Section */}
           <div className="p-4 bg-zinc-800/50 rounded-lg space-y-4">

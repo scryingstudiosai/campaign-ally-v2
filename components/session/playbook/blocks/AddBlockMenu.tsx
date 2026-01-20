@@ -9,13 +9,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Clapperboard, Swords, Flag, Info } from 'lucide-react';
+import { Plus, Clapperboard, Swords, Flag, Info, Sparkles } from 'lucide-react';
 
 interface AddBlockMenuProps {
-  onAddBlock: (type: 'scene' | 'encounter' | 'quest' | 'info') => void;
+  onAddBlock: (type: 'scene' | 'encounter' | 'quest' | 'info' | 'ai-genesis') => void;
 }
 
 const BLOCK_TYPES = [
+  {
+    type: 'ai-genesis' as const,
+    label: 'AI Assistant',
+    description: 'Generate blocks with AI',
+    icon: Sparkles,
+    color: 'text-purple-400',
+  },
   {
     type: 'scene' as const,
     label: 'Scene',
@@ -35,7 +42,7 @@ const BLOCK_TYPES = [
     label: 'Quest',
     description: 'Objectives and rewards',
     icon: Flag,
-    color: 'text-purple-400',
+    color: 'text-yellow-400',
   },
   {
     type: 'info' as const,

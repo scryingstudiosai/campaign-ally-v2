@@ -37,7 +37,7 @@ export default function Hero() {
 
             {/* Headline */}
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-              The AI Co-Pilot That{' '}
+              The AI Companion That{' '}
               <span className="bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
                 Actually Knows
               </span>{' '}

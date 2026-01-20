@@ -137,16 +137,24 @@ export class CopilotService {
     const sources: CopilotSource[] = [];
 
     try {
-      const embedding = await generateEmbedding(query);
+      const embeddingArray = await generateEmbedding(query);
+      const embeddingString = `[${embeddingArray.join(',')}]`;
 
-      const { data: results } = await this.supabase.rpc('match_campaign_context', {
-        query_embedding: embedding,
-        match_threshold: 0.4, // Lower threshold for broader results
+      // Use match_campaign_context_text which accepts text instead of vector type
+      // Threshold 0.15 is low but ensures we get relevant context even for broad queries
+      const { data: results, error } = await this.supabase.rpc('match_campaign_context_text', {
+        query_embedding_text: embeddingString,
+        match_threshold: 0.15,
         match_count: 15,
         p_campaign_id: campaignId,
       });
 
-      semanticResults = (results as SemanticResult[]) || [];
+      if (error) {
+        console.error('[Copilot] Semantic search RPC error:', error);
+      } else {
+        semanticResults = (results as SemanticResult[]) || [];
+        console.log(`[Copilot] Semantic search returned ${semanticResults.length} results`);
+      }
 
       // Add to sources
       semanticResults.forEach((r) => {
@@ -161,6 +169,126 @@ export class CopilotService {
       });
     } catch (error) {
       console.error('[Copilot] Semantic search failed:', error);
+    }
+
+    // Keyword search fallback - catches cases where query mentions entity by name
+    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+
+    if (queryWords.length > 0) {
+      try {
+        const { data: keywordResults } = await this.supabase
+          .from('entities')
+          .select('id, name, summary, description, entity_type')
+          .eq('campaign_id', campaignId)
+          .is('deleted_at', null)
+          .or(queryWords.map(word => `name.ilike.%${word}%`).join(','))
+          .limit(10);
+
+        if (keywordResults && keywordResults.length > 0) {
+          console.log(`[Copilot] Keyword search found ${keywordResults.length} results`);
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          keywordResults.forEach((entity: any) => {
+            // Only add if not already in sources
+            if (!sources.find(s => s.id === entity.id)) {
+              // Check how many query words match the name
+              const nameWords = entity.name.toLowerCase();
+              const matchCount = queryWords.filter(w => nameWords.includes(w)).length;
+              const relevance = 0.5 + (matchCount * 0.2); // Higher relevance for more matches
+
+              sources.unshift({ // Add to front since these are direct matches
+                id: entity.id,
+                type: 'entity',
+                name: entity.name,
+                entityType: entity.entity_type,
+                relevance: Math.min(relevance, 1.0),
+                snippet: entity.summary || entity.description?.slice(0, 150),
+              });
+
+              // Also add to semanticResults so it appears in the knowledge base
+              semanticResults.unshift({
+                id: entity.id,
+                entity_type: entity.entity_type,
+                entity_name: entity.name,
+                content: entity.summary || entity.description || '',
+                similarity: relevance,
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error('[Copilot] Keyword search failed:', error);
+      }
+    }
+
+    // TYPE-BASED SEARCH - if query mentions an entity type, fetch the most relevant ones
+    // Sorted by updated_at to prioritize recently active entities (not random ones)
+    const typeKeywords: Record<string, string> = {
+      // Factions
+      'faction': 'faction', 'factions': 'faction', 'guild': 'faction', 'guilds': 'faction',
+      'cult': 'faction', 'cults': 'faction', 'organization': 'faction', 'organizations': 'faction',
+      // NPCs
+      'npc': 'npc', 'npcs': 'npc', 'character': 'npc', 'characters': 'npc',
+      'person': 'npc', 'people': 'npc',
+      // Locations
+      'location': 'location', 'locations': 'location', 'place': 'location', 'places': 'location',
+      'city': 'location', 'cities': 'location', 'town': 'location', 'towns': 'location',
+      'area': 'location', 'areas': 'location', 'region': 'location', 'regions': 'location',
+      // Items
+      'item': 'item', 'items': 'item', 'loot': 'item', 'artifact': 'item', 'artifacts': 'item',
+      'weapon': 'item', 'weapons': 'item', 'armor': 'item',
+      // Quests
+      'quest': 'quest', 'quests': 'quest', 'mission': 'quest', 'missions': 'quest',
+      // Creatures
+      'creature': 'creature', 'creatures': 'creature', 'monster': 'creature', 'monsters': 'creature',
+      'beast': 'creature', 'beasts': 'creature',
+    };
+
+    const queryLowerForType = query.toLowerCase();
+    for (const [keyword, entityType] of Object.entries(typeKeywords)) {
+      if (queryLowerForType.includes(keyword)) {
+        try {
+          console.log(`[Copilot] Detected type query for: ${entityType}`);
+
+          const { data: typeMatches } = await this.supabase
+            .from('entities')
+            .select('id, name, entity_type, summary, description, updated_at')
+            .eq('campaign_id', campaignId)
+            .eq('entity_type', entityType)
+            .is('deleted_at', null)
+            .order('updated_at', { ascending: false }) // Prioritize recently active entities
+            .limit(8); // Save token budget
+
+          if (typeMatches && typeMatches.length > 0) {
+            console.log(`[Copilot] Type search found ${typeMatches.length} ${entityType}s`);
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            typeMatches.forEach((entity: any) => {
+              if (!sources.some(s => s.id === entity.id)) {
+                sources.unshift({
+                  id: entity.id,
+                  type: 'entity',
+                  name: entity.name,
+                  entityType: entity.entity_type,
+                  relevance: 0.85,
+                  snippet: entity.summary || entity.description?.slice(0, 150) || '',
+                });
+
+                semanticResults.unshift({
+                  id: entity.id,
+                  entity_name: entity.name,
+                  entity_type: entity.entity_type,
+                  content: `[${entity.entity_type.toUpperCase()}] ${entity.name}: ${entity.summary || entity.description || ''}`,
+                  similarity: 0.85,
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error(`[Copilot] Type search failed for ${entityType}:`, error);
+        }
+        break; // Only match one type per query
+      }
     }
 
     // Get active story threads
@@ -251,7 +379,7 @@ export class CopilotService {
         : 'No active story threads.';
 
     return `
-You are an AI Co-Pilot for a D&D 5e campaign called "${campaign?.name || 'Unknown Campaign'}".
+You are Ally, the AI assistant for a D&D 5e campaign called "${campaign?.name || 'Unknown Campaign'}".
 
 Your role is to help the Dungeon Master by:
 - Answering questions about their campaign world, NPCs, factions, and history
@@ -285,7 +413,7 @@ ${knowledgeBase}
 7. If asked about game mechanics, you can reference D&D 5e rules.
 8. When discussing story threads, mention their clock status if relevant.
 
-Remember: You're a helpful co-pilot, not the DM. Offer suggestions and insights, but let the DM make final decisions.
+Remember: You're a helpful ally, not the DM. Offer suggestions and insights, but let the DM make final decisions.
     `.trim();
   }
 

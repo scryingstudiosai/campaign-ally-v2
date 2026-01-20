@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { LibraryPanel, Entity } from './LibraryPanel';
 import { QuickForgePanel } from './QuickForgePanel';
 import { EntityQuickView } from '../EntityQuickView';
+import { RelevantLorePanel } from '../lore/RelevantLorePanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Library, Dices, Sparkles } from 'lucide-react';
+import { Library, Dices, Sparkles, Scroll } from 'lucide-react';
 import { rollDice, DICE_PRESETS, DiceResult } from '@/lib/dice';
 
 interface ToolkitPanelProps {
@@ -50,10 +51,14 @@ export function ToolkitPanel({ campaignId, isCombatActive, onAddToCombat }: Tool
     <>
       <div className="h-full flex flex-col p-4">
         <Tabs defaultValue="library" className="flex-1 flex flex-col">
-          <TabsList className="grid w-full grid-cols-3 bg-slate-800">
+          <TabsList className="grid w-full grid-cols-4 bg-slate-800">
             <TabsTrigger value="library" className="text-xs">
               <Library className="w-4 h-4 mr-1" />
               Library
+            </TabsTrigger>
+            <TabsTrigger value="lore" className="text-xs">
+              <Scroll className="w-4 h-4 mr-1" />
+              Lore
             </TabsTrigger>
             <TabsTrigger value="dice" className="text-xs">
               <Dices className="w-4 h-4 mr-1" />
@@ -72,6 +77,18 @@ export function ToolkitPanel({ campaignId, isCombatActive, onAddToCombat }: Tool
               onAddToCombat={handleAddToCombat}
               onEntityClick={handleEntityClick}
               refreshTrigger={refreshTrigger}
+            />
+          </TabsContent>
+
+          <TabsContent value="lore" className="flex-1 mt-4 overflow-y-auto">
+            <RelevantLorePanel
+              campaignId={campaignId}
+              onInsertLoreDrop={(text) => {
+                // Dispatch event for SessionPlanner to insert
+                window.dispatchEvent(new CustomEvent('insert-lore-drop', {
+                  detail: { text }
+                }));
+              }}
             />
           </TabsContent>
 

@@ -47,7 +47,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-sm text-slate-400 mb-4">
-              The AI co-pilot that actually knows your world. Built for Dungeon Masters who want
+              The AI companion that actually knows your world. Built for Dungeon Masters who want
               less prep and more epic sessions.
             </p>
             {/* Social links */}

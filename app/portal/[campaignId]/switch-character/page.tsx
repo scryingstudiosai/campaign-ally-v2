@@ -156,6 +156,8 @@ export default function SwitchCharacterPage() {
       if (error) throw error;
 
       toast.success('Character claimed!');
+      // Force refresh the layout to update the header with new character
+      router.refresh();
       router.push(`/portal/${campaignId}`);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to claim character';

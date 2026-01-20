@@ -1,0 +1,1 @@
+export { RelevantLorePanel } from './RelevantLorePanel';

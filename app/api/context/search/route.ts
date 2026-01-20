@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { campaignId, query, threshold = 0.5, limit = 10 } = await req.json();
+    const { campaignId, query, threshold = 0.2, limit = 10 } = await req.json();
 
     if (!campaignId || !query) {
       return NextResponse.json({ error: 'Missing campaignId or query' }, { status: 400 });
@@ -34,11 +34,17 @@ export async function POST(req: NextRequest) {
     console.log(`[ContextSearch] Query: "${query}" in campaign ${campaignId}`);
 
     // Generate embedding for search query
-    const embedding = await generateEmbedding(query);
+    const embeddingArray = await generateEmbedding(query);
+
+    // Convert to string format for Supabase vector type
+    // Format: "[0.1,0.2,0.3,...]"
+    const embeddingString = `[${embeddingArray.join(',')}]`;
+
+    console.log(`[ContextSearch] Generated embedding with ${embeddingArray.length} dimensions`);
 
     // Perform semantic search
-    const { data: results, error } = await supabase.rpc('match_campaign_context', {
-      query_embedding: embedding,
+    const { data: results, error } = await supabase.rpc('match_campaign_context_text', {
+      query_embedding_text: embeddingString,
       match_threshold: threshold,
       match_count: limit,
       p_campaign_id: campaignId,

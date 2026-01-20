@@ -25,6 +25,8 @@ import {
   Skull,
   Package,
   User,
+  BookOpen,
+  Sun,
 } from 'lucide-react'
 import {
   CATEGORY_COLORS,
@@ -118,6 +120,8 @@ const ENTITY_COLORS: Record<string, { bg: string; border: string; fill: string }
   quest: { bg: 'rgba(236, 72, 153, 0.2)', border: '#ec4899', fill: '#ec4899' },
   encounter: { bg: 'rgba(239, 68, 68, 0.2)', border: '#ef4444', fill: '#ef4444' },
   creature: { bg: 'rgba(249, 115, 22, 0.2)', border: '#f97316', fill: '#f97316' },
+  event: { bg: 'rgba(251, 191, 36, 0.2)', border: '#fbbf24', fill: '#fbbf24' }, // Amber/gold for historical events
+  deity: { bg: 'rgba(168, 85, 247, 0.2)', border: '#a855f7', fill: '#d946ef' }, // Purple/fuchsia for deities
 }
 
 const ENTITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -129,6 +133,8 @@ const ENTITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   quest: Scroll,
   encounter: Sword,
   creature: Skull,
+  event: BookOpen, // Historical events/lore
+  deity: Sun, // Deities/divine entities
 }
 
 // Node size based on importance

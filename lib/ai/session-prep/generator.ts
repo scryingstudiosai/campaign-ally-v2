@@ -5,6 +5,7 @@ import {
   SessionPrepReport,
   PrepGeneratorOptions,
   SuggestionPriority,
+  BlockOption,
 } from './types';
 
 const openai = new OpenAI({
@@ -555,6 +556,124 @@ Write 2-3 sentences of read-aloud text to set the scene. Be atmospheric.
       return threadWithClock.clock_max! - (threadWithClock.clock_current || 0);
     }
     return undefined;
+  }
+
+  // ==========================================
+  // BLOCK GENERATION FOR AI GENESIS
+  // ==========================================
+
+  async generateBlockOptions(options: {
+    campaignId: string;
+    prompt: string;
+    includeLastSession?: boolean;
+    includeActiveThreads?: boolean;
+  }): Promise<{ options: BlockOption[] }> {
+    this.supabase = await createClient();
+    const { campaignId, prompt, includeLastSession = true, includeActiveThreads = true } = options;
+
+    console.log(`[SessionPrep] Generating block options for campaign ${campaignId}`);
+
+    // Gather context using existing methods
+    const [campaign, party, threads, recentSessions, npcs] = await Promise.all([
+      this.getCampaign(campaignId),
+      this.getPartyStatus(campaignId),
+      includeActiveThreads ? this.getActiveThreads(campaignId) : Promise.resolve([]),
+      includeLastSession ? this.getRecentSessions(campaignId) : Promise.resolve([]),
+      this.getRelevantNPCs(campaignId),
+    ]);
+
+    // Build context string
+    const codex = (campaign?.codex || {}) as Record<string, unknown>;
+    let context = `Campaign: ${campaign?.name || 'Unknown'}\n`;
+    context += `Tone: ${codex.tone || 'heroic fantasy'}\n`;
+    context += `Party Level: ${Math.round(party.avgLevel)}, HP: ${party.healthPercent}%\n\n`;
+
+    if (recentSessions.length > 0 && recentSessions[0].summary) {
+      context += `Last Session: ${recentSessions[0].summary}\n\n`;
+    }
+
+    if (threads.length > 0) {
+      context += `Active Threads:\n${threads.map(t => `- ${t.title}: ${t.description || ''}`).join('\n')}\n\n`;
+    }
+
+    if (npcs.length > 0) {
+      const relevantNpcs = npcs.slice(0, 5).map(n => {
+        const brain = (n.brain || {}) as Record<string, unknown>;
+        return `- ${n.name}: ${n.summary || ''} ${brain.secret ? '(has secret)' : ''}`;
+      });
+      context += `Key NPCs:\n${relevantNpcs.join('\n')}\n`;
+    }
+
+    // The AI prompt with EXACT block schemas
+    const systemPrompt = `You are a D&D 5e session prep assistant. Generate exactly 3 distinct options for the DM's request.
+Each option should offer a DIFFERENT approach (Combat vs Social vs Mystery vs Exploration).
+
+Return JSON in this EXACT format - the content structure must match precisely:
+{
+  "options": [
+    {
+      "title": "Short descriptive title",
+      "approach": "Combat" | "Social" | "Mystery" | "Exploration",
+      "summary": "2-3 sentence summary",
+      "blocks": [
+        {
+          "type": "scene",
+          "title": "Scene title",
+          "content": {
+            "location_name": "Location name",
+            "npcs": [{ "name": "NPC Name" }],
+            "read_aloud": "Atmospheric boxed text for players",
+            "goals": [{ "text": "Goal description", "completed": false }],
+            "dm_notes": "DM-only notes and secrets"
+          }
+        },
+        {
+          "type": "encounter",
+          "title": "Encounter title",
+          "content": {
+            "location_name": "Location",
+            "difficulty": "medium",
+            "creatures": [{ "name": "Creature", "count": 2, "cr": "1/2" }],
+            "tactics": "How enemies fight",
+            "dm_notes": "Combat notes"
+          }
+        },
+        {
+          "type": "quest",
+          "title": "Quest title",
+          "content": {
+            "objective": "Main objective",
+            "milestones": [{ "text": "Step 1", "completed": false }],
+            "rewards": { "xp": 100, "gold": 50, "items": ["Potion of Healing"] },
+            "dm_notes": "Quest notes"
+          }
+        }
+      ]
+    }
+  ]
+}
+
+Block types available: scene, encounter, quest
+Each option should have 1-3 blocks that make sense together.`;
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Campaign Context:\n${context}\n\nDM Request: ${prompt}` }
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.8,
+      });
+
+      const result = JSON.parse(completion.choices[0]?.message?.content || '{"options":[]}');
+      console.log(`[SessionPrep] Generated ${result.options?.length || 0} block options`);
+      return result;
+    } catch (error) {
+      console.error('[SessionPrep] Block generation failed:', error);
+      return { options: [] };
+    }
   }
 }
 

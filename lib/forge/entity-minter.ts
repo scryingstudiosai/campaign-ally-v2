@@ -183,6 +183,8 @@ const FORGE_TO_ENTITY_TYPE: Record<ForgeType, string> = {
   faction: 'faction',
   quest: 'quest',
   encounter: 'encounter',
+  event: 'event',
+  deity: 'deity',
 }
 
 export async function saveForgedEntity(
@@ -846,6 +848,46 @@ function buildEntityData(
           chain: output.chain,
           encounters: output.encounters,
           npcs: output.npcs,
+        },
+      }
+
+    case 'event':
+      return {
+        ...baseData,
+        // Brain/Soul/Mechanics architecture columns for lore/events
+        sub_type: (output.sub_type as string) || 'historical_event',
+        brain: output.brain || {},
+        soul: output.soul || {},
+        mechanics: output.mechanics || {},
+        // Event-specific timeline fields
+        event_sort: output.event_sort as number || 0,
+        event_era: output.event_era as string || null,
+        event_ongoing: output.event_ongoing as boolean || false,
+        // Legacy fields
+        summary: (output.soul as Record<string, unknown>)?.common_knowledge as string || '',
+        description: (output.brain as Record<string, unknown>)?.true_history as string || '',
+        attributes: {
+          ...additionalAttributes,
+          discoveries: output.discoveries,
+          involvedEntityIds: output.involvedEntityIds,
+        },
+      }
+
+    case 'deity':
+      return {
+        ...baseData,
+        // Brain/Soul/Mechanics architecture columns for deities
+        sub_type: (output.rank as string) || 'intermediate',
+        brain: output.brain || {},
+        soul: output.soul || {},
+        mechanics: output.mechanics || {},
+        // Legacy fields
+        summary: (output.soul as Record<string, unknown>)?.manifestation as string || '',
+        description: (output.soul as Record<string, unknown>)?.personality as string || '',
+        attributes: {
+          ...additionalAttributes,
+          rank: output.rank,
+          discoveries: output.discoveries,
         },
       }
 
