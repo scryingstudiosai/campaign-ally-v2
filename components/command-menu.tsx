@@ -64,15 +64,17 @@ export function CommandMenu(): JSX.Element {
   const latestRequestRef = useRef(0)
 
   // Cmd/Ctrl+K to toggle
+  // Use capture phase to intercept before browser's native shortcut handling
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key?.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
+        e.stopPropagation()
         setOpen((prev) => !prev)
       }
     }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    document.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => document.removeEventListener('keydown', onKeyDown, { capture: true })
   }, [])
 
   // Clear query when closing
