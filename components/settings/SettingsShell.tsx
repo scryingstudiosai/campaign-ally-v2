@@ -34,7 +34,7 @@ interface SettingsShellProps {
 }
 
 export function SettingsShell({ initialSettings }: SettingsShellProps) {
-  const { settings, isLoading, isSaving, updateSettings } = useSettings();
+  const { settings, isLoading, isSaving, updateSettings, markOnboardingComplete } = useSettings();
   const [displayName, setDisplayName] = useState('');
   const [saveIndicator, setSaveIndicator] = useState<'idle' | 'saving' | 'saved'>('idle');
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
@@ -274,7 +274,10 @@ export function SettingsShell({ initialSettings }: SettingsShellProps) {
               <Button
                 variant="outline"
                 className="border-slate-600"
-                onClick={() => toast.info('Export feature coming soon!')}
+                onClick={() => {
+                  markOnboardingComplete('export_campaign');
+                  toast.info('Export feature coming soon!');
+                }}
               >
                 Export All Data
               </Button>

@@ -1,5 +1,6 @@
 import { OnboardingProvider } from '@/components/onboarding'
 import { CommandMenu } from '@/components/command-menu'
+import { SettingsProvider } from '@/components/settings'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -7,9 +8,11 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <OnboardingProvider>
-      {children}
-      <CommandMenu />
-    </OnboardingProvider>
+    <SettingsProvider>
+      <OnboardingProvider>
+        {children}
+        <CommandMenu />
+      </OnboardingProvider>
+    </SettingsProvider>
   )
 }

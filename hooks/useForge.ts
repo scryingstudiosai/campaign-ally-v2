@@ -20,6 +20,7 @@ interface UseForgeOptions<TInput extends BaseForgeInput, TOutput> {
   getTextContent: (output: TOutput) => string // Extracts text for scanning
   getEntityName?: (output: TOutput) => string // Extracts entity name to exclude from discoveries
   stubId?: string // When fleshing out a stub, skip duplicate name check for this entity
+  onCommitSuccess?: () => void // Called after successful save (for onboarding triggers)
 }
 
 interface GenerateResult {
@@ -37,7 +38,7 @@ interface CommitResult {
 export function useForge<TInput extends BaseForgeInput, TOutput>(
   options: UseForgeOptions<TInput, TOutput>
 ) {
-  const { campaignId, forgeType, generateFn, getTextContent, getEntityName, stubId } = options
+  const { campaignId, forgeType, generateFn, getTextContent, getEntityName, stubId, onCommitSuccess } = options
   const supabase = createClient()
 
   const [state, setState] = useState<ForgeState<TInput, TOutput>>({
@@ -182,6 +183,11 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
         )
 
         setState((prev) => ({ ...prev, status: 'saved' }))
+
+        // Trigger onboarding completion callback if provided
+        if (onCommitSuccess) {
+          onCommitSuccess()
+        }
 
         return { success: true, entity: savedEntity, stubs: createdStubs }
       } catch (error) {
