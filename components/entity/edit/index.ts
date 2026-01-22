@@ -8,3 +8,5 @@ export { ItemEditor } from './ItemEditor';
 export { FactionEditor } from './FactionEditor';
 export { EncounterEditor } from './EncounterEditor';
 export { PlayerEditor } from './PlayerEditor';
+export { EventEditor } from './EventEditor';
+export { DeityEditor } from './DeityEditor';
