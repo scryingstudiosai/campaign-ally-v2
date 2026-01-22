@@ -22,6 +22,7 @@ import {
   type QuestInputData,
   type GeneratedQuest,
 } from '@/components/forge/quest';
+import { useSettingsContextOptional } from '@/components/settings';
 
 interface StubContext {
   stubId: string;
@@ -39,6 +40,7 @@ export default function QuestForgePage(): JSX.Element {
   const searchParams = useSearchParams();
   const campaignId = params.id as string;
   const supabase = createClient();
+  const settingsContext = useSettingsContextOptional();
 
   // Parse URL params
   const stubId = searchParams.get('stubId');
@@ -72,6 +74,12 @@ export default function QuestForgePage(): JSX.Element {
     campaignId,
     forgeType: 'quest',
     stubId: stubId || undefined,
+    onCommitSuccess: () => {
+      if (settingsContext) {
+        settingsContext.markOnboardingComplete('create_quest');
+        settingsContext.markOnboardingComplete('use_ai_generation');
+      }
+    },
     generateFn: async (input) => {
       const response = await fetch('/api/generate/quest', {
         method: 'POST',

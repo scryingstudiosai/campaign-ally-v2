@@ -43,14 +43,6 @@ interface TaskItem {
 // Phase 1: Build Your World
 const GETTING_STARTED_1: TaskItem[] = [
   {
-    id: 'create_campaign',
-    label: 'Create a Campaign',
-    description: 'Set up your first adventure',
-    icon: Map,
-    href: () => '/dashboard',
-    color: 'text-teal-400',
-  },
-  {
     id: 'create_npc',
     label: 'Create an NPC',
     description: 'Forge a memorable character',

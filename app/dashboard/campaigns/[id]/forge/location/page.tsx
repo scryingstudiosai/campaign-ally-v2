@@ -23,6 +23,7 @@ import {
   type LocationInputData,
   type GeneratedLocation,
 } from '@/components/forge/location'
+import { useSettingsContextOptional } from '@/components/settings'
 
 interface StubContext {
   stubId: string
@@ -40,6 +41,7 @@ export default function LocationForgePage(): JSX.Element {
   const searchParams = useSearchParams()
   const campaignId = params.id as string
   const supabase = createClient()
+  const settingsContext = useSettingsContextOptional()
 
   // Parse URL params
   const stubId = searchParams.get('stubId')
@@ -73,6 +75,12 @@ export default function LocationForgePage(): JSX.Element {
     campaignId,
     forgeType: 'location',
     stubId: stubId || undefined,
+    onCommitSuccess: () => {
+      if (settingsContext) {
+        settingsContext.markOnboardingComplete('create_location')
+        settingsContext.markOnboardingComplete('use_ai_generation')
+      }
+    },
     generateFn: async (input) => {
       const response = await fetch('/api/generate/location', {
         method: 'POST',

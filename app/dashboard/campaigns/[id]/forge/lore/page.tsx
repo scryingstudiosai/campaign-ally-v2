@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import type { Discovery, Conflict, EntityType } from '@/types/forge'
 import type { GeneratedLore, LoreDiscovery } from '@/types/event'
 import { TIMEFRAMES } from '@/lib/forge/prompts/lore-prompts'
+import { useSettingsContextOptional } from '@/components/settings'
 
 export default function LoreForgePage() {
   const params = useParams()
@@ -22,6 +23,7 @@ export default function LoreForgePage() {
   const campaignId = params?.id as string
   const stubId = searchParams.get('stub')
   const supabase = createClient()
+  const settingsContext = useSettingsContextOptional()
 
   // Review state (synced from forge.scanResult)
   const [reviewDiscoveries, setReviewDiscoveries] = useState<Discovery[]>([])
@@ -35,6 +37,12 @@ export default function LoreForgePage() {
     campaignId,
     forgeType: 'event',
     stubId: stubId || undefined,
+    onCommitSuccess: () => {
+      if (settingsContext) {
+        settingsContext.markOnboardingComplete('create_event')
+        settingsContext.markOnboardingComplete('use_ai_generation')
+      }
+    },
     generateFn: async (input) => {
       // Get timeframe data
       const timeframeData = TIMEFRAMES.find(t => t.value === input.timeframe)

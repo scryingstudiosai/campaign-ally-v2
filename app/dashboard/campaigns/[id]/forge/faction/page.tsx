@@ -35,6 +35,7 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import type { Discovery, Conflict, EntityType } from '@/types/forge'
+import { useSettingsContextOptional } from '@/components/settings'
 
 // Input data type for faction forge
 interface FactionInputData {
@@ -81,6 +82,7 @@ export default function FactionForgePage({ params }: PageProps) {
   const searchParams = useSearchParams()
   const campaignId = params.id
   const supabase = createClient()
+  const settingsContext = useSettingsContextOptional()
 
   // Check for stub editing mode
   const editingStubId = searchParams.get('stub')
@@ -103,6 +105,12 @@ export default function FactionForgePage({ params }: PageProps) {
     campaignId,
     forgeType: 'faction',
     stubId: editingStubId || undefined,
+    onCommitSuccess: () => {
+      if (settingsContext) {
+        settingsContext.markOnboardingComplete('create_faction')
+        settingsContext.markOnboardingComplete('use_ai_generation')
+      }
+    },
     generateFn: async (input) => {
       const response = await fetch('/api/generate/faction', {
         method: 'POST',

@@ -14,11 +14,13 @@ import type { Discovery, Conflict, EntityType } from '@/types/forge'
 import type { DeityGeneration, DeityDiscovery } from '@/types/deity'
 import { Button } from '@/components/ui/button'
 import { Flag, Users } from 'lucide-react'
+import { useSettingsContextOptional } from '@/components/settings'
 
 export default function PantheonForgePage() {
   const params = useParams()
   const router = useRouter()
   const campaignId = params?.id as string
+  const settingsContext = useSettingsContextOptional()
 
   // Review state (synced from forge.scanResult)
   const [reviewDiscoveries, setReviewDiscoveries] = useState<Discovery[]>([])
@@ -28,6 +30,12 @@ export default function PantheonForgePage() {
   const forge = useForge<DeityInputData, DeityGeneration>({
     campaignId,
     forgeType: 'deity',
+    onCommitSuccess: () => {
+      if (settingsContext) {
+        settingsContext.markOnboardingComplete('create_deity')
+        settingsContext.markOnboardingComplete('use_ai_generation')
+      }
+    },
     generateFn: async (input) => {
       const response = await fetch('/api/generate/deity', {
         method: 'POST',

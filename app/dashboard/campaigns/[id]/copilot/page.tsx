@@ -5,6 +5,7 @@ import { Brain } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { OnboardingTrigger } from '@/components/onboarding';
 
 interface Props {
   params: { id: string };
@@ -53,6 +54,9 @@ export default async function CopilotPage({ params }: Props) {
         </div>
 
         <CopilotChat campaignId={campaign.id} campaignName={campaign.name} />
+
+        {/* Mark onboarding task complete */}
+        <OnboardingTrigger taskId="ask_ally" />
       </div>
     </div>
   );

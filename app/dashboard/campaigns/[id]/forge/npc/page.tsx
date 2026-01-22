@@ -31,6 +31,7 @@ import {
 } from '@/components/forge/npc'
 import { QuickReference } from '@/components/forge/QuickReference'
 import { processLootToInventory } from '@/lib/forge/entity-minter'
+import { useSettingsContextOptional } from '@/components/settings'
 
 interface StubContext {
   stubId: string
@@ -49,6 +50,7 @@ export default function NpcForgePage(): JSX.Element {
   const searchParams = useSearchParams()
   const campaignId = params.id as string
   const supabase = createClient()
+  const settingsContext = useSettingsContextOptional()
 
   // Parse stub context from URL params
   const stubId = searchParams.get('stubId')
@@ -120,6 +122,13 @@ export default function NpcForgePage(): JSX.Element {
     campaignId,
     forgeType: 'npc',
     stubId: stubId || undefined, // Skip duplicate check when fleshing out a stub
+    onCommitSuccess: () => {
+      // Mark onboarding tasks complete
+      if (settingsContext) {
+        settingsContext.markOnboardingComplete('create_npc')
+        settingsContext.markOnboardingComplete('use_ai_generation')
+      }
+    },
     generateFn: async (input) => {
       // Call existing API endpoint with existing format
       const response = await fetch('/api/generate/npc', {

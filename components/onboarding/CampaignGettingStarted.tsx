@@ -26,7 +26,7 @@ export function CampaignGettingStarted({ campaignId }: CampaignGettingStartedPro
   // Check if all tasks are complete (both phases)
   const onboarding = settings.onboarding || {};
   const allPhase1Tasks = [
-    'create_campaign', 'create_npc', 'create_location', 'create_faction',
+    'create_npc', 'create_location', 'create_faction',
     'create_quest', 'create_event', 'create_deity', 'use_ai_generation',
     'explore_codex', 'view_timeline', 'create_relationship', 'view_spiderweb', 'ask_ally',
   ];

@@ -150,6 +150,25 @@ export function SetupWizard({ open, onComplete }: SetupWizardProps) {
     }
   }
 
+  // Skip onboarding (for players or those who want to explore first)
+  const handleSkip = async () => {
+    setIsLoading(true)
+
+    try {
+      await completeWizard(undefined) // No campaign created
+
+      if (onComplete) {
+        onComplete(undefined)
+      }
+
+      router.push('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to skip setup')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const canProceed = () => {
     switch (currentStep) {
       case 'welcome':
@@ -219,6 +238,24 @@ export function SetupWizard({ open, onComplete }: SetupWizardProps) {
                   <Rocket className="w-6 h-6 mx-auto mb-2 text-amber-400" />
                   <p className="text-xs text-slate-400">Run sessions</p>
                 </div>
+              </div>
+
+              {/* Skip option for players */}
+              <div className="mt-8 pt-6 border-t border-slate-700">
+                <p className="text-sm text-slate-500 mb-3">
+                  Joining as a player? You can skip campaign creation.
+                </p>
+                <Button
+                  variant="ghost"
+                  onClick={handleSkip}
+                  disabled={isLoading}
+                  className="text-slate-400 hover:text-slate-200"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : null}
+                  Skip for now
+                </Button>
               </div>
             </div>
           )}

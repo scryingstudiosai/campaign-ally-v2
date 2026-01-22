@@ -21,6 +21,7 @@ import {
 import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2, User, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageTransition, StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion'
+import { useSettingsContextOptional } from '@/components/settings'
 
 const STORAGE_KEY = 'memory-view-mode'
 
@@ -46,6 +47,9 @@ export function MemoryPageClient({
   initialEntities,
   initialRelationships,
 }: MemoryPageClientProps): JSX.Element {
+  // Settings context for onboarding
+  const settingsContext = useSettingsContextOptional()
+
   // Debug: Log what we received from server
   useEffect(() => {
     console.log('[MemoryPageClient] Received from server - entities:', initialEntities.length, 'relationships:', initialRelationships.length)
@@ -78,6 +82,13 @@ export function MemoryPageClient({
     setViewMode(mode)
     localStorage.setItem(STORAGE_KEY, mode)
   }
+
+  // Mark spiderweb onboarding task complete when viewing graph
+  useEffect(() => {
+    if (viewMode === 'graph' && settingsContext && settingsContext.settings?.onboarding?.view_spiderweb !== true) {
+      settingsContext.markOnboardingComplete('view_spiderweb')
+    }
+  }, [viewMode, settingsContext])
 
   // Handle entity click in graph view
   const handleEntityClick = useCallback((entityId: string) => {
