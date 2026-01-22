@@ -10,3 +10,4 @@ export {
   GettingStartedRestoreButton,
 } from './GettingStartedChecklist'
 export { OnboardingTrigger } from './OnboardingTrigger'
+export { CampaignGettingStarted } from './CampaignGettingStarted'

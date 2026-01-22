@@ -1,6 +1,6 @@
 'use client';
 
-import { useSettings } from '@/hooks/useSettings';
+import { useSettingsContext } from '@/components/settings/SettingsContext';
 import { MaterialCard } from '@/components/ui/material-card';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -211,7 +211,7 @@ export function GettingStartedChecklist({
   className,
   onHide,
 }: GettingStartedChecklistProps) {
-  const { settings, isLoading } = useSettings();
+  const { settings, isLoading } = useSettingsContext();
 
   if (isLoading || !settings) {
     return null;
@@ -367,7 +367,7 @@ export function GettingStartedCompact({
   campaignId?: string;
   className?: string;
 }) {
-  const { settings, isLoading } = useSettings();
+  const { settings, isLoading } = useSettingsContext();
 
   if (isLoading || !settings) {
     return null;

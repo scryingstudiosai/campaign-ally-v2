@@ -5,11 +5,6 @@ import { CampaignCard } from '@/components/campaigns/campaign-card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { PageTransition, StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion';
-import {
-  GettingStartedChecklist,
-  GettingStartedRestoreButton,
-} from '@/components/onboarding';
-import { useSettingsContext } from '@/components/settings';
 
 interface Campaign {
   id: string;
@@ -25,33 +20,8 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ campaigns }: DashboardClientProps) {
-  const { settings, updateSettings } = useSettingsContext();
-
-  // Get first campaign ID for checklist links
-  const firstCampaignId = campaigns?.[0]?.id;
-
-  const handleHideChecklist = async () => {
-    await updateSettings({ show_getting_started: false }, false);
-  };
-
-  const handleShowChecklist = async () => {
-    await updateSettings({ show_getting_started: true }, false);
-  };
-
   return (
     <PageTransition>
-      {/* Getting Started Checklist */}
-      {settings?.show_getting_started && (
-        <FadeIn delay={0.05}>
-          <div className="mb-8">
-            <GettingStartedChecklist
-              campaignId={firstCampaignId}
-              onHide={handleHideChecklist}
-            />
-          </div>
-        </FadeIn>
-      )}
-
       <div className="flex justify-between items-center mb-6">
         <FadeIn delay={0.1}>
           <h2 className="text-xl font-semibold">Your Campaigns</h2>
@@ -88,11 +58,6 @@ export function DashboardClient({ campaigns }: DashboardClientProps) {
             </Button>
           </div>
         </FadeIn>
-      )}
-
-      {/* Restore button (shows when checklist is hidden) */}
-      {settings && !settings.show_getting_started && (
-        <GettingStartedRestoreButton onClick={handleShowChecklist} />
       )}
     </PageTransition>
   );
