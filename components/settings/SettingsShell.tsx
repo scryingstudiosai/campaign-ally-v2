@@ -1,20 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useSettings, UserSettings } from '@/hooks/useSettings';
+import { useSettingsContext } from './SettingsContext';
+import { UserSettings } from '@/hooks/useSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,15 +20,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Check, ExternalLink } from 'lucide-react';
+import { Loader2, Check, ExternalLink, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 interface SettingsShellProps {
   initialSettings?: UserSettings | null;
 }
 
 export function SettingsShell({ initialSettings }: SettingsShellProps) {
-  const { settings, isLoading, isSaving, updateSettings, markOnboardingComplete } = useSettings();
+  // Use context to share state with dashboard
+  const { settings, isLoading, updateSettings, markOnboardingComplete } = useSettingsContext();
   const [displayName, setDisplayName] = useState('');
   const [saveIndicator, setSaveIndicator] = useState<'idle' | 'saving' | 'saved'>('idle');
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
@@ -71,11 +67,6 @@ export function SettingsShell({ initialSettings }: SettingsShellProps) {
   };
 
   const handleToggle = async (field: keyof UserSettings, value: boolean) => {
-    showSaveIndicator();
-    await updateSettings({ [field]: value }, false);
-  };
-
-  const handleSelectChange = async (field: keyof UserSettings, value: string) => {
     showSaveIndicator();
     await updateSettings({ [field]: value }, false);
   };
@@ -162,26 +153,22 @@ export function SettingsShell({ initialSettings }: SettingsShellProps) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
+              {/* Theme - Coming Soon */}
+              <div className="flex items-center justify-between opacity-50">
                 <div className="space-y-0.5">
-                  <Label htmlFor="theme">Theme</Label>
+                  <Label className="flex items-center gap-2">
+                    Theme
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">
+                      Coming Soon
+                    </span>
+                  </Label>
                   <p className="text-xs text-slate-500">
-                    Choose your preferred color scheme
+                    Dark mode only for now
                   </p>
                 </div>
-                <Select
-                  value={currentSettings?.theme || 'dark'}
-                  onValueChange={(value) => handleSelectChange('theme', value)}
-                >
-                  <SelectTrigger className="w-32 bg-slate-800 border-slate-700">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="px-3 py-2 rounded-md bg-slate-800 border border-slate-700 text-sm text-slate-400">
+                  Dark
+                </div>
               </div>
 
               <div className="flex items-center justify-between">
@@ -196,40 +183,6 @@ export function SettingsShell({ initialSettings }: SettingsShellProps) {
                   checked={currentSettings?.reduce_motion ?? false}
                   onCheckedChange={(checked) => handleToggle('reduce_motion', checked)}
                 />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-900/50 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-lg">Content Generation</CardTitle>
-              <CardDescription>
-                Settings for AI-generated content
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="generationMode">Default Generation Mode</Label>
-                  <p className="text-xs text-slate-500">
-                    Controls the verbosity of AI-generated content
-                  </p>
-                </div>
-                <Select
-                  value={currentSettings?.default_generation_mode || 'balanced'}
-                  onValueChange={(value) =>
-                    handleSelectChange('default_generation_mode', value)
-                  }
-                >
-                  <SelectTrigger className="w-32 bg-slate-800 border-slate-700">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="concise">Concise</SelectItem>
-                    <SelectItem value="balanced">Balanced</SelectItem>
-                    <SelectItem value="verbose">Verbose</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </CardContent>
           </Card>
@@ -259,6 +212,24 @@ export function SettingsShell({ initialSettings }: SettingsShellProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Content Generation Note */}
+          <Card className="bg-slate-800/30 border-slate-700/50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-slate-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-slate-400">
+                    AI generation preferences are configured per-campaign in the{' '}
+                    <Link href="/dashboard" className="text-teal-400 hover:underline">
+                      Codex
+                    </Link>
+                    .
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Data Tab */}
@@ -271,19 +242,22 @@ export function SettingsShell({ initialSettings }: SettingsShellProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <p className="text-sm text-slate-400 mb-3">
+                Each campaign can be exported individually. Go to your campaign overview
+                page and use the export button in the header.
+              </p>
               <Button
                 variant="outline"
                 className="border-slate-600"
-                onClick={() => {
-                  markOnboardingComplete('export_campaign');
-                  toast.info('Export feature coming soon!');
-                }}
+                asChild
               >
-                Export All Data
+                <Link
+                  href="/dashboard"
+                  onClick={() => markOnboardingComplete('export_campaign')}
+                >
+                  Go to Campaigns
+                </Link>
               </Button>
-              <p className="mt-2 text-xs text-slate-500">
-                Download all your campaigns, entities, and session logs
-              </p>
             </CardContent>
           </Card>
 
