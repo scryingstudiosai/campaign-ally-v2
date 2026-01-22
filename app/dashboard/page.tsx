@@ -14,11 +14,11 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // Get profile (may not exist if migrations haven't run)
-  const { data: profile } = await supabase
-    .from('profiles')
+  // Get user settings for display name
+  const { data: userSettings } = await supabase
+    .from('user_settings')
     .select('display_name')
-    .eq('id', user.id)
+    .eq('user_id', user.id)
     .single()
 
   // Get user's campaigns
@@ -29,7 +29,7 @@ export default async function DashboardPage() {
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
 
-  const displayName = profile?.display_name || user.email || 'Adventurer'
+  const displayName = userSettings?.display_name || user.email?.split('@')[0] || 'Adventurer'
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSettingsContext } from './SettingsContext';
 import { UserSettings } from '@/hooks/useSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,7 +21,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Check, ExternalLink, Info } from 'lucide-react';
+import {
+  Loader2,
+  Check,
+  ExternalLink,
+  Info,
+  ArrowLeft,
+  MessageSquare,
+  BookOpen,
+  FileText,
+  Shield,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
@@ -29,6 +40,7 @@ interface SettingsShellProps {
 }
 
 export function SettingsShell({ initialSettings }: SettingsShellProps) {
+  const router = useRouter();
   // Use context to share state with dashboard
   const { settings, isLoading, updateSettings, markOnboardingComplete } = useSettingsContext();
   const [displayName, setDisplayName] = useState('');
@@ -81,9 +93,18 @@ export function SettingsShell({ initialSettings }: SettingsShellProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      {/* Header with Back Navigation */}
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-slate-400 hover:text-slate-100"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Button>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-slate-100">Settings</h1>
           <p className="text-sm text-slate-400">
             Manage your preferences and account settings
@@ -199,7 +220,7 @@ export function SettingsShell({ initialSettings }: SettingsShellProps) {
                 <div className="space-y-0.5">
                   <Label htmlFor="showGettingStarted">Show Getting Started</Label>
                   <p className="text-xs text-slate-500">
-                    Display the onboarding checklist on your dashboard
+                    Display the onboarding checklist on campaign pages
                   </p>
                 </div>
                 <Switch
@@ -236,15 +257,15 @@ export function SettingsShell({ initialSettings }: SettingsShellProps) {
         <TabsContent value="data" className="space-y-4">
           <Card className="bg-slate-900/50 border-slate-700">
             <CardHeader>
-              <CardTitle className="text-lg">Export</CardTitle>
+              <CardTitle className="text-lg">Export Campaign</CardTitle>
               <CardDescription>
                 Download your campaign data
               </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-400 mb-3">
-                Each campaign can be exported individually. Go to your campaign overview
-                page and use the export button in the header.
+                Export your campaign data from the Campaign Overview page. Each campaign
+                can be exported individually with all its entities, sessions, and notes.
               </p>
               <Button
                 variant="outline"
@@ -307,49 +328,97 @@ export function SettingsShell({ initialSettings }: SettingsShellProps) {
             <CardHeader>
               <CardTitle className="text-lg">Campaign Ally</CardTitle>
               <CardDescription>
-                AI-powered campaign management for Dungeon Masters
+                Your AI-powered co-pilot for tabletop RPG campaign management
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between py-2 border-b border-slate-700">
-                <span className="text-sm text-slate-400">Version</span>
-                <span className="text-sm font-medium">v0.9.0 Beta</span>
+            <CardContent className="space-y-6">
+              <p className="text-sm text-slate-400">
+                Create NPCs, locations, factions, and more with intelligent world-building
+                tools that remember your campaign&apos;s context. Built for Dungeon Masters
+                who want to spend less time on prep and more time on play.
+              </p>
+
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <span>Version 0.9.0 Beta</span>
+                <span>•</span>
+                <span>Built by Scrying Studios</span>
               </div>
 
-              <div className="space-y-3">
+              <div className="border-t border-slate-700 pt-6 space-y-3">
+                <h3 className="font-medium text-slate-200 mb-3">Resources</h3>
+
                 <a
-                  href="https://discord.gg/campaignally"
+                  href="https://discord.gg/hWpQ8SzC3u"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-800 transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
                 >
-                  <span className="text-sm">Discord Community</span>
-                  <ExternalLink className="h-4 w-4 text-slate-400" />
+                  <MessageSquare className="w-5 h-5 text-indigo-400" />
+                  <div className="flex-1">
+                    <div className="font-medium text-sm text-slate-200">Discord Community</div>
+                    <div className="text-xs text-slate-500">Join for support and feedback</div>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-slate-500" />
                 </a>
 
                 <a
-                  href="#"
-                  className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-800 transition-colors"
+                  href="https://campaignally.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
                 >
-                  <span className="text-sm">Documentation</span>
-                  <ExternalLink className="h-4 w-4 text-slate-400" />
+                  <BookOpen className="w-5 h-5 text-teal-400" />
+                  <div className="flex-1">
+                    <div className="font-medium text-sm text-slate-200">Documentation</div>
+                    <div className="text-xs text-slate-500">Learn how to use Campaign Ally</div>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-slate-500" />
                 </a>
 
                 <a
-                  href="#"
-                  className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-800 transition-colors"
+                  href="https://campaignally.com/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
                 >
-                  <span className="text-sm">Privacy Policy</span>
-                  <ExternalLink className="h-4 w-4 text-slate-400" />
+                  <FileText className="w-5 h-5 text-slate-400" />
+                  <div className="flex-1">
+                    <div className="font-medium text-sm text-slate-200">Terms of Service</div>
+                    <div className="text-xs text-slate-500">Read our terms</div>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-slate-500" />
                 </a>
 
                 <a
-                  href="#"
-                  className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-800 transition-colors"
+                  href="https://campaignally.com/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
                 >
-                  <span className="text-sm">Terms of Service</span>
-                  <ExternalLink className="h-4 w-4 text-slate-400" />
+                  <Shield className="w-5 h-5 text-slate-400" />
+                  <div className="flex-1">
+                    <div className="font-medium text-sm text-slate-200">Privacy Policy</div>
+                    <div className="text-xs text-slate-500">How we handle your data</div>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-slate-500" />
                 </a>
+              </div>
+
+              <div className="border-t border-slate-700 pt-6">
+                <h3 className="font-medium text-slate-200 mb-3">Feedback</h3>
+                <p className="text-sm text-slate-500 mb-3">
+                  Have suggestions or found a bug? We&apos;d love to hear from you!
+                </p>
+                <Button variant="outline" className="border-slate-600" asChild>
+                  <a
+                    href="https://discord.gg/hWpQ8SzC3u"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Share Feedback
+                  </a>
+                </Button>
               </div>
             </CardContent>
           </Card>
