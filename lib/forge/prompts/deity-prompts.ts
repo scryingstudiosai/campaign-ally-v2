@@ -1,6 +1,6 @@
 import { DeityRank } from '@/types/deity';
 
-export const deitySystemPrompt = `You are a divine mythologist creating gods for tabletop RPG campaigns.
+export const deitySystemPrompt = `You are a divine mythologist creating gods for tabletop RPG campaigns. You respond only in valid JSON.
 
 Your deities should be:
 - PLAYABLE: Include actionable content DMs can use at the table
