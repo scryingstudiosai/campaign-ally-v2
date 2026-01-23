@@ -133,7 +133,7 @@ export function PlaybookContainer({ sessionId, campaignId }: PlaybookContainerPr
         if (newBlock && newBlock.id) {
           setBlocks(prev => [...prev, newBlock]);
           // Mark onboarding task complete
-          markOnboardingComplete('use_session_prep');
+          await markOnboardingComplete('use_session_prep');
         }
       }
     } catch (error) {
