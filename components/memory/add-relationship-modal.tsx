@@ -24,6 +24,7 @@ import {
 import { Loader2, Link2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { EntityTypeBadge, EntityType } from './entity-type-badge'
+import { useSettingsContextOptional } from '@/components/settings'
 
 interface Entity {
   id: string
@@ -99,6 +100,7 @@ export function AddRelationshipModal({
   campaignId,
 }: AddRelationshipModalProps): JSX.Element {
   const router = useRouter()
+  const settingsContext = useSettingsContextOptional()
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [entities, setEntities] = useState<Entity[]>([])
@@ -166,6 +168,11 @@ export function AddRelationshipModal({
         })
 
       if (relationshipError) throw relationshipError
+
+      // Mark onboarding task complete
+      if (settingsContext) {
+        settingsContext.markOnboardingComplete('create_relationship')
+      }
 
       toast.success('Relationship added')
       onOpenChange(false)

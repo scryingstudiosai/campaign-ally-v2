@@ -680,6 +680,12 @@ export default function LocationForgePage(): JSX.Element {
         // Auto-stock the shop if it's a shop location
         await autoStockShopIfNeeded(stubId, forge.output.mechanics as Record<string, unknown>)
 
+        // Mark onboarding tasks complete for stub updates too
+        if (settingsContext) {
+          settingsContext.markOnboardingComplete('create_location')
+          settingsContext.markOnboardingComplete('use_ai_generation')
+        }
+
         if (createdStubCount > 0) {
           toast.success(`Location fleshed out! ${createdStubCount} stub${createdStubCount > 1 ? 's' : ''} created.`)
         } else {

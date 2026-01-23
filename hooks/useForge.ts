@@ -200,7 +200,7 @@ export function useForge<TInput extends BaseForgeInput, TOutput>(
         return { success: false, error: errorMessage }
       }
     },
-    [campaignId, forgeType, state.input, state.output, supabase]
+    [campaignId, forgeType, state.input, state.output, supabase, onCommitSuccess]
   )
 
   // Reset to start over

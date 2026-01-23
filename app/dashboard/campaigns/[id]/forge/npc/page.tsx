@@ -579,6 +579,12 @@ export default function NpcForgePage(): JSX.Element {
           }
         }
 
+        // Mark onboarding tasks complete for stub updates too
+        if (settingsContext) {
+          settingsContext.markOnboardingComplete('create_npc')
+          settingsContext.markOnboardingComplete('use_ai_generation')
+        }
+
         toast.success('NPC fleshed out and saved!')
         // Force Next.js to invalidate cache and refetch server data
         router.refresh()

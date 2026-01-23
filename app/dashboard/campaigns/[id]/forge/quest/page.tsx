@@ -399,6 +399,12 @@ export default function QuestForgePage(): JSX.Element {
         }
         setGenerationReferencedEntities([]);
 
+        // Mark onboarding tasks complete for stub updates too
+        if (settingsContext) {
+          settingsContext.markOnboardingComplete('create_quest');
+          settingsContext.markOnboardingComplete('use_ai_generation');
+        }
+
         toast.success('Quest fleshed out and saved!');
         router.refresh();
         router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`);
