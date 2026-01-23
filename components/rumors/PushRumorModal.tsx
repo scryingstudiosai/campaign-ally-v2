@@ -24,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Megaphone, Users, User, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { useSettingsContext } from '@/components/settings/SettingsContext';
 
 interface Player {
   id: string;
@@ -62,6 +63,7 @@ export function PushRumorModal({
   sourceName,
 }: PushRumorModalProps) {
   const supabase = createClient();
+  const { markOnboardingComplete } = useSettingsContext();
   const [content, setContent] = useState(initialContent);
   const [title, setTitle] = useState('');
   const [targetType, setTargetType] = useState<'party' | 'player'>('party');
@@ -142,6 +144,8 @@ export function PushRumorModal({
           ? 'the party'
           : players.find((p) => p.id === targetPlayerId)?.name || 'player';
       toast.success(`Lore drop pushed to ${targetText}!`);
+      // Mark onboarding task complete
+      await markOnboardingComplete('push_rumor');
       onClose();
     } catch (error) {
       console.error('Failed to push rumor:', error);

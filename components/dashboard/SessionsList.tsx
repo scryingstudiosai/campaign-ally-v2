@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Calendar, Clock, ChevronRight, Scroll } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
+import { useSettingsContext } from '@/components/settings/SettingsContext';
 
 interface SessionsListProps {
   campaignId: string;
@@ -17,6 +18,7 @@ export function SessionsList({ campaignId }: SessionsListProps): JSX.Element {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
+  const { markOnboardingComplete } = useSettingsContext();
 
   useEffect(() => {
     const fetchSessions = async (): Promise<void> => {
@@ -45,6 +47,8 @@ export function SessionsList({ campaignId }: SessionsListProps): JSX.Element {
 
       if (response.ok) {
         const newSession = await response.json();
+        // Mark onboarding task complete
+        await markOnboardingComplete('create_session');
         router.push(`/dashboard/campaigns/${campaignId}/sessions/${newSession.id}`);
       }
     } catch (error) {

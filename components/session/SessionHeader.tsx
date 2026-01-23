@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { SessionReview } from './review/SessionReview';
+import { useSettingsContext } from '@/components/settings/SettingsContext';
 
 interface SessionHeaderProps {
   session: Session;
@@ -39,6 +40,7 @@ export function SessionHeader({ session, campaignId, onSessionUpdate }: SessionH
   const [players, setPlayers] = useState<PlayerCharacter[]>([]);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showReview, setShowReview] = useState(false);
+  const { markOnboardingComplete } = useSettingsContext();
 
   // Fetch player characters
   useEffect(() => {
@@ -138,6 +140,11 @@ export function SessionHeader({ session, campaignId, onSessionUpdate }: SessionH
       if (response.ok) {
         const updatedSession = await response.json();
         onSessionUpdate(updatedSession);
+
+        // Mark onboarding when starting session
+        if (newStatus === 'active') {
+          await markOnboardingComplete('run_session');
+        }
 
         // Open review modal when ending session
         if (newStatus === 'review') {
