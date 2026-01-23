@@ -644,6 +644,12 @@ export default function NpcForgePage(): JSX.Element {
           }
         }
 
+        // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete('create_npc')
+          await settingsContext.markOnboardingComplete('use_ai_generation')
+        }
+
         toast.success('NPC saved to Memory!')
         // Force Next.js to invalidate cache and refetch server data
         router.refresh()

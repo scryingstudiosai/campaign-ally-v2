@@ -456,6 +456,13 @@ export default function FactionForgePage({ params }: PageProps) {
 
       if (result.success && result.entity) {
         const entity = result.entity as { id: string }
+
+        // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete('create_faction')
+          await settingsContext.markOnboardingComplete('use_ai_generation')
+        }
+
         toast.success('Faction created!')
         window.location.href = `/dashboard/campaigns/${campaignId}/memory/${entity.id}`
       } else {

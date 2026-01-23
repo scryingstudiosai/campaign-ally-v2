@@ -192,6 +192,12 @@ export default function LoreForgePage() {
         }
       }
 
+      // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+      if (settingsContext) {
+        await settingsContext.markOnboardingComplete('create_event')
+        await settingsContext.markOnboardingComplete('use_ai_generation')
+      }
+
       toast.success('Event saved to Memory!')
 
       // Redirect after brief delay

@@ -492,6 +492,12 @@ export default function QuestForgePage(): JSX.Element {
 
         setGenerationReferencedEntities([]);
 
+        // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete('create_quest');
+          await settingsContext.markOnboardingComplete('use_ai_generation');
+        }
+
         toast.success('Quest saved to Memory!');
         router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);
       } else if (result.error) {

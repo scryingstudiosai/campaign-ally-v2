@@ -750,6 +750,12 @@ export default function LocationForgePage(): JSX.Element {
         // Auto-stock the shop if it's a shop location
         await autoStockShopIfNeeded(entity.id, forge.output?.mechanics as Record<string, unknown>)
 
+        // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete('create_location')
+          await settingsContext.markOnboardingComplete('use_ai_generation')
+        }
+
         // Stubs and their relationships are now created by entity-minter.ts
         // Contains stubs get 'contains' relationship, others get 'related_to'
         if (result.stubs && result.stubs.length > 0) {
