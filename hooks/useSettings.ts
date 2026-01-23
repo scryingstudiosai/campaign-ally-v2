@@ -72,20 +72,26 @@ export function useSettings() {
   );
 
   const markOnboardingComplete = useCallback(
-    async (task: string) => {
-      console.log('[Onboarding] markOnboardingComplete called with task:', task);
+    async (tasks: string | string[]) => {
+      const taskArray = Array.isArray(tasks) ? tasks : [tasks];
+
+      console.log('[Onboarding] markOnboardingComplete called with tasks:', taskArray);
       console.log('[Onboarding] Current settings:', settings);
       console.log('[Onboarding] Current settings.onboarding:', settings?.onboarding);
 
       if (!settings) {
-        console.warn('[Onboarding] Settings is null, cannot mark task complete');
+        console.warn('[Onboarding] Settings is null, cannot mark tasks complete');
         return;
       }
 
+      // Build updated onboarding with ALL tasks at once to avoid race conditions
       const updatedOnboarding = {
         ...(settings.onboarding || {}),
-        [task]: true,
       };
+
+      for (const task of taskArray) {
+        updatedOnboarding[task] = true;
+      }
 
       console.log('[Onboarding] Updating onboarding to:', updatedOnboarding);
 

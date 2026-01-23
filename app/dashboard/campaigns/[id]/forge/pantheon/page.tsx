@@ -32,8 +32,7 @@ export default function PantheonForgePage() {
     forgeType: 'deity',
     onCommitSuccess: async () => {
       if (settingsContext) {
-        await settingsContext.markOnboardingComplete('create_deity')
-        await settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete(['create_deity', 'use_ai_generation'])
       }
     },
     generateFn: async (input) => {
@@ -158,8 +157,7 @@ export default function PantheonForgePage() {
     if (result.success) {
       // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
       if (settingsContext) {
-        await settingsContext.markOnboardingComplete('create_deity')
-        await settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete(['create_deity', 'use_ai_generation'])
       }
 
       toast.success('Deity saved to Memory!')

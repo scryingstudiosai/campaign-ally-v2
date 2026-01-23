@@ -76,8 +76,7 @@ export default function QuestForgePage(): JSX.Element {
     stubId: stubId || undefined,
     onCommitSuccess: async () => {
       if (settingsContext) {
-        await settingsContext.markOnboardingComplete('create_quest');
-        await settingsContext.markOnboardingComplete('use_ai_generation');
+        await settingsContext.markOnboardingComplete(['create_quest', 'use_ai_generation']);
       }
     },
     generateFn: async (input) => {
@@ -401,8 +400,7 @@ export default function QuestForgePage(): JSX.Element {
 
         // Mark onboarding tasks complete for stub updates too
         if (settingsContext) {
-          await settingsContext.markOnboardingComplete('create_quest');
-          await settingsContext.markOnboardingComplete('use_ai_generation');
+          await settingsContext.markOnboardingComplete(['create_quest', 'use_ai_generation']);
         }
 
         toast.success('Quest fleshed out and saved!');
@@ -494,8 +492,7 @@ export default function QuestForgePage(): JSX.Element {
 
         // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
         if (settingsContext) {
-          await settingsContext.markOnboardingComplete('create_quest');
-          await settingsContext.markOnboardingComplete('use_ai_generation');
+          await settingsContext.markOnboardingComplete(['create_quest', 'use_ai_generation']);
         }
 
         toast.success('Quest saved to Memory!');

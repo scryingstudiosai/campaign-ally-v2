@@ -8,7 +8,7 @@ interface SettingsContextValue {
   isLoading: boolean;
   isSaving: boolean;
   updateSettings: (updates: Partial<UserSettings>, showToast?: boolean) => Promise<boolean>;
-  markOnboardingComplete: (taskId: string) => Promise<void>;
+  markOnboardingComplete: (tasks: string | string[]) => Promise<void>;
   refetch: () => Promise<void>;
 }
 

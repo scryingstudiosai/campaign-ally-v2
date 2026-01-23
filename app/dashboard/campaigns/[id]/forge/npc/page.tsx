@@ -125,8 +125,7 @@ export default function NpcForgePage(): JSX.Element {
     onCommitSuccess: async () => {
       // Mark onboarding tasks complete
       if (settingsContext) {
-        await settingsContext.markOnboardingComplete('create_npc')
-        await settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete(['create_npc', 'use_ai_generation'])
       }
     },
     generateFn: async (input) => {
@@ -581,8 +580,7 @@ export default function NpcForgePage(): JSX.Element {
 
         // Mark onboarding tasks complete for stub updates too
         if (settingsContext) {
-          await settingsContext.markOnboardingComplete('create_npc')
-          await settingsContext.markOnboardingComplete('use_ai_generation')
+          await settingsContext.markOnboardingComplete(['create_npc', 'use_ai_generation'])
         }
 
         toast.success('NPC fleshed out and saved!')
@@ -646,8 +644,7 @@ export default function NpcForgePage(): JSX.Element {
 
         // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
         if (settingsContext) {
-          await settingsContext.markOnboardingComplete('create_npc')
-          await settingsContext.markOnboardingComplete('use_ai_generation')
+          await settingsContext.markOnboardingComplete(['create_npc', 'use_ai_generation'])
         }
 
         toast.success('NPC saved to Memory!')

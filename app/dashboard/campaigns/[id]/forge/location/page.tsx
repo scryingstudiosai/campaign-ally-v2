@@ -77,8 +77,7 @@ export default function LocationForgePage(): JSX.Element {
     stubId: stubId || undefined,
     onCommitSuccess: async () => {
       if (settingsContext) {
-        await settingsContext.markOnboardingComplete('create_location')
-        await settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete(['create_location', 'use_ai_generation'])
       }
     },
     generateFn: async (input) => {
@@ -682,8 +681,7 @@ export default function LocationForgePage(): JSX.Element {
 
         // Mark onboarding tasks complete for stub updates too
         if (settingsContext) {
-          await settingsContext.markOnboardingComplete('create_location')
-          await settingsContext.markOnboardingComplete('use_ai_generation')
+          await settingsContext.markOnboardingComplete(['create_location', 'use_ai_generation'])
         }
 
         if (createdStubCount > 0) {
@@ -752,8 +750,7 @@ export default function LocationForgePage(): JSX.Element {
 
         // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
         if (settingsContext) {
-          await settingsContext.markOnboardingComplete('create_location')
-          await settingsContext.markOnboardingComplete('use_ai_generation')
+          await settingsContext.markOnboardingComplete(['create_location', 'use_ai_generation'])
         }
 
         // Stubs and their relationships are now created by entity-minter.ts

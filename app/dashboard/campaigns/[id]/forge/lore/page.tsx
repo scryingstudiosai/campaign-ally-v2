@@ -39,8 +39,7 @@ export default function LoreForgePage() {
     stubId: stubId || undefined,
     onCommitSuccess: async () => {
       if (settingsContext) {
-        await settingsContext.markOnboardingComplete('create_event')
-        await settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete(['create_event', 'use_ai_generation'])
       }
     },
     generateFn: async (input) => {
@@ -194,8 +193,7 @@ export default function LoreForgePage() {
 
       // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
       if (settingsContext) {
-        await settingsContext.markOnboardingComplete('create_event')
-        await settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete(['create_event', 'use_ai_generation'])
       }
 
       toast.success('Event saved to Memory!')

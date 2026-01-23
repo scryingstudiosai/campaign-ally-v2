@@ -107,8 +107,7 @@ export default function FactionForgePage({ params }: PageProps) {
     stubId: editingStubId || undefined,
     onCommitSuccess: async () => {
       if (settingsContext) {
-        await settingsContext.markOnboardingComplete('create_faction')
-        await settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete(['create_faction', 'use_ai_generation'])
       }
     },
     generateFn: async (input) => {
@@ -441,8 +440,7 @@ export default function FactionForgePage({ params }: PageProps) {
 
       // Mark onboarding tasks complete for stub updates too
       if (settingsContext) {
-        await settingsContext.markOnboardingComplete('create_faction')
-        await settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete(['create_faction', 'use_ai_generation'])
       }
 
       toast.success('Faction updated!')
@@ -459,8 +457,7 @@ export default function FactionForgePage({ params }: PageProps) {
 
         // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
         if (settingsContext) {
-          await settingsContext.markOnboardingComplete('create_faction')
-          await settingsContext.markOnboardingComplete('use_ai_generation')
+          await settingsContext.markOnboardingComplete(['create_faction', 'use_ai_generation'])
         }
 
         toast.success('Faction created!')
