@@ -73,14 +73,24 @@ export function useSettings() {
 
   const markOnboardingComplete = useCallback(
     async (task: string) => {
-      if (!settings) return;
+      console.log('[Onboarding] markOnboardingComplete called with task:', task);
+      console.log('[Onboarding] Current settings:', settings);
+      console.log('[Onboarding] Current settings.onboarding:', settings?.onboarding);
+
+      if (!settings) {
+        console.warn('[Onboarding] Settings is null, cannot mark task complete');
+        return;
+      }
 
       const updatedOnboarding = {
-        ...settings.onboarding,
+        ...(settings.onboarding || {}),
         [task]: true,
       };
 
-      await updateSettings({ onboarding: updatedOnboarding }, false);
+      console.log('[Onboarding] Updating onboarding to:', updatedOnboarding);
+
+      const result = await updateSettings({ onboarding: updatedOnboarding }, false);
+      console.log('[Onboarding] Update result:', result);
     },
     [settings, updateSettings]
   );
