@@ -122,11 +122,11 @@ export default function NpcForgePage(): JSX.Element {
     campaignId,
     forgeType: 'npc',
     stubId: stubId || undefined, // Skip duplicate check when fleshing out a stub
-    onCommitSuccess: () => {
+    onCommitSuccess: async () => {
       // Mark onboarding tasks complete
       if (settingsContext) {
-        settingsContext.markOnboardingComplete('create_npc')
-        settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete('create_npc')
+        await settingsContext.markOnboardingComplete('use_ai_generation')
       }
     },
     generateFn: async (input) => {
@@ -581,8 +581,8 @@ export default function NpcForgePage(): JSX.Element {
 
         // Mark onboarding tasks complete for stub updates too
         if (settingsContext) {
-          settingsContext.markOnboardingComplete('create_npc')
-          settingsContext.markOnboardingComplete('use_ai_generation')
+          await settingsContext.markOnboardingComplete('create_npc')
+          await settingsContext.markOnboardingComplete('use_ai_generation')
         }
 
         toast.success('NPC fleshed out and saved!')

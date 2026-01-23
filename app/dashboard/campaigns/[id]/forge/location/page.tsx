@@ -75,10 +75,10 @@ export default function LocationForgePage(): JSX.Element {
     campaignId,
     forgeType: 'location',
     stubId: stubId || undefined,
-    onCommitSuccess: () => {
+    onCommitSuccess: async () => {
       if (settingsContext) {
-        settingsContext.markOnboardingComplete('create_location')
-        settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete('create_location')
+        await settingsContext.markOnboardingComplete('use_ai_generation')
       }
     },
     generateFn: async (input) => {
@@ -682,8 +682,8 @@ export default function LocationForgePage(): JSX.Element {
 
         // Mark onboarding tasks complete for stub updates too
         if (settingsContext) {
-          settingsContext.markOnboardingComplete('create_location')
-          settingsContext.markOnboardingComplete('use_ai_generation')
+          await settingsContext.markOnboardingComplete('create_location')
+          await settingsContext.markOnboardingComplete('use_ai_generation')
         }
 
         if (createdStubCount > 0) {

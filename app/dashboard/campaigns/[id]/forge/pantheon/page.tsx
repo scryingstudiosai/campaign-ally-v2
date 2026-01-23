@@ -30,10 +30,10 @@ export default function PantheonForgePage() {
   const forge = useForge<DeityInputData, DeityGeneration>({
     campaignId,
     forgeType: 'deity',
-    onCommitSuccess: () => {
+    onCommitSuccess: async () => {
       if (settingsContext) {
-        settingsContext.markOnboardingComplete('create_deity')
-        settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete('create_deity')
+        await settingsContext.markOnboardingComplete('use_ai_generation')
       }
     },
     generateFn: async (input) => {

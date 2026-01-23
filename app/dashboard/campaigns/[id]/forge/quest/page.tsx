@@ -74,10 +74,10 @@ export default function QuestForgePage(): JSX.Element {
     campaignId,
     forgeType: 'quest',
     stubId: stubId || undefined,
-    onCommitSuccess: () => {
+    onCommitSuccess: async () => {
       if (settingsContext) {
-        settingsContext.markOnboardingComplete('create_quest');
-        settingsContext.markOnboardingComplete('use_ai_generation');
+        await settingsContext.markOnboardingComplete('create_quest');
+        await settingsContext.markOnboardingComplete('use_ai_generation');
       }
     },
     generateFn: async (input) => {
@@ -401,8 +401,8 @@ export default function QuestForgePage(): JSX.Element {
 
         // Mark onboarding tasks complete for stub updates too
         if (settingsContext) {
-          settingsContext.markOnboardingComplete('create_quest');
-          settingsContext.markOnboardingComplete('use_ai_generation');
+          await settingsContext.markOnboardingComplete('create_quest');
+          await settingsContext.markOnboardingComplete('use_ai_generation');
         }
 
         toast.success('Quest fleshed out and saved!');

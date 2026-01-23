@@ -37,10 +37,10 @@ export default function LoreForgePage() {
     campaignId,
     forgeType: 'event',
     stubId: stubId || undefined,
-    onCommitSuccess: () => {
+    onCommitSuccess: async () => {
       if (settingsContext) {
-        settingsContext.markOnboardingComplete('create_event')
-        settingsContext.markOnboardingComplete('use_ai_generation')
+        await settingsContext.markOnboardingComplete('create_event')
+        await settingsContext.markOnboardingComplete('use_ai_generation')
       }
     },
     generateFn: async (input) => {
