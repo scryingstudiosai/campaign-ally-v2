@@ -11,6 +11,11 @@ import type {
 import type { ForgeFactOutput } from '@/types/living-entity'
 // Import pure helper functions (no server imports) for shop detection
 import { isLikelyShop, inferShopType } from '@/lib/srd/shop-helpers'
+// Import relationship extractor for auto-creating relationships
+import {
+  extractRelationshipsFromEntity,
+  saveExtractedRelationships,
+} from '@/lib/forge/relationship-extractor'
 
 export interface StubCreationResult {
   discoveryId: string
@@ -658,6 +663,42 @@ export async function saveForgedEntity(
         description: `Assigned faction from ${forgeType} forge`,
       })
     }
+  }
+
+  // =========================================
+  // AUTO-EXTRACT RELATIONSHIPS FROM CONTENT
+  // =========================================
+  // Scan the saved entity's content for mentions of other existing entities
+  // and automatically create relationships
+  try {
+    console.log('[EntityMinter] Running relationship extraction...')
+    const entityType = FORGE_TO_ENTITY_TYPE[forgeType]
+
+    // Build full entity data for extraction
+    const fullEntityData = {
+      ...output,
+      ...savedEntity,
+    }
+
+    const extractedRelationships = await extractRelationshipsFromEntity(
+      supabase,
+      campaignId,
+      savedEntity.id,
+      entityType,
+      fullEntityData
+    )
+
+    if (extractedRelationships.length > 0) {
+      const result = await saveExtractedRelationships(
+        supabase,
+        campaignId,
+        extractedRelationships
+      )
+      console.log(`[EntityMinter] Auto-created ${result.created} relationships (${result.skipped} skipped as duplicates)`)
+    }
+  } catch (err) {
+    // Don't fail the save if relationship extraction fails
+    console.error('[EntityMinter] Relationship extraction error:', err)
   }
 
   return savedEntity

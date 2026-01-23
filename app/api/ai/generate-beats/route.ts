@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
+import {
+  categorizeRelationships,
+  buildRelationshipContext,
+  checkRelationshipDensity,
+  type RelationshipWithEntities,
+} from '@/lib/forge/relationship-extractor';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -733,25 +739,38 @@ Consider how this objective connects to what came before and sets up what comes 
     // STEP 10: Build Enhanced System Prompt
     // =========================================
 
-    // Relationship context
+    // Categorize and build relationship context using the extractor utilities
+    const categorizedRels = categorizeRelationships(relationships as RelationshipWithEntities[]);
+
+    // Check relationship density for mentioned entities
+    const densityWarnings: string[] = [];
+    for (const entity of mentionedEntities.slice(0, 5)) {
+      const density = checkRelationshipDensity(entity.id, relationships as RelationshipWithEntities[]);
+      if (density.warning) {
+        densityWarnings.push(`${entity.name}: ${density.warning}`);
+      }
+    }
+
+    if (densityWarnings.length > 0) {
+      console.log('=== RELATIONSHIP DENSITY WARNINGS ===');
+      densityWarnings.forEach(w => console.log(`  ${w}`));
+    }
+
+    // Build relationship context using categorized format
     let relationshipContext = '';
     if (relationships.length > 0) {
-      relationshipContext = `
+      // Use the utility function for formatted output
+      relationshipContext = buildRelationshipContext(categorizedRels);
 
-🔥 EXISTING RELATIONSHIPS - USE THESE FOR DRAMA! 🔥
-${relationships.map(r => {
-  const source = r.source_entity?.name || 'Unknown';
-  const target = r.target_entity?.name || 'Unknown';
-  const type = r.relationship_type?.toUpperCase() || 'CONNECTED TO';
-  const desc = r.description || r.surface_description || '';
-  const intensity = r.intensity ? ` [${r.intensity} intensity]` : '';
-  return `• ${source} is ${type} ${target}${intensity}
-  ${desc ? `  → "${desc}"` : ''}`;
-}).join('\n')}
+      // Add summary stats
+      const stats = [];
+      if (categorizedRels.conflicts.length > 0) stats.push(`${categorizedRels.conflicts.length} conflicts`);
+      if (categorizedRels.alliances.length > 0) stats.push(`${categorizedRels.alliances.length} alliances`);
+      if (categorizedRels.locations.length > 0) stats.push(`${categorizedRels.locations.length} location ties`);
+      if (categorizedRels.memberships.length > 0) stats.push(`${categorizedRels.memberships.length} memberships`);
 
-⚠️ CRITICAL: You MUST incorporate at least one of these relationships into your beats!
-If there's a RIVAL or ENEMY, they should interfere or complicate the objective.
-`;
+      console.log('=== CATEGORIZED RELATIONSHIPS ===');
+      console.log(`Summary: ${stats.join(', ')}`);
     }
 
     // Location NPCs context
@@ -1055,6 +1074,15 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
         encounters: allRelevantEncounters.length,
         playerConnections: playerConnections.length,
         npcsAvailable: usableNpcs.length,
+        // Categorized relationships
+        relationshipCategories: {
+          conflicts: categorizedRels.conflicts.length,
+          alliances: categorizedRels.alliances.length,
+          locations: categorizedRels.locations.length,
+          memberships: categorizedRels.memberships.length,
+          ownership: categorizedRels.ownership.length,
+        },
+        densityWarnings: densityWarnings.length,
         // NPC Scoring
         highRelevanceNpcs: highRelevanceNpcs.filter(n => n.score >= 5).length,
         topScoredNpcs: highRelevanceNpcs.slice(0, 5).map(n => ({ name: n.name, score: n.score, reasons: n.reasons.slice(0, 2) })),
