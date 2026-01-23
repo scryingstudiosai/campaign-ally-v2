@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { SpiderwebGraphWrapper as SpiderwebGraph } from '@/components/memory/SpiderwebWrapper'
 import { ArrowLeft, Network, LayoutGrid } from 'lucide-react'
 import { PageTransition, FadeIn } from '@/components/ui/motion'
+import { useSettingsContextOptional } from '@/components/settings'
 
 interface Entity {
   id: string
@@ -42,6 +43,14 @@ export function SpiderwebPageClient({
   initialRelationships,
 }: SpiderwebPageClientProps): JSX.Element {
   const router = useRouter()
+  const settingsContext = useSettingsContextOptional()
+
+  // Mark onboarding task complete when user visits Spiderweb
+  useEffect(() => {
+    if (settingsContext && settingsContext.settings?.onboarding?.view_spiderweb !== true) {
+      settingsContext.markOnboardingComplete('view_spiderweb')
+    }
+  }, [settingsContext])
 
   // Handle entity click - navigate to entity detail page
   const handleEntityClick = useCallback((entityId: string) => {

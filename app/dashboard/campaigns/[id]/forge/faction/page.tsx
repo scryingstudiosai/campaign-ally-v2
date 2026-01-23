@@ -439,6 +439,12 @@ export default function FactionForgePage({ params }: PageProps) {
         }
       }
 
+      // Mark onboarding tasks complete for stub updates too
+      if (settingsContext) {
+        settingsContext.markOnboardingComplete('create_faction')
+        settingsContext.markOnboardingComplete('use_ai_generation')
+      }
+
       toast.success('Faction updated!')
       window.location.href = `/dashboard/campaigns/${campaignId}/memory/${stubId}`
     } else {
