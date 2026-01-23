@@ -112,22 +112,59 @@ Current Status: ${quest.status || 'active'}
     }
 
     // =========================================
-    // STEP 2: Find Related Entities (IMPROVED MATCHING)
+    // STEP 2: Fetch ALL Entities (not just a few types)
     // =========================================
 
     const { data: allCampaignEntities } = await supabase
       .from('entities')
-      .select('id, name, entity_type, summary, brain, mechanics')
+      .select('id, name, entity_type, sub_type, summary, brain, mechanics, forge_status')
       .eq('campaign_id', campaignId)
-      .is('deleted_at', null)
-      .in('entity_type', ['npc', 'location', 'faction', 'creature']) as { data: EntityData[] | null; error: unknown };
+      .is('deleted_at', null) as { data: EntityData[] | null; error: unknown };
 
-    console.log('=== ENTITY MATCHING ===');
-    console.log('Objective text:', objective);
-    console.log('All campaign entities:', allCampaignEntities?.length);
+    // Group entities by type
+    const entityGroups = {
+      npcs: allCampaignEntities?.filter(e => e.entity_type === 'npc') || [],
+      locations: allCampaignEntities?.filter(e => e.entity_type === 'location') || [],
+      factions: allCampaignEntities?.filter(e => e.entity_type === 'faction') || [],
+      items: allCampaignEntities?.filter(e => e.entity_type === 'item') || [],
+      encounters: allCampaignEntities?.filter(e => e.entity_type === 'encounter') || [],
+      creatures: allCampaignEntities?.filter(e => e.entity_type === 'creature') || [],
+      events: allCampaignEntities?.filter(e => e.entity_type === 'event') || [],
+      quests: allCampaignEntities?.filter(e => e.entity_type === 'quest') || [],
+    };
+
+    console.log('=== ENTITY COUNTS BY TYPE ===');
+    console.log('NPCs:', entityGroups.npcs.length);
+    console.log('Locations:', entityGroups.locations.length);
+    console.log('Factions:', entityGroups.factions.length);
+    console.log('Items:', entityGroups.items.length);
+    console.log('Encounters:', entityGroups.encounters.length);
+    console.log('Creatures:', entityGroups.creatures.length);
+    console.log('Events:', entityGroups.events.length);
+    console.log('Quests:', entityGroups.quests.length);
+
+    // =========================================
+    // STEP 3: Extract Keywords from Objective
+    // =========================================
+
+    const stopWords = ['the', 'a', 'an', 'to', 'and', 'or', 'in', 'on', 'at', 'for', 'of', 'with', 'is', 'are', 'be', 'this', 'that', 'their', 'them', 'they'];
+    const objectiveKeywords = `${objective} ${objectiveDescription || ''}`
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !stopWords.includes(word));
+
+    console.log('=== KEYWORD EXTRACTION ===');
+    console.log('Objective:', objective);
+    console.log('Keywords:', objectiveKeywords);
+
+    // =========================================
+    // STEP 4: Find Entities by Name Match AND Keyword Match
+    // =========================================
 
     const searchText = `${objective} ${objectiveDescription || ''}`.toLowerCase();
 
+    // Name-based matching (existing logic)
     const mentionedEntities: EntityData[] = allCampaignEntities?.filter(entity => {
       const entityNameLower = entity.name.toLowerCase();
       const entityNameParts = entityNameLower.split(' ');
@@ -156,268 +193,287 @@ Current Status: ${quest.status || 'active'}
       return false;
     }) || [];
 
-    console.log('Matched entities:', mentionedEntities.map(e => e.name));
+    console.log('=== NAME-MATCHED ENTITIES ===');
+    console.log('Matched:', mentionedEntities.map(e => e.name));
     const mentionedEntityIds = mentionedEntities.map(e => e.id);
 
     // =========================================
-    // STEP 3: Get ALL Relationships for Found Entities
+    // STEP 5: Keyword-based Location Matching
     // =========================================
 
-    let relationships: RelationshipData[] = [];
-    if (mentionedEntities.length > 0) {
-      console.log('Looking for relationships for entity IDs:', mentionedEntityIds);
+    const relevantLocations = entityGroups.locations.filter(loc => {
+      const locText = `${loc.name} ${loc.summary || ''} ${loc.sub_type || ''}`.toLowerCase();
+      return objectiveKeywords.some(kw => locText.includes(kw));
+    });
 
-      const { data: rels, error: relError } = await supabase
-        .from('relationships')
-        .select(`
-          id,
-          relationship_type,
-          description,
-          surface_description,
-          intensity,
-          source_entity:source_id(id, name, entity_type, summary),
-          target_entity:target_id(id, name, entity_type, summary)
-        `)
-        .eq('campaign_id', campaignId)
-        .is('deleted_at', null)
-        .or(`source_id.in.(${mentionedEntityIds.join(',')}),target_id.in.(${mentionedEntityIds.join(',')})`) as { data: RelationshipData[] | null; error: unknown };
+    console.log('=== KEYWORD-MATCHED LOCATIONS ===');
+    console.log('Relevant locations:', relevantLocations.map(l => l.name));
 
-      if (relError) {
-        console.error('Relationship query error:', relError);
-      } else {
-        relationships = rels || [];
-        console.log('=== RELATIONSHIPS FOUND ===');
-        console.log('Count:', relationships.length);
-        relationships.forEach(r => {
-          console.log(`  ${r.source_entity?.name} --[${r.relationship_type}]--> ${r.target_entity?.name}`);
-        });
-      }
+    // =========================================
+    // STEP 6: Keyword-based Encounter Matching
+    // =========================================
+
+    const relevantEncounters = entityGroups.encounters.filter(enc => {
+      const encText = `${enc.name} ${enc.summary || ''}`.toLowerCase();
+      return objectiveKeywords.some(kw => encText.includes(kw));
+    });
+
+    console.log('=== KEYWORD-MATCHED ENCOUNTERS ===');
+    console.log('Relevant encounters:', relevantEncounters.map(e => e.name));
+
+    // =========================================
+    // STEP 7: Fetch ALL Relationships
+    // =========================================
+
+    const { data: allRelationships, error: relError } = await supabase
+      .from('relationships')
+      .select(`
+        id,
+        relationship_type,
+        description,
+        surface_description,
+        intensity,
+        source_entity:source_id(id, name, entity_type, summary, brain),
+        target_entity:target_id(id, name, entity_type, summary, brain)
+      `)
+      .eq('campaign_id', campaignId)
+      .is('deleted_at', null)
+      .limit(200) as { data: RelationshipData[] | null; error: unknown };
+
+    if (relError) {
+      console.error('Relationship query error:', relError);
     }
 
+    console.log('=== ALL RELATIONSHIPS ===');
+    console.log('Total relationships:', allRelationships?.length || 0);
+
+    // Filter to relationships involving matched entities OR relevant locations
+    const relevantLocationIds = relevantLocations.map(l => l.id);
+    const allRelevantIds = [...new Set([...mentionedEntityIds, ...relevantLocationIds])];
+
+    let relationships: RelationshipData[] = [];
+    if (allRelevantIds.length > 0) {
+      relationships = allRelationships?.filter(r =>
+        allRelevantIds.includes(r.source_entity?.id || '') ||
+        allRelevantIds.includes(r.target_entity?.id || '')
+      ) || [];
+    }
+
+    console.log('Relevant relationships:', relationships.length);
+
     // =========================================
-    // STEP 4: Find NPCs in Mentioned Locations
+    // STEP 8: Find NPCs at Relevant Locations
     // =========================================
 
+    // Combine name-matched locations with keyword-matched locations
     const mentionedLocations = mentionedEntities.filter(e => e.entity_type === 'location');
-    console.log('Mentioned locations:', mentionedLocations.map(l => l.name));
+    const allRelevantLocations = [...new Map([...mentionedLocations, ...relevantLocations].map(l => [l.id, l])).values()];
+
+    console.log('=== ALL RELEVANT LOCATIONS ===');
+    console.log('Combined locations:', allRelevantLocations.map(l => l.name));
 
     let locationNpcs: LocationNpc[] = [];
-    if (mentionedLocations.length > 0) {
-      const locationIds = mentionedLocations.map(l => l.id);
+    if (allRelevantLocations.length > 0) {
+      const locationIds = allRelevantLocations.map(l => l.id);
 
-      const { data: locationRels } = await supabase
-        .from('relationships')
-        .select(`
-          id,
-          relationship_type,
-          source_entity:source_id(id, name, entity_type, summary, brain),
-          target_entity:target_id(id, name, entity_type, summary, brain)
-        `)
-        .eq('campaign_id', campaignId)
-        .is('deleted_at', null)
-        .or(`target_id.in.(${locationIds.join(',')}),source_id.in.(${locationIds.join(',')})`)
-        .in('relationship_type', [
-          'inhabited_by', 'located_in', 'lives_in', 'resides_in',
-          'works_at', 'owns', 'operates', 'frequents', 'patrols',
-          'contains', 'guards', 'runs'
-        ]) as { data: RelationshipData[] | null; error: unknown };
+      // Find NPCs at these locations from the fetched relationships
+      const locationRelTypes = [
+        'inhabited_by', 'located_in', 'lives_in', 'resides_in',
+        'works_at', 'owns', 'operates', 'frequents', 'patrols',
+        'contains', 'guards', 'runs', 'lives_at', 'stays_at'
+      ];
 
-      locationRels?.forEach(rel => {
-        if (rel.source_entity?.entity_type === 'npc') {
-          locationNpcs.push({
-            id: rel.source_entity.id,
-            name: rel.source_entity.name,
-            summary: rel.source_entity.summary,
-            brain: rel.source_entity.brain as LocationNpc['brain'],
-            locationRelation: `${rel.relationship_type} ${rel.target_entity?.name}`
-          });
-        }
-        if (rel.target_entity?.entity_type === 'npc') {
-          locationNpcs.push({
-            id: rel.target_entity.id,
-            name: rel.target_entity.name,
-            summary: rel.target_entity.summary,
-            brain: rel.target_entity.brain as LocationNpc['brain'],
-            locationRelation: `at ${rel.source_entity?.name}`
-          });
+      allRelationships?.forEach(rel => {
+        const isLocationTarget = locationIds.includes(rel.target_entity?.id || '');
+        const isLocationSource = locationIds.includes(rel.source_entity?.id || '');
+
+        if (locationRelTypes.includes(rel.relationship_type)) {
+          if (isLocationTarget && rel.source_entity?.entity_type === 'npc') {
+            locationNpcs.push({
+              id: rel.source_entity.id,
+              name: rel.source_entity.name,
+              summary: rel.source_entity.summary,
+              brain: rel.source_entity.brain as LocationNpc['brain'],
+              locationRelation: `${rel.relationship_type} ${rel.target_entity?.name}`
+            });
+          }
+          if (isLocationSource && rel.target_entity?.entity_type === 'npc') {
+            locationNpcs.push({
+              id: rel.target_entity.id,
+              name: rel.target_entity.name,
+              summary: rel.target_entity.summary,
+              brain: rel.target_entity.brain as LocationNpc['brain'],
+              locationRelation: `at ${rel.source_entity?.name}`
+            });
+          }
         }
       });
 
       // Deduplicate by ID
       locationNpcs = Array.from(new Map(locationNpcs.map(n => [n.id, n])).values());
 
-      console.log('=== NPCs IN MENTIONED LOCATIONS ===');
+      console.log('=== NPCs AT RELEVANT LOCATIONS ===');
       locationNpcs.forEach(npc => {
         console.log(`  ${npc.name} - ${npc.locationRelation}`);
       });
     }
 
     // =========================================
-    // STEP 5: Find Factions Involved
+    // STEP 9: Get ALL Factions (always include)
     // =========================================
 
+    // Find factions specifically involved with matched entities
     let involvedFactions: FactionData[] = [];
-    if (mentionedEntityIds.length > 0) {
-      const { data: factionRels } = await supabase
-        .from('relationships')
-        .select(`
-          id,
-          relationship_type,
-          source_entity:source_id(id, name, entity_type, summary),
-          target_entity:target_id(id, name, entity_type, summary)
-        `)
-        .eq('campaign_id', campaignId)
-        .is('deleted_at', null)
-        .or(`source_id.in.(${mentionedEntityIds.join(',')}),target_id.in.(${mentionedEntityIds.join(',')})`)
-        .in('relationship_type', [
-          'member_of', 'belongs_to', 'leads', 'serves',
-          'allied_with', 'enemy_of', 'works_for'
-        ]) as { data: RelationshipData[] | null; error: unknown };
+    const factionRelTypes = [
+      'member_of', 'belongs_to', 'leads', 'serves',
+      'allied_with', 'enemy_of', 'works_for', 'controls'
+    ];
 
-      factionRels?.forEach(rel => {
-        if (rel.source_entity?.entity_type === 'faction') {
-          involvedFactions.push({
-            id: rel.source_entity.id,
-            name: rel.source_entity.name,
-            summary: rel.source_entity.summary,
-            connection: `${rel.target_entity?.name} ${rel.relationship_type}`
-          });
-        }
-        if (rel.target_entity?.entity_type === 'faction') {
-          involvedFactions.push({
-            id: rel.target_entity.id,
-            name: rel.target_entity.name,
-            summary: rel.target_entity.summary,
-            connection: `${rel.source_entity?.name} ${rel.relationship_type}`
-          });
+    if (allRelevantIds.length > 0) {
+      allRelationships?.forEach(rel => {
+        const involvesRelevant = allRelevantIds.includes(rel.source_entity?.id || '') ||
+                                 allRelevantIds.includes(rel.target_entity?.id || '');
+
+        if (involvesRelevant && factionRelTypes.includes(rel.relationship_type)) {
+          if (rel.source_entity?.entity_type === 'faction') {
+            involvedFactions.push({
+              id: rel.source_entity.id,
+              name: rel.source_entity.name,
+              summary: rel.source_entity.summary,
+              connection: `${rel.target_entity?.name} ${rel.relationship_type}`
+            });
+          }
+          if (rel.target_entity?.entity_type === 'faction') {
+            involvedFactions.push({
+              id: rel.target_entity.id,
+              name: rel.target_entity.name,
+              summary: rel.target_entity.summary,
+              connection: `${rel.source_entity?.name} ${rel.relationship_type}`
+            });
+          }
         }
       });
 
       involvedFactions = Array.from(new Map(involvedFactions.map(f => [f.id, f])).values());
-
-      console.log('=== FACTIONS INVOLVED ===');
-      involvedFactions.forEach(f => console.log(`  ${f.name} - ${f.connection}`));
     }
 
+    console.log('=== INVOLVED FACTIONS ===');
+    involvedFactions.forEach(f => console.log(`  ${f.name} - ${f.connection}`));
+
     // =========================================
-    // STEP 6: Find Related Items/Artifacts
+    // STEP 10: Get Items (from relationships + keyword match)
     // =========================================
 
     let relevantItems: ItemData[] = [];
-    if (mentionedEntityIds.length > 0) {
-      const { data: itemRels } = await supabase
-        .from('relationships')
-        .select(`
-          id,
-          relationship_type,
-          description,
-          source_entity:source_id(id, name, entity_type, summary),
-          target_entity:target_id(id, name, entity_type, summary)
-        `)
-        .eq('campaign_id', campaignId)
-        .is('deleted_at', null)
-        .or(`source_id.in.(${mentionedEntityIds.join(',')}),target_id.in.(${mentionedEntityIds.join(',')})`)
-        .in('relationship_type', [
-          'owns', 'carries', 'guards', 'seeks', 'created',
-          'possesses', 'hides', 'protects'
-        ]) as { data: RelationshipData[] | null; error: unknown };
+    const itemRelTypes = [
+      'owns', 'carries', 'guards', 'seeks', 'created',
+      'possesses', 'hides', 'protects', 'wields'
+    ];
 
-      itemRels?.forEach(rel => {
-        if (rel.source_entity?.entity_type === 'item') {
-          relevantItems.push({
-            id: rel.source_entity.id,
-            name: rel.source_entity.name,
-            summary: rel.source_entity.summary,
-            connection: `${rel.relationship_type} by ${rel.target_entity?.name}`,
-            description: rel.description
-          });
-        }
-        if (rel.target_entity?.entity_type === 'item') {
-          relevantItems.push({
-            id: rel.target_entity.id,
-            name: rel.target_entity.name,
-            summary: rel.target_entity.summary,
-            connection: `${rel.source_entity?.name} ${rel.relationship_type}`,
-            description: rel.description
-          });
+    // Items from relationships
+    if (allRelevantIds.length > 0) {
+      allRelationships?.forEach(rel => {
+        const involvesRelevant = allRelevantIds.includes(rel.source_entity?.id || '') ||
+                                 allRelevantIds.includes(rel.target_entity?.id || '');
+
+        if (involvesRelevant && itemRelTypes.includes(rel.relationship_type)) {
+          if (rel.source_entity?.entity_type === 'item') {
+            relevantItems.push({
+              id: rel.source_entity.id,
+              name: rel.source_entity.name,
+              summary: rel.source_entity.summary,
+              connection: `${rel.relationship_type} by ${rel.target_entity?.name}`,
+              description: rel.description
+            });
+          }
+          if (rel.target_entity?.entity_type === 'item') {
+            relevantItems.push({
+              id: rel.target_entity.id,
+              name: rel.target_entity.name,
+              summary: rel.target_entity.summary,
+              connection: `${rel.source_entity?.name} ${rel.relationship_type}`,
+              description: rel.description
+            });
+          }
         }
       });
-
-      relevantItems = Array.from(new Map(relevantItems.map(i => [i.id, i])).values());
-
-      console.log('=== RELEVANT ITEMS ===');
-      relevantItems.forEach(i => console.log(`  ${i.name} - ${i.connection}`));
     }
 
+    // Also find items by keyword match
+    const keywordMatchedItems = entityGroups.items.filter(item => {
+      const itemText = `${item.name} ${item.summary || ''}`.toLowerCase();
+      return objectiveKeywords.some(kw => itemText.includes(kw));
+    });
+
+    keywordMatchedItems.forEach(item => {
+      if (!relevantItems.find(i => i.id === item.id)) {
+        relevantItems.push({
+          id: item.id,
+          name: item.name,
+          summary: item.summary,
+          connection: 'keyword match',
+          description: undefined
+        });
+      }
+    });
+
+    relevantItems = Array.from(new Map(relevantItems.map(i => [i.id, i])).values());
+
+    console.log('=== RELEVANT ITEMS ===');
+    relevantItems.forEach(i => console.log(`  ${i.name} - ${i.connection}`));
+
     // =========================================
-    // STEP 7: Find Active Encounters at Location
+    // STEP 11: Combine All Relevant Encounters
     // =========================================
 
+    // Encounters from location relationships
     let locationEncounters: EntityData[] = [];
-    if (mentionedLocations.length > 0) {
-      const locationIds = mentionedLocations.map(l => l.id);
+    if (allRelevantLocations.length > 0) {
+      const locationIds = allRelevantLocations.map(l => l.id);
 
-      const { data: encounterRels } = await supabase
-        .from('relationships')
-        .select(`
-          source_entity:source_id(id, name, entity_type, summary, mechanics),
-          target_entity:target_id(id, name, entity_type)
-        `)
-        .eq('campaign_id', campaignId)
-        .is('deleted_at', null)
-        .or(`target_id.in.(${locationIds.join(',')}),source_id.in.(${locationIds.join(',')})`)
-        .eq('relationship_type', 'located_at') as { data: RelationshipData[] | null; error: unknown };
-
-      encounterRels?.forEach(rel => {
-        if (rel.source_entity?.entity_type === 'encounter') {
-          locationEncounters.push(rel.source_entity as unknown as EntityData);
+      allRelationships?.forEach(rel => {
+        if (rel.relationship_type === 'located_at' || rel.relationship_type === 'takes_place_at') {
+          if (locationIds.includes(rel.target_entity?.id || '') && rel.source_entity?.entity_type === 'encounter') {
+            locationEncounters.push(rel.source_entity as unknown as EntityData);
+          }
         }
       });
-
-      console.log('=== ENCOUNTERS AT LOCATION ===');
-      locationEncounters.forEach(e => console.log(`  ${e.name}: ${e.summary}`));
     }
 
+    // Combine with keyword-matched encounters
+    const allRelevantEncounters = [...new Map([...locationEncounters, ...relevantEncounters].map(e => [e.id, e])).values()];
+
+    console.log('=== ALL RELEVANT ENCOUNTERS ===');
+    allRelevantEncounters.forEach(e => console.log(`  ${e.name}: ${e.summary}`));
+
     // =========================================
-    // STEP 8: Get Player Characters & Connections
+    // STEP 12: Get Player Characters & Connections
     // =========================================
 
-    const { data: playerCharacters } = await supabase
-      .from('entities')
-      .select('id, name, summary, brain, mechanics')
-      .eq('campaign_id', campaignId)
-      .eq('entity_type', 'player')
-      .is('deleted_at', null) as { data: EntityData[] | null; error: unknown };
+    // Players are already in entityGroups
+    const playerCharacters = allCampaignEntities?.filter(e => e.entity_type === 'player') || [];
 
     let playerConnections: PlayerConnection[] = [];
-    if (playerCharacters && playerCharacters.length > 0 && mentionedEntityIds.length > 0) {
+    if (playerCharacters.length > 0 && allRelevantIds.length > 0) {
       const playerIds = playerCharacters.map(p => p.id);
 
-      const { data: playerRels } = await supabase
-        .from('relationships')
-        .select(`
-          id,
-          relationship_type,
-          description,
-          source_entity:source_id(id, name, entity_type),
-          target_entity:target_id(id, name, entity_type)
-        `)
-        .eq('campaign_id', campaignId)
-        .is('deleted_at', null)
-        .or(`source_id.in.(${playerIds.join(',')}),target_id.in.(${playerIds.join(',')})`) as { data: RelationshipData[] | null; error: unknown };
-
-      playerRels?.forEach(rel => {
+      // Use the already-fetched relationships
+      allRelationships?.forEach(rel => {
         const isPlayerSource = playerIds.includes(rel.source_entity?.id || '');
-        const player = isPlayerSource ? rel.source_entity : rel.target_entity;
-        const other = isPlayerSource ? rel.target_entity : rel.source_entity;
+        const isPlayerTarget = playerIds.includes(rel.target_entity?.id || '');
 
-        if (mentionedEntityIds.includes(other?.id || '')) {
-          playerConnections.push({
-            playerName: player?.name || 'Unknown',
-            connectedTo: other?.name || 'Unknown',
-            relationship: rel.relationship_type,
-            description: rel.description
-          });
+        if (isPlayerSource || isPlayerTarget) {
+          const player = isPlayerSource ? rel.source_entity : rel.target_entity;
+          const other = isPlayerSource ? rel.target_entity : rel.source_entity;
+
+          if (allRelevantIds.includes(other?.id || '')) {
+            playerConnections.push({
+              playerName: player?.name || 'Unknown',
+              connectedTo: other?.name || 'Unknown',
+              relationship: rel.relationship_type,
+              description: rel.description
+            });
+          }
         }
       });
 
@@ -428,21 +484,13 @@ Current Status: ${quest.status || 'active'}
     }
 
     // =========================================
-    // STEP 9: Get Available NPCs
+    // STEP 13: Prepare Available NPCs (from entityGroups)
     // =========================================
 
-    const { data: nearbyNpcs } = await supabase
-      .from('entities')
-      .select('id, name, entity_type, summary, brain, forge_status')
-      .eq('campaign_id', campaignId)
-      .eq('entity_type', 'npc')
-      .is('deleted_at', null)
-      .limit(50) as { data: EntityData[] | null; error: unknown };
-
     // Include all NPCs that have useful info (not just stubs without content)
-    const usableNpcs = nearbyNpcs?.filter(npc =>
+    const usableNpcs = entityGroups.npcs.filter(npc =>
       npc.forge_status !== 'stub' || npc.summary || npc.brain?.motivation
-    ) || [];
+    ).slice(0, 50);
 
     // =========================================
     // STEP 10: Build Enhanced System Prompt
@@ -472,11 +520,11 @@ If there's a RIVAL or ENEMY, they should interfere or complicate the objective.
     // Location NPCs context
     let locationNpcContext = '';
     if (locationNpcs.length > 0) {
-      const locationNames = mentionedLocations.map(l => l.name).join(', ');
+      const locationNames = allRelevantLocations.map(l => l.name).join(', ');
       locationNpcContext = `
 
-📍 NPCs IN/NEAR ${locationNames.toUpperCase()}:
-${locationNpcs.slice(0, 8).map(npc => {
+📍 NPCs AT RELEVANT LOCATIONS (${locationNames}):
+${locationNpcs.slice(0, 12).map(npc => {
   const motivation = npc.brain?.motivation || npc.brain?.goals || '';
   return `• ${npc.name} (${npc.locationRelation})
   ${npc.summary || 'No description'}${motivation ? `\n  💭 Motivation: ${motivation}` : ''}`;
@@ -486,17 +534,44 @@ Use these NPCs for information gathering, social encounters, or complications!
 `;
     }
 
-    // Faction context
+    // Relevant locations context (keyword-matched)
+    let relevantLocationContext = '';
+    if (allRelevantLocations.length > 0) {
+      relevantLocationContext = `
+
+📍 RELEVANT LOCATIONS FOR THIS OBJECTIVE:
+${allRelevantLocations.slice(0, 8).map(loc => `• ${loc.name}: ${loc.summary || loc.sub_type || 'No description'}`).join('\n')}
+
+Set scenes in these locations when appropriate!
+`;
+    }
+
+    // Faction context - show involved factions AND general factions
     let factionContext = '';
     if (involvedFactions.length > 0) {
       factionContext = `
 
-🏴 FACTIONS INVOLVED:
+🏴 FACTIONS DIRECTLY INVOLVED:
 ${involvedFactions.map(f => `• ${f.name}: ${f.summary || 'No description'}
   Connection: ${f.connection}`).join('\n')}
 
 Consider faction politics and how they might help or hinder the party.
 `;
+    }
+
+    // Always show available factions for general context
+    let allFactionsContext = '';
+    if (entityGroups.factions.length > 0) {
+      const uninvolvedFactions = entityGroups.factions.filter(f =>
+        !involvedFactions.find(inv => inv.id === f.id)
+      );
+      if (uninvolvedFactions.length > 0) {
+        allFactionsContext = `
+
+🏛️ OTHER FACTIONS IN CAMPAIGN:
+${uninvolvedFactions.slice(0, 6).map(f => `• ${f.name}: ${f.summary || 'No description'}`).join('\n')}
+`;
+      }
     }
 
     // Items context
@@ -512,15 +587,25 @@ These items could be quest rewards, MacGuffins, or complications.
 `;
     }
 
-    // Existing encounters context
+    // Existing encounters context - use combined encounters
     let encounterContext = '';
-    if (locationEncounters.length > 0) {
+    if (allRelevantEncounters.length > 0) {
       encounterContext = `
 
-⚔️ PRE-BUILT ENCOUNTERS AT THIS LOCATION:
-${locationEncounters.map(e => `• ${e.name}: ${e.summary || 'No description'}`).join('\n')}
+⚔️ RELEVANT PRE-BUILT ENCOUNTERS:
+${allRelevantEncounters.slice(0, 6).map(e => `• ${e.name}: ${e.summary || 'No description'}`).join('\n')}
 
 You may reference these existing encounters instead of creating new ones!
+`;
+    }
+
+    // Creatures context
+    let creaturesContext = '';
+    if (entityGroups.creatures.length > 0) {
+      creaturesContext = `
+
+🐉 CREATURES IN CAMPAIGN:
+${entityGroups.creatures.slice(0, 10).map(c => `• ${c.name}: ${c.summary || c.sub_type || 'No description'}`).join('\n')}
 `;
     }
 
@@ -565,27 +650,35 @@ ${questContext}
 
 ${relationshipContext}
 
+${relevantLocationContext}
+
 ${locationNpcContext}
 
 ${factionContext}
 
+${allFactionsContext}
+
 ${itemContext}
 
 ${encounterContext}
+
+${creaturesContext}
 
 ${playerContext}
 
 ${npcContext}
 
 CRITICAL RULES:
-1. ALWAYS use existing NPCs and relationships - this creates continuity!
-2. If there's a RIVAL/ENEMY, they MUST interfere or complicate the objective
+1. ALWAYS use existing NPCs, locations, and encounters - this creates continuity!
+2. If there's a RIVAL/ENEMY relationship, they MUST interfere or complicate the objective
 3. If a party member has a connection, create a moment for them to use it
 4. If there are NPCs at the location, use them for information/social encounters
-5. Create 3 distinct beats: Social → Exploration/Discovery → Potential Combat
-6. Each beat should be 2-3 sentences - evocative but not prescriptive
-7. Reference existing encounters if they fit, rather than inventing new ones
-8. Include faction politics if relevant factions are involved`;
+5. Set scenes in the RELEVANT LOCATIONS listed above when possible
+6. Create 3 distinct beats: Social → Exploration/Discovery → Potential Combat
+7. Each beat should be 2-3 sentences - evocative but not prescriptive
+8. Reference existing encounters if they fit, rather than inventing new ones
+9. Include faction politics if relevant factions are involved
+10. Use creatures from the campaign for combat encounters`;
 
     const userPrompt = `Break this quest objective into 3 playable beats:
 
@@ -612,12 +705,25 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
     // =========================================
     console.log('=== FULL CONTEXT SUMMARY ===');
     console.log(`Campaign: ${campaign?.name}`);
-    console.log(`Mentioned Entities: ${mentionedEntities.length}`);
-    console.log(`Relationships: ${relationships.length}`);
+    console.log(`--- ENTITY COUNTS ---`);
+    console.log(`Total NPCs: ${entityGroups.npcs.length}`);
+    console.log(`Total Locations: ${entityGroups.locations.length}`);
+    console.log(`Total Factions: ${entityGroups.factions.length}`);
+    console.log(`Total Items: ${entityGroups.items.length}`);
+    console.log(`Total Encounters: ${entityGroups.encounters.length}`);
+    console.log(`Total Creatures: ${entityGroups.creatures.length}`);
+    console.log(`--- MATCHING ---`);
+    console.log(`Name-Matched Entities: ${mentionedEntities.length}`);
+    console.log(`Keyword-Matched Locations: ${relevantLocations.length}`);
+    console.log(`Keyword-Matched Encounters: ${relevantEncounters.length}`);
+    console.log(`--- CONTEXT USED ---`);
+    console.log(`All Relationships: ${allRelationships?.length || 0}`);
+    console.log(`Relevant Relationships: ${relationships.length}`);
+    console.log(`All Relevant Locations: ${allRelevantLocations.length}`);
     console.log(`Location NPCs: ${locationNpcs.length}`);
-    console.log(`Factions: ${involvedFactions.length}`);
-    console.log(`Items: ${relevantItems.length}`);
-    console.log(`Location Encounters: ${locationEncounters.length}`);
+    console.log(`Involved Factions: ${involvedFactions.length}`);
+    console.log(`Relevant Items: ${relevantItems.length}`);
+    console.log(`All Relevant Encounters: ${allRelevantEncounters.length}`);
     console.log(`Player Connections: ${playerConnections.length}`);
     console.log(`Available NPCs: ${usableNpcs.length}`);
     console.log('');
@@ -657,14 +763,27 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
       suggestedNpcs: generatedContent.suggestedNpcs || [],
       hooks: generatedContent.hooks || [],
       context: {
+        // Entity counts
+        totalNpcs: entityGroups.npcs.length,
+        totalLocations: entityGroups.locations.length,
+        totalFactions: entityGroups.factions.length,
+        totalItems: entityGroups.items.length,
+        totalEncounters: entityGroups.encounters.length,
+        totalCreatures: entityGroups.creatures.length,
+        // Matching
+        nameMatched: mentionedEntities.map(e => e.name),
+        keywordLocations: relevantLocations.map(l => l.name),
+        keywordEncounters: relevantEncounters.map(e => e.name),
+        // Context used
         relationshipsUsed: relationships.length,
+        allRelationships: allRelationships?.length || 0,
+        relevantLocations: allRelevantLocations.length,
         locationNpcs: locationNpcs.length,
         factions: involvedFactions.length,
         items: relevantItems.length,
-        encounters: locationEncounters.length,
+        encounters: allRelevantEncounters.length,
         playerConnections: playerConnections.length,
         npcsAvailable: usableNpcs.length,
-        entitiesMatched: mentionedEntities.map(e => e.name),
       },
     });
 
