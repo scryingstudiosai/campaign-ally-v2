@@ -73,12 +73,31 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
   }
 
+  // Try to update existing settings
   const { data: settings, error } = await supabase
     .from('user_settings')
     .update(updates)
     .eq('user_id', user.id)
     .select()
-    .single();
+    .maybeSingle();
+
+  // If no row was updated (settings don't exist yet), create them with the updates
+  if (!settings && !error) {
+    const { data: newSettings, error: insertError } = await supabase
+      .from('user_settings')
+      .insert({ user_id: user.id, ...updates })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Failed to create settings:', insertError);
+      return NextResponse.json(
+        { error: 'Failed to create settings' },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json(newSettings);
+  }
 
   if (error) {
     console.error('Failed to update settings:', error);

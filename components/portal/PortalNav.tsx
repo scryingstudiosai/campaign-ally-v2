@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Package, MessageSquare, Book, Globe, Moon, Users, ScrollText } from 'lucide-react';
+import { User, Package, MessageSquare, Book, Globe, Moon, Users, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -129,7 +129,7 @@ export function PortalNav({ campaignId, userId, isSpectator = false }: Props) {
     if (pathname.includes('/messages')) {
       setUnreadCount(0);
     }
-    if (pathname.includes('/rumors')) {
+    if (pathname.includes('/lore')) {
       setUnreadRumorsCount(0);
     }
   }, [pathname]);
@@ -140,7 +140,7 @@ export function PortalNav({ campaignId, userId, isSpectator = false }: Props) {
     { href: `${basePath}/party`, icon: Users, label: 'Party', disabled: false },
     { href: `${basePath}/messages`, icon: MessageSquare, label: 'Messages', badge: unreadCount > 0 ? unreadCount : undefined, disabled: false },
     { href: `${basePath}/journal`, icon: Book, label: 'Journal', disabled: false },
-    { href: `${basePath}/rumors`, icon: ScrollText, label: 'Rumors', badge: unreadRumorsCount > 0 ? unreadRumorsCount : undefined, disabled: false },
+    { href: `${basePath}/lore`, icon: BookOpen, label: 'Lore', badge: unreadRumorsCount > 0 ? unreadRumorsCount : undefined, disabled: false },
     { href: `${basePath}/world`, icon: Globe, label: 'World', disabled: false },
   ];
 

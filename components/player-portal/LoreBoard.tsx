@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
-  ScrollText,
+  BookOpen,
   Search,
   Check,
   MessageSquare,
@@ -16,8 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
-// New rumors from the rumors table
-interface Rumor {
+// New lore items from the rumors table
+interface LoreItem {
   id: string;
   title: string | null;
   content: string;
@@ -29,8 +29,8 @@ interface Rumor {
   created_at: string;
 }
 
-// Legacy rumors from entities table (for backward compatibility)
-interface LegacyRumor {
+// Legacy lore from entities table (for backward compatibility)
+interface LegacyLore {
   id: string;
   name: string;
   soul?: {
@@ -45,22 +45,22 @@ interface LegacyRumor {
   };
 }
 
-interface RumorsBoardProps {
+interface LoreBoardProps {
   campaignId: string;
   playerId?: string;
   readonly?: boolean;
 }
 
-export function RumorsBoard({
+export function LoreBoard({
   campaignId,
   playerId,
   readonly = false,
-}: RumorsBoardProps) {
-  const [rumors, setRumors] = useState<Rumor[]>([]);
-  const [legacyRumors, setLegacyRumors] = useState<LegacyRumor[]>([]);
+}: LoreBoardProps) {
+  const [loreItems, setLoreItems] = useState<LoreItem[]>([]);
+  const [legacyLore, setLegacyLore] = useState<LegacyLore[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedRumorId, setExpandedRumorId] = useState<string | null>(null);
+  const [expandedLoreId, setExpandedLoreId] = useState<string | null>(null);
   const [playerNote, setPlayerNote] = useState('');
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
@@ -68,34 +68,34 @@ export function RumorsBoard({
   const supabase = createClient();
 
   useEffect(() => {
-    fetchRumors();
+    fetchLore();
   }, [campaignId]);
 
-  const fetchRumors = async () => {
+  const fetchLore = async () => {
     setLoading(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
 
-      // Fetch new rumors from rumors table
-      const { data: newRumors, error: rumorsError } = await supabase
+      // Fetch new lore from rumors table
+      const { data: newLore, error: loreError } = await supabase
         .from('rumors')
         .select('*')
         .eq('campaign_id', campaignId)
         .eq('is_visible', true)
         .order('created_at', { ascending: false });
 
-      if (rumorsError) {
-        console.error('Failed to fetch rumors:', rumorsError);
+      if (loreError) {
+        console.error('Failed to fetch lore:', loreError);
       } else {
-        setRumors(newRumors || []);
+        setLoreItems(newLore || []);
 
-        // Mark rumors as read
-        if (userId && newRumors && newRumors.length > 0) {
-          const rumorIds = newRumors.map((r) => r.id);
+        // Mark lore as read
+        if (userId && newLore && newLore.length > 0) {
+          const loreIds = newLore.map((r) => r.id);
           await supabase.from('rumor_reads').upsert(
-            rumorIds.map((rumorId) => ({
-              rumor_id: rumorId,
+            loreIds.map((loreId) => ({
+              rumor_id: loreId,
               user_id: userId,
             })),
             { onConflict: 'rumor_id,user_id', ignoreDuplicates: true }
@@ -103,7 +103,7 @@ export function RumorsBoard({
         }
       }
 
-      // Also fetch legacy rumors from entities table for backward compatibility
+      // Also fetch legacy lore from entities table for backward compatibility
       const { data: legacyData, error: legacyError } = await supabase
         .from('entities')
         .select('id, name, soul, mechanics')
@@ -114,42 +114,42 @@ export function RumorsBoard({
         .order('created_at', { ascending: false });
 
       if (legacyError) {
-        console.error('Failed to fetch legacy rumors:', legacyError);
+        console.error('Failed to fetch legacy lore:', legacyError);
       } else {
-        // Filter to only show rumors that are actually shared
-        const sharedRumors = (legacyData || []).filter(
+        // Filter to only show lore that is actually shared
+        const sharedLore = (legacyData || []).filter(
           (r) => r.mechanics?.shared_with_players === true
         );
-        setLegacyRumors(sharedRumors);
+        setLegacyLore(sharedLore);
       }
     } catch (error) {
-      console.error('Failed to fetch rumors:', error);
+      console.error('Failed to fetch lore:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const markAsInvestigated = async (rumorId: string) => {
-    setMarkingId(rumorId);
+  const markAsInvestigated = async (loreId: string) => {
+    setMarkingId(loreId);
     try {
-      const rumor = legacyRumors.find((r) => r.id === rumorId);
-      if (!rumor) return;
+      const lore = legacyLore.find((r) => r.id === loreId);
+      if (!lore) return;
 
       const { error } = await supabase
         .from('entities')
         .update({
           mechanics: {
-            ...rumor.mechanics,
+            ...lore.mechanics,
             investigated_by_players: true,
           },
         })
-        .eq('id', rumorId);
+        .eq('id', loreId);
 
       if (error) throw error;
 
-      setLegacyRumors((prev) =>
+      setLegacyLore((prev) =>
         prev.map((r) =>
-          r.id === rumorId
+          r.id === loreId
             ? { ...r, mechanics: { ...r.mechanics, investigated_by_players: true } }
             : r
         )
@@ -157,43 +157,43 @@ export function RumorsBoard({
 
       toast.success('Marked as investigated!');
     } catch (error) {
-      console.error('Failed to mark rumor:', error);
+      console.error('Failed to mark lore:', error);
       toast.error('Failed to update');
     } finally {
       setMarkingId(null);
     }
   };
 
-  const savePlayerNote = async (rumorId: string) => {
+  const savePlayerNote = async (loreId: string) => {
     if (!playerNote.trim()) return;
 
-    setSavingNoteId(rumorId);
+    setSavingNoteId(loreId);
     try {
-      const rumor = legacyRumors.find((r) => r.id === rumorId);
-      if (!rumor) return;
+      const lore = legacyLore.find((r) => r.id === loreId);
+      if (!lore) return;
 
       const { error } = await supabase
         .from('entities')
         .update({
           mechanics: {
-            ...rumor.mechanics,
+            ...lore.mechanics,
             player_notes: playerNote,
           },
         })
-        .eq('id', rumorId);
+        .eq('id', loreId);
 
       if (error) throw error;
 
-      setLegacyRumors((prev) =>
+      setLegacyLore((prev) =>
         prev.map((r) =>
-          r.id === rumorId
+          r.id === loreId
             ? { ...r, mechanics: { ...r.mechanics, player_notes: playerNote } }
             : r
         )
       );
 
       setPlayerNote('');
-      setExpandedRumorId(null);
+      setExpandedLoreId(null);
       toast.success('Note saved!');
     } catch (error) {
       console.error('Failed to save note:', error);
@@ -203,29 +203,29 @@ export function RumorsBoard({
     }
   };
 
-  // Filter both new and legacy rumors
-  const filteredRumors = searchQuery
-    ? rumors.filter(
+  // Filter both new and legacy lore
+  const filteredLore = searchQuery
+    ? loreItems.filter(
         (r) =>
           r.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
           r.title?.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : rumors;
+    : loreItems;
 
-  const filteredLegacyRumors = searchQuery
-    ? legacyRumors.filter(
+  const filteredLegacyLore = searchQuery
+    ? legacyLore.filter(
         (r) =>
           r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           r.soul?.common_knowledge?.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : legacyRumors;
+    : legacyLore;
 
-  const totalCount = filteredRumors.length + filteredLegacyRumors.length;
+  const totalCount = filteredLore.length + filteredLegacyLore.length;
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
       </div>
     );
   }
@@ -234,13 +234,13 @@ export function RumorsBoard({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-amber-500/10 rounded-lg">
-          <ScrollText className="w-6 h-6 text-amber-400" />
+        <div className="p-2 bg-purple-500/10 rounded-lg">
+          <BookOpen className="w-6 h-6 text-purple-400" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-slate-100">Rumors Board</h2>
+          <h2 className="text-lg font-bold text-slate-100">Lore & Discoveries</h2>
           <p className="text-sm text-slate-400">
-            Whispers and tales from taverns and streets
+            Knowledge your character has learned
           </p>
         </div>
       </div>
@@ -250,7 +250,7 @@ export function RumorsBoard({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <Input
-            placeholder="Search rumors..."
+            placeholder="Search lore..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 bg-slate-800/50"
@@ -261,35 +261,35 @@ export function RumorsBoard({
       {/* Empty State */}
       {totalCount === 0 && (
         <div className="text-center py-12 bg-slate-900/30 border border-slate-800 rounded-lg">
-          <ScrollText className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">No rumors posted yet</p>
+          <BookOpen className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+          <p className="text-slate-400">No lore discovered yet</p>
           <p className="text-sm text-slate-500 mt-1">
-            Check back later for news and whispers
+            As you explore the world, knowledge will appear here
           </p>
         </div>
       )}
 
-      {/* New Rumors (from rumors table) */}
-      {filteredRumors.length > 0 && (
+      {/* New Lore (from rumors table) */}
+      {filteredLore.length > 0 && (
         <div className="grid gap-4">
-          {filteredRumors.map((rumor) => (
+          {filteredLore.map((lore) => (
             <div
-              key={rumor.id}
-              className="relative overflow-hidden rounded-lg border bg-amber-500/5 border-amber-500/30 hover:border-amber-500/50 transition-all"
+              key={lore.id}
+              className="relative overflow-hidden rounded-lg border bg-purple-500/5 border-purple-500/30 hover:border-purple-500/50 transition-all"
             >
-              {/* Pin decoration */}
-              <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-amber-500/50 shadow-lg" />
+              {/* Decoration */}
+              <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-purple-500/50 shadow-lg" />
 
               <div className="p-4">
                 <div className="flex items-start gap-3">
-                  <span className="text-2xl">📜</span>
+                  <span className="text-2xl">📖</span>
                   <div className="flex-1 min-w-0">
                     {/* Target badge */}
                     <div className="flex items-center gap-2 mb-2">
-                      {rumor.target_type === 'player' ? (
+                      {lore.target_type === 'player' ? (
                         <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded flex items-center gap-1">
                           <Lock className="w-3 h-3" />
-                          Private - For Your Eyes Only
+                          Private Knowledge
                         </span>
                       ) : (
                         <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded flex items-center gap-1">
@@ -300,28 +300,28 @@ export function RumorsBoard({
                     </div>
 
                     {/* Title */}
-                    {rumor.title && (
-                      <h3 className="font-semibold text-amber-200 mb-2">
-                        {rumor.title}
+                    {lore.title && (
+                      <h3 className="font-semibold text-purple-200 mb-2">
+                        {lore.title}
                       </h3>
                     )}
 
                     {/* Content */}
                     <p className="text-slate-300 text-sm leading-relaxed">
-                      {rumor.content}
+                      {lore.content}
                     </p>
 
                     {/* Skill check info */}
-                    {rumor.skill_check && rumor.dc && (
+                    {lore.skill_check && lore.dc && (
                       <p className="text-xs text-slate-500 mt-2">
-                        {rumor.skill_check} DC {rumor.dc}
+                        {lore.skill_check} DC {lore.dc}
                       </p>
                     )}
 
                     {/* Source */}
-                    {rumor.source_name && (
+                    {lore.source_name && (
                       <p className="text-xs text-slate-600 mt-2">
-                        Source: {rumor.source_name}
+                        Source: {lore.source_name}
                       </p>
                     )}
                   </div>
@@ -331,7 +331,7 @@ export function RumorsBoard({
               {/* Date footer */}
               <div className="px-4 py-2 bg-slate-900/50 border-t border-slate-800">
                 <p className="text-[10px] text-slate-500">
-                  Posted {new Date(rumor.created_at).toLocaleDateString()}
+                  Discovered {new Date(lore.created_at).toLocaleDateString()}
                 </p>
               </div>
             </div>
@@ -339,41 +339,41 @@ export function RumorsBoard({
         </div>
       )}
 
-      {/* Legacy Rumors (from entities table) */}
-      {filteredLegacyRumors.length > 0 && (
+      {/* Legacy Lore (from entities table) */}
+      {filteredLegacyLore.length > 0 && (
         <div className="grid gap-4">
-          {filteredRumors.length > 0 && filteredLegacyRumors.length > 0 && (
+          {filteredLore.length > 0 && filteredLegacyLore.length > 0 && (
             <div className="text-xs text-slate-500 uppercase tracking-wider py-2">
-              Older Rumors
+              Earlier Discoveries
             </div>
           )}
-          {filteredLegacyRumors.map((rumor) => {
-            const isExpanded = expandedRumorId === rumor.id;
-            const isInvestigated = rumor.mechanics?.investigated_by_players;
+          {filteredLegacyLore.map((lore) => {
+            const isExpanded = expandedLoreId === lore.id;
+            const isInvestigated = lore.mechanics?.investigated_by_players;
 
             return (
               <div
-                key={rumor.id}
+                key={lore.id}
                 className={`relative overflow-hidden rounded-lg border transition-all ${
                   isInvestigated
                     ? 'bg-slate-900/30 border-slate-700'
-                    : 'bg-amber-500/5 border-amber-500/30 hover:border-amber-500/50'
+                    : 'bg-purple-500/5 border-purple-500/30 hover:border-purple-500/50'
                 }`}
               >
-                {/* Pin decoration */}
-                <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-amber-500/50 shadow-lg" />
+                {/* Decoration */}
+                <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-purple-500/50 shadow-lg" />
 
                 <div className="p-4">
                   <div className="flex items-start gap-3">
-                    <span className="text-2xl">🍺</span>
+                    <span className="text-2xl">📜</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <h3
                           className={`font-semibold ${
-                            isInvestigated ? 'text-slate-400' : 'text-amber-200'
+                            isInvestigated ? 'text-slate-400' : 'text-purple-200'
                           }`}
                         >
-                          {rumor.name}
+                          {lore.name}
                         </h3>
                         {isInvestigated && (
                           <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded flex items-center gap-1">
@@ -388,18 +388,18 @@ export function RumorsBoard({
                           isInvestigated ? 'text-slate-500' : 'text-slate-300'
                         }`}
                       >
-                        {rumor.soul?.folklore || rumor.soul?.common_knowledge}
+                        {lore.soul?.folklore || lore.soul?.common_knowledge}
                       </p>
 
                       {/* Player notes display */}
-                      {rumor.mechanics?.player_notes && (
+                      {lore.mechanics?.player_notes && (
                         <div className="mt-3 p-2 bg-slate-800/50 rounded text-sm">
                           <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
                             <MessageSquare className="w-3 h-3" />
                             Party Notes
                           </p>
                           <p className="text-slate-400 italic">
-                            {rumor.mechanics.player_notes}
+                            {lore.mechanics.player_notes}
                           </p>
                         </div>
                       )}
@@ -411,11 +411,11 @@ export function RumorsBoard({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => markAsInvestigated(rumor.id)}
-                              disabled={markingId === rumor.id}
-                              className="h-7 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                              onClick={() => markAsInvestigated(lore.id)}
+                              disabled={markingId === lore.id}
+                              className="h-7 text-xs text-purple-400 border-purple-500/30 hover:bg-purple-500/10"
                             >
-                              {markingId === rumor.id ? (
+                              {markingId === lore.id ? (
                                 <Loader2 className="w-3 h-3 animate-spin" />
                               ) : (
                                 <>
@@ -429,13 +429,13 @@ export function RumorsBoard({
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              setExpandedRumorId(isExpanded ? null : rumor.id);
-                              setPlayerNote(rumor.mechanics?.player_notes || '');
+                              setExpandedLoreId(isExpanded ? null : lore.id);
+                              setPlayerNote(lore.mechanics?.player_notes || '');
                             }}
                             className="h-7 text-xs"
                           >
                             <MessageSquare className="w-3 h-3 mr-1" />
-                            {rumor.mechanics?.player_notes ? 'Edit Note' : 'Add Note'}
+                            {lore.mechanics?.player_notes ? 'Edit Note' : 'Add Note'}
                           </Button>
                         </div>
                       )}
@@ -444,7 +444,7 @@ export function RumorsBoard({
                       {isExpanded && !readonly && (
                         <div className="mt-3 space-y-2">
                           <Textarea
-                            placeholder="Add party notes about this rumor..."
+                            placeholder="Add party notes about this discovery..."
                             value={playerNote}
                             onChange={(e) => setPlayerNote(e.target.value)}
                             className="bg-slate-800/50 text-sm min-h-[80px]"
@@ -453,18 +453,18 @@ export function RumorsBoard({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setExpandedRumorId(null)}
+                              onClick={() => setExpandedLoreId(null)}
                               className="h-7 text-xs"
                             >
                               Cancel
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => savePlayerNote(rumor.id)}
-                              disabled={savingNoteId === rumor.id || !playerNote.trim()}
-                              className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-black"
+                              onClick={() => savePlayerNote(lore.id)}
+                              disabled={savingNoteId === lore.id || !playerNote.trim()}
+                              className="h-7 text-xs bg-purple-500 hover:bg-purple-600 text-white"
                             >
-                              {savingNoteId === rumor.id ? (
+                              {savingNoteId === lore.id ? (
                                 <Loader2 className="w-3 h-3 animate-spin" />
                               ) : (
                                 'Save Note'
@@ -478,10 +478,10 @@ export function RumorsBoard({
                 </div>
 
                 {/* Date footer */}
-                {rumor.mechanics?.shared_at && (
+                {lore.mechanics?.shared_at && (
                   <div className="px-4 py-2 bg-slate-900/50 border-t border-slate-800">
                     <p className="text-[10px] text-slate-500">
-                      Posted {new Date(rumor.mechanics.shared_at).toLocaleDateString()}
+                      Discovered {new Date(lore.mechanics.shared_at).toLocaleDateString()}
                     </p>
                   </div>
                 )}
