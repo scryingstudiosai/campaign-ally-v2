@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useCampaignActions } from '@/components/campaign/CampaignActionsContext';
 
 interface TaskItem {
   id: string;
@@ -37,6 +38,7 @@ interface TaskItem {
   description: string;
   icon: React.ElementType;
   href?: (campaignId: string) => string;
+  action?: 'invite' | 'export'; // For modal-based actions
   color: string;
 }
 
@@ -171,7 +173,7 @@ const GETTING_STARTED_2: TaskItem[] = [
     label: 'Invite a Player',
     description: 'Share with your party',
     icon: UserPlus,
-    href: (id) => `/dashboard/campaigns/${id}/party`,
+    action: 'invite',
     color: 'text-pink-400',
   },
   {
@@ -204,6 +206,7 @@ export function GettingStartedChecklist({
   onHide,
 }: GettingStartedChecklistProps) {
   const { settings, isLoading } = useSettingsContext();
+  const { openInviteModal, openExportModal } = useCampaignActions();
 
   if (isLoading || !settings) {
     return null;
@@ -326,6 +329,25 @@ export function GettingStartedChecklist({
                 ? 'opacity-60 cursor-default'
                 : 'hover:bg-slate-800/50 cursor-pointer'
             );
+
+            // Handle action-based tasks (modals)
+            if (task.action && !isComplete) {
+              return (
+                <button
+                  key={task.id}
+                  onClick={() => {
+                    if (task.action === 'invite') {
+                      openInviteModal();
+                    } else if (task.action === 'export') {
+                      openExportModal();
+                    }
+                  }}
+                  className={itemClassName}
+                >
+                  {itemContent}
+                </button>
+              );
+            }
 
             if (!task.href || isComplete) {
               return (

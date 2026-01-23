@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Users, Package, Shield,
-  RefreshCw, Loader2, Coins, Plus, Pencil
+  RefreshCw, Loader2, Coins, Plus, Pencil, UserPlus
 } from 'lucide-react';
+import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { TacticalProfile } from '@/components/party/TacticalProfile';
@@ -160,10 +161,18 @@ export default function PartyCommandCenter() {
             <p className="text-zinc-400">Macro-management dashboard</p>
           </div>
         </div>
-        <Button variant="outline" onClick={loadPartyData}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href={`/dashboard/campaigns/${campaignId}/invite`}>
+            <Button className="bg-teal-600 hover:bg-teal-500">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite Player
+            </Button>
+          </Link>
+          <Button variant="outline" onClick={loadPartyData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Top Row: Cheat Sheet */}

@@ -28,7 +28,7 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
   const [currentSession, setCurrentSession] = useState(session);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isCombatActive, setIsCombatActive] = useState(!!session.combat_state);
-  const [usePlaybook, setUsePlaybook] = useState(true); // New block-based playbook
+  const [usePlaybook, setUsePlaybook] = useState(false); // Default to Notes view (rich editor)
   const [userId, setUserId] = useState<string | null>(null);
   const [isShiftHeld, setIsShiftHeld] = useState(false);
 

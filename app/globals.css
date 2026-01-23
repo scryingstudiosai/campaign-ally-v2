@@ -141,18 +141,7 @@
   position: relative;
 }
 
-.ProseMirror [data-read-aloud]::before {
-  content: '📖 Read Aloud';
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  font-size: 0.75rem;
-  color: #14b8a6;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-  font-style: normal;
-}
+/* Note: Read Aloud label is rendered inline by TipTap ReadAloudNode */
 
 /* ═══════════════════════════════════════════
    ARCANE ARTIFACT DESIGN SYSTEM
