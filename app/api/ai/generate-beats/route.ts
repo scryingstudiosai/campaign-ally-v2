@@ -437,8 +437,9 @@ Current Status: ${quest.status || 'active'}
       .eq('campaign_id', campaignId)
       .eq('entity_type', 'npc')
       .is('deleted_at', null)
-      .limit(15) as { data: EntityData[] | null; error: unknown };
+      .limit(50) as { data: EntityData[] | null; error: unknown };
 
+    // Include all NPCs that have useful info (not just stubs without content)
     const usableNpcs = nearbyNpcs?.filter(npc =>
       npc.forge_status !== 'stub' || npc.summary || npc.brain?.motivation
     ) || [];
@@ -547,7 +548,7 @@ ${playerCharacters.map(p => `• ${p.name}: ${p.summary || 'Adventurer'}`).join(
       npcContext = `
 
 AVAILABLE NPCs (prefer these over inventing new ones):
-${usableNpcs.slice(0, 8).map(npc => {
+${usableNpcs.slice(0, 25).map(npc => {
   const motivation = npc.brain?.motivation || '';
   return `- ${npc.name}: ${npc.summary || 'No description'}${motivation ? ` (Wants: ${motivation})` : ''}`;
 }).join('\n')}

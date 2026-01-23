@@ -23,7 +23,6 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSettingsContext } from '@/components/settings/SettingsContext';
 
 interface PrepSuggestion {
   id: string;
@@ -80,7 +79,6 @@ export function SessionPrepPanel({ campaignId }: SessionPrepPanelProps) {
   const [loading, setLoading] = useState(false);
   const [expandedSuggestions, setExpandedSuggestions] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const { markOnboardingComplete } = useSettingsContext();
 
   const generateReport = async () => {
     setLoading(true);
@@ -100,8 +98,6 @@ export function SessionPrepPanel({ campaignId }: SessionPrepPanelProps) {
       const data = await response.json();
       setReport(data);
       toast.success('Session prep generated!');
-      // Mark onboarding task complete
-      await markOnboardingComplete('use_session_prep');
     } catch (error) {
       console.error('Failed to generate prep:', error);
       toast.error('Failed to generate session prep');
