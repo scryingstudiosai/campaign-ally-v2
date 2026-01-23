@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
         soul,
         mechanics,
         brain,
+        resources,
         image_url,
         created_at,
         updated_at
@@ -130,6 +131,23 @@ export async function PATCH(req: NextRequest) {
       notes: updates.mechanics.notes ?? existingMechanics.notes,
       // CORE values preserved from existing - player cannot change
       // max_hp, ac, level, ability_scores, etc. stay as-is
+    };
+  }
+
+  // Allow updating resources (inspiration - player can spend it)
+  if (updates.resources) {
+    const { data: existing } = await supabase
+      .from('entities')
+      .select('resources')
+      .eq('id', characterId)
+      .single();
+
+    const existingResources = (existing?.resources || {}) as Record<string, unknown>;
+
+    safeUpdates.resources = {
+      ...existingResources,
+      // Players can only SPEND inspiration (set to false), not grant it
+      inspiration: updates.resources.inspiration === false ? false : existingResources.inspiration,
     };
   }
 

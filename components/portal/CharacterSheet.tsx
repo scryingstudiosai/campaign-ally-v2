@@ -173,6 +173,29 @@ export function CharacterSheet({ campaignId, character, worldAnchors = [] }: Pro
     setEditingSection('none');
   };
 
+  const spendInspiration = async () => {
+    if (!hasInspiration || isSaving) return;
+
+    setIsSaving(true);
+    const res = await fetch('/api/portal/character', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        campaignId,
+        characterId: char.id,
+        updates: {
+          resources: { inspiration: false },
+        },
+      }),
+    });
+
+    if (res.ok) {
+      const updated = await res.json();
+      setChar(updated);
+    }
+    setIsSaving(false);
+  };
+
   const getModifier = (score: number) => {
     const mod = Math.floor((score - 10) / 2);
     return mod >= 0 ? `+${mod}` : `${mod}`;
@@ -234,10 +257,17 @@ export function CharacterSheet({ campaignId, character, worldAnchors = [] }: Pro
           <div className="p-2 bg-yellow-500/30 rounded-lg">
             <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-yellow-200 font-medium text-sm">You have Inspiration!</p>
-            <p className="text-yellow-400/70 text-xs">Spend it to gain advantage on an attack, save, or check</p>
+            <p className="text-yellow-400/70 text-xs">Tap to spend for advantage on an attack, save, or check</p>
           </div>
+          <button
+            onClick={spendInspiration}
+            disabled={isSaving}
+            className="px-3 py-1.5 bg-yellow-500/30 hover:bg-yellow-500/50 border border-yellow-500/50 rounded-lg text-yellow-200 text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {isSaving ? '...' : 'Use'}
+          </button>
         </div>
       )}
 
