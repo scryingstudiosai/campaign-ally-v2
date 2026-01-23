@@ -64,6 +64,15 @@ interface PlayerConnection {
   description?: string;
 }
 
+interface ScoredNpc {
+  id: string;
+  name: string;
+  summary?: string;
+  brain?: { motivation?: string; goals?: string };
+  score: number;
+  reasons: string[];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -93,8 +102,9 @@ export async function POST(request: NextRequest) {
     }
     console.log('Campaign:', campaign?.name);
 
-    // Get the quest details if we have questId
+    // Get the quest details if we have questId, including quest chain context
     let questContext = '';
+    let questChainContext = '';
     if (questId) {
       const { data: quest } = await supabase
         .from('entities')
@@ -108,6 +118,59 @@ Quest: "${quest.name}"
 Summary: ${quest.summary || 'No summary'}
 Current Status: ${quest.status || 'active'}
         `;
+
+        // Extract quest objectives for chain context
+        const questBrain = quest.brain as Record<string, unknown> | null;
+        const objectives = questBrain?.objectives as Array<{
+          id?: string;
+          name?: string;
+          title?: string;
+          description?: string;
+          status?: string;
+        }> | null;
+
+        if (objectives && objectives.length > 0) {
+          // Find the current objective by matching the objective text
+          const currentIndex = objectives.findIndex(obj => {
+            const objTitle = obj.name || obj.title || '';
+            const objDesc = obj.description || '';
+            return objective.toLowerCase().includes(objTitle.toLowerCase()) ||
+                   objTitle.toLowerCase().includes(objective.toLowerCase()) ||
+                   (objDesc && objective.toLowerCase().includes(objDesc.substring(0, 30).toLowerCase()));
+          });
+
+          if (currentIndex !== -1) {
+            const prevObjectives = objectives.slice(Math.max(0, currentIndex - 2), currentIndex);
+            const nextObjectives = objectives.slice(currentIndex + 1, currentIndex + 3);
+
+            questChainContext = `
+📜 QUEST CHAIN CONTEXT:`;
+
+            if (prevObjectives.length > 0) {
+              questChainContext += `
+Previously Completed:
+${prevObjectives.map(obj => `  ✓ ${obj.name || obj.title || 'Objective'}: ${obj.description || ''}`).join('\n')}`;
+            }
+
+            questChainContext += `
+Current Objective (#${currentIndex + 1} of ${objectives.length}):
+  ➤ ${objective}`;
+
+            if (nextObjectives.length > 0) {
+              questChainContext += `
+Coming Next:
+${nextObjectives.map(obj => `  ○ ${obj.name || obj.title || 'Objective'}: ${obj.description || ''}`).join('\n')}`;
+            }
+
+            questChainContext += `
+
+Consider how this objective connects to what came before and sets up what comes next!`;
+
+            console.log('=== QUEST CHAIN CONTEXT ===');
+            console.log(`Objective ${currentIndex + 1} of ${objectives.length}`);
+            console.log(`Previous: ${prevObjectives.length}, Next: ${nextObjectives.length}`);
+          }
+        }
       }
     }
 
@@ -147,12 +210,42 @@ Current Status: ${quest.status || 'active'}
     // STEP 3: Extract Keywords from Objective
     // =========================================
 
-    const stopWords = ['the', 'a', 'an', 'to', 'and', 'or', 'in', 'on', 'at', 'for', 'of', 'with', 'is', 'are', 'be', 'this', 'that', 'their', 'them', 'they'];
+    // Comprehensive stop words list for fantasy/RPG context
+    const stopWords = [
+      // Articles & conjunctions
+      'the', 'a', 'an', 'to', 'and', 'or', 'but', 'nor', 'yet', 'so',
+      // Prepositions
+      'in', 'on', 'at', 'for', 'of', 'with', 'from', 'into', 'onto', 'upon',
+      'by', 'about', 'through', 'during', 'before', 'after', 'above', 'below',
+      'between', 'under', 'over', 'out', 'off', 'down', 'up', 'near', 'around',
+      // Pronouns
+      'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+      'my', 'your', 'his', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
+      'who', 'whom', 'whose', 'which', 'what', 'where', 'when', 'why', 'how',
+      // Common verbs
+      'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
+      'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing',
+      'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can',
+      'get', 'got', 'go', 'went', 'gone', 'going', 'come', 'came', 'coming',
+      // Common adjectives/adverbs
+      'very', 'really', 'quite', 'just', 'only', 'also', 'even', 'still', 'already',
+      'some', 'any', 'many', 'much', 'more', 'most', 'other', 'another', 'each',
+      'all', 'both', 'few', 'several', 'enough', 'every', 'either', 'neither',
+      // Quest-common filler words
+      'need', 'needs', 'want', 'wants', 'must', 'should', 'help', 'find', 'look',
+      'make', 'take', 'give', 'tell', 'know', 'see', 'think', 'say', 'said',
+      'way', 'time', 'thing', 'things', 'place', 'something', 'someone', 'somewhere',
+      'there', 'here', 'now', 'then', 'always', 'never', 'often', 'sometimes',
+      // Common RPG filler
+      'quest', 'task', 'mission', 'objective', 'party', 'players', 'player'
+    ];
+
+    const minWordLength = 4; // Minimum word length to be considered a keyword
     const objectiveKeywords = `${objective} ${objectiveDescription || ''}`
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, '')
       .split(/\s+/)
-      .filter(word => word.length > 2 && !stopWords.includes(word));
+      .filter(word => word.length >= minWordLength && !stopWords.includes(word));
 
     console.log('=== KEYWORD EXTRACTION ===');
     console.log('Objective:', objective);
@@ -275,18 +368,32 @@ Current Status: ${quest.status || 'active'}
     let locationNpcs: LocationNpc[] = [];
     if (allRelevantLocations.length > 0) {
       const locationIds = allRelevantLocations.map(l => l.id);
+      const locationNames = allRelevantLocations.map(l => l.name.toLowerCase());
 
-      // Find NPCs at these locations from the fetched relationships
+      // Expanded relationship types for location-NPC connections
       const locationRelTypes = [
-        'inhabited_by', 'located_in', 'lives_in', 'resides_in',
-        'works_at', 'owns', 'operates', 'frequents', 'patrols',
-        'contains', 'guards', 'runs', 'lives_at', 'stays_at'
+        // Residence
+        'inhabited_by', 'located_in', 'lives_in', 'resides_in', 'lives_at', 'stays_at',
+        'dwells_in', 'based_in', 'based_at', 'home_in', 'resides_at',
+        // Work/Operations
+        'works_at', 'works_in', 'works_for', 'employed_at', 'employed_by',
+        'owns', 'operates', 'runs', 'manages', 'leads', 'controls',
+        // Visits/Movement
+        'frequents', 'visits', 'patrols', 'guards', 'watches', 'protects',
+        'travels_to', 'travels_through', 'stationed_at', 'stationed_in',
+        // Generic associations
+        'contains', 'at', 'in', 'found_at', 'found_in', 'associated_with',
+        'connected_to', 'linked_to', 'related_to', 'member_of', 'part_of',
+        // Business
+        'customer_of', 'patron_of', 'supplier_to', 'serves', 'serves_at'
       ];
 
+      // Method 1: Find NPCs through relationships
       allRelationships?.forEach(rel => {
         const isLocationTarget = locationIds.includes(rel.target_entity?.id || '');
         const isLocationSource = locationIds.includes(rel.source_entity?.id || '');
 
+        // Check both directions for location-NPC relationships
         if (locationRelTypes.includes(rel.relationship_type)) {
           if (isLocationTarget && rel.source_entity?.entity_type === 'npc') {
             locationNpcs.push({
@@ -307,16 +414,136 @@ Current Status: ${quest.status || 'active'}
             });
           }
         }
+
+        // Also check generic relationships where location is involved
+        if ((isLocationTarget || isLocationSource) && !locationRelTypes.includes(rel.relationship_type)) {
+          const npc = rel.source_entity?.entity_type === 'npc' ? rel.source_entity :
+                      rel.target_entity?.entity_type === 'npc' ? rel.target_entity : null;
+          const loc = isLocationTarget ? rel.target_entity : rel.source_entity;
+          if (npc && loc) {
+            locationNpcs.push({
+              id: npc.id,
+              name: npc.name,
+              summary: npc.summary,
+              brain: npc.brain as LocationNpc['brain'],
+              locationRelation: `${rel.relationship_type} (${loc?.name})`
+            });
+          }
+        }
+      });
+
+      // Method 2: Search NPC summaries for location name mentions
+      entityGroups.npcs.forEach(npc => {
+        const npcText = `${npc.summary || ''} ${npc.brain?.motivation || ''} ${npc.brain?.goals || ''}`.toLowerCase();
+        for (const locName of locationNames) {
+          // Check if location name (at least 4 chars) appears in NPC description
+          if (locName.length >= 4 && npcText.includes(locName)) {
+            // Don't add if already found through relationships
+            if (!locationNpcs.find(ln => ln.id === npc.id)) {
+              const matchedLoc = allRelevantLocations.find(l => l.name.toLowerCase() === locName);
+              locationNpcs.push({
+                id: npc.id,
+                name: npc.name,
+                summary: npc.summary,
+                brain: npc.brain as LocationNpc['brain'],
+                locationRelation: `mentioned with ${matchedLoc?.name || locName}`
+              });
+            }
+            break; // Only add once per NPC
+          }
+        }
       });
 
       // Deduplicate by ID
       locationNpcs = Array.from(new Map(locationNpcs.map(n => [n.id, n])).values());
 
       console.log('=== NPCs AT RELEVANT LOCATIONS ===');
+      console.log(`Found ${locationNpcs.length} NPCs for locations: ${locationNames.join(', ')}`);
       locationNpcs.forEach(npc => {
         console.log(`  ${npc.name} - ${npc.locationRelation}`);
       });
     }
+
+    // =========================================
+    // STEP 8.5: NPC Relevance Scoring
+    // =========================================
+
+    // Score all NPCs based on their relevance to the quest objective
+    const scoredNpcs: ScoredNpc[] = entityGroups.npcs.map(npc => {
+      let score = 0;
+      const reasons: string[] = [];
+
+      const npcText = `${npc.name} ${npc.summary || ''} ${npc.brain?.motivation || ''} ${npc.brain?.goals || ''}`.toLowerCase();
+
+      // +10 points: Directly mentioned in objective
+      if (mentionedEntityIds.includes(npc.id)) {
+        score += 10;
+        reasons.push('named in objective');
+      }
+
+      // +5 points per keyword match in name/summary/brain
+      for (const keyword of objectiveKeywords) {
+        if (npcText.includes(keyword)) {
+          score += 5;
+          reasons.push(`keyword: "${keyword}"`);
+        }
+      }
+
+      // +4 points: At a relevant location
+      if (locationNpcs.find(ln => ln.id === npc.id)) {
+        score += 4;
+        reasons.push('at relevant location');
+      }
+
+      // +6 points: Has relationship to a matched entity
+      const hasRelevantRelationship = allRelationships?.some(rel => {
+        const involvesNpc = rel.source_entity?.id === npc.id || rel.target_entity?.id === npc.id;
+        const involvesRelevant = mentionedEntityIds.includes(rel.source_entity?.id || '') ||
+                                 mentionedEntityIds.includes(rel.target_entity?.id || '');
+        return involvesNpc && involvesRelevant;
+      });
+      if (hasRelevantRelationship) {
+        score += 6;
+        reasons.push('related to matched entity');
+      }
+
+      // +8 points: Has drama-worthy relationship (rival, enemy, lover, etc.)
+      const dramaRelTypes = ['rival', 'enemy', 'lover', 'betrayed', 'owes', 'seeks_revenge', 'fears', 'hates', 'loves'];
+      const hasDramaRelationship = allRelationships?.some(rel => {
+        const involvesNpc = rel.source_entity?.id === npc.id || rel.target_entity?.id === npc.id;
+        return involvesNpc && dramaRelTypes.includes(rel.relationship_type);
+      });
+      if (hasDramaRelationship) {
+        score += 8;
+        reasons.push('drama potential');
+      }
+
+      // +3 points: Has good forge status (not a stub)
+      if (npc.forge_status !== 'stub' && (npc.summary || npc.brain?.motivation)) {
+        score += 3;
+        reasons.push('detailed NPC');
+      }
+
+      return {
+        id: npc.id,
+        name: npc.name,
+        summary: npc.summary,
+        brain: npc.brain as ScoredNpc['brain'],
+        score,
+        reasons
+      };
+    });
+
+    // Sort by score descending and filter to those with some relevance
+    const relevantScoredNpcs = scoredNpcs
+      .filter(npc => npc.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    console.log('=== NPC RELEVANCE SCORES ===');
+    console.log(`Scored ${relevantScoredNpcs.length} relevant NPCs out of ${entityGroups.npcs.length} total`);
+    relevantScoredNpcs.slice(0, 15).forEach(npc => {
+      console.log(`  ${npc.score}pts - ${npc.name}: ${npc.reasons.join(', ')}`);
+    });
 
     // =========================================
     // STEP 9: Get ALL Factions (always include)
@@ -484,13 +711,23 @@ Current Status: ${quest.status || 'active'}
     }
 
     // =========================================
-    // STEP 13: Prepare Available NPCs (from entityGroups)
+    // STEP 13: Prepare Available NPCs (use scored NPCs first)
     // =========================================
 
-    // Include all NPCs that have useful info (not just stubs without content)
-    const usableNpcs = entityGroups.npcs.filter(npc =>
-      npc.forge_status !== 'stub' || npc.summary || npc.brain?.motivation
-    ).slice(0, 50);
+    // Use scored NPCs for priority, then fill with other detailed NPCs
+    const highRelevanceNpcs = relevantScoredNpcs.slice(0, 20); // Top 20 scored NPCs
+    const otherDetailedNpcs = entityGroups.npcs
+      .filter(npc =>
+        !highRelevanceNpcs.find(hn => hn.id === npc.id) &&
+        (npc.forge_status !== 'stub' || npc.summary || npc.brain?.motivation)
+      )
+      .slice(0, 30);
+
+    // Combine: scored NPCs first, then other detailed NPCs
+    const usableNpcs = [
+      ...highRelevanceNpcs.map(sn => entityGroups.npcs.find(n => n.id === sn.id)!),
+      ...otherDetailedNpcs
+    ].filter(Boolean);
 
     // =========================================
     // STEP 10: Build Enhanced System Prompt
@@ -627,17 +864,45 @@ ${playerCharacters.map(p => `• ${p.name}: ${p.summary || 'Adventurer'}`).join(
 `;
     }
 
-    // Available NPCs context
+    // Available NPCs context - prioritize highly relevant NPCs
     let npcContext = '';
-    if (usableNpcs.length > 0) {
-      npcContext = `
 
-AVAILABLE NPCs (prefer these over inventing new ones):
-${usableNpcs.slice(0, 25).map(npc => {
+    // First, show highly relevant NPCs with their reasons
+    if (highRelevanceNpcs.length > 0) {
+      const topRelevant = highRelevanceNpcs.filter(npc => npc.score >= 5).slice(0, 10);
+      if (topRelevant.length > 0) {
+        npcContext = `
+
+⭐ HIGHLY RELEVANT NPCs FOR THIS OBJECTIVE:
+${topRelevant.map(npc => {
+  const fullNpc = entityGroups.npcs.find(n => n.id === npc.id);
+  const motivation = fullNpc?.brain?.motivation || '';
+  const reasonStr = npc.reasons.slice(0, 2).join(', ');
+  return `• ${npc.name} [${npc.score}pts: ${reasonStr}]
+  ${npc.summary || 'No description'}${motivation ? `\n  💭 Wants: ${motivation}` : ''}`;
+}).join('\n')}
+
+🎯 PRIORITIZE using these NPCs - they match the objective!
+`;
+      }
+    }
+
+    // Then show other available NPCs
+    if (usableNpcs.length > 0) {
+      const otherNpcs = usableNpcs.filter(npc => {
+        const scored = highRelevanceNpcs.find(hn => hn.id === npc.id);
+        return !scored || scored.score < 5;
+      });
+
+      if (otherNpcs.length > 0) {
+        npcContext += `
+OTHER AVAILABLE NPCs:
+${otherNpcs.slice(0, 15).map(npc => {
   const motivation = npc.brain?.motivation || '';
   return `- ${npc.name}: ${npc.summary || 'No description'}${motivation ? ` (Wants: ${motivation})` : ''}`;
 }).join('\n')}
 `;
+      }
     }
 
     // Build the full system prompt
@@ -647,6 +912,7 @@ Your job is to help the DM prepare engaging, personalized scenes that leverage E
 CAMPAIGN: ${campaign?.name || 'Unknown Campaign'}
 
 ${questContext}
+${questChainContext}
 
 ${relationshipContext}
 
@@ -678,7 +944,8 @@ CRITICAL RULES:
 7. Each beat should be 2-3 sentences - evocative but not prescriptive
 8. Reference existing encounters if they fit, rather than inventing new ones
 9. Include faction politics if relevant factions are involved
-10. Use creatures from the campaign for combat encounters`;
+10. Use creatures from the campaign for combat encounters
+11. If quest chain context is provided, reference previous progress and foreshadow upcoming objectives`;
 
     const userPrompt = `Break this quest objective into 3 playable beats:
 
@@ -726,6 +993,9 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
     console.log(`All Relevant Encounters: ${allRelevantEncounters.length}`);
     console.log(`Player Connections: ${playerConnections.length}`);
     console.log(`Available NPCs: ${usableNpcs.length}`);
+    console.log(`--- NPC SCORING ---`);
+    console.log(`High Relevance NPCs (score>=5): ${highRelevanceNpcs.filter(n => n.score >= 5).length}`);
+    console.log(`Any Relevance NPCs (score>0): ${relevantScoredNpcs.length}`);
     console.log('');
     console.log('--- SYSTEM PROMPT ---');
     console.log(systemPrompt);
@@ -774,6 +1044,7 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
         nameMatched: mentionedEntities.map(e => e.name),
         keywordLocations: relevantLocations.map(l => l.name),
         keywordEncounters: relevantEncounters.map(e => e.name),
+        keywords: objectiveKeywords.slice(0, 10), // Show extracted keywords
         // Context used
         relationshipsUsed: relationships.length,
         allRelationships: allRelationships?.length || 0,
@@ -784,6 +1055,11 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
         encounters: allRelevantEncounters.length,
         playerConnections: playerConnections.length,
         npcsAvailable: usableNpcs.length,
+        // NPC Scoring
+        highRelevanceNpcs: highRelevanceNpcs.filter(n => n.score >= 5).length,
+        topScoredNpcs: highRelevanceNpcs.slice(0, 5).map(n => ({ name: n.name, score: n.score, reasons: n.reasons.slice(0, 2) })),
+        // Quest chain
+        hasQuestChain: questChainContext.length > 0,
       },
     });
 
