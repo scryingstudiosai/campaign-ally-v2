@@ -8,13 +8,29 @@ import {
   Check,
   MessageSquare,
   Loader2,
+  Lock,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
-interface SharedRumor {
+// New rumors from the rumors table
+interface Rumor {
+  id: string;
+  title: string | null;
+  content: string;
+  source_name: string | null;
+  source_type: string | null;
+  target_type: 'party' | 'player';
+  skill_check: string | null;
+  dc: number | null;
+  created_at: string;
+}
+
+// Legacy rumors from entities table (for backward compatibility)
+interface LegacyRumor {
   id: string;
   name: string;
   soul?: {
@@ -40,7 +56,8 @@ export function RumorsBoard({
   playerId,
   readonly = false,
 }: RumorsBoardProps) {
-  const [rumors, setRumors] = useState<SharedRumor[]>([]);
+  const [rumors, setRumors] = useState<Rumor[]>([]);
+  const [legacyRumors, setLegacyRumors] = useState<LegacyRumor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedRumorId, setExpandedRumorId] = useState<string | null>(null);
@@ -51,13 +68,43 @@ export function RumorsBoard({
   const supabase = createClient();
 
   useEffect(() => {
-    fetchSharedRumors();
+    fetchRumors();
   }, [campaignId]);
 
-  const fetchSharedRumors = async () => {
+  const fetchRumors = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+
+      // Fetch new rumors from rumors table
+      const { data: newRumors, error: rumorsError } = await supabase
+        .from('rumors')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .eq('is_visible', true)
+        .order('created_at', { ascending: false });
+
+      if (rumorsError) {
+        console.error('Failed to fetch rumors:', rumorsError);
+      } else {
+        setRumors(newRumors || []);
+
+        // Mark rumors as read
+        if (userId && newRumors && newRumors.length > 0) {
+          const rumorIds = newRumors.map((r) => r.id);
+          await supabase.from('rumor_reads').upsert(
+            rumorIds.map((rumorId) => ({
+              rumor_id: rumorId,
+              user_id: userId,
+            })),
+            { onConflict: 'rumor_id,user_id', ignoreDuplicates: true }
+          );
+        }
+      }
+
+      // Also fetch legacy rumors from entities table for backward compatibility
+      const { data: legacyData, error: legacyError } = await supabase
         .from('entities')
         .select('id, name, soul, mechanics')
         .eq('campaign_id', campaignId)
@@ -66,13 +113,15 @@ export function RumorsBoard({
         .not('mechanics->shared_with_players', 'is', null)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-
-      // Filter to only show rumors that are actually shared
-      const sharedRumors = (data || []).filter(
-        r => r.mechanics?.shared_with_players === true
-      );
-      setRumors(sharedRumors);
+      if (legacyError) {
+        console.error('Failed to fetch legacy rumors:', legacyError);
+      } else {
+        // Filter to only show rumors that are actually shared
+        const sharedRumors = (legacyData || []).filter(
+          (r) => r.mechanics?.shared_with_players === true
+        );
+        setLegacyRumors(sharedRumors);
+      }
     } catch (error) {
       console.error('Failed to fetch rumors:', error);
     } finally {
@@ -83,7 +132,7 @@ export function RumorsBoard({
   const markAsInvestigated = async (rumorId: string) => {
     setMarkingId(rumorId);
     try {
-      const rumor = rumors.find(r => r.id === rumorId);
+      const rumor = legacyRumors.find((r) => r.id === rumorId);
       if (!rumor) return;
 
       const { error } = await supabase
@@ -98,8 +147,8 @@ export function RumorsBoard({
 
       if (error) throw error;
 
-      setRumors(prev =>
-        prev.map(r =>
+      setLegacyRumors((prev) =>
+        prev.map((r) =>
           r.id === rumorId
             ? { ...r, mechanics: { ...r.mechanics, investigated_by_players: true } }
             : r
@@ -120,7 +169,7 @@ export function RumorsBoard({
 
     setSavingNoteId(rumorId);
     try {
-      const rumor = rumors.find(r => r.id === rumorId);
+      const rumor = legacyRumors.find((r) => r.id === rumorId);
       if (!rumor) return;
 
       const { error } = await supabase
@@ -135,8 +184,8 @@ export function RumorsBoard({
 
       if (error) throw error;
 
-      setRumors(prev =>
-        prev.map(r =>
+      setLegacyRumors((prev) =>
+        prev.map((r) =>
           r.id === rumorId
             ? { ...r, mechanics: { ...r.mechanics, player_notes: playerNote } }
             : r
@@ -154,12 +203,24 @@ export function RumorsBoard({
     }
   };
 
+  // Filter both new and legacy rumors
   const filteredRumors = searchQuery
-    ? rumors.filter(r =>
-        r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.soul?.common_knowledge?.toLowerCase().includes(searchQuery.toLowerCase())
+    ? rumors.filter(
+        (r) =>
+          r.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          r.title?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : rumors;
+
+  const filteredLegacyRumors = searchQuery
+    ? legacyRumors.filter(
+        (r) =>
+          r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          r.soul?.common_knowledge?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : legacyRumors;
+
+  const totalCount = filteredRumors.length + filteredLegacyRumors.length;
 
   if (loading) {
     return (
@@ -185,7 +246,7 @@ export function RumorsBoard({
       </div>
 
       {/* Search */}
-      {rumors.length > 3 && (
+      {totalCount > 3 && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <Input
@@ -197,8 +258,8 @@ export function RumorsBoard({
         </div>
       )}
 
-      {/* Rumors List */}
-      {filteredRumors.length === 0 ? (
+      {/* Empty State */}
+      {totalCount === 0 && (
         <div className="text-center py-12 bg-slate-900/30 border border-slate-800 rounded-lg">
           <ScrollText className="w-10 h-10 text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400">No rumors posted yet</p>
@@ -206,9 +267,87 @@ export function RumorsBoard({
             Check back later for news and whispers
           </p>
         </div>
-      ) : (
+      )}
+
+      {/* New Rumors (from rumors table) */}
+      {filteredRumors.length > 0 && (
         <div className="grid gap-4">
-          {filteredRumors.map(rumor => {
+          {filteredRumors.map((rumor) => (
+            <div
+              key={rumor.id}
+              className="relative overflow-hidden rounded-lg border bg-amber-500/5 border-amber-500/30 hover:border-amber-500/50 transition-all"
+            >
+              {/* Pin decoration */}
+              <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-amber-500/50 shadow-lg" />
+
+              <div className="p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">📜</span>
+                  <div className="flex-1 min-w-0">
+                    {/* Target badge */}
+                    <div className="flex items-center gap-2 mb-2">
+                      {rumor.target_type === 'player' ? (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          Private - For Your Eyes Only
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          Party
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    {rumor.title && (
+                      <h3 className="font-semibold text-amber-200 mb-2">
+                        {rumor.title}
+                      </h3>
+                    )}
+
+                    {/* Content */}
+                    <p className="text-slate-300 text-sm leading-relaxed">
+                      {rumor.content}
+                    </p>
+
+                    {/* Skill check info */}
+                    {rumor.skill_check && rumor.dc && (
+                      <p className="text-xs text-slate-500 mt-2">
+                        {rumor.skill_check} DC {rumor.dc}
+                      </p>
+                    )}
+
+                    {/* Source */}
+                    {rumor.source_name && (
+                      <p className="text-xs text-slate-600 mt-2">
+                        Source: {rumor.source_name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Date footer */}
+              <div className="px-4 py-2 bg-slate-900/50 border-t border-slate-800">
+                <p className="text-[10px] text-slate-500">
+                  Posted {new Date(rumor.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Legacy Rumors (from entities table) */}
+      {filteredLegacyRumors.length > 0 && (
+        <div className="grid gap-4">
+          {filteredRumors.length > 0 && filteredLegacyRumors.length > 0 && (
+            <div className="text-xs text-slate-500 uppercase tracking-wider py-2">
+              Older Rumors
+            </div>
+          )}
+          {filteredLegacyRumors.map((rumor) => {
             const isExpanded = expandedRumorId === rumor.id;
             const isInvestigated = rumor.mechanics?.investigated_by_players;
 
@@ -229,9 +368,11 @@ export function RumorsBoard({
                     <span className="text-2xl">🍺</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className={`font-semibold ${
-                          isInvestigated ? 'text-slate-400' : 'text-amber-200'
-                        }`}>
+                        <h3
+                          className={`font-semibold ${
+                            isInvestigated ? 'text-slate-400' : 'text-amber-200'
+                          }`}
+                        >
                           {rumor.name}
                         </h3>
                         {isInvestigated && (
@@ -242,9 +383,11 @@ export function RumorsBoard({
                         )}
                       </div>
 
-                      <p className={`text-sm leading-relaxed ${
-                        isInvestigated ? 'text-slate-500' : 'text-slate-300'
-                      }`}>
+                      <p
+                        className={`text-sm leading-relaxed ${
+                          isInvestigated ? 'text-slate-500' : 'text-slate-300'
+                        }`}
+                      >
                         {rumor.soul?.folklore || rumor.soul?.common_knowledge}
                       </p>
 

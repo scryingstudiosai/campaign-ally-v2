@@ -17,6 +17,7 @@ export function PortalNav({ campaignId, userId, isSpectator = false }: Props) {
   const pathname = usePathname();
   const basePath = `/portal/${campaignId}`;
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadRumorsCount, setUnreadRumorsCount] = useState(0);
   const supabase = createClient();
 
   // Fetch unread count
@@ -72,10 +73,64 @@ export function PortalNav({ campaignId, userId, isSpectator = false }: Props) {
     };
   }, [campaignId, userId, supabase]);
 
+  // Fetch unread rumors count
+  useEffect(() => {
+    const fetchUnreadRumors = async () => {
+      // Get all rumors visible to this player
+      const { data: rumors } = await supabase
+        .from('rumors')
+        .select('id')
+        .eq('campaign_id', campaignId)
+        .eq('is_visible', true);
+
+      if (!rumors || rumors.length === 0) {
+        setUnreadRumorsCount(0);
+        return;
+      }
+
+      // Get rumors this user has read
+      const { data: reads } = await supabase
+        .from('rumor_reads')
+        .select('rumor_id')
+        .eq('user_id', userId);
+
+      const readIds = new Set(reads?.map((r) => r.rumor_id) || []);
+      const unread = rumors.filter((r) => !readIds.has(r.id));
+      setUnreadRumorsCount(unread.length);
+    };
+
+    fetchUnreadRumors();
+
+    // Subscribe to new rumors
+    const channel = supabase
+      .channel(`nav-rumors-${campaignId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'rumors',
+          filter: `campaign_id=eq.${campaignId}`,
+        },
+        () => {
+          // Increment unread count when new rumor arrives
+          setUnreadRumorsCount((prev) => prev + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [campaignId, userId, supabase]);
+
   // Clear unread when visiting messages page
   useEffect(() => {
     if (pathname.includes('/messages')) {
       setUnreadCount(0);
+    }
+    if (pathname.includes('/rumors')) {
+      setUnreadRumorsCount(0);
     }
   }, [pathname]);
 
@@ -85,7 +140,7 @@ export function PortalNav({ campaignId, userId, isSpectator = false }: Props) {
     { href: `${basePath}/party`, icon: Users, label: 'Party', disabled: false },
     { href: `${basePath}/messages`, icon: MessageSquare, label: 'Messages', badge: unreadCount > 0 ? unreadCount : undefined, disabled: false },
     { href: `${basePath}/journal`, icon: Book, label: 'Journal', disabled: false },
-    { href: `${basePath}/rumors`, icon: ScrollText, label: 'Rumors', disabled: false },
+    { href: `${basePath}/rumors`, icon: ScrollText, label: 'Rumors', badge: unreadRumorsCount > 0 ? unreadRumorsCount : undefined, disabled: false },
     { href: `${basePath}/world`, icon: Globe, label: 'World', disabled: false },
   ];
 

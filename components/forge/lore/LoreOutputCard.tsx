@@ -16,7 +16,9 @@ import {
   Theater,
   Shield,
   Target,
+  Megaphone,
 } from 'lucide-react'
+import { PushRumorModal } from '@/components/rumors'
 import type { ScanResult, Discovery } from '@/types/forge'
 import type { GeneratedLore, LoreDrop, EventSubType } from '@/types/event'
 import { EVENT_SUB_TYPES } from '@/types/event'
@@ -40,6 +42,8 @@ export function LoreOutputCard({
   const [activeTab, setActiveTab] = useState('knowledge')
   const [showDmContent, setShowDmContent] = useState(true)
   const [copiedDropId, setCopiedDropId] = useState<string | null>(null)
+  const [showPushModal, setShowPushModal] = useState(false)
+  const [pushContent, setPushContent] = useState('')
 
   const selectedTypeInfo = EVENT_SUB_TYPES.find(t => t.value === data.sub_type)
 
@@ -68,6 +72,11 @@ export function LoreOutputCard({
     setTimeout(() => setCopiedDropId(null), 2000)
   }
 
+  const handlePushLoreDrop = (content: string) => {
+    setPushContent(content)
+    setShowPushModal(true)
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -93,14 +102,25 @@ export function LoreOutputCard({
               )}
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowDmContent(!showDmContent)}
-          >
-            {showDmContent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            <span className="ml-2">{showDmContent ? 'Hide' : 'Show'} DM Content</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePushLoreDrop(data.soul?.common_knowledge || data.soul?.folklore || '')}
+              className="text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+            >
+              <Megaphone className="w-4 h-4 mr-2" />
+              Push to Players
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowDmContent(!showDmContent)}
+            >
+              {showDmContent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              <span className="ml-2">{showDmContent ? 'Hide' : 'Show'} DM Content</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -247,6 +267,15 @@ export function LoreOutputCard({
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => handlePushLoreDrop(drop.text)}
+                        className="h-6 px-2 text-amber-400 hover:text-amber-300"
+                        title="Push to players"
+                      >
+                        <Megaphone className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => copyLoreDrop(drop)}
                         className="h-6 w-6 p-0"
                       >
@@ -334,6 +363,16 @@ export function LoreOutputCard({
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Push Rumor Modal */}
+      <PushRumorModal
+        isOpen={showPushModal}
+        onClose={() => setShowPushModal(false)}
+        campaignId={campaignId}
+        initialContent={pushContent}
+        sourceType="event"
+        sourceName={data.name}
+      />
     </div>
   )
 }
