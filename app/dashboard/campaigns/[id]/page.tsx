@@ -171,6 +171,16 @@ export default async function CampaignDetailPage({ params }: PageProps) {
                   forgeType="player"
                   label="Player"
                 />
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/lore`}
+                  forgeType="event"
+                  label="Lore"
+                />
+                <ForgeButton
+                  href={`/dashboard/campaigns/${params.id}/forge/pantheon`}
+                  forgeType="deity"
+                  label="Pantheon"
+                />
               </div>
             </MaterialCard>
 
