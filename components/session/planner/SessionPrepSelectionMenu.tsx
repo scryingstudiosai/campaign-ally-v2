@@ -9,7 +9,9 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
-// Entity type configuration
+// Unified entity type colors - keep consistent across the app
+// Colors: npc=blue, player=green, location=emerald, item=amber, creature=red,
+//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=yellow
 const ENTITY_OPTIONS = [
   { type: 'npc', label: 'NPC', icon: Users, color: 'text-blue-400 hover:bg-blue-500/20' },
   { type: 'location', label: 'Location', icon: MapPin, color: 'text-emerald-400 hover:bg-emerald-500/20' },

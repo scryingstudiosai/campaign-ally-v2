@@ -2,7 +2,7 @@
 
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Users, MapPin, Package, Scroll, Shield, Skull, HelpCircle } from 'lucide-react';
+import { Users, MapPin, Package, Scroll, Shield, Skull, Swords, Sparkles, Crown, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface EntityNodeData {
@@ -15,6 +15,9 @@ export interface EntityNodeData {
   onClick?: (id: string) => void;
 }
 
+// Unified entity type colors - keep consistent across the app
+// Colors: npc=blue, player=green, location=emerald, item=amber, creature=red,
+//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=yellow
 const entityConfig: Record<string, {
   icon: React.ElementType;
   color: string;
@@ -27,11 +30,17 @@ const entityConfig: Record<string, {
     bgColor: 'bg-blue-500/10',
     borderColor: 'border-blue-500/50',
   },
-  location: {
-    icon: MapPin,
+  player: {
+    icon: Crown,
     color: 'text-green-400',
     bgColor: 'bg-green-500/10',
     borderColor: 'border-green-500/50',
+  },
+  location: {
+    icon: MapPin,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/50',
   },
   item: {
     icon: Package,
@@ -39,23 +48,41 @@ const entityConfig: Record<string, {
     bgColor: 'bg-amber-500/10',
     borderColor: 'border-amber-500/50',
   },
-  quest: {
-    icon: Scroll,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    borderColor: 'border-purple-500/50',
-  },
-  faction: {
-    icon: Shield,
+  creature: {
+    icon: Skull,
     color: 'text-red-400',
     bgColor: 'bg-red-500/10',
     borderColor: 'border-red-500/50',
   },
-  creature: {
-    icon: Skull,
+  faction: {
+    icon: Shield,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/10',
+    borderColor: 'border-purple-500/50',
+  },
+  quest: {
+    icon: Scroll,
+    color: 'text-teal-400',
+    bgColor: 'bg-teal-500/10',
+    borderColor: 'border-teal-500/50',
+  },
+  encounter: {
+    icon: Swords,
     color: 'text-orange-400',
     bgColor: 'bg-orange-500/10',
     borderColor: 'border-orange-500/50',
+  },
+  event: {
+    icon: Sparkles,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/10',
+    borderColor: 'border-cyan-500/50',
+  },
+  deity: {
+    icon: Crown,
+    color: 'text-yellow-400',
+    bgColor: 'bg-yellow-500/10',
+    borderColor: 'border-yellow-500/50',
   },
 };
 

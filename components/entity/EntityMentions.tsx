@@ -13,7 +13,9 @@ export interface MentionableEntity {
 }
 
 /**
- * Color mapping for entity types
+ * Unified entity type colors - keep consistent across the app
+ * Colors: npc=blue, player=green, location=emerald, item=amber, creature=red,
+ *         faction=purple, quest=teal, encounter=orange, event=cyan, deity=yellow
  */
 const ENTITY_COLORS: Record<string, string> = {
   npc: 'text-blue-400 hover:text-blue-300 bg-blue-900/30 hover:bg-blue-900/50',
@@ -24,6 +26,8 @@ const ENTITY_COLORS: Record<string, string> = {
   faction: 'text-purple-400 hover:text-purple-300 bg-purple-900/30 hover:bg-purple-900/50',
   quest: 'text-teal-400 hover:text-teal-300 bg-teal-900/30 hover:bg-teal-900/50',
   encounter: 'text-orange-400 hover:text-orange-300 bg-orange-900/30 hover:bg-orange-900/50',
+  event: 'text-cyan-400 hover:text-cyan-300 bg-cyan-900/30 hover:bg-cyan-900/50',
+  deity: 'text-yellow-400 hover:text-yellow-300 bg-yellow-900/30 hover:bg-yellow-900/50',
 }
 
 interface EntityMentionsProps {

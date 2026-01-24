@@ -35,9 +35,12 @@ interface InteractiveTextProps {
   readOnly?: boolean;
 }
 
+// Unified entity type colors - keep consistent across the app
+// Colors: npc=blue, player=green, location=emerald, item=amber, creature=red,
+//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=yellow
 const entityOptions: { type: EntityType; label: string; icon: React.ElementType; color: string }[] = [
   { type: 'npc', label: 'NPC', icon: Users, color: 'text-blue-400 hover:bg-blue-500/20' },
-  { type: 'location', label: 'Location', icon: MapPin, color: 'text-green-400 hover:bg-green-500/20' },
+  { type: 'location', label: 'Location', icon: MapPin, color: 'text-emerald-400 hover:bg-emerald-500/20' },
   { type: 'item', label: 'Item', icon: Package, color: 'text-amber-400 hover:bg-amber-500/20' },
   { type: 'creature', label: 'Creature', icon: Skull, color: 'text-red-400 hover:bg-red-500/20' },
   { type: 'faction', label: 'Faction', icon: Shield, color: 'text-purple-400 hover:bg-purple-500/20' },

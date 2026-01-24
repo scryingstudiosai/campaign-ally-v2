@@ -232,6 +232,20 @@ body {
   @apply bg-orange-800/50 border-orange-600;
 }
 
+.entity-mention--event {
+  @apply bg-cyan-900/50 border-cyan-700 text-cyan-300;
+}
+.entity-mention--event:hover {
+  @apply bg-cyan-800/50 border-cyan-600;
+}
+
+.entity-mention--deity {
+  @apply bg-yellow-900/50 border-yellow-700 text-yellow-300;
+}
+.entity-mention--deity:hover {
+  @apply bg-yellow-800/50 border-yellow-600;
+}
+
 /* Tippy.js mention popup styling */
 .tippy-box[data-theme~='dark'] {
   background-color: transparent;
@@ -391,4 +405,18 @@ body {
 }
 .entity-link--encounter:hover {
   background-color: rgba(154, 52, 18, 0.3);
+}
+
+.entity-link--event {
+  color: rgb(34 211 238); /* cyan-400 */
+}
+.entity-link--event:hover {
+  background-color: rgba(8, 145, 178, 0.3);
+}
+
+.entity-link--deity {
+  color: rgb(250 204 21); /* yellow-400 */
+}
+.entity-link--deity:hover {
+  background-color: rgba(161, 98, 7, 0.3);
 }
