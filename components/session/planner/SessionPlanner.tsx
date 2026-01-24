@@ -20,11 +20,13 @@ import {
 } from './extensions';
 import { EditorToolbar, FontSize } from './EditorToolbar';
 import { PrepHelpDialog } from './PrepHelpDialog';
+import { SessionPrepSelectionMenu } from './SessionPrepSelectionMenu';
 import { EntityQuickView } from '@/components/session/EntityQuickView';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsContext } from '@/components/settings/SettingsContext';
 import { createClient } from '@/lib/supabase/client';
+import { useTextSelection } from '@/hooks/useTextSelection';
 
 // Entity data for quick view
 interface QuickViewEntity {
@@ -63,6 +65,10 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
   // Entity quick view state
   const [quickViewEntity, setQuickViewEntity] = useState<QuickViewEntity | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+
+  // Text selection for creating entity stubs
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const { selectedText, selectionPosition, clearSelection } = useTextSelection(editorContainerRef);
 
   // Get campaign ID from URL
   const getCampaignId = useCallback((): string | null => {
@@ -451,9 +457,15 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       />
 
       <div
-        ref={setNodeRef}
+        ref={(node) => {
+          // Combine refs: setNodeRef for droppable, editorContainerRef for text selection
+          setNodeRef(node);
+          if (editorContainerRef) {
+            (editorContainerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          }
+        }}
         className={cn(
-          'flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg transition-colors',
+          'flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg transition-colors relative',
           FONT_SIZE_CLASSES[fontSize],
           // Only show global highlight when NOT holding shift (root level drop)
           // When shift is held, individual blocks will highlight instead
@@ -462,6 +474,17 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       >
         <EditorContent editor={editor} className="h-full" />
       </div>
+
+      {/* Text Selection Menu for creating entity stubs */}
+      {selectedText && selectionPosition && (
+        <SessionPrepSelectionMenu
+          selectedText={selectedText}
+          position={selectionPosition}
+          campaignId={getCampaignId() || ''}
+          sessionId={sessionId}
+          onClose={clearSelection}
+        />
+      )}
 
       {/* Save Status */}
       <div className="flex items-center justify-end gap-2 p-2 text-xs text-slate-500">

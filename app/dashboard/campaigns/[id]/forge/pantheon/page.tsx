@@ -145,6 +145,19 @@ export default function PantheonForgePage() {
     )
   }
 
+  // Handle manual discovery from text selection
+  const handleManualDiscovery = (text: string, type: string) => {
+    const newDiscovery: Discovery = {
+      id: `manual-${Date.now()}`,
+      text,
+      suggestedType: type as EntityType,
+      context: `Manually selected from deity output`,
+      status: 'create_stub',
+    }
+    setReviewDiscoveries((prev: Discovery[]) => [...prev, newDiscovery])
+    toast.success(`"${text}" added as ${type} discovery`)
+  }
+
   // Handle commit (save to memory)
   const handleCommit = async () => {
     if (!forge.output) return
@@ -233,6 +246,7 @@ export default function PantheonForgePage() {
             <DeityOutputCard
               data={forge.output}
               campaignId={campaignId}
+              onManualDiscovery={handleManualDiscovery}
             />
 
             {/* Unique Actions - Establish Church & Generate Priest */}

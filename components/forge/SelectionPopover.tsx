@@ -1,7 +1,20 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Users, MapPin, Package, Skull, Shield, Scroll, Swords, Sparkles, Crown } from 'lucide-react'
+
+// Entity type configuration with all 9 types
+const ENTITY_OPTIONS = [
+  { type: 'npc', label: 'NPC', icon: Users, color: 'text-blue-400' },
+  { type: 'location', label: 'Loc', icon: MapPin, color: 'text-emerald-400' },
+  { type: 'item', label: 'Item', icon: Package, color: 'text-amber-400' },
+  { type: 'creature', label: 'Creature', icon: Skull, color: 'text-red-400' },
+  { type: 'faction', label: 'Faction', icon: Shield, color: 'text-purple-400' },
+  { type: 'quest', label: 'Quest', icon: Scroll, color: 'text-teal-400' },
+  { type: 'encounter', label: 'Enc', icon: Swords, color: 'text-orange-400' },
+  { type: 'event', label: 'Lore', icon: Sparkles, color: 'text-cyan-400' },
+  { type: 'deity', label: 'Deity', icon: Crown, color: 'text-yellow-400' },
+] as const
 
 interface SelectionPopoverProps {
   containerRef: React.RefObject<HTMLElement>
@@ -132,53 +145,34 @@ export function SelectionPopover({
             </button>
           </div>
         ) : (
-          // Create Mode
-          <div className="flex items-center gap-1">
-            {/* Search/Link Button */}
-            <button
-              onClick={() => setShowSearch(true)}
-              className="p-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
-              title="Link to existing entity"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-
-            <div className="w-px h-4 bg-slate-700 mx-1" />
-
-            <span className="text-xs font-medium text-slate-500 px-1">
-              Create:
-            </span>
-
-            <button
-              onClick={() => handleTypeSelect('npc')}
-              className="px-2 py-1 text-xs font-medium text-teal-400 hover:bg-slate-700 rounded transition-colors"
-            >
-              NPC
-            </button>
-            <button
-              onClick={() => handleTypeSelect('location')}
-              className="px-2 py-1 text-xs font-medium text-amber-400 hover:bg-slate-700 rounded transition-colors"
-            >
-              Loc
-            </button>
-            <button
-              onClick={() => handleTypeSelect('item')}
-              className="px-2 py-1 text-xs font-medium text-purple-400 hover:bg-slate-700 rounded transition-colors"
-            >
-              Item
-            </button>
-            <button
-              onClick={() => handleTypeSelect('creature')}
-              className="px-2 py-1 text-xs font-medium text-red-400 hover:bg-slate-700 rounded transition-colors"
-            >
-              Creature
-            </button>
-            <button
-              onClick={() => handleTypeSelect('faction')}
-              className="px-2 py-1 text-xs font-medium text-blue-400 hover:bg-slate-700 rounded transition-colors"
-            >
-              Faction
-            </button>
+          // Create Mode - Compact grid with all 9 entity types
+          <div className="p-1">
+            <div className="flex items-center gap-1 mb-1">
+              {/* Search/Link Button */}
+              <button
+                onClick={() => setShowSearch(true)}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                title="Link to existing entity"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-medium text-slate-500 px-1">
+                Create:
+              </span>
+            </div>
+            <div className="grid grid-cols-5 gap-0.5">
+              {ENTITY_OPTIONS.map(({ type, label, icon: Icon, color }) => (
+                <button
+                  key={type}
+                  onClick={() => handleTypeSelect(type)}
+                  className={`flex flex-col items-center gap-0.5 px-1.5 py-1 text-xs font-medium ${color} hover:bg-slate-700 rounded transition-colors`}
+                  title={`Create ${label}`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

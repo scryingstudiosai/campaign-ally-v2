@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -16,22 +16,26 @@ import {
   Flame,
   Zap,
 } from 'lucide-react'
+import { InteractiveText as UniversalInteractiveText, EntityType, TextRange } from '@/components/ui/interactive-text'
 import type { DeityGeneration, DEITY_RANKS } from '@/types/deity'
 
 export interface DeityOutputCardProps {
   data: DeityGeneration
   campaignId: string
+  onManualDiscovery?: (text: string, type: string) => void
 }
 
 export function DeityOutputCard({
   data,
   campaignId,
+  onManualDiscovery,
 }: DeityOutputCardProps): JSX.Element {
   const [activeTab, setActiveTab] = useState('portfolio')
   const [showDmContent, setShowDmContent] = useState(true)
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [showBoons, setShowBoons] = useState(true)
   const [showCurses, setShowCurses] = useState(true)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text)
@@ -39,10 +43,33 @@ export function DeityOutputCard({
     setTimeout(() => setCopiedField(null), 2000)
   }
 
+  // Handle manual text selection to create discovery
+  const handleManualSelect = (text: string, type: EntityType, _range: TextRange) => {
+    if (onManualDiscovery) {
+      onManualDiscovery(text, type)
+    }
+  }
+
+  // Render text with manual selection enabled
+  const renderSelectableText = (text: string | undefined): React.ReactNode => {
+    if (!text) return null
+
+    if (onManualDiscovery) {
+      return (
+        <UniversalInteractiveText
+          content={text}
+          onManualSelect={handleManualSelect}
+        />
+      )
+    }
+
+    return text
+  }
+
   const rankLabel = data.rank.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
   return (
-    <div className="space-y-4">
+    <div ref={contentRef} className="space-y-4">
       {/* Header */}
       <div className="ca-card p-4">
         <div className="flex items-start justify-between mb-3">
@@ -140,17 +167,17 @@ export function DeityOutputCard({
 
           <div className="ca-card p-4">
             <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Manifestation</h4>
-            <p className="text-slate-300 leading-relaxed">{data.soul.manifestation}</p>
+            <div className="text-slate-300 leading-relaxed">{renderSelectableText(data.soul.manifestation)}</div>
           </div>
 
           <div className="ca-card p-4">
             <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Personality</h4>
-            <p className="text-slate-300 leading-relaxed">{data.soul.personality}</p>
+            <div className="text-slate-300 leading-relaxed">{renderSelectableText(data.soul.personality)}</div>
           </div>
 
           <div className="ca-card p-4">
             <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">Divine Voice</h4>
-            <p className="text-slate-300 leading-relaxed italic">{data.soul.voice}</p>
+            <div className="text-slate-300 leading-relaxed italic">{renderSelectableText(data.soul.voice)}</div>
           </div>
         </TabsContent>
 
@@ -446,27 +473,27 @@ export function DeityOutputCard({
               <div className="space-y-4">
                 <div>
                   <h4 className="text-xs font-semibold text-slate-400 uppercase mb-1">True Nature</h4>
-                  <p className="text-slate-300 leading-relaxed">{data.brain.true_nature}</p>
+                  <div className="text-slate-300 leading-relaxed">{renderSelectableText(data.brain.true_nature)}</div>
                 </div>
 
                 <div>
                   <h4 className="text-xs font-semibold text-slate-400 uppercase mb-1">Divine Agenda</h4>
-                  <p className="text-slate-300 leading-relaxed">{data.brain.divine_agenda}</p>
+                  <div className="text-slate-300 leading-relaxed">{renderSelectableText(data.brain.divine_agenda)}</div>
                 </div>
 
                 <div>
                   <h4 className="text-xs font-semibold text-slate-400 uppercase mb-1">Secrets</h4>
-                  <p className="text-slate-300 leading-relaxed">{data.brain.secrets}</p>
+                  <div className="text-slate-300 leading-relaxed">{renderSelectableText(data.brain.secrets)}</div>
                 </div>
 
                 <div>
                   <h4 className="text-xs font-semibold text-slate-400 uppercase mb-1">Conflicts</h4>
-                  <p className="text-slate-300 leading-relaxed">{data.brain.conflicts}</p>
+                  <div className="text-slate-300 leading-relaxed">{renderSelectableText(data.brain.conflicts)}</div>
                 </div>
 
                 <div>
                   <h4 className="text-xs font-semibold text-slate-400 uppercase mb-1">Weaknesses</h4>
-                  <p className="text-slate-300 leading-relaxed">{data.brain.weaknesses}</p>
+                  <div className="text-slate-300 leading-relaxed">{renderSelectableText(data.brain.weaknesses)}</div>
                 </div>
 
                 {data.brain.hooks?.length > 0 && (
