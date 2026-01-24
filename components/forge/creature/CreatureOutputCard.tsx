@@ -1,8 +1,12 @@
 'use client';
 
+import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { InteractiveText } from '@/components/forge/InteractiveText';
+import { InteractiveText as UniversalInteractiveText, EntityType, TextRange } from '@/components/ui/interactive-text';
+import { renderWithBold } from '@/lib/text-utils';
 import {
   Skull,
   Brain,
@@ -99,6 +103,42 @@ export function CreatureOutputCard({
 }: CreatureOutputCardProps): JSX.Element {
   const { mechanics, soul, brain, treasure } = data;
 
+  // Handle manual text selection to create discovery
+  const handleManualSelect = (text: string, type: EntityType, _range: TextRange) => {
+    if (onManualDiscovery) {
+      onManualDiscovery(text, type);
+    }
+  };
+
+  // Render text with manual selection enabled (for when no scan result yet)
+  const renderSelectableText = (text: string | undefined): React.ReactNode => {
+    if (!text) return null;
+
+    // If we have a scan result, use the specialized InteractiveText with tooltips
+    if (scanResult) {
+      return (
+        <InteractiveText
+          text={text}
+          scanResult={scanResult}
+          campaignId={campaignId}
+          onDiscoveryAction={onDiscoveryAction}
+        />
+      );
+    }
+
+    // Otherwise use universal component with manual selection enabled
+    if (onManualDiscovery) {
+      return (
+        <UniversalInteractiveText
+          content={text}
+          onManualSelect={handleManualSelect}
+        />
+      );
+    }
+
+    return renderWithBold(text);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header with name and CR */}
@@ -123,13 +163,13 @@ export function CreatureOutputCard({
       </div>
 
       {/* DM Slug */}
-      <p className="text-sm text-slate-400 italic">{data.dm_slug}</p>
+      <p className="text-sm text-slate-400 italic">{renderSelectableText(data.dm_slug)}</p>
 
       {/* Read Aloud */}
       <Card className="p-4 bg-amber-500/5 border-amber-500/20">
         <div className="flex items-start gap-2">
           <Volume2 className="w-4 h-4 text-amber-400 mt-1 flex-shrink-0" />
-          <p className="text-slate-200 italic">{data.read_aloud}</p>
+          <p className="text-slate-200 italic">{renderSelectableText(data.read_aloud)}</p>
         </div>
       </Card>
 
@@ -374,7 +414,7 @@ export function CreatureOutputCard({
           {/* Vivid Description */}
           {soul?.vivid_description && (
             <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-              <p className="text-slate-200 italic">{soul.vivid_description}</p>
+              <p className="text-slate-200 italic">{renderSelectableText(soul.vivid_description)}</p>
             </div>
           )}
 
@@ -386,7 +426,7 @@ export function CreatureOutputCard({
               </h4>
               <ul className="list-disc list-inside text-slate-300 space-y-1">
                 {soul.distinctive_features.map((feature, i) => (
-                  <li key={i}>{feature}</li>
+                  <li key={i}>{renderSelectableText(feature)}</li>
                 ))}
               </ul>
             </div>
@@ -397,13 +437,13 @@ export function CreatureOutputCard({
             {soul?.behavior && (
               <div className="p-3 bg-slate-800/30 rounded-lg">
                 <h4 className="text-xs font-medium text-slate-500 uppercase mb-1">Behavior</h4>
-                <p className="text-slate-300 text-sm">{soul.behavior}</p>
+                <p className="text-slate-300 text-sm">{renderSelectableText(soul.behavior)}</p>
               </div>
             )}
             {soul?.ecology && (
               <div className="p-3 bg-slate-800/30 rounded-lg">
                 <h4 className="text-xs font-medium text-slate-500 uppercase mb-1">Ecology</h4>
-                <p className="text-slate-300 text-sm">{soul.ecology}</p>
+                <p className="text-slate-300 text-sm">{renderSelectableText(soul.ecology)}</p>
               </div>
             )}
           </div>
@@ -415,7 +455,7 @@ export function CreatureOutputCard({
                 <h4 className="text-xs font-medium text-slate-500 uppercase mb-1 flex items-center gap-1">
                   <MapPin className="w-3 h-3" /> Habitat
                 </h4>
-                <p className="text-slate-300 text-sm">{soul.habitat}</p>
+                <p className="text-slate-300 text-sm">{renderSelectableText(soul.habitat)}</p>
               </div>
             )}
             {soul?.social_structure && (
@@ -423,7 +463,7 @@ export function CreatureOutputCard({
                 <h4 className="text-xs font-medium text-slate-500 uppercase mb-1 flex items-center gap-1">
                   <Users className="w-3 h-3" /> Social Structure
                 </h4>
-                <p className="text-slate-300 text-sm capitalize">{soul.social_structure}</p>
+                <p className="text-slate-300 text-sm capitalize">{renderSelectableText(soul.social_structure)}</p>
               </div>
             )}
           </div>
@@ -435,7 +475,7 @@ export function CreatureOutputCard({
                 <h4 className="text-xs font-medium text-slate-500 uppercase mb-1 flex items-center gap-1">
                   <Volume2 className="w-3 h-3" /> Sounds
                 </h4>
-                <p className="text-slate-300 text-sm">{soul.sounds}</p>
+                <p className="text-slate-300 text-sm">{renderSelectableText(soul.sounds)}</p>
               </div>
             )}
             {soul?.signs_of_presence && (
@@ -443,7 +483,7 @@ export function CreatureOutputCard({
                 <h4 className="text-xs font-medium text-slate-500 uppercase mb-1">
                   Signs of Presence
                 </h4>
-                <p className="text-slate-300 text-sm">{soul.signs_of_presence}</p>
+                <p className="text-slate-300 text-sm">{renderSelectableText(soul.signs_of_presence)}</p>
               </div>
             )}
           </div>
@@ -461,7 +501,7 @@ export function CreatureOutputCard({
               <h4 className="text-sm font-medium text-rose-400 mb-2 flex items-center gap-1">
                 <Swords className="w-4 h-4" /> Combat Tactics
               </h4>
-              <p className="text-slate-300 text-sm">{brain.tactics}</p>
+              <p className="text-slate-300 text-sm">{renderSelectableText(brain.tactics)}</p>
             </div>
           )}
 
@@ -472,13 +512,13 @@ export function CreatureOutputCard({
                 <h4 className="text-xs font-medium text-red-400 uppercase mb-1 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" /> Weaknesses
                 </h4>
-                <p className="text-slate-300 text-sm">{brain.weaknesses}</p>
+                <p className="text-slate-300 text-sm">{renderSelectableText(brain.weaknesses)}</p>
               </div>
             )}
             {brain?.motivations && (
               <div className="p-3 bg-slate-800/30 rounded-lg">
                 <h4 className="text-xs font-medium text-slate-500 uppercase mb-1">Motivations</h4>
-                <p className="text-slate-300 text-sm">{brain.motivations}</p>
+                <p className="text-slate-300 text-sm">{renderSelectableText(brain.motivations)}</p>
               </div>
             )}
           </div>
@@ -487,7 +527,7 @@ export function CreatureOutputCard({
           {brain?.lair_description && (
             <div className="p-3 bg-amber-500/5 rounded-lg border border-amber-500/20">
               <h4 className="text-sm font-medium text-amber-400 mb-2">Lair</h4>
-              <p className="text-slate-300 text-sm">{brain.lair_description}</p>
+              <p className="text-slate-300 text-sm">{renderSelectableText(brain.lair_description)}</p>
             </div>
           )}
 
@@ -497,7 +537,7 @@ export function CreatureOutputCard({
               <h4 className="text-sm font-medium text-amber-400 mb-2">Lair Actions</h4>
               <ul className="list-disc list-inside text-slate-300 space-y-1 text-sm">
                 {brain.lair_actions.map((action, i) => (
-                  <li key={i}>{action}</li>
+                  <li key={i}>{renderSelectableText(action)}</li>
                 ))}
               </ul>
             </div>
@@ -509,7 +549,7 @@ export function CreatureOutputCard({
               <h4 className="text-sm font-medium text-purple-400 mb-2">Regional Effects</h4>
               <ul className="list-disc list-inside text-slate-300 space-y-1 text-sm">
                 {brain.regional_effects.map((effect, i) => (
-                  <li key={i}>{effect}</li>
+                  <li key={i}>{renderSelectableText(effect)}</li>
                 ))}
               </ul>
             </div>
@@ -523,7 +563,7 @@ export function CreatureOutputCard({
               </h4>
               <ul className="list-disc list-inside text-slate-300 space-y-1 text-sm">
                 {brain.plot_hooks.map((hook, i) => (
-                  <li key={i}>{hook}</li>
+                  <li key={i}>{renderSelectableText(hook)}</li>
                 ))}
               </ul>
             </div>
@@ -533,7 +573,7 @@ export function CreatureOutputCard({
           {brain?.secret && (
             <div className="p-3 bg-red-500/5 rounded-lg border border-red-500/20">
               <h4 className="text-sm font-medium text-red-400 mb-2">Secret</h4>
-              <p className="text-slate-300 text-sm">{brain.secret}</p>
+              <p className="text-slate-300 text-sm">{renderSelectableText(brain.secret)}</p>
             </div>
           )}
         </TabsContent>
@@ -541,7 +581,7 @@ export function CreatureOutputCard({
         {/* TREASURE TAB */}
         <TabsContent value="treasure" className="mt-4 space-y-4">
           {treasure?.treasure_description && (
-            <p className="text-slate-300">{treasure.treasure_description}</p>
+            <p className="text-slate-300">{renderSelectableText(treasure.treasure_description)}</p>
           )}
 
           {treasure?.treasure_items && treasure.treasure_items.length > 0 && (

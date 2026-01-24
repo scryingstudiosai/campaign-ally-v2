@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { InteractiveText } from '@/components/forge/InteractiveText'
+import { InteractiveText as UniversalInteractiveText, EntityType, TextRange } from '@/components/ui/interactive-text'
 import {
   Eye,
   EyeOff,
@@ -38,6 +39,7 @@ export function LoreOutputCard({
   scanResult,
   campaignId,
   onDiscoveryAction,
+  onManualDiscovery,
 }: LoreOutputCardProps): JSX.Element {
   const [activeTab, setActiveTab] = useState('knowledge')
   const [showDmContent, setShowDmContent] = useState(true)
@@ -47,7 +49,14 @@ export function LoreOutputCard({
 
   const selectedTypeInfo = EVENT_SUB_TYPES.find(t => t.value === data.sub_type)
 
-  // Render text with interactive entity links
+  // Handle manual text selection to create discovery
+  const handleManualSelect = (text: string, type: EntityType, _range: TextRange) => {
+    if (onManualDiscovery) {
+      onManualDiscovery(text, type)
+    }
+  }
+
+  // Render text with interactive entity links or allow manual selection
   const renderTextWithDiscoveries = (text: string | undefined): React.ReactNode => {
     if (!text) return null
 
@@ -58,6 +67,16 @@ export function LoreOutputCard({
           scanResult={scanResult}
           campaignId={campaignId}
           onDiscoveryAction={onDiscoveryAction}
+        />
+      )
+    }
+
+    // Allow manual selection when no scan result
+    if (onManualDiscovery) {
+      return (
+        <UniversalInteractiveText
+          content={text}
+          onManualSelect={handleManualSelect}
         />
       )
     }
