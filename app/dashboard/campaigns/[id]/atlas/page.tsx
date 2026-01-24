@@ -98,7 +98,24 @@ export default function AtlasPage() {
     })
     console.log('Relationship types:', relsByType)
 
-    // Show location-related relationships
+    // === DETAILED RELATIONSHIP DEBUG ===
+    // First, dump raw relationship samples to see the actual structure
+    const sampleRels = allRels?.filter(r =>
+      r.relationship_type === 'located_in' || r.relationship_type === 'contains'
+    ).slice(0, 5)
+
+    console.log('=== RAW RELATIONSHIP SAMPLES ===')
+    sampleRels?.forEach(rel => {
+      console.log('Raw relationship object:', JSON.stringify(rel, null, 2))
+    })
+
+    // Check what columns actually exist in the relationship objects
+    if (allRels && allRels.length > 0) {
+      console.log('=== RELATIONSHIP COLUMN NAMES ===')
+      console.log('All keys in first relationship:', Object.keys(allRels[0]))
+    }
+
+    // Show location-related relationships with raw IDs
     const locationRels = allRels?.filter(r =>
       r.relationship_type === 'located_in' ||
       r.relationship_type === 'contains' ||
@@ -106,25 +123,68 @@ export default function AtlasPage() {
     )
     console.log('Location relationships (located_in/contains/part_of):', locationRels?.length || 0)
     locationRels?.slice(0, 10).forEach(r => {
-      const source = allLocs.find(l => l.id === r.source_entity_id)
-      const target = allLocs.find(l => l.id === r.target_entity_id)
-      console.log(`  ${source?.name || r.source_entity_id} --[${r.relationship_type}]--> ${target?.name || r.target_entity_id}`)
+      // Try both possible column names
+      const sourceId = r.source_entity_id || r.source_id
+      const targetId = r.target_entity_id || r.target_id
+      const source = allLocs.find(l => l.id === sourceId)
+      const target = allLocs.find(l => l.id === targetId)
+      console.log(`  ${source?.name || sourceId} --[${r.relationship_type}]--> ${target?.name || targetId}`)
     })
 
-    // Check if Glimmering Vale has any relationships
-    if (glimmeringVale) {
-      const gvRels = allRels?.filter(r =>
-        r.source_entity_id === glimmeringVale.id ||
-        r.target_entity_id === glimmeringVale.id
+    // Detailed Glimmering Vale debug
+    if (glimmeringVale?.id) {
+      console.log('=== GLIMMERING VALE RELATIONSHIP DEBUG ===')
+      console.log('Searching for relationships with Glimmering Vale ID:', glimmeringVale.id)
+
+      // Try direct queries
+      const { data: gvAsSource, error: err1 } = await supabase
+        .from('relationships')
+        .select('*')
+        .eq('source_id', glimmeringVale.id)
+
+      console.log('GV as source_id:', gvAsSource?.length, err1?.message)
+
+      const { data: gvAsTarget, error: err2 } = await supabase
+        .from('relationships')
+        .select('*')
+        .eq('target_id', glimmeringVale.id)
+
+      console.log('GV as target_id:', gvAsTarget?.length, err2?.message)
+
+      // Also try source_entity_id / target_entity_id
+      const { data: gvAsSourceEntity, error: err3 } = await supabase
+        .from('relationships')
+        .select('*')
+        .eq('source_entity_id', glimmeringVale.id)
+
+      console.log('GV as source_entity_id:', gvAsSourceEntity?.length, err3?.message)
+
+      const { data: gvAsTargetEntity, error: err4 } = await supabase
+        .from('relationships')
+        .select('*')
+        .eq('target_entity_id', glimmeringVale.id)
+
+      console.log('GV as target_entity_id:', gvAsTargetEntity?.length, err4?.message)
+
+      // Search by description
+      const gvRelsByDescription = allRels?.filter(r =>
+        r.description?.toLowerCase().includes('glimmering')
       )
-      console.log('=== Glimmering Vale Relationships ===')
-      console.log('Total:', gvRels?.length || 0)
-      gvRels?.forEach(r => {
-        const source = allLocs.find(l => l.id === r.source_entity_id)
-        const target = allLocs.find(l => l.id === r.target_entity_id)
-        console.log(`  ${source?.name || 'unknown'} --[${r.relationship_type}]--> ${target?.name || 'unknown'}`)
-      })
+      console.log('GV relationships found by description:', gvRelsByDescription?.length)
+      console.log('Sample:', gvRelsByDescription?.slice(0, 3))
+
+      // Check if any relationship IDs match our entity
+      const allSourceIds = allRels?.map(r => r.source_entity_id || r.source_id) || []
+      const allTargetIds = allRels?.map(r => r.target_entity_id || r.target_id) || []
+      console.log('Does GV ID appear in any source IDs?', allSourceIds.includes(glimmeringVale.id))
+      console.log('Does GV ID appear in any target IDs?', allTargetIds.includes(glimmeringVale.id))
     }
+
+    // Check if relationships might be in a different campaign
+    console.log('=== CAMPAIGN ID CHECK ===')
+    console.log('Current campaign ID:', campaignId)
+    const uniqueCampaignIds = [...new Set(allRels?.map(r => r.campaign_id))]
+    console.log('Unique campaign IDs in relationships:', uniqueCampaignIds)
 
     console.log('=== END DEBUG ===')
     // ============ END TEMPORARY DEBUG ============
@@ -149,14 +209,19 @@ export default function AtlasPage() {
       .in('relationship_type', ['located_in', 'contains', 'part_of'])
 
     // Build a parent lookup map from relationships
+    // Handle both possible column names: source_id/target_id OR source_entity_id/target_entity_id
     const parentFromRelationship = new Map<string, string>()
     locationRelationships?.forEach(rel => {
+      const sourceId = rel.source_id || rel.source_entity_id
+      const targetId = rel.target_id || rel.target_entity_id
+      if (!sourceId || !targetId) return
+
       if (rel.relationship_type === 'located_in' || rel.relationship_type === 'part_of') {
         // source is located_in/part_of target, so target is parent
-        parentFromRelationship.set(rel.source_entity_id, rel.target_entity_id)
+        parentFromRelationship.set(sourceId, targetId)
       } else if (rel.relationship_type === 'contains') {
         // source contains target, so source is parent of target
-        parentFromRelationship.set(rel.target_entity_id, rel.source_entity_id)
+        parentFromRelationship.set(targetId, sourceId)
       }
     })
 
