@@ -84,6 +84,9 @@ export default function EncounterForgePage({ params }: PageProps) {
   const supabase = createClient()
   const searchParams = useSearchParams()
 
+  // Stub flesh-out support
+  const stubId = searchParams.get('stubId')
+
   // Pre-populate from URL params (from location card)
   const prePopulateLocationId = searchParams.get('locationId') || ''
   const prePopulateLocationName = searchParams.get('locationName') || ''
@@ -127,6 +130,7 @@ export default function EncounterForgePage({ params }: PageProps) {
   const forge = useForge<EncounterInputData, GeneratedEncounter>({
     campaignId,
     forgeType: 'encounter',
+    stubId: stubId || undefined,
     generateFn: async (input) => {
       const response = await fetch('/api/generate/encounter', {
         method: 'POST',
@@ -397,6 +401,81 @@ export default function EncounterForgePage({ params }: PageProps) {
 
   // Handle commit
   const handleCommit = async () => {
+    if (!forge.output) return
+
+    // If fleshing out a stub, update the existing entity directly
+    if (stubId) {
+      try {
+        // Fetch existing stub entity
+        const { data: existingEntity, error: fetchError } = await supabase
+          .from('entities')
+          .select('*')
+          .eq('id', stubId)
+          .single()
+
+        if (fetchError || !existingEntity) {
+          toast.error('Could not find stub entity')
+          return
+        }
+
+        // Build the update payload
+        const updatePayload = {
+          name: forge.output.name,
+          entity_type: 'encounter',
+          entity_subtype: forge.output.encounter_type || existingEntity.entity_subtype,
+          soul: forge.output.soul,
+          brain: forge.output.brain,
+          mechanics: forge.output.mechanics,
+          read_aloud: forge.output.read_aloud,
+          dm_slug: forge.output.dm_slug,
+          rewards: forge.output.rewards,
+          is_stub: false,
+          stub_context: null,
+          stub_source_entity_id: null,
+        }
+
+        // Update the entity
+        const { error: updateError } = await supabase
+          .from('entities')
+          .update(updatePayload)
+          .eq('id', stubId)
+
+        if (updateError) {
+          console.error('[Encounter Forge] Update error:', updateError)
+          toast.error('Failed to update encounter entity')
+          return
+        }
+
+        // Create stub entities for any new discoveries marked as 'create_stub'
+        const stubsToCreate = reviewDiscoveries.filter(d => d.status === 'create_stub')
+        if (stubsToCreate.length > 0) {
+          const { createStubEntities } = await import('@/lib/forge/entity-minter')
+          const createdStubs = await createStubEntities(
+            supabase,
+            campaignId,
+            stubsToCreate,
+            'encounter',
+            { sourceEntityId: stubId, sourceEntityName: forge.output.name }
+          )
+          console.log('[Encounter Forge] Created stubs during flesh-out:', createdStubs)
+        }
+
+        toast.success('Encounter fleshed out!')
+
+        // Redirect to the entity detail page
+        setTimeout(() => {
+          window.location.href = `/dashboard/campaigns/${campaignId}/memory/${stubId}`
+        }, 1500)
+
+        return
+      } catch (err) {
+        console.error('[Encounter Forge] Flesh-out error:', err)
+        toast.error('An error occurred while fleshing out the entity')
+        return
+      }
+    }
+
+    // Normal commit flow for new entities
     const result = await forge.handleCommit({
       discoveries: reviewDiscoveries,
       conflicts: [],

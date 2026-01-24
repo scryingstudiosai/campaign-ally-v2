@@ -383,6 +383,20 @@ export default function ItemForgePage(): JSX.Element {
         }
         setGenerationReferencedEntities([])
 
+        // Create stub entities for any new discoveries marked as 'create_stub'
+        const stubsToCreate = reviewDiscoveries.filter(d => d.status === 'create_stub')
+        if (stubsToCreate.length > 0) {
+          const { createStubEntities } = await import('@/lib/forge/entity-minter')
+          const createdStubs = await createStubEntities(
+            supabase,
+            campaignId,
+            stubsToCreate,
+            'item',
+            { sourceEntityId: stubId, sourceEntityName: forge.output?.name }
+          )
+          console.log('[Item Forge] Created stubs during flesh-out:', createdStubs)
+        }
+
         toast.success('Item fleshed out and saved!')
         router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`)
       } catch {

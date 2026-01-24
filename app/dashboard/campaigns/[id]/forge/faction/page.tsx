@@ -85,7 +85,7 @@ export default function FactionForgePage({ params }: PageProps) {
   const settingsContext = useSettingsContextOptional()
 
   // Check for stub editing mode
-  const editingStubId = searchParams.get('stub')
+  const editingStubId = searchParams.get('stubId')
   const [stubContext, setStubContext] = useState<{
     name: string
     sourceEntityId?: string

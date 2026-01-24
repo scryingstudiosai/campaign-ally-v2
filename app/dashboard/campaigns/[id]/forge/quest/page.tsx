@@ -398,6 +398,20 @@ export default function QuestForgePage(): JSX.Element {
         }
         setGenerationReferencedEntities([]);
 
+        // Create stub entities for any new discoveries marked as 'create_stub'
+        const stubsToCreate = reviewDiscoveries.filter(d => d.status === 'create_stub')
+        if (stubsToCreate.length > 0) {
+          const { createStubEntities } = await import('@/lib/forge/entity-minter')
+          const createdStubs = await createStubEntities(
+            supabase,
+            campaignId,
+            stubsToCreate,
+            'quest',
+            { sourceEntityId: stubId, sourceEntityName: forge.output?.name }
+          )
+          console.log('[Quest Forge] Created stubs during flesh-out:', createdStubs)
+        }
+
         // Mark onboarding tasks complete for stub updates too
         if (settingsContext) {
           await settingsContext.markOnboardingComplete(['create_quest', 'use_ai_generation']);
