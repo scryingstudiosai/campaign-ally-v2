@@ -16,11 +16,17 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Map, Sparkles, Grid3X3, Upload, Link as LinkIcon, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Map, Sparkles, Grid3X3, Upload, Link as LinkIcon, X, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+
+// Determine if this map type should use the Atlas-optimized generation
+// Atlas maps: region, city (for world/overland maps with terrain and settlements)
+// Non-Atlas: battlemap, dungeon, building (for floor plans / tactical maps)
+const ATLAS_MAP_TYPES = ['region', 'city'];
+const isAtlasMapType = (mapType: string) => ATLAS_MAP_TYPES.includes(mapType);
 
 // Map Types
 const MAP_TYPES = [
@@ -234,6 +240,7 @@ interface Entity {
   soul?: Record<string, unknown>;
   brain?: Record<string, unknown>;
   mechanics?: Record<string, unknown>;
+  attributes?: Record<string, unknown>;
   facts?: Array<{ content: string }>;
 }
 
@@ -408,29 +415,60 @@ FINAL REMINDERS:
 
     setGenerating(true);
     try {
-      const prompt = buildPrompt();
-      console.log('Map generation prompt:', prompt);
+      // Use Atlas-optimized API for region/city maps
+      // These need top-down cartographic maps, not floor plans
+      if (isAtlasMapType(mapType)) {
+        console.log('=== ATLAS MAP GENERATION ===');
+        console.log('Using Atlas-optimized prompts for:', mapType);
+        console.log('Entity:', entity.name, '| Sub-type:', entity.sub_type);
 
-      const res = await fetch('/api/images/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          campaignId,
-          entityId,
-          entityType: 'map',
-          size: '1792x1024', // Landscape for maps
-        }),
-      });
+        const res = await fetch('/api/ai/generate-map', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            locationId: entityId,
+            campaignId,
+            attemptNumber: 1,
+          }),
+        });
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to generate map');
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || 'Failed to generate map');
+        }
+
+        const data = await res.json();
+        console.log('Atlas map generated:', data.category, data.style);
+        setGeneratedMapUrl(data.imageUrl);
+        toast.success('Atlas map generated!');
+      } else {
+        // Use floor plan prompt for battlemaps, dungeons, buildings
+        const prompt = buildPrompt();
+        console.log('=== FLOOR PLAN MAP GENERATION ===');
+        console.log('Map type:', mapType);
+        console.log('Prompt length:', prompt.length);
+
+        const res = await fetch('/api/images/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt,
+            campaignId,
+            entityId,
+            entityType: 'map',
+            size: '1792x1024', // Landscape for maps
+          }),
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || 'Failed to generate map');
+        }
+
+        const data = await res.json();
+        setGeneratedMapUrl(data.url);
+        toast.success('Map generated!');
       }
-
-      const data = await res.json();
-      setGeneratedMapUrl(data.url);
-      toast.success('Map generated!');
 
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Generation failed';
@@ -526,14 +564,23 @@ FINAL REMINDERS:
         throw atlasError;
       }
 
-      // Update entity's soul.map_url field
+      // Update entity's map fields for both legacy and Atlas systems
       const currentSoul = entity.soul || {};
+      const currentAttributes = entity.attributes || {};
       await supabase
         .from('entities')
         .update({
           soul: {
             ...currentSoul,
             map_url: generatedMapUrl,
+          },
+          // Also set attributes.map_image_url for Atlas compatibility
+          attributes: {
+            ...currentAttributes,
+            map_image_url: generatedMapUrl,
+            map_type: mapType,
+            map_style: style,
+            map_generated_at: new Date().toISOString(),
           },
         })
         .eq('id', entityId);
@@ -697,6 +744,19 @@ Example: Include a central fountain, secret passage behind the bookshelf, collap
                   </div>
                 </div>
 
+                {/* Atlas Mode Indicator */}
+                {isAtlasMapType(mapType) && (
+                  <div className="flex items-start gap-2 p-3 bg-teal-500/10 border border-teal-500/30 rounded-lg">
+                    <Info className="h-4 w-4 text-teal-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="text-teal-300 font-medium">Atlas-Optimized Generation</p>
+                      <p className="text-teal-400/80 text-xs mt-1">
+                        Using cartographic prompts for top-down regional maps with terrain, roads, and landmark zones.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Generate Button */}
                 <Button
                   onClick={handleGenerate}
@@ -706,12 +766,12 @@ Example: Include a central fountain, secret passage behind the bookshelf, collap
                   {generating ? (
                     <>
                       <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Generating Map...
+                      Generating {isAtlasMapType(mapType) ? 'Atlas' : ''} Map...
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-5 w-5 mr-2" />
-                      Generate Map
+                      Generate {isAtlasMapType(mapType) ? 'Atlas' : ''} Map
                     </>
                   )}
                 </Button>
