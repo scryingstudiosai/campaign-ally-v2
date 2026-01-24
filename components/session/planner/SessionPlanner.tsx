@@ -11,6 +11,7 @@ import {
   QuestObjectiveNode,
   EncounterNode,
   EntityMention,
+  EntityLinkMark,
   NoteBlockNode,
   SceneBlockNode,
   EncounterBlockNode,
@@ -19,9 +20,23 @@ import {
 } from './extensions';
 import { EditorToolbar, FontSize } from './EditorToolbar';
 import { PrepHelpDialog } from './PrepHelpDialog';
+import { EntityQuickView } from '@/components/session/EntityQuickView';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsContext } from '@/components/settings/SettingsContext';
+import { createClient } from '@/lib/supabase/client';
+
+// Entity data for quick view
+interface QuickViewEntity {
+  id: string;
+  name: string;
+  entity_type: string;
+  sub_type?: string;
+  summary?: string;
+  mechanics?: Record<string, unknown>;
+  soul?: Record<string, unknown>;
+  brain?: Record<string, unknown>;
+}
 
 interface SessionPlannerProps {
   sessionId: string;
@@ -44,6 +59,45 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
   const [showHelp, setShowHelp] = useState(false);
   const { markOnboardingComplete } = useSettingsContext();
   const hasMarkedOnboarding = useRef(false);
+
+  // Entity quick view state
+  const [quickViewEntity, setQuickViewEntity] = useState<QuickViewEntity | null>(null);
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+
+  // Get campaign ID from URL
+  const getCampaignId = useCallback((): string | null => {
+    if (typeof window === 'undefined') return null;
+    const pathParts = window.location.pathname.split('/');
+    const campaignIndex = pathParts.indexOf('campaigns');
+    return campaignIndex !== -1 ? pathParts[campaignIndex + 1] : null;
+  }, []);
+
+  // Fetch and show entity quick view
+  const handleEntityLinkClick = useCallback(async (entityId: string) => {
+    const campaignId = getCampaignId();
+    if (!entityId || !campaignId) return;
+
+    try {
+      const supabase = createClient();
+      const { data: entity, error } = await supabase
+        .from('entities')
+        .select('id, name, entity_type, sub_type, summary, mechanics, soul, brain')
+        .eq('id', entityId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching entity:', error);
+        return;
+      }
+
+      if (entity) {
+        setQuickViewEntity(entity as QuickViewEntity);
+        setIsQuickViewOpen(true);
+      }
+    } catch (err) {
+      console.error('Error fetching entity for quick view:', err);
+    }
+  }, [getCampaignId]);
 
   // Load font size preference from localStorage
   useEffect(() => {
@@ -111,6 +165,7 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       QuestObjectiveNode,
       EncounterNode,
       EntityMention,
+      EntityLinkMark,
       // Collapsible blocks
       NoteBlockNode,
       SceneBlockNode,
@@ -122,6 +177,22 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
     editorProps: {
       attributes: {
         class: 'prose prose-invert prose-sm max-w-none focus:outline-none min-h-[300px] p-4',
+      },
+      handleClick: (view, pos, event) => {
+        // Check if clicked on an entity link
+        const target = event.target as HTMLElement;
+        const entityLink = target.closest('[data-entity-link]');
+
+        if (entityLink) {
+          const entityId = entityLink.getAttribute('data-entity-id');
+          if (entityId) {
+            event.preventDefault();
+            handleEntityLinkClick(entityId);
+            return true;
+          }
+        }
+
+        return false;
       },
       handlePaste: (view, event) => {
         const html = event.clipboardData?.getData('text/html');
@@ -408,6 +479,17 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
 
       {/* Help Dialog */}
       <PrepHelpDialog open={showHelp} onOpenChange={setShowHelp} />
+
+      {/* Entity Quick View */}
+      <EntityQuickView
+        entity={quickViewEntity}
+        isOpen={isQuickViewOpen}
+        onClose={() => {
+          setIsQuickViewOpen(false);
+          setQuickViewEntity(null);
+        }}
+        campaignId={getCampaignId() || ''}
+      />
     </div>
   );
 }

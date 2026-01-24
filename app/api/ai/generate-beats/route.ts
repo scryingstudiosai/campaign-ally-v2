@@ -1046,11 +1046,30 @@ Remember: Use existing NPCs and relationships! Don't invent new characters if th
     // STEP 12: Return the Generated Beats
     // =========================================
 
+    // Build list of linkable entities from all matched entities
+    // These will be used to create clickable links in the generated content
+    const linkableEntities = [
+      ...mentionedEntities.map(e => ({ id: e.id, name: e.name, entity_type: e.entity_type })),
+      ...allRelevantLocations.map(l => ({ id: l.id, name: l.name, entity_type: 'location' })),
+      ...involvedFactions.map(f => ({ id: f.id, name: f.name, entity_type: 'faction' })),
+      ...relevantItems.map(i => ({ id: i.id, name: i.name, entity_type: 'item' })),
+      ...locationNpcs.map(n => ({ id: n.id, name: n.name, entity_type: 'npc' })),
+      ...highRelevanceNpcs.map(n => ({ id: n.id, name: n.name, entity_type: 'npc' })),
+      ...allRelevantEncounters.map(e => ({ id: e.id, name: e.name, entity_type: 'encounter' })),
+    ];
+
+    // Deduplicate by ID
+    const uniqueLinkableEntities = Array.from(
+      new Map(linkableEntities.map(e => [e.id, e])).values()
+    );
+
     return NextResponse.json({
       success: true,
       content: generatedContent.content || [],
       suggestedNpcs: generatedContent.suggestedNpcs || [],
       hooks: generatedContent.hooks || [],
+      // Entities that can be linked in the generated content
+      linkableEntities: uniqueLinkableEntities,
       context: {
         // Entity counts
         totalNpcs: entityGroups.npcs.length,
