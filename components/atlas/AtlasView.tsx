@@ -46,10 +46,11 @@ export function AtlasView({ campaignId, location, isWorldLevel = false }: AtlasV
       const typedLocations = (locations || []) as unknown as LivingEntity[]
       setAllLocations(typedLocations)
 
-      // Get immediate children
+      // Get immediate children - check both parent_id (DB column) and attributes.parent_entity_id (legacy)
       const children = typedLocations.filter((l) => {
-        const parentId = l.attributes?.parent_entity_id as string | undefined
-        return parentId === location.id
+        const dbParentId = (l as Record<string, unknown>).parent_id as string | undefined
+        const attrParentId = l.attributes?.parent_entity_id as string | undefined
+        return dbParentId === location.id || attrParentId === location.id
       })
       setChildLocations(children)
 
@@ -83,8 +84,15 @@ export function AtlasView({ campaignId, location, isWorldLevel = false }: AtlasV
     const path: LivingEntity[] = [loc]
     let current = loc
 
-    while (current.attributes?.parent_entity_id) {
-      const parentId = current.attributes.parent_entity_id as string
+    // Helper to get parent ID from either DB column or attributes
+    const getParentId = (l: LivingEntity): string | undefined => {
+      const dbParentId = (l as Record<string, unknown>).parent_id as string | undefined
+      const attrParentId = l.attributes?.parent_entity_id as string | undefined
+      return dbParentId || attrParentId
+    }
+
+    while (getParentId(current)) {
+      const parentId = getParentId(current) as string
       const parent = allLocs.find((l) => l.id === parentId)
       if (parent) {
         path.unshift(parent)
@@ -108,7 +116,10 @@ export function AtlasView({ campaignId, location, isWorldLevel = false }: AtlasV
   }
 
   const handleGoUp = () => {
-    const parentId = location.attributes?.parent_entity_id as string | undefined
+    // Check both parent_id (DB column) and attributes.parent_entity_id (legacy)
+    const dbParentId = (location as Record<string, unknown>).parent_id as string | undefined
+    const attrParentId = location.attributes?.parent_entity_id as string | undefined
+    const parentId = dbParentId || attrParentId
     if (parentId) {
       router.push(`/dashboard/campaigns/${campaignId}/atlas/${parentId}`)
     } else {

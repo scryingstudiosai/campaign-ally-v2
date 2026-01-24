@@ -49,6 +49,86 @@ export default function AtlasPage() {
     const allLocs = (locations || []) as unknown as LivingEntity[]
     setAllLocations(allLocs)
 
+    // ============ TEMPORARY DEBUG - Remove after diagnosis ============
+    console.log('=== DEBUG: DATA STRUCTURE DIAGNOSIS ===')
+
+    // Check for Glimmering Vale and Arcane Dominion
+    const glimmeringVale = allLocs.find(l => l.name?.toLowerCase().includes('glimmering vale'))
+    const arcaneDominion = allLocs.find(l => l.name?.toLowerCase().includes('arcane dominion'))
+
+    if (glimmeringVale) {
+      console.log('=== Glimmering Vale ===')
+      console.log('ID:', glimmeringVale.id)
+      console.log('sub_type:', glimmeringVale.sub_type)
+      console.log('parent_id (DB column):', (glimmeringVale as Record<string, unknown>).parent_id)
+      console.log('attributes.parent_entity_id:', glimmeringVale.attributes?.parent_entity_id)
+      console.log('Full attributes:', JSON.stringify(glimmeringVale.attributes, null, 2))
+    }
+
+    if (arcaneDominion) {
+      console.log('=== Arcane Dominion ===')
+      console.log('ID:', arcaneDominion.id)
+      console.log('sub_type:', arcaneDominion.sub_type)
+      console.log('parent_id (DB column):', (arcaneDominion as Record<string, unknown>).parent_id)
+      console.log('attributes.parent_entity_id:', arcaneDominion.attributes?.parent_entity_id)
+    }
+
+    // Check how many entities have parent_id (DB column) vs attributes.parent_entity_id
+    const withDbParent = allLocs.filter(l => (l as Record<string, unknown>).parent_id)
+    const withAttrParent = allLocs.filter(l => l.attributes?.parent_entity_id)
+    console.log('=== Parent ID Usage ===')
+    console.log('Locations with parent_id (DB column):', withDbParent.length)
+    withDbParent.slice(0, 5).forEach(l => console.log(`  - ${l.name} -> ${(l as Record<string, unknown>).parent_id}`))
+    console.log('Locations with attributes.parent_entity_id:', withAttrParent.length)
+    withAttrParent.slice(0, 5).forEach(l => console.log(`  - ${l.name} -> ${l.attributes?.parent_entity_id}`))
+
+    // Check ALL relationships for this campaign
+    const { data: allRels } = await supabase
+      .from('relationships')
+      .select('*')
+      .eq('campaign_id', campaignId)
+
+    console.log('=== ALL Relationships ===')
+    console.log('Total relationships:', allRels?.length || 0)
+
+    // Group by relationship_type
+    const relsByType: Record<string, number> = {}
+    allRels?.forEach(r => {
+      relsByType[r.relationship_type] = (relsByType[r.relationship_type] || 0) + 1
+    })
+    console.log('Relationship types:', relsByType)
+
+    // Show location-related relationships
+    const locationRels = allRels?.filter(r =>
+      r.relationship_type === 'located_in' ||
+      r.relationship_type === 'contains' ||
+      r.relationship_type === 'part_of'
+    )
+    console.log('Location relationships (located_in/contains/part_of):', locationRels?.length || 0)
+    locationRels?.slice(0, 10).forEach(r => {
+      const source = allLocs.find(l => l.id === r.source_entity_id)
+      const target = allLocs.find(l => l.id === r.target_entity_id)
+      console.log(`  ${source?.name || r.source_entity_id} --[${r.relationship_type}]--> ${target?.name || r.target_entity_id}`)
+    })
+
+    // Check if Glimmering Vale has any relationships
+    if (glimmeringVale) {
+      const gvRels = allRels?.filter(r =>
+        r.source_entity_id === glimmeringVale.id ||
+        r.target_entity_id === glimmeringVale.id
+      )
+      console.log('=== Glimmering Vale Relationships ===')
+      console.log('Total:', gvRels?.length || 0)
+      gvRels?.forEach(r => {
+        const source = allLocs.find(l => l.id === r.source_entity_id)
+        const target = allLocs.find(l => l.id === r.target_entity_id)
+        console.log(`  ${source?.name || 'unknown'} --[${r.relationship_type}]--> ${target?.name || 'unknown'}`)
+      })
+    }
+
+    console.log('=== END DEBUG ===')
+    // ============ END TEMPORARY DEBUG ============
+
     // Get locations with maps
     const locationsWithMaps = allLocs.filter((l) => l.attributes?.map_image_url)
     setAllLocationsWithMaps(locationsWithMaps)
@@ -88,14 +168,21 @@ export default function AtlasPage() {
       const location = locationMap.get(locationId)
       if (!location) return null
 
-      // Check parent_entity_id first (in attributes)
-      const parentId = location.attributes?.parent_entity_id as string | undefined
-      if (parentId && locationMap.has(parentId)) {
-        const parent = findUltimateRoot(parentId, visited)
+      // Priority 1: Check parent_id (database column) - this is the canonical source
+      const dbParentId = (location as Record<string, unknown>).parent_id as string | undefined
+      if (dbParentId && locationMap.has(dbParentId)) {
+        const parent = findUltimateRoot(dbParentId, visited)
         return parent || location
       }
 
-      // Check relationship-based parent
+      // Priority 2: Check attributes.parent_entity_id (legacy JSON field)
+      const attrParentId = location.attributes?.parent_entity_id as string | undefined
+      if (attrParentId && locationMap.has(attrParentId)) {
+        const parent = findUltimateRoot(attrParentId, visited)
+        return parent || location
+      }
+
+      // Priority 3: Check relationship-based parent (located_in, part_of, contains)
       const relParentId = parentFromRelationship.get(locationId)
       if (relParentId && locationMap.has(relParentId)) {
         const parent = findUltimateRoot(relParentId, visited)

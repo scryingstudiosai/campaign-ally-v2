@@ -69,10 +69,12 @@ export function AtlasExplorer({
         .eq('entity_type', 'location')
         .is('deleted_at', null)
 
-      // Filter children based on parent_entity_id in attributes
-      const children = (allLocations || []).filter(
-        (loc) => loc.attributes?.parent_entity_id === currentLocation.id
-      ) as unknown as LivingEntity[]
+      // Filter children based on parent_id (DB column) or attributes.parent_entity_id (legacy)
+      const children = (allLocations || []).filter((loc) => {
+        const dbParentId = (loc as Record<string, unknown>).parent_id as string | undefined
+        const attrParentId = loc.attributes?.parent_entity_id as string | undefined
+        return dbParentId === currentLocation.id || attrParentId === currentLocation.id
+      }) as unknown as LivingEntity[]
 
       setChildLocations(children)
 
@@ -112,8 +114,15 @@ export function AtlasExplorer({
       const path: LivingEntity[] = [currentLocation]
       let current = currentLocation
 
-      while (current.attributes?.parent_entity_id) {
-        const parentId = current.attributes.parent_entity_id as string
+      // Check both parent_id (DB column) and attributes.parent_entity_id (legacy)
+      const getParentId = (loc: LivingEntity): string | undefined => {
+        const dbParentId = (loc as Record<string, unknown>).parent_id as string | undefined
+        const attrParentId = loc.attributes?.parent_entity_id as string | undefined
+        return dbParentId || attrParentId
+      }
+
+      while (getParentId(current)) {
+        const parentId = getParentId(current) as string
         const { data: parent } = await supabase
           .from('entities')
           .select('*')

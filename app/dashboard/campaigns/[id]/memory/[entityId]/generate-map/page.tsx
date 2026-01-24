@@ -338,21 +338,27 @@ export default function GenerateMapPage() {
 
     setEntity(data);
 
-    // 2. Load child locations (entities with parent_entity_id pointing to this entity)
+    // 2. Load child locations - check both parent_id (DB column) and attributes.parent_entity_id
     const { data: childrenByAttr } = await supabase
       .from('entities')
-      .select('id, name, sub_type, description')
+      .select('id, name, sub_type, description, parent_id, attributes')
       .eq('entity_type', 'location')
       .eq('campaign_id', campaignId)
       .is('deleted_at', null);
 
-    // Filter for children where parent_entity_id matches
-    const children = (childrenByAttr || []).filter(
-      (c) => c.id !== entityId &&
-      // Check if this entity's attributes.parent_entity_id matches our entityId
-      // We need to query again to check this properly
-      true
-    );
+    // Filter for children where parent_id or attributes.parent_entity_id matches our entityId
+    const childrenByParent: ChildLocation[] = (childrenByAttr || [])
+      .filter((c) => {
+        const dbParentId = c.parent_id as string | undefined;
+        const attrParentId = (c.attributes as Record<string, unknown>)?.parent_entity_id as string | undefined;
+        return c.id !== entityId && (dbParentId === entityId || attrParentId === entityId);
+      })
+      .map(c => ({
+        id: c.id,
+        name: c.name,
+        sub_type: c.sub_type,
+        description: c.description,
+      }));
 
     // 3. Also check relationships for "located_in" / "contains"
     const { data: relationships } = await supabase
@@ -419,10 +425,19 @@ export default function GenerateMapPage() {
     const terrain = String(data.attributes?.terrain || brain.terrain || soul.terrain || '');
     const climate = String(data.attributes?.climate || brain.climate || soul.climate || '');
 
+    // Combine children from parent_id/attributes and relationships, dedupe by id
+    const allChildren = [...childrenByParent, ...childFromRelationships];
+    const seenChildIds = new Set<string>();
+    const uniqueChildren = allChildren.filter(c => {
+      if (seenChildIds.has(c.id)) return false;
+      seenChildIds.add(c.id);
+      return true;
+    });
+
     setRichContext({
       brain,
       soul,
-      children: childFromRelationships,
+      children: uniqueChildren,
       relationships: mappedRelationships.filter(r =>
         r.relationship_type !== 'contains' && r.relationship_type !== 'located_in'
       ),

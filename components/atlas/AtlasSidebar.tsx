@@ -38,8 +38,11 @@ export function AtlasSidebar({
     const buildTree = (parentId: string | null): LivingEntity[] => {
       return allLocations
         .filter((loc) => {
-          const locParentId = loc.attributes?.parent_entity_id as string | undefined
-          return locParentId === parentId
+          // Check both parent_id (DB column) and attributes.parent_entity_id (legacy)
+          const dbParentId = (loc as Record<string, unknown>).parent_id as string | undefined
+          const attrParentId = loc.attributes?.parent_entity_id as string | undefined
+          const locParentId = dbParentId || attrParentId
+          return locParentId === parentId || (parentId === null && !locParentId)
         })
         .sort((a, b) => a.name.localeCompare(b.name))
     }
@@ -87,8 +90,10 @@ export function AtlasSidebar({
   // Recursive tree node component
   const TreeNode = ({ location, depth = 0 }: { location: LivingEntity; depth?: number }) => {
     const children = allLocations.filter((l) => {
-      const parentId = l.attributes?.parent_entity_id as string | undefined
-      return parentId === location.id
+      // Check both parent_id (DB column) and attributes.parent_entity_id (legacy)
+      const dbParentId = (l as Record<string, unknown>).parent_id as string | undefined
+      const attrParentId = l.attributes?.parent_entity_id as string | undefined
+      return dbParentId === location.id || attrParentId === location.id
     })
     const hasChildren = children.length > 0
     const isExpanded = expandedNodes.has(location.id)
