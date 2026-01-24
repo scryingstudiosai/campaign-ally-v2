@@ -58,16 +58,21 @@ export function SessionPrepSelectionMenu({
       const supabase = createClient();
 
       // Create stub entity directly in Memory
+      // Pattern matches lib/forge/entity-minter.ts createStubEntities()
       const { data: newEntity, error } = await supabase
         .from('entities')
         .insert({
           campaign_id: campaignId,
           name: selectedText.trim(),
           entity_type: entityType,
-          is_stub: true,
-          is_active: true,
-          description: `Created from session prep notes`,
+          summary: `Stub entity created from session prep`,
+          status: 'active',
+          importance_tier: 'background',
+          visibility: 'dm_only',
+          forge_status: 'stub',
           attributes: {
+            is_stub: true,
+            needs_review: true,
             source: 'session_prep',
             session_id: sessionId,
           },
