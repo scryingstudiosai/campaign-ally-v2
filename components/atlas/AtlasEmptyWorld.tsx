@@ -1,14 +1,18 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Globe, Upload, Sparkles, MapPin, ChevronRight } from 'lucide-react'
+import { Globe, Upload, Sparkles, MapPin, ChevronRight, Check, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import type { LivingEntity } from '@/types/living-entity'
 
 interface AtlasEmptyWorldProps {
   campaignId: string
   worldLocation: LivingEntity | null
   existingMaps: LivingEntity[]
+  allLocations?: LivingEntity[]
+  onSetWorldRoot?: (locationId: string) => Promise<void>
 }
 
 function getMapCategory(subType: string): string {
@@ -25,8 +29,21 @@ function getMapCategory(subType: string): string {
   return 'Other Maps'
 }
 
-export function AtlasEmptyWorld({ campaignId, worldLocation, existingMaps }: AtlasEmptyWorldProps) {
+// Location types that shouldn't be shown as world root candidates
+const EXCLUDE_FROM_WORLD_ROOT = [
+  'building', 'tavern', 'inn', 'shop', 'house', 'castle', 'tower', 'temple',
+  'dungeon', 'cave', 'crypt', 'tomb', 'mine', 'room', 'chamber'
+]
+
+export function AtlasEmptyWorld({
+  campaignId,
+  worldLocation,
+  existingMaps,
+  allLocations = [],
+  onSetWorldRoot
+}: AtlasEmptyWorldProps) {
   const router = useRouter()
+  const [settingRoot, setSettingRoot] = useState<string | null>(null)
 
   const handleCreateWorld = () => {
     if (worldLocation) {
@@ -37,6 +54,30 @@ export function AtlasEmptyWorld({ campaignId, worldLocation, existingMaps }: Atl
       router.push(`/dashboard/campaigns/${campaignId}/forge/location?sub_type=world&isWorldMap=true`)
     }
   }
+
+  const handleSetAsWorldRoot = async (location: LivingEntity) => {
+    if (!onSetWorldRoot) return
+
+    setSettingRoot(location.id)
+    try {
+      await onSetWorldRoot(location.id)
+      toast.success(`Set "${location.name}" as your world map`)
+    } catch {
+      toast.error('Failed to set world root')
+    } finally {
+      setSettingRoot(null)
+    }
+  }
+
+  // Get eligible locations for world root selection (exclude buildings/dungeons)
+  const eligibleWorldRoots = existingMaps.filter(loc => {
+    const subType = loc.sub_type?.toLowerCase() || ''
+    return !EXCLUDE_FROM_WORLD_ROOT.some(t => subType.includes(t))
+  })
+
+  // Determine if we should show the world root selector
+  // Show it when: no world location detected, but we have eligible maps to choose from
+  const showWorldRootSelector = !worldLocation && eligibleWorldRoots.length > 0 && onSetWorldRoot
 
   // Group existing maps by category
   const mapsByCategory = existingMaps.reduce(
@@ -106,14 +147,80 @@ export function AtlasEmptyWorld({ campaignId, worldLocation, existingMaps }: Atl
         </div>
       </div>
 
+      {/* World Root Selector - shown when no clear world detected but maps exist */}
+      {showWorldRootSelector && (
+        <div className="border-t border-slate-800 bg-gradient-to-b from-teal-950/20 to-transparent">
+          <div className="max-w-4xl mx-auto px-6 py-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-lg bg-teal-500/20">
+                <Crown className="w-5 h-5 text-teal-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Select Your World Map</h2>
+                <p className="text-sm text-slate-400">
+                  Choose which location should be your Atlas starting point
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {eligibleWorldRoots.map((location) => {
+                const mapUrl = location.attributes?.map_image_url as string | undefined
+                const isSettingThis = settingRoot === location.id
+
+                return (
+                  <button
+                    key={location.id}
+                    onClick={() => handleSetAsWorldRoot(location)}
+                    disabled={settingRoot !== null}
+                    className="group relative aspect-[4/3] rounded-lg overflow-hidden border-2 border-slate-700 hover:border-teal-500 transition-all hover:shadow-lg hover:shadow-teal-500/20 disabled:opacity-50 disabled:cursor-wait"
+                  >
+                    {mapUrl && (
+                      <img
+                        src={mapUrl}
+                        alt={location.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    )}
+
+                    {/* Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+
+                    {/* Label */}
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <p className="font-medium text-white text-sm truncate">{location.name}</p>
+                      <p className="text-xs text-slate-400 capitalize">{location.sub_type}</p>
+                    </div>
+
+                    {/* Hover/Loading State */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-teal-500/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {isSettingThis ? (
+                        <div className="bg-teal-500 rounded-full p-2 animate-pulse">
+                          <Check className="w-6 h-6 text-white" />
+                        </div>
+                      ) : (
+                        <div className="bg-teal-500 rounded-full p-2">
+                          <Crown className="w-6 h-6 text-white" />
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Existing Maps Section */}
       {existingMaps.length > 0 && (
         <div className="border-t border-slate-800 bg-slate-900/30">
           <div className="max-w-6xl mx-auto px-6 py-12">
             <h2 className="text-lg font-semibold text-slate-300 mb-2">Your Location Maps</h2>
             <p className="text-sm text-slate-500 mb-8">
-              These maps aren&apos;t connected to a world map yet. Create your world map above to
-              explore them in context.
+              {worldLocation
+                ? 'These maps can be linked to your world map for seamless exploration.'
+                : "These maps aren't connected to a world map yet. Create your world map above to explore them in context."}
             </p>
 
             {/* Maps by Category */}

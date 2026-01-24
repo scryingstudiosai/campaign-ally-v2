@@ -181,7 +181,7 @@ export function MapGenerator({
         <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg mb-4">
           <p className="text-sm text-red-400">{lastError}</p>
           {attemptNumber < 3 && (
-            <p className="text-xs text-red-400/70 mt-1">Click "Retry" for stricter generation settings.</p>
+            <p className="text-xs text-red-400/70 mt-1">Click &quot;Retry&quot; for stricter generation settings.</p>
           )}
         </div>
       )}
