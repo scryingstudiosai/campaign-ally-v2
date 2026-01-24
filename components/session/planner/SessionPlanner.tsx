@@ -21,6 +21,7 @@ import { EditorToolbar, FontSize } from './EditorToolbar';
 import { PrepHelpDialog } from './PrepHelpDialog';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSettingsContext } from '@/components/settings/SettingsContext';
 
 interface SessionPlannerProps {
   sessionId: string;
@@ -41,6 +42,8 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [fontSize, setFontSize] = useState<FontSize>('md');
   const [showHelp, setShowHelp] = useState(false);
+  const { markOnboardingComplete } = useSettingsContext();
+  const hasMarkedOnboarding = useRef(false);
 
   // Load font size preference from localStorage
   useEffect(() => {
@@ -74,12 +77,18 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       if (response.ok) {
         setLastSaved(new Date());
         onContentChange?.(content);
+
+        // Mark onboarding complete on first successful save
+        if (!hasMarkedOnboarding.current) {
+          hasMarkedOnboarding.current = true;
+          await markOnboardingComplete('use_session_prep');
+        }
       }
     } catch (error) {
       console.error('Failed to save prep content:', error);
     }
     setIsSaving(false);
-  }, [sessionId, onContentChange]);
+  }, [sessionId, onContentChange, markOnboardingComplete]);
 
   // Debounce helper
   const debouncedSave = useCallback((content: unknown) => {
