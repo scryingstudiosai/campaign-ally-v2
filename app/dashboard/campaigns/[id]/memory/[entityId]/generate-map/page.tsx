@@ -244,6 +244,29 @@ interface Entity {
   facts?: Array<{ content: string }>;
 }
 
+interface ChildLocation {
+  id: string;
+  name: string;
+  sub_type?: string;
+  description?: string;
+}
+
+interface Relationship {
+  id: string;
+  relationship_type: string;
+  source: { id: string; name: string; entity_type: string; sub_type?: string } | null;
+  target: { id: string; name: string; entity_type: string; sub_type?: string } | null;
+}
+
+interface RichContext {
+  brain: Record<string, unknown>;
+  soul: Record<string, unknown>;
+  children: ChildLocation[];
+  relationships: Relationship[];
+  terrain: string;
+  climate: string;
+}
+
 export default function GenerateMapPage() {
   const params = useParams();
   const router = useRouter();
@@ -251,6 +274,14 @@ export default function GenerateMapPage() {
   const entityId = params.entityId as string;
 
   const [entity, setEntity] = useState<Entity | null>(null);
+  const [richContext, setRichContext] = useState<RichContext>({
+    brain: {},
+    soul: {},
+    children: [],
+    relationships: [],
+    terrain: '',
+    climate: '',
+  });
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generatedMapUrl, setGeneratedMapUrl] = useState<string | null>(null);
@@ -291,6 +322,8 @@ export default function GenerateMapPage() {
 
   const loadEntity = async () => {
     const supabase = createClient();
+
+    // 1. Load the main entity
     const { data, error } = await supabase
       .from('entities')
       .select('*')
@@ -305,6 +338,98 @@ export default function GenerateMapPage() {
 
     setEntity(data);
 
+    // 2. Load child locations (entities with parent_entity_id pointing to this entity)
+    const { data: childrenByAttr } = await supabase
+      .from('entities')
+      .select('id, name, sub_type, description')
+      .eq('entity_type', 'location')
+      .eq('campaign_id', campaignId)
+      .is('deleted_at', null);
+
+    // Filter for children where parent_entity_id matches
+    const children = (childrenByAttr || []).filter(
+      (c) => c.id !== entityId &&
+      // Check if this entity's attributes.parent_entity_id matches our entityId
+      // We need to query again to check this properly
+      true
+    );
+
+    // 3. Also check relationships for "located_in" / "contains"
+    const { data: relationships } = await supabase
+      .from('relationships')
+      .select(`
+        id,
+        relationship_type,
+        source_entity_id,
+        target_entity_id
+      `)
+      .eq('campaign_id', campaignId)
+      .or(`source_entity_id.eq.${entityId},target_entity_id.eq.${entityId}`);
+
+    // Get entity details for relationships
+    const relatedEntityIds = new Set<string>();
+    relationships?.forEach(rel => {
+      if (rel.source_entity_id !== entityId) relatedEntityIds.add(rel.source_entity_id);
+      if (rel.target_entity_id !== entityId) relatedEntityIds.add(rel.target_entity_id);
+    });
+
+    let relatedEntities: Record<string, { id: string; name: string; entity_type: string; sub_type?: string }> = {};
+    if (relatedEntityIds.size > 0) {
+      const { data: relEnts } = await supabase
+        .from('entities')
+        .select('id, name, entity_type, sub_type')
+        .in('id', Array.from(relatedEntityIds));
+
+      relEnts?.forEach(e => {
+        relatedEntities[e.id] = e;
+      });
+    }
+
+    // Map relationships with entity details
+    const mappedRelationships: Relationship[] = (relationships || []).map(rel => ({
+      id: rel.id,
+      relationship_type: rel.relationship_type,
+      source: rel.source_entity_id === entityId
+        ? { id: entityId, name: data.name, entity_type: data.entity_type, sub_type: data.sub_type }
+        : relatedEntities[rel.source_entity_id] || null,
+      target: rel.target_entity_id === entityId
+        ? { id: entityId, name: data.name, entity_type: data.entity_type, sub_type: data.sub_type }
+        : relatedEntities[rel.target_entity_id] || null,
+    }));
+
+    // Find children through "contains" relationships or "located_in" (reverse)
+    const childFromRelationships: ChildLocation[] = mappedRelationships
+      .filter(rel =>
+        (rel.relationship_type === 'contains' && rel.source?.id === entityId && rel.target) ||
+        (rel.relationship_type === 'located_in' && rel.target?.id === entityId && rel.source)
+      )
+      .map(rel => {
+        const child = rel.relationship_type === 'contains' ? rel.target! : rel.source!;
+        return {
+          id: child.id,
+          name: child.name,
+          sub_type: child.sub_type,
+          description: undefined,
+        };
+      });
+
+    // 4. Extract brain and soul from entity
+    const brain = data.brain || data.attributes?.brain || {};
+    const soul = data.soul || data.attributes?.soul || {};
+    const terrain = String(data.attributes?.terrain || brain.terrain || soul.terrain || '');
+    const climate = String(data.attributes?.climate || brain.climate || soul.climate || '');
+
+    setRichContext({
+      brain,
+      soul,
+      children: childFromRelationships,
+      relationships: mappedRelationships.filter(r =>
+        r.relationship_type !== 'contains' && r.relationship_type !== 'located_in'
+      ),
+      terrain,
+      climate,
+    });
+
     // Auto-detect map type from entity
     if (data.entity_type === 'location') {
       const subtype = (data.soul?.subtype || data.sub_type || '').toString().toLowerCase();
@@ -318,6 +443,12 @@ export default function GenerateMapPage() {
         setMapType('building');
       }
     }
+
+    console.log('=== RICH CONTEXT LOADED ===');
+    console.log('Brain keys:', Object.keys(brain));
+    console.log('Soul keys:', Object.keys(soul));
+    console.log('Children:', childFromRelationships.map(c => c.name));
+    console.log('Relationships:', mappedRelationships.length);
 
     setLoading(false);
   };
@@ -415,13 +546,21 @@ FINAL REMINDERS:
 
     setGenerating(true);
     try {
+      // Log full context for debugging
+      console.log('=== MAP GENERATION CONTEXT ===');
+      console.log('Entity:', entity.name, '| Type:', entity.sub_type);
+      console.log('Brain:', richContext.brain);
+      console.log('Soul:', richContext.soul);
+      console.log('Children:', richContext.children.map(c => c.name));
+      console.log('Terrain:', richContext.terrain, '| Climate:', richContext.climate);
+
       // Use Atlas-optimized API for region/city maps
       // These need top-down cartographic maps, not floor plans
       if (isAtlasMapType(mapType)) {
         console.log('=== ATLAS MAP GENERATION ===');
         console.log('Using Atlas-optimized prompts for:', mapType);
-        console.log('Entity:', entity.name, '| Sub-type:', entity.sub_type);
 
+        // Pass additional context to the Atlas API
         const res = await fetch('/api/ai/generate-map', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -429,6 +568,15 @@ FINAL REMINDERS:
             locationId: entityId,
             campaignId,
             attemptNumber: 1,
+            // Pass rich context for better generation
+            additionalContext: {
+              terrain: richContext.terrain || environment,
+              climate: richContext.climate,
+              childLocations: richContext.children.map(c => ({ name: c.name, type: c.sub_type })),
+              atmosphere: richContext.brain.atmosphere || richContext.soul.atmosphere,
+              purpose: richContext.brain.purpose || richContext.soul.purpose,
+              additionalDetails,
+            },
           }),
         });
 
@@ -443,7 +591,8 @@ FINAL REMINDERS:
         toast.success('Atlas map generated!');
       } else {
         // Use floor plan prompt for battlemaps, dungeons, buildings
-        const prompt = buildPrompt();
+        // Include rich context in the prompt
+        const prompt = buildPromptWithRichContext();
         console.log('=== FLOOR PLAN MAP GENERATION ===');
         console.log('Map type:', mapType);
         console.log('Prompt length:', prompt.length);
@@ -476,6 +625,102 @@ FINAL REMINDERS:
     } finally {
       setGenerating(false);
     }
+  };
+
+  // Enhanced prompt builder that uses rich context
+  const buildPromptWithRichContext = (): string => {
+    if (!entity) return '';
+
+    const styleInfo = STYLES_BY_TYPE[mapType]?.find(s => s.value === style);
+    if (!styleInfo) return '';
+
+    // Gather ALL relevant info from entity AND rich context
+    const elements: string[] = [];
+
+    // From rich context brain
+    if (richContext.brain.purpose) {
+      elements.push(`Purpose: ${sanitizeForFloorPlan(String(richContext.brain.purpose))}`);
+    }
+    if (richContext.brain.atmosphere) {
+      elements.push(`Atmosphere: ${sanitizeForFloorPlan(String(richContext.brain.atmosphere))}`);
+    }
+    if (richContext.brain.current_state) {
+      elements.push(`Current state: ${sanitizeForFloorPlan(String(richContext.brain.current_state))}`);
+    }
+    if (richContext.brain.concept) {
+      elements.push(`Concept: ${sanitizeForFloorPlan(String(richContext.brain.concept))}`);
+    }
+
+    // From rich context soul
+    if (richContext.soul.distinctive_feature) {
+      elements.push(`Distinctive feature: ${sanitizeForFloorPlan(String(richContext.soul.distinctive_feature))}`);
+    }
+    if (richContext.soul.architecture) {
+      elements.push(`Architecture: ${sanitizeForFloorPlan(String(richContext.soul.architecture))}`);
+    }
+    if (Array.isArray(richContext.soul.sights) && richContext.soul.sights.length > 0) {
+      const sanitizedSights = richContext.soul.sights.map(s => sanitizeForFloorPlan(String(s)));
+      elements.push(`Visual features: ${sanitizedSights.slice(0, 3).join(', ')}`);
+    }
+    if (Array.isArray(richContext.soul.notable_features) && richContext.soul.notable_features.length > 0) {
+      const sanitizedFeatures = richContext.soul.notable_features.map(f => sanitizeForFloorPlan(String(f)));
+      elements.push(`Notable features: ${sanitizedFeatures.slice(0, 3).join(', ')}`);
+    }
+
+    // From entity mechanics
+    const mechanics = entity.mechanics || {};
+    if (Array.isArray(mechanics.hazards) && mechanics.hazards.length > 0) {
+      const hazardsText = formatHazards(mechanics.hazards);
+      if (hazardsText) elements.push(`Hazard locations: ${hazardsText}`);
+    }
+    if (Array.isArray(mechanics.rooms) && mechanics.rooms.length > 0) {
+      const roomNames = mechanics.rooms.map((r: unknown) => {
+        if (typeof r === 'object' && r !== null && 'name' in r) return (r as { name: string }).name;
+        if (typeof r === 'string') return r;
+        return '';
+      }).filter(Boolean);
+      if (roomNames.length > 0) elements.push(`Rooms/Areas: ${roomNames.join(', ')}`);
+    }
+
+    // Include child locations as areas to show on the map
+    if (richContext.children.length > 0) {
+      const childNames = richContext.children.slice(0, 6).map(c => c.name);
+      elements.push(`Key areas to include: ${childNames.join(', ')}`);
+    }
+
+    // Terrain and climate
+    const terrainInfo = richContext.terrain || environment;
+    if (terrainInfo && terrainInfo !== 'none') {
+      elements.push(`Terrain: ${terrainInfo}`);
+    }
+    if (richContext.climate) {
+      elements.push(`Climate: ${richContext.climate}`);
+    }
+
+    // Sanitize additional details
+    const sanitizedDetails = additionalDetails ? sanitizeForFloorPlan(additionalDetails) : '';
+
+    // Build the prompt with STRICT top-down enforcement
+    const prompt = `${TOP_DOWN_ENFORCEMENT}
+
+STYLE: ${styleInfo.promptKeywords}
+
+Create a TOP-DOWN FLOOR PLAN map of "${entity.name}" - ${sanitizeForFloorPlan(entity.description || String(richContext.brain.purpose) || String(richContext.soul.purpose) || 'a fantasy location')}.
+
+${elements.length > 0 ? `LAYOUT ELEMENTS (show from above):\n${elements.join('\n')}` : ''}
+
+${sanitizedDetails ? `ADDITIONAL FLOOR FEATURES: ${sanitizedDetails}` : ''}
+
+FINAL REMINDERS:
+- This is a BIRD'S EYE VIEW looking STRAIGHT DOWN
+- Show only what would be visible looking down from directly above
+- Walls appear as thick lines (floor plan style)
+- Furniture appears as simple shapes from above
+- NO 3D perspective, NO horizon, NO sky visible
+- Must be usable for placing tabletop RPG miniatures
+- NO grid lines (grid overlay added separately via CSS)`;
+
+    return prompt;
   };
 
   const handleFileUpload = async () => {
@@ -606,14 +851,12 @@ FINAL REMINDERS:
 
   const availableStyles = STYLES_BY_TYPE[mapType] || [];
 
-  // Extract entity context for display
-  const entityContext = {
-    description: entity?.description,
-    purpose: entity?.soul?.purpose as string | undefined,
-    atmosphere: entity?.soul?.atmosphere as string | undefined,
-    distinctiveFeature: entity?.soul?.distinctive_feature as string | undefined,
-    sights: entity?.soul?.sights as string[] | undefined,
-  };
+  // Check if we have meaningful context
+  const hasBrainContext = Object.keys(richContext.brain).length > 0;
+  const hasSoulContext = Object.keys(richContext.soul).length > 0;
+  const hasChildren = richContext.children.length > 0;
+  const hasRelationships = richContext.relationships.length > 0;
+  const hasAnyContext = hasBrainContext || hasSoulContext || hasChildren || entity?.description;
 
   return (
     <div className="min-h-screen bg-stone-950 p-6">
@@ -727,21 +970,121 @@ Example: Include a central fountain, secret passage behind the bookshelf, collap
                   />
                 </div>
 
-                {/* Context Preview */}
-                <div className="space-y-2">
+                {/* Rich Context Preview */}
+                <div className="space-y-3">
                   <Label className="text-stone-400 text-sm">Entity Context (Auto-included)</Label>
-                  <div className="bg-stone-800/50 rounded-lg p-3 text-sm text-stone-500 space-y-1">
-                    {entityContext.description && <p>• {entityContext.description}</p>}
-                    {entityContext.purpose && <p>• Purpose: {entityContext.purpose}</p>}
-                    {entityContext.atmosphere && <p>• Atmosphere: {entityContext.atmosphere}</p>}
-                    {entityContext.distinctiveFeature && <p>• Feature: {entityContext.distinctiveFeature}</p>}
-                    {entityContext.sights && entityContext.sights.length > 0 && (
-                      <p>• Sights: {entityContext.sights.slice(0, 3).join(', ')}</p>
-                    )}
-                    {!entityContext.description && !entityContext.purpose && (
+
+                  {!hasAnyContext && (
+                    <div className="bg-stone-800/50 rounded-lg p-3 text-sm">
                       <p className="text-stone-600 italic">Flesh out this entity for better map generation</p>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {/* Description */}
+                  {entity?.description && (
+                    <div className="p-3 bg-stone-800/50 rounded-lg border border-stone-700">
+                      <p className="text-xs text-stone-400 line-clamp-2">{entity.description}</p>
+                    </div>
+                  )}
+
+                  {/* Brain Context (DM Knowledge) */}
+                  {hasBrainContext && (
+                    <div className="p-3 bg-stone-800/50 rounded-lg border border-amber-500/30">
+                      <p className="text-xs font-medium text-amber-400 mb-2">Brain (DM Knowledge)</p>
+                      <div className="space-y-1 text-xs text-stone-400">
+                        {richContext.brain.purpose && (
+                          <p><span className="text-stone-500">Purpose:</span> {String(richContext.brain.purpose).slice(0, 100)}...</p>
+                        )}
+                        {richContext.brain.atmosphere && (
+                          <p><span className="text-stone-500">Atmosphere:</span> {String(richContext.brain.atmosphere).slice(0, 100)}...</p>
+                        )}
+                        {richContext.brain.current_state && (
+                          <p><span className="text-stone-500">Current State:</span> {String(richContext.brain.current_state).slice(0, 100)}...</p>
+                        )}
+                        {richContext.brain.conflict && (
+                          <p><span className="text-stone-500">Conflict:</span> {String(richContext.brain.conflict).slice(0, 100)}...</p>
+                        )}
+                        {richContext.brain.concept && (
+                          <p><span className="text-stone-500">Concept:</span> {String(richContext.brain.concept).slice(0, 100)}...</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Soul Context (Sensory Details) */}
+                  {hasSoulContext && (
+                    <div className="p-3 bg-stone-800/50 rounded-lg border border-rose-500/30">
+                      <p className="text-xs font-medium text-rose-400 mb-2">Soul (Sensory Details)</p>
+                      <div className="space-y-1 text-xs text-stone-400">
+                        {richContext.soul.sights && (
+                          <p><span className="text-stone-500">Sights:</span> {
+                            Array.isArray(richContext.soul.sights)
+                              ? richContext.soul.sights.slice(0, 2).join(', ')
+                              : String(richContext.soul.sights).slice(0, 100)
+                          }...</p>
+                        )}
+                        {richContext.soul.distinctive_feature && (
+                          <p><span className="text-stone-500">Feature:</span> {String(richContext.soul.distinctive_feature).slice(0, 100)}...</p>
+                        )}
+                        {richContext.soul.architecture && (
+                          <p><span className="text-stone-500">Architecture:</span> {String(richContext.soul.architecture).slice(0, 100)}...</p>
+                        )}
+                        {richContext.soul.terrain && (
+                          <p><span className="text-stone-500">Terrain:</span> {String(richContext.soul.terrain)}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Child Locations */}
+                  {hasChildren && (
+                    <div className="p-3 bg-stone-800/50 rounded-lg border border-emerald-500/30">
+                      <p className="text-xs font-medium text-emerald-400 mb-2">
+                        Contains ({richContext.children.length} locations)
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {richContext.children.slice(0, 8).map(child => (
+                          <span
+                            key={child.id}
+                            className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded"
+                          >
+                            {child.name}
+                          </span>
+                        ))}
+                        {richContext.children.length > 8 && (
+                          <span className="text-xs text-stone-500">+{richContext.children.length - 8} more</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Key Relationships */}
+                  {hasRelationships && (
+                    <div className="p-3 bg-stone-800/50 rounded-lg border border-indigo-500/30">
+                      <p className="text-xs font-medium text-indigo-400 mb-2">Relationships</p>
+                      <div className="space-y-1 text-xs text-stone-400">
+                        {richContext.relationships.slice(0, 4).map(rel => (
+                          <p key={rel.id}>
+                            {rel.source?.name || 'Unknown'} → <span className="text-indigo-400">{rel.relationship_type}</span> → {rel.target?.name || 'Unknown'}
+                          </p>
+                        ))}
+                        {richContext.relationships.length > 4 && (
+                          <p className="text-stone-500">+{richContext.relationships.length - 4} more</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Terrain/Climate */}
+                  {(richContext.terrain || richContext.climate) && (
+                    <div className="p-3 bg-stone-800/50 rounded-lg border border-cyan-500/30">
+                      <p className="text-xs font-medium text-cyan-400 mb-2">Environment</p>
+                      <div className="flex gap-4 text-xs text-stone-400">
+                        {richContext.terrain && <span>Terrain: {richContext.terrain}</span>}
+                        {richContext.climate && <span>Climate: {richContext.climate}</span>}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Atlas Mode Indicator */}

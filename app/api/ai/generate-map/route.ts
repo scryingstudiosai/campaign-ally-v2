@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const supabase = createClient()
 
   try {
-    const { locationId, campaignId, attemptNumber = 1 } = await request.json()
+    const { locationId, campaignId, attemptNumber = 1, additionalContext } = await request.json()
 
     if (!locationId || !campaignId) {
       return NextResponse.json({ error: 'Missing locationId or campaignId' }, { status: 400 })
@@ -53,17 +53,38 @@ export async function POST(request: Request) {
       (c) => c.sub_type // has a sub_type
     )
 
+    // Merge child locations from DB with any passed from client
+    const allChildLocations = [
+      ...childLocations.slice(0, 8).map((c) => ({ name: c.name, type: c.sub_type || 'location' })),
+      ...(additionalContext?.childLocations || []).slice(0, 4),
+    ]
+
+    // Build description with any additional context
+    const descriptionParts = [location.dm_slug || location.read_aloud]
+    if (additionalContext?.atmosphere) {
+      descriptionParts.push(`Atmosphere: ${additionalContext.atmosphere}`)
+    }
+    if (additionalContext?.purpose) {
+      descriptionParts.push(`Purpose: ${additionalContext.purpose}`)
+    }
+    if (additionalContext?.additionalDetails) {
+      descriptionParts.push(additionalContext.additionalDetails)
+    }
+    const fullDescription = descriptionParts.filter(Boolean).join('. ')
+
     // Build the optimized prompt
     const prompt = buildMapPrompt({
       locationName: location.name,
       locationType: location.sub_type || 'region',
-      description: location.dm_slug || location.read_aloud,
-      childLocations: childLocations.slice(0, 10).map((c) => ({ name: c.name, type: c.sub_type || 'location' })),
-      terrain: location.attributes?.terrain,
-      climate: location.attributes?.climate,
+      description: fullDescription,
+      childLocations: allChildLocations.slice(0, 10),
+      terrain: additionalContext?.terrain || location.attributes?.terrain,
+      climate: additionalContext?.climate || location.attributes?.climate,
       campaignStyle,
       attemptNumber,
     })
+
+    console.log('Additional context received:', additionalContext ? Object.keys(additionalContext) : 'none')
 
     const category = getLocationCategory(location.sub_type || 'region')
     const settings = getMapGenerationSettings(category, campaignStyle)
