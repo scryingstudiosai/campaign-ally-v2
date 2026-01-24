@@ -11,3 +11,9 @@ export { AtlasSidebar } from './AtlasSidebar'
 export { AtlasBreadcrumb } from './AtlasBreadcrumb'
 export { AtlasView } from './AtlasView'
 export { MapGenerator } from './MapGenerator'
+
+// Atlas Immersive Experience
+export { AtlasEmptyWorld } from './AtlasEmptyWorld'
+export { AtlasExplorer } from './AtlasExplorer'
+export { AtlasSidePanel } from './AtlasSidePanel'
+export { EntityQuickView } from './EntityQuickView'
