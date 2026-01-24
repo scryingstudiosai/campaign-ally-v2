@@ -11,12 +11,13 @@ import type { LivingEntity } from '@/types/living-entity'
 // Location types that should NOT be selected as world maps
 const EXCLUDE_FROM_WORLD_ROOT = [
   'building', 'tavern', 'inn', 'shop', 'house', 'castle', 'tower', 'temple',
-  'dungeon', 'cave', 'crypt', 'tomb', 'mine', 'room', 'chamber'
+  'dungeon', 'cave', 'crypt', 'tomb', 'mine', 'room', 'chamber',
+  'district', 'vale', 'valley', 'grove', 'sanctuary', 'academy', 'street', 'quarter'
 ]
 
 // Priority types for world map selection
 const WORLD_TYPES = ['world', 'continent', 'realm', 'plane']
-const REGION_TYPES = ['region', 'kingdom', 'nation', 'empire', 'province', 'territory', 'land']
+const REGION_TYPES = ['region', 'kingdom', 'nation', 'empire', 'province', 'territory', 'land', 'dominion']
 
 export default function AtlasPage() {
   const params = useParams()
@@ -57,79 +58,150 @@ export default function AtlasPage() {
       return
     }
 
-    // 3. If campaign has an explicit world root, use it
-    const worldRootId = campaign?.attributes?.world_root_location_id
+    // 3. Build a map for quick lookup
+    const locationMap = new Map<string, LivingEntity>(allLocs.map(l => [l.id, l]))
+
+    // 4. Get location relationships to find parent-child connections
+    const { data: locationRelationships } = await supabase
+      .from('relationships')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .in('relationship_type', ['located_in', 'contains', 'part_of'])
+
+    // Build a parent lookup map from relationships
+    const parentFromRelationship = new Map<string, string>()
+    locationRelationships?.forEach(rel => {
+      if (rel.relationship_type === 'located_in' || rel.relationship_type === 'part_of') {
+        // source is located_in/part_of target, so target is parent
+        parentFromRelationship.set(rel.source_entity_id, rel.target_entity_id)
+      } else if (rel.relationship_type === 'contains') {
+        // source contains target, so source is parent of target
+        parentFromRelationship.set(rel.target_entity_id, rel.source_entity_id)
+      }
+    })
+
+    // 5. Function to find the ultimate root of any location by traversing up
+    const findUltimateRoot = (locationId: string, visited = new Set<string>()): LivingEntity | null => {
+      if (visited.has(locationId)) return null // Prevent cycles
+      visited.add(locationId)
+
+      const location = locationMap.get(locationId)
+      if (!location) return null
+
+      // Check parent_entity_id first (in attributes)
+      const parentId = location.attributes?.parent_entity_id as string | undefined
+      if (parentId && locationMap.has(parentId)) {
+        const parent = findUltimateRoot(parentId, visited)
+        return parent || location
+      }
+
+      // Check relationship-based parent
+      const relParentId = parentFromRelationship.get(locationId)
+      if (relParentId && locationMap.has(relParentId)) {
+        const parent = findUltimateRoot(relParentId, visited)
+        return parent || location
+      }
+
+      // No parent found - this is a root
+      return location
+    }
+
+    // 6. Find all unique ultimate roots
+    const ultimateRootsSet = new Set<string>()
+    const ultimateRoots: LivingEntity[] = []
+    allLocs.forEach(loc => {
+      const root = findUltimateRoot(loc.id)
+      if (root && !ultimateRootsSet.has(root.id)) {
+        ultimateRootsSet.add(root.id)
+        ultimateRoots.push(root)
+      }
+    })
+
+    console.log('=== ATLAS ROOT DETECTION ===')
+    console.log('All locations:', allLocs.length)
+    console.log('Relationships found:', locationRelationships?.length || 0)
+    console.log('Ultimate roots:', ultimateRoots.map(r => `${r.name} (${r.sub_type})`))
+
+    // Helper functions
+    const subTypeLower = (l: LivingEntity) => l.sub_type?.toLowerCase() || ''
+    const isExcluded = (l: LivingEntity) => EXCLUDE_FROM_WORLD_ROOT.some(t => subTypeLower(l).includes(t))
+    const isWorldType = (l: LivingEntity) => WORLD_TYPES.some(t => subTypeLower(l).includes(t))
+    const isRegionType = (l: LivingEntity) => REGION_TYPES.some(t => subTypeLower(l).includes(t))
+
+    // 7. If campaign has an explicit world root, use it
+    const worldRootId = campaign?.attributes?.world_root_location_id as string | undefined
     if (worldRootId) {
       const explicitRoot = allLocs.find((l) => l.id === worldRootId)
       if (explicitRoot) {
+        console.log('Using explicit world root:', explicitRoot.name)
         setWorldMap(explicitRoot)
         setLoading(false)
         return
       }
     }
 
-    // 4. Use priority system to find the best world map candidate
+    // 8. Priority selection among ultimate roots
     let worldCandidate: LivingEntity | null = null
-    const subTypeLower = (l: LivingEntity) => l.sub_type?.toLowerCase() || ''
-    const isExcluded = (l: LivingEntity) => EXCLUDE_FROM_WORLD_ROOT.some(t => subTypeLower(l).includes(t))
 
     // Priority 1: Location explicitly marked as world root (via attributes)
-    worldCandidate = allLocs.find((l) => l.attributes?.is_world_root === true) || null
+    worldCandidate = ultimateRoots.find((l) => l.attributes?.is_world_root === true) || null
 
-    // Priority 2: World/continent type WITH a map image
+    // Priority 2: World/continent type with map
     if (!worldCandidate) {
-      worldCandidate = allLocs.find(
-        (l) => WORLD_TYPES.some(t => subTypeLower(l).includes(t)) && l.attributes?.map_image_url
-      ) || null
+      worldCandidate = ultimateRoots.find(l => isWorldType(l) && l.attributes?.map_image_url) || null
     }
 
-    // Priority 3: World/continent type WITHOUT map (for creation flow)
+    // Priority 3: World/continent type without map
     if (!worldCandidate) {
-      worldCandidate = allLocs.find(
-        (l) => WORLD_TYPES.some(t => subTypeLower(l).includes(t))
-      ) || null
+      worldCandidate = ultimateRoots.find(l => isWorldType(l)) || null
     }
 
-    // Priority 4: Region/kingdom type WITH map and no parent
+    // Priority 4: Kingdom/region type with map
     if (!worldCandidate) {
-      worldCandidate = allLocs.find(
-        (l) => REGION_TYPES.some(t => subTypeLower(l).includes(t)) &&
-               l.attributes?.map_image_url &&
-               !l.attributes?.parent_entity_id
-      ) || null
+      worldCandidate = ultimateRoots.find(l => isRegionType(l) && l.attributes?.map_image_url) || null
     }
 
-    // Priority 5: Region/kingdom type WITHOUT map and no parent
+    // Priority 5: Kingdom/region type without map
     if (!worldCandidate) {
-      worldCandidate = allLocs.find(
-        (l) => REGION_TYPES.some(t => subTypeLower(l).includes(t)) &&
-               !l.attributes?.parent_entity_id
-      ) || null
+      worldCandidate = ultimateRoots.find(l => isRegionType(l)) || null
     }
 
-    // Priority 6: Any location WITH map, no parent, NOT building/dungeon
+    // Priority 6: Root with the most descendants (likely the main container)
     if (!worldCandidate) {
-      worldCandidate = allLocs.find(
-        (l) => l.attributes?.map_image_url &&
-               !l.attributes?.parent_entity_id &&
-               !isExcluded(l)
-      ) || null
+      const countDescendants = (rootId: string): number => {
+        return allLocs.filter(l => {
+          const ultimateRoot = findUltimateRoot(l.id)
+          return ultimateRoot?.id === rootId && l.id !== rootId
+        }).length
+      }
+
+      const rootsWithCounts = ultimateRoots
+        .filter(r => !isExcluded(r))
+        .map(r => ({ root: r, count: countDescendants(r.id) }))
+        .sort((a, b) => b.count - a.count)
+
+      if (rootsWithCounts.length > 0 && rootsWithCounts[0].count > 0) {
+        worldCandidate = rootsWithCounts[0].root
+        console.log('Selected by descendant count:', worldCandidate.name, 'with', rootsWithCounts[0].count, 'descendants')
+      }
     }
 
-    // Priority 7: Any location no parent, NOT building/dungeon
+    // Priority 7: Any root with a map that's not excluded
     if (!worldCandidate) {
-      worldCandidate = allLocs.find(
-        (l) => !l.attributes?.parent_entity_id && !isExcluded(l)
-      ) || null
+      worldCandidate = ultimateRoots.find(l => l.attributes?.map_image_url && !isExcluded(l)) || null
     }
 
-    // Priority 8: Last resort - any location WITH map that's NOT building/dungeon
-    // (Don't auto-select buildings/dungeons as world root)
+    // Priority 8: Any root that's not excluded
     if (!worldCandidate) {
-      worldCandidate = allLocs.find(
-        (l) => l.attributes?.map_image_url && !isExcluded(l)
-      ) || null
+      worldCandidate = ultimateRoots.find(l => !isExcluded(l)) || null
     }
+
+    // Fallback: first root
+    if (!worldCandidate && ultimateRoots.length > 0) {
+      worldCandidate = ultimateRoots[0]
+    }
+
+    console.log('Selected world map:', worldCandidate?.name, `(${worldCandidate?.sub_type})`)
 
     setWorldMap(worldCandidate)
     setLoading(false)
