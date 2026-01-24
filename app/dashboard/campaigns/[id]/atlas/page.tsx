@@ -49,146 +49,6 @@ export default function AtlasPage() {
     const allLocs = (locations || []) as unknown as LivingEntity[]
     setAllLocations(allLocs)
 
-    // ============ TEMPORARY DEBUG - Remove after diagnosis ============
-    console.log('=== DEBUG: DATA STRUCTURE DIAGNOSIS ===')
-
-    // Check for Glimmering Vale and Arcane Dominion
-    const glimmeringVale = allLocs.find(l => l.name?.toLowerCase().includes('glimmering vale'))
-    const arcaneDominion = allLocs.find(l => l.name?.toLowerCase().includes('arcane dominion'))
-
-    if (glimmeringVale) {
-      console.log('=== Glimmering Vale ===')
-      console.log('ID:', glimmeringVale.id)
-      console.log('sub_type:', glimmeringVale.sub_type)
-      console.log('parent_id (DB column):', (glimmeringVale as Record<string, unknown>).parent_id)
-      console.log('attributes.parent_entity_id:', glimmeringVale.attributes?.parent_entity_id)
-      console.log('Full attributes:', JSON.stringify(glimmeringVale.attributes, null, 2))
-    }
-
-    if (arcaneDominion) {
-      console.log('=== Arcane Dominion ===')
-      console.log('ID:', arcaneDominion.id)
-      console.log('sub_type:', arcaneDominion.sub_type)
-      console.log('parent_id (DB column):', (arcaneDominion as Record<string, unknown>).parent_id)
-      console.log('attributes.parent_entity_id:', arcaneDominion.attributes?.parent_entity_id)
-    }
-
-    // Check how many entities have parent_id (DB column) vs attributes.parent_entity_id
-    const withDbParent = allLocs.filter(l => (l as Record<string, unknown>).parent_id)
-    const withAttrParent = allLocs.filter(l => l.attributes?.parent_entity_id)
-    console.log('=== Parent ID Usage ===')
-    console.log('Locations with parent_id (DB column):', withDbParent.length)
-    withDbParent.slice(0, 5).forEach(l => console.log(`  - ${l.name} -> ${(l as Record<string, unknown>).parent_id}`))
-    console.log('Locations with attributes.parent_entity_id:', withAttrParent.length)
-    withAttrParent.slice(0, 5).forEach(l => console.log(`  - ${l.name} -> ${l.attributes?.parent_entity_id}`))
-
-    // Check ALL relationships for this campaign
-    const { data: allRels } = await supabase
-      .from('relationships')
-      .select('*')
-      .eq('campaign_id', campaignId)
-
-    console.log('=== ALL Relationships ===')
-    console.log('Total relationships:', allRels?.length || 0)
-
-    // Group by relationship_type
-    const relsByType: Record<string, number> = {}
-    allRels?.forEach(r => {
-      relsByType[r.relationship_type] = (relsByType[r.relationship_type] || 0) + 1
-    })
-    console.log('Relationship types:', relsByType)
-
-    // === DETAILED RELATIONSHIP DEBUG ===
-    // First, dump raw relationship samples to see the actual structure
-    const sampleRels = allRels?.filter(r =>
-      r.relationship_type === 'located_in' || r.relationship_type === 'contains'
-    ).slice(0, 5)
-
-    console.log('=== RAW RELATIONSHIP SAMPLES ===')
-    sampleRels?.forEach(rel => {
-      console.log('Raw relationship object:', JSON.stringify(rel, null, 2))
-    })
-
-    // Check what columns actually exist in the relationship objects
-    if (allRels && allRels.length > 0) {
-      console.log('=== RELATIONSHIP COLUMN NAMES ===')
-      console.log('All keys in first relationship:', Object.keys(allRels[0]))
-    }
-
-    // Show location-related relationships with raw IDs
-    const locationRels = allRels?.filter(r =>
-      r.relationship_type === 'located_in' ||
-      r.relationship_type === 'contains' ||
-      r.relationship_type === 'part_of'
-    )
-    console.log('Location relationships (located_in/contains/part_of):', locationRels?.length || 0)
-    locationRels?.slice(0, 10).forEach(r => {
-      // Try both possible column names
-      const sourceId = r.source_entity_id || r.source_id
-      const targetId = r.target_entity_id || r.target_id
-      const source = allLocs.find(l => l.id === sourceId)
-      const target = allLocs.find(l => l.id === targetId)
-      console.log(`  ${source?.name || sourceId} --[${r.relationship_type}]--> ${target?.name || targetId}`)
-    })
-
-    // Detailed Glimmering Vale debug
-    if (glimmeringVale?.id) {
-      console.log('=== GLIMMERING VALE RELATIONSHIP DEBUG ===')
-      console.log('Searching for relationships with Glimmering Vale ID:', glimmeringVale.id)
-
-      // Try direct queries
-      const { data: gvAsSource, error: err1 } = await supabase
-        .from('relationships')
-        .select('*')
-        .eq('source_id', glimmeringVale.id)
-
-      console.log('GV as source_id:', gvAsSource?.length, err1?.message)
-
-      const { data: gvAsTarget, error: err2 } = await supabase
-        .from('relationships')
-        .select('*')
-        .eq('target_id', glimmeringVale.id)
-
-      console.log('GV as target_id:', gvAsTarget?.length, err2?.message)
-
-      // Also try source_entity_id / target_entity_id
-      const { data: gvAsSourceEntity, error: err3 } = await supabase
-        .from('relationships')
-        .select('*')
-        .eq('source_entity_id', glimmeringVale.id)
-
-      console.log('GV as source_entity_id:', gvAsSourceEntity?.length, err3?.message)
-
-      const { data: gvAsTargetEntity, error: err4 } = await supabase
-        .from('relationships')
-        .select('*')
-        .eq('target_entity_id', glimmeringVale.id)
-
-      console.log('GV as target_entity_id:', gvAsTargetEntity?.length, err4?.message)
-
-      // Search by description
-      const gvRelsByDescription = allRels?.filter(r =>
-        r.description?.toLowerCase().includes('glimmering')
-      )
-      console.log('GV relationships found by description:', gvRelsByDescription?.length)
-      console.log('Sample:', gvRelsByDescription?.slice(0, 3))
-
-      // Check if any relationship IDs match our entity
-      const allSourceIds = allRels?.map(r => r.source_entity_id || r.source_id) || []
-      const allTargetIds = allRels?.map(r => r.target_entity_id || r.target_id) || []
-      console.log('Does GV ID appear in any source IDs?', allSourceIds.includes(glimmeringVale.id))
-      console.log('Does GV ID appear in any target IDs?', allTargetIds.includes(glimmeringVale.id))
-    }
-
-    // Check if relationships might be in a different campaign
-    console.log('=== CAMPAIGN ID CHECK ===')
-    console.log('Current campaign ID:', campaignId)
-    const uniqueCampaignIds = [...new Set(allRels?.map(r => r.campaign_id))]
-    console.log('Unique campaign IDs in relationships:', uniqueCampaignIds)
-
-    console.log('=== END DEBUG ===')
-    // ============ END TEMPORARY DEBUG ============
-
     // Get locations with maps
     const locationsWithMaps = allLocs.filter((l) => l.attributes?.map_image_url)
     setAllLocationsWithMaps(locationsWithMaps)
@@ -204,24 +64,19 @@ export default function AtlasPage() {
     // 4. Get location relationships to find parent-child connections
     const { data: locationRelationships } = await supabase
       .from('relationships')
-      .select('*')
+      .select('source_id, target_id, relationship_type')
       .eq('campaign_id', campaignId)
       .in('relationship_type', ['located_in', 'contains', 'part_of'])
 
     // Build a parent lookup map from relationships
-    // Handle both possible column names: source_id/target_id OR source_entity_id/target_entity_id
     const parentFromRelationship = new Map<string, string>()
     locationRelationships?.forEach(rel => {
-      const sourceId = rel.source_id || rel.source_entity_id
-      const targetId = rel.target_id || rel.target_entity_id
-      if (!sourceId || !targetId) return
-
       if (rel.relationship_type === 'located_in' || rel.relationship_type === 'part_of') {
         // source is located_in/part_of target, so target is parent
-        parentFromRelationship.set(sourceId, targetId)
+        parentFromRelationship.set(rel.source_id, rel.target_id)
       } else if (rel.relationship_type === 'contains') {
         // source contains target, so source is parent of target
-        parentFromRelationship.set(targetId, sourceId)
+        parentFromRelationship.set(rel.target_id, rel.source_id)
       }
     })
 
@@ -233,7 +88,7 @@ export default function AtlasPage() {
       const location = locationMap.get(locationId)
       if (!location) return null
 
-      // Priority 1: Check parent_id (database column) - this is the canonical source
+      // Priority 1: Check parent_id (database column)
       const dbParentId = (location as Record<string, unknown>).parent_id as string | undefined
       if (dbParentId && locationMap.has(dbParentId)) {
         const parent = findUltimateRoot(dbParentId, visited)
@@ -269,11 +124,6 @@ export default function AtlasPage() {
       }
     })
 
-    console.log('=== ATLAS ROOT DETECTION ===')
-    console.log('All locations:', allLocs.length)
-    console.log('Relationships found:', locationRelationships?.length || 0)
-    console.log('Ultimate roots:', ultimateRoots.map(r => `${r.name} (${r.sub_type})`))
-
     // Helper functions
     const subTypeLower = (l: LivingEntity) => l.sub_type?.toLowerCase() || ''
     const isExcluded = (l: LivingEntity) => EXCLUDE_FROM_WORLD_ROOT.some(t => subTypeLower(l).includes(t))
@@ -285,7 +135,6 @@ export default function AtlasPage() {
     if (worldRootId) {
       const explicitRoot = allLocs.find((l) => l.id === worldRootId)
       if (explicitRoot) {
-        console.log('Using explicit world root:', explicitRoot.name)
         setWorldMap(explicitRoot)
         setLoading(false)
         return
@@ -334,7 +183,6 @@ export default function AtlasPage() {
 
       if (rootsWithCounts.length > 0 && rootsWithCounts[0].count > 0) {
         worldCandidate = rootsWithCounts[0].root
-        console.log('Selected by descendant count:', worldCandidate.name, 'with', rootsWithCounts[0].count, 'descendants')
       }
     }
 
@@ -352,8 +200,6 @@ export default function AtlasPage() {
     if (!worldCandidate && ultimateRoots.length > 0) {
       worldCandidate = ultimateRoots[0]
     }
-
-    console.log('Selected world map:', worldCandidate?.name, `(${worldCandidate?.sub_type})`)
 
     setWorldMap(worldCandidate)
     setLoading(false)

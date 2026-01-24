@@ -366,17 +366,17 @@ export default function GenerateMapPage() {
       .select(`
         id,
         relationship_type,
-        source_entity_id,
-        target_entity_id
+        source_id,
+        target_id
       `)
       .eq('campaign_id', campaignId)
-      .or(`source_entity_id.eq.${entityId},target_entity_id.eq.${entityId}`);
+      .or(`source_id.eq.${entityId},target_id.eq.${entityId}`);
 
     // Get entity details for relationships
     const relatedEntityIds = new Set<string>();
     relationships?.forEach(rel => {
-      if (rel.source_entity_id !== entityId) relatedEntityIds.add(rel.source_entity_id);
-      if (rel.target_entity_id !== entityId) relatedEntityIds.add(rel.target_entity_id);
+      if (rel.source_id !== entityId) relatedEntityIds.add(rel.source_id);
+      if (rel.target_id !== entityId) relatedEntityIds.add(rel.target_id);
     });
 
     let relatedEntities: Record<string, { id: string; name: string; entity_type: string; sub_type?: string }> = {};
@@ -395,12 +395,12 @@ export default function GenerateMapPage() {
     const mappedRelationships: Relationship[] = (relationships || []).map(rel => ({
       id: rel.id,
       relationship_type: rel.relationship_type,
-      source: rel.source_entity_id === entityId
+      source: rel.source_id === entityId
         ? { id: entityId, name: data.name, entity_type: data.entity_type, sub_type: data.sub_type }
-        : relatedEntities[rel.source_entity_id] || null,
-      target: rel.target_entity_id === entityId
+        : relatedEntities[rel.source_id] || null,
+      target: rel.target_id === entityId
         ? { id: entityId, name: data.name, entity_type: data.entity_type, sub_type: data.sub_type }
-        : relatedEntities[rel.target_entity_id] || null,
+        : relatedEntities[rel.target_id] || null,
     }));
 
     // Find children through "contains" relationships or "located_in" (reverse)
