@@ -269,7 +269,8 @@ export const AiGenesisBlockNode = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { 'data-type': 'ai-genesis-block' }), 0]
+    // No content hole (0) for atom nodes - they are leaf nodes with no children
+    return ['div', mergeAttributes(HTMLAttributes, { 'data-type': 'ai-genesis-block' })]
   },
 
   addNodeView() {
