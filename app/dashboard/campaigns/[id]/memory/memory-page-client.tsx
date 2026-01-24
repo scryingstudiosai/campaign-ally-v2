@@ -296,11 +296,13 @@ export function MemoryPageClient({
           </div>
         </FadeIn>
 
-        {/* Quick Stats */}
+        {/* Quick Stats - unified entity colors */}
+        {/* npc=blue, player=yellow, location=emerald, item=amber, creature=red,
+            faction=purple, quest=teal, encounter=orange, event=cyan, deity=violet */}
         {entities.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6 text-sm">
             {typeCounts.npc && (
-              <span className="px-3 py-1 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30">
+              <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
                 {typeCounts.npc} NPCs
               </span>
             )}
@@ -315,27 +317,27 @@ export function MemoryPageClient({
               </span>
             )}
             {typeCounts.item && (
-              <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                 {typeCounts.item} Items
               </span>
             )}
             {typeCounts.faction && (
-              <span className="px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+              <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
                 {typeCounts.faction} Factions
               </span>
             )}
             {typeCounts.quest && (
-              <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+              <span className="px-3 py-1 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30">
                 {typeCounts.quest} Quests
               </span>
             )}
             {typeCounts.encounter && (
-              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+              <span className="px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
                 {typeCounts.encounter} Encounters
               </span>
             )}
             {typeCounts.creature && (
-              <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+              <span className="px-3 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
                 {typeCounts.creature} Creatures
               </span>
             )}

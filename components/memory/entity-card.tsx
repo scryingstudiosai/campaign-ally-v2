@@ -91,9 +91,9 @@ interface EntityStyle {
 }
 
 // Unified entity type colors for card borders/glows
-// Base colors: npc=blue, player=green, location=emerald, item=amber, creature=red,
-//              faction=purple, quest=teal, encounter=orange, event=cyan, deity=yellow
-// Special subtypes: npc_villain=red (like creatures), npc_hero=green (like players)
+// Base colors: npc=blue, player=yellow, location=emerald, item=amber, creature=red,
+//              faction=purple, quest=teal, encounter=orange, event=cyan, deity=violet
+// Special subtypes: npc_villain=red (like creatures), npc_hero=yellow (like players)
 const STYLE_MAP: Record<string, EntityStyle> = {
   // NPC subtypes
   npc_villain: {
@@ -102,20 +102,20 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
   },
   npc_hero: {
-    borderClass: 'border-green-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(34,197,94,0.15)]',
-    hoverClass: 'hover:border-green-500/60 hover:shadow-[0_0_20px_rgba(34,197,94,0.25)]',
+    borderClass: 'border-yellow-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(234,179,8,0.15)]',
+    hoverClass: 'hover:border-yellow-500/60 hover:shadow-[0_0_20px_rgba(234,179,8,0.25)]',
   },
   npc_standard: {
     borderClass: 'border-blue-500/30',
     glowClass: '',
     hoverClass: 'hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
   },
-  // Player characters (green)
+  // Player characters (yellow)
   player_default: {
-    borderClass: 'border-green-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(34,197,94,0.15)]',
-    hoverClass: 'hover:border-green-500/60 hover:shadow-[0_0_20px_rgba(34,197,94,0.25)]',
+    borderClass: 'border-yellow-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(234,179,8,0.15)]',
+    hoverClass: 'hover:border-yellow-500/60 hover:shadow-[0_0_20px_rgba(234,179,8,0.25)]',
   },
   // Default fallbacks for other entity types
   location_default: {
@@ -353,11 +353,11 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     glowClass: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
     hoverClass: 'hover:border-amber-400/70 hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]',
   },
-  // Deity subtypes (base=yellow)
+  // Deity subtypes (base=violet)
   deity_default: {
-    borderClass: 'border-yellow-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(234,179,8,0.15)]',
-    hoverClass: 'hover:border-yellow-500/60 hover:shadow-[0_0_20px_rgba(234,179,8,0.25)]',
+    borderClass: 'border-violet-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(139,92,246,0.15)]',
+    hoverClass: 'hover:border-violet-500/60 hover:shadow-[0_0_20px_rgba(139,92,246,0.25)]',
   },
   deity_greater_deity: {
     borderClass: 'border-amber-400/50',

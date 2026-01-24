@@ -15,11 +15,11 @@ interface DraggableEntityProps {
 }
 
 // Unified entity type colors - keep consistent across the app
-// Colors: npc=blue, player=green, location=emerald, item=amber, creature=red,
-//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=yellow
+// Colors: npc=blue, player=yellow, location=emerald, item=amber, creature=red,
+//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=violet
 const typeConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string }> = {
   npc: { icon: Users, color: 'text-blue-400' },
-  player: { icon: Crown, color: 'text-green-400' },
+  player: { icon: Crown, color: 'text-yellow-400' },
   location: { icon: MapPin, color: 'text-emerald-400' },
   item: { icon: Package, color: 'text-amber-400' },
   creature: { icon: Skull, color: 'text-red-400' },
@@ -27,7 +27,7 @@ const typeConfig: Record<string, { icon: React.ComponentType<{ className?: strin
   quest: { icon: Scroll, color: 'text-teal-400' },
   encounter: { icon: Swords, color: 'text-orange-400' },
   event: { icon: Sparkles, color: 'text-cyan-400' },
-  deity: { icon: Crown, color: 'text-yellow-400' },
+  deity: { icon: Crown, color: 'text-violet-400' },
 };
 
 export function DraggableEntity({ entity }: DraggableEntityProps) {

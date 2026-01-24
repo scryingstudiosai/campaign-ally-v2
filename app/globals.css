@@ -184,10 +184,10 @@ body {
 }
 
 .entity-mention--player {
-  @apply bg-green-900/50 border-green-700 text-green-300;
+  @apply bg-yellow-900/50 border-yellow-700 text-yellow-300;
 }
 .entity-mention--player:hover {
-  @apply bg-green-800/50 border-green-600;
+  @apply bg-yellow-800/50 border-yellow-600;
 }
 
 .entity-mention--location {
@@ -359,10 +359,10 @@ body {
 }
 
 .entity-link--player {
-  color: rgb(74 222 128); /* green-400 */
+  color: rgb(250 204 21); /* yellow-400 */
 }
 .entity-link--player:hover {
-  background-color: rgba(22, 101, 52, 0.3);
+  background-color: rgba(161, 98, 7, 0.3);
 }
 
 .entity-link--location {
@@ -415,8 +415,8 @@ body {
 }
 
 .entity-link--deity {
-  color: rgb(250 204 21); /* yellow-400 */
+  color: rgb(167 139 250); /* violet-400 */
 }
 .entity-link--deity:hover {
-  background-color: rgba(161, 98, 7, 0.3);
+  background-color: rgba(91, 33, 182, 0.3);
 }

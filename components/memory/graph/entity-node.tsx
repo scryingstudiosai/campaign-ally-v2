@@ -16,8 +16,8 @@ export interface EntityNodeData {
 }
 
 // Unified entity type colors - keep consistent across the app
-// Colors: npc=blue, player=green, location=emerald, item=amber, creature=red,
-//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=yellow
+// Colors: npc=blue, player=yellow, location=emerald, item=amber, creature=red,
+//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=violet
 const entityConfig: Record<string, {
   icon: React.ElementType;
   color: string;
@@ -32,9 +32,9 @@ const entityConfig: Record<string, {
   },
   player: {
     icon: Crown,
-    color: 'text-green-400',
-    bgColor: 'bg-green-500/10',
-    borderColor: 'border-green-500/50',
+    color: 'text-yellow-400',
+    bgColor: 'bg-yellow-500/10',
+    borderColor: 'border-yellow-500/50',
   },
   location: {
     icon: MapPin,
@@ -80,9 +80,9 @@ const entityConfig: Record<string, {
   },
   deity: {
     icon: Crown,
-    color: 'text-yellow-400',
-    bgColor: 'bg-yellow-500/10',
-    borderColor: 'border-yellow-500/50',
+    color: 'text-violet-400',
+    bgColor: 'bg-violet-500/10',
+    borderColor: 'border-violet-500/50',
   },
 };
 

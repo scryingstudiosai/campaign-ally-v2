@@ -14,12 +14,12 @@ export interface MentionableEntity {
 
 /**
  * Unified entity type colors - keep consistent across the app
- * Colors: npc=blue, player=green, location=emerald, item=amber, creature=red,
- *         faction=purple, quest=teal, encounter=orange, event=cyan, deity=yellow
+ * Colors: npc=blue, player=yellow, location=emerald, item=amber, creature=red,
+ *         faction=purple, quest=teal, encounter=orange, event=cyan, deity=violet
  */
 const ENTITY_COLORS: Record<string, string> = {
   npc: 'text-blue-400 hover:text-blue-300 bg-blue-900/30 hover:bg-blue-900/50',
-  player: 'text-green-400 hover:text-green-300 bg-green-900/30 hover:bg-green-900/50',
+  player: 'text-yellow-400 hover:text-yellow-300 bg-yellow-900/30 hover:bg-yellow-900/50',
   location: 'text-emerald-400 hover:text-emerald-300 bg-emerald-900/30 hover:bg-emerald-900/50',
   item: 'text-amber-400 hover:text-amber-300 bg-amber-900/30 hover:bg-amber-900/50',
   creature: 'text-red-400 hover:text-red-300 bg-red-900/30 hover:bg-red-900/50',
@@ -27,7 +27,7 @@ const ENTITY_COLORS: Record<string, string> = {
   quest: 'text-teal-400 hover:text-teal-300 bg-teal-900/30 hover:bg-teal-900/50',
   encounter: 'text-orange-400 hover:text-orange-300 bg-orange-900/30 hover:bg-orange-900/50',
   event: 'text-cyan-400 hover:text-cyan-300 bg-cyan-900/30 hover:bg-cyan-900/50',
-  deity: 'text-yellow-400 hover:text-yellow-300 bg-yellow-900/30 hover:bg-yellow-900/50',
+  deity: 'text-violet-400 hover:text-violet-300 bg-violet-900/30 hover:bg-violet-900/50',
 }
 
 interface EntityMentionsProps {

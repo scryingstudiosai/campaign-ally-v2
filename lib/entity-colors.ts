@@ -6,7 +6,7 @@
  *
  * Color scheme rationale:
  * - NPC (blue): People/characters - calm, trustworthy
- * - Player (green): Party members - alive, active, special
+ * - Player (yellow): Party members - heroic, gold, special
  * - Location (emerald): Places - nature, geography
  * - Item (amber): Objects/treasure - valuable, material
  * - Creature (red): Monsters - danger, combat
@@ -14,7 +14,7 @@
  * - Quest (teal): Missions - adventure, journey
  * - Encounter (orange): Combat - action, urgency
  * - Event/Lore (cyan): History - knowledge, time
- * - Deity (yellow): Divine - holy, radiant
+ * - Deity (violet): Divine - mystical, holy
  */
 
 import {
@@ -78,11 +78,11 @@ export const ENTITY_TYPE_CONFIG: Record<EntityType, EntityTypeConfig> = {
     label: 'Player',
     shortLabel: 'PC',
     icon: Crown,
-    color: 'text-green-400',
-    bgColor: 'bg-green-500/20',
-    borderColor: 'border-green-500/30',
-    hoverBg: 'hover:bg-green-500/30',
-    mentionClasses: 'text-green-400 hover:text-green-300 bg-green-900/30 hover:bg-green-900/50',
+    color: 'text-yellow-400',
+    bgColor: 'bg-yellow-500/20',
+    borderColor: 'border-yellow-500/30',
+    hoverBg: 'hover:bg-yellow-500/30',
+    mentionClasses: 'text-yellow-400 hover:text-yellow-300 bg-yellow-900/30 hover:bg-yellow-900/50',
   },
   location: {
     label: 'Location',
@@ -158,11 +158,11 @@ export const ENTITY_TYPE_CONFIG: Record<EntityType, EntityTypeConfig> = {
     label: 'Deity',
     shortLabel: 'Deity',
     icon: Crown,
-    color: 'text-yellow-400',
-    bgColor: 'bg-yellow-500/20',
-    borderColor: 'border-yellow-500/30',
-    hoverBg: 'hover:bg-yellow-500/30',
-    mentionClasses: 'text-yellow-400 hover:text-yellow-300 bg-yellow-900/30 hover:bg-yellow-900/50',
+    color: 'text-violet-400',
+    bgColor: 'bg-violet-500/20',
+    borderColor: 'border-violet-500/30',
+    hoverBg: 'hover:bg-violet-500/30',
+    mentionClasses: 'text-violet-400 hover:text-violet-300 bg-violet-900/30 hover:bg-violet-900/50',
   },
 }
 

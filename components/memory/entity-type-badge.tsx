@@ -56,8 +56,8 @@ const NPC_SUBTYPE_CONFIG: Record<string, TypeConfig> = {
 }
 
 // Unified entity type colors - keep consistent across the app
-// Colors: npc=blue, player=green, location=emerald, item=amber, creature=red,
-//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=yellow
+// Colors: npc=blue, player=yellow, location=emerald, item=amber, creature=red,
+//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=violet
 const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
   npc: {
     label: 'NPC',
@@ -68,9 +68,9 @@ const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
   },
   player: {
     label: 'Player',
-    color: 'text-green-400',
-    bgColor: 'bg-green-500/20',
-    borderColor: 'border-green-500/30',
+    color: 'text-yellow-400',
+    bgColor: 'bg-yellow-500/20',
+    borderColor: 'border-yellow-500/30',
     icon: Crown,
   },
   location: {
@@ -124,9 +124,9 @@ const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
   },
   deity: {
     label: 'Deity',
-    color: 'text-yellow-400',
-    bgColor: 'bg-yellow-500/20',
-    borderColor: 'border-yellow-500/30',
+    color: 'text-violet-400',
+    bgColor: 'bg-violet-500/20',
+    borderColor: 'border-violet-500/30',
     icon: Sun,
   },
   other: {
