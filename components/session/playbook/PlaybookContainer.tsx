@@ -104,6 +104,8 @@ export function PlaybookContainer({ sessionId, campaignId }: PlaybookContainerPr
         status: 'pending',
       };
       setBlocks(prev => [...prev, genesisBlock]);
+      // Mark onboarding task complete for AI Genesis too
+      await markOnboardingComplete('use_session_prep');
       return;
     }
 
