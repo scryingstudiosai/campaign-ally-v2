@@ -144,18 +144,19 @@ The style should be suitable for a tabletop RPG. Top-down perspective, clear and
     let imageUrl = ''
 
     try {
+      // Use GPT Image 1.5 for better instruction following (no unwanted text)
       const imageResponse = await openai.images.generate({
-        model: 'dall-e-3',
+        model: 'gpt-image-1',
         prompt: imagePrompt,
         n: 1,
         size: '1024x1024',
-        quality: 'standard',
-        style: 'vivid',
       })
 
-      imageUrl = imageResponse.data?.[0]?.url || ''
+      // GPT Image returns base64, convert to data URL
+      const imageBase64 = imageResponse.data?.[0]?.b64_json
+      imageUrl = imageBase64 ? `data:image/png;base64,${imageBase64}` : ''
     } catch (imageError) {
-      console.error('DALL-E generation failed:', imageError)
+      console.error('GPT Image generation failed:', imageError)
       // Fall back to a placeholder if image generation fails
       imageUrl = `https://placehold.co/1024x1024/1a1a2e/14b8a6?text=${encodeURIComponent(name || metadata.name || 'Map')}`
     }

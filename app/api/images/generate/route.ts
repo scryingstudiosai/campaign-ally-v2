@@ -39,18 +39,14 @@ export async function POST(req: NextRequest) {
       qualityLevel: 'high',
     });
 
-    // Validate size parameter (DALL-E 3 supported sizes)
-    const validSizes = ['1024x1024', '1792x1024', '1024x1792'];
-    const imageSize = validSizes.includes(size) ? size : '1024x1024';
-
-    // Generate with DALL-E 3
+    // Generate with GPT Image 1 (much better at following instructions than DALL-E 3)
+    // Note: GPT Image models only support 1024x1024, ignore size parameter
     const openai = getOpenAIClient();
     const aiResponse = await openai.images.generate({
-      model: 'dall-e-3',
+      model: 'gpt-image-1',
       prompt: fullPrompt,
       n: 1,
-      size: imageSize as '1024x1024' | '1792x1024' | '1024x1792',
-      response_format: 'b64_json',
+      size: '1024x1024',
     });
 
     if (!aiResponse.data || !aiResponse.data[0]) {

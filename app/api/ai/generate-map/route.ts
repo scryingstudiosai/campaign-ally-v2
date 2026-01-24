@@ -110,29 +110,25 @@ export async function POST(request: Request) {
     console.log('Style:', campaignStyle.artDirection)
     console.log('Prompt length:', prompt.length)
 
-    // Generate with DALL-E 3
+    // Generate with GPT Image 1.5 (much better at following "no text" instructions)
     const response = await openai.images.generate({
-      model: 'dall-e-3',
+      model: 'gpt-image-1',
       prompt: prompt,
       n: 1,
       size: '1024x1024',
-      quality: 'hd',
-      style: 'natural',
     })
 
-    const tempImageUrl = response.data[0]?.url
-    const revisedPrompt = response.data[0]?.revised_prompt
+    // GPT Image returns base64, not URL
+    const imageBase64 = response.data[0]?.b64_json
 
-    if (!tempImageUrl) {
-      throw new Error('No image URL returned from OpenAI')
+    if (!imageBase64) {
+      throw new Error('No image data returned from OpenAI')
     }
 
     console.log('Image generated successfully')
-    console.log('Revised prompt:', revisedPrompt?.substring(0, 200) + '...')
 
-    // Download and save to Supabase Storage for persistence
-    const imageResponse = await fetch(tempImageUrl)
-    const imageBuffer = await imageResponse.arrayBuffer()
+    // Convert base64 to buffer for storage
+    const imageBuffer = Buffer.from(imageBase64, 'base64')
     const fileName = `${campaignId}/${locationId}/map-${Date.now()}.png`
 
     const { error: uploadError } = await supabase.storage.from('maps').upload(fileName, imageBuffer, {
@@ -142,13 +138,13 @@ export async function POST(request: Request) {
 
     if (uploadError) {
       console.error('Storage upload error:', uploadError)
-      // If storage fails, return the temporary URL (will expire in ~1 hour)
+      // If storage fails, return base64 data URL for immediate use
       return NextResponse.json({
-        imageUrl: tempImageUrl,
+        imageUrl: `data:image/png;base64,${imageBase64}`,
         category,
         style: campaignStyle.artDirection,
         attemptNumber,
-        warning: 'Image saved temporarily. Storage upload failed.',
+        warning: 'Storage upload failed. Using temporary data URL.',
       })
     }
 
