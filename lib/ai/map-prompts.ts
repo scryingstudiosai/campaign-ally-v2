@@ -162,24 +162,31 @@ CAMPAIGN STYLE FINGERPRINT (maintain consistency):
 // BASE REQUIREMENTS (All Maps)
 // ============================================
 
+// These rules MUST appear at the START of every prompt for maximum impact
+const CRITICAL_FIRST_RULES = `
+⚠️ CRITICAL - READ FIRST ⚠️
+THIS IS A PURE VISUAL MAP WITH ZERO TEXT.
+
+FORBIDDEN (will reject image if present):
+❌ NO TEXT - no words, labels, names, titles, letters, numbers, runes, glyphs
+❌ NO LEGEND - no map key, no explanatory box, no symbol reference
+❌ NO COMPASS - no compass rose, no directional indicators, no "N" arrow
+❌ NO UI ELEMENTS - no borders, frames, decorative corners, watermarks
+❌ NO GRID - no hex grid, no square grid, no measurement lines
+
+REQUIRED VIEW:
+✓ STRICTLY 2D flat top-down view (like looking at paper on a table)
+✓ Camera exactly 90° straight down - NO tilt, NO perspective, NO 3D
+✓ NO horizon line, NO vanishing points, NO isometric angle
+`.trim()
+
+// Legacy constants kept for compatibility
 const CRITICAL_VIEWPOINT_RULES = `
-CRITICAL VIEWPOINT REQUIREMENTS:
-- STRICTLY 2D Top-Down Orthographic View
-- Camera Angle: Exactly 90 degrees (straight down)
-- NO tilt, NO perspective, NO isometric, NO 3D rendering
-- NO vanishing points, NO horizon line
-- Everything viewed from directly above as if looking at a flat paper map
+VIEWPOINT: Strictly 2D top-down orthographic (90° straight down, zero tilt).
 `.trim()
 
 const NO_TEXT_RULES = `
-ABSOLUTELY NO TEXT OR SYMBOLS:
-- NO text of any kind (names, labels, titles, legends)
-- NO letters, numbers, runes, or glyphs
-- NO compass rose or directional indicators
-- NO map legend or key
-- NO decorative border frames or corner ornaments
-- NO watermarks or signatures
-- NO grid lines or hex patterns
+TEXT: Absolutely none. No words, labels, legends, compass, borders, or grid.
 `.trim()
 
 const ATLAS_USABILITY_RULES = `
@@ -247,19 +254,22 @@ function getRetryRules(attemptNumber: number): string {
 
   if (attemptNumber === 2) {
     return `
-RETRY ATTEMPT 2 - STRICT MODE:
-- ABSOLUTELY NO TEXT OR ANYTHING RESEMBLING LETTERS
-- REMOVE ALL LABELING, TITLING, LETTERING
-- PURE VISUAL MAP ONLY
+⚠️ RETRY #2 - PREVIOUS IMAGE HAD TEXT/LABELS - FIX THIS:
+- The ONLY acceptable output is a PURE VISUAL map with ZERO TEXT
+- If you added ANY text, labels, legend, or compass - DO NOT do that
+- Imagine someone will print this and write their own labels by hand
+- Leave it BLANK of any writing whatsoever
 `.trim()
   }
 
   return `
-RETRY ATTEMPT ${attemptNumber} - MAXIMUM SIMPLICITY:
-- EXTREMELY CLEAN, MINIMAL DETAIL
-- LARGE SIMPLE SHAPES ONLY
-- NO TEXT, NO SYMBOLS, NO DECORATIONS
-- PRIORITIZE CLARITY OVER ARTISTRY
+🚨 RETRY #${attemptNumber} - CRITICAL FAILURE MODE:
+- Previous attempts had forbidden elements (text/labels/legend)
+- This attempt: EXTREME SIMPLICITY
+- Large simple terrain shapes ONLY
+- NO decorations, NO symbols, NO text of ANY kind
+- Think: hand-painted map with NO writing at all
+- If in doubt, leave it OUT
 `.trim()
 }
 
@@ -270,259 +280,186 @@ RETRY ATTEMPT ${attemptNumber} - MAXIMUM SIMPLICITY:
 const CATEGORY_PROMPTS: Record<LocationCategory, (opts: MapPromptOptions) => string> = {
   world: (opts) => {
     const style = opts.campaignStyle || DEFAULT_MAP_STYLE
-    const detailLevel = getDetailLevel('world')
     const childCount = opts.childLocations?.length || 0
 
     return `
-Fantasy World/Continent Map for "${opts.locationName}".
+${CRITICAL_FIRST_RULES}
 
-${CRITICAL_VIEWPOINT_RULES}
+Create a fantasy world/continent map for "${opts.locationName}".
 
-${NO_TEXT_RULES}
+STYLE: ${style.artDirection} - muted dark earth tones, ${style.lineWeight} lines, ${style.texture} texture.
 
-${buildStyleFingerprint(style)}
+STRUCTURE:
+- Landmass(es) surrounded by dark navy ocean
+- 1-2 mountain ranges as symbolic ridges (viewed from above)
+- 2-4 terrain biomes: forests, deserts, plains, tundra
+- 1-2 river systems flowing to coast
+- Organic coastlines with bays and peninsulas
+- ${Math.max(6, childCount)} distinct open areas for placing markers
 
-${getDetailLevelRules(detailLevel)}
+COLORS: Dark palette only. Ocean = dark navy/slate (never bright blue). Land = muted earth tones.
 
-STRUCTURAL RECIPE - WORLD MAP:
-- Show entire landmass(es) surrounded by ocean/sea
-- Include 1-2 major mountain ranges as symbolic ridges
-- Include 2-4 distinct terrain biomes (forests, deserts, plains, tundra)
-- Include 1-2 major river systems flowing to coast
-- Coastlines should be organic with bays and peninsulas
-- Ocean/water: dark navy or slate, NOT bright blue
-- Leave ${Math.max(6, childCount)} distinct open areas for placing region/city markers
-
-${ATLAS_USABILITY_RULES}
-
-${SYMBOL_LANGUAGE_RULES}
-
-CONTENT CONTEXT:
-${opts.description ? `- World description: ${opts.description}` : ''}
-${opts.climate ? `- Climate: ${opts.climate}` : ''}
-${childCount > 0 ? `- Must have distinct zones for: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${opts.description ? `CONTEXT: ${opts.description}` : ''}
+${opts.climate ? `CLIMATE: ${opts.climate}` : ''}
+${childCount > 0 ? `MUST INCLUDE ZONES FOR: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-OUTPUT: Complete fantasy world map, strictly top-down, dark palette, marker-ready.
+FINAL REMINDER: Pure visual map. NO text, NO labels, NO legend, NO compass. Strictly 2D top-down.
 `.trim()
   },
 
   region: (opts) => {
     const style = opts.campaignStyle || DEFAULT_MAP_STYLE
-    const detailLevel = getDetailLevel('region')
     const childCount = opts.childLocations?.length || 0
 
     return `
-Fantasy Regional Map (Kingdom/Province) for "${opts.locationName}".
+${CRITICAL_FIRST_RULES}
 
-${CRITICAL_VIEWPOINT_RULES}
+Create a fantasy regional map for "${opts.locationName}".
 
-${NO_TEXT_RULES}
+STYLE: ${style.artDirection} - muted dark earth tones, ${style.lineWeight} lines, ${style.texture} texture.
 
-${buildStyleFingerprint(style)}
+STRUCTURE:
+- River or coastline as water feature (dark blue-gray, not bright)
+- Road network connecting 3-6 landmark areas (thin brown lines)
+- 2-4 terrain types: forests (dark green), hills, farmland, marsh
+- Mountains as symbolic ridges viewed from above
+- Central open area for the main settlement/capital
+- ${Math.max(6, childCount)} distinct zones for placing markers
 
-${getDetailLevelRules(detailLevel)}
+TERRAIN SYMBOLS (all viewed from above):
+- Mountains: small peaked symbols, not 3D ridges
+- Forests: clustered tree canopy texture
+- Roads: thin connecting lines
+- Water: dark slate blue, never bright
 
-STRUCTURAL RECIPE - REGIONAL MAP:
-- 1 major river OR coastline as primary water feature
-- 1 road network connecting 3-6 settlement nodes (thin tan/brown lines)
-- 2-4 terrain biomes with clear boundaries (forest, hills, farmland, marsh)
-- 1 "central hub" area (capital/major city location) - keep it open for markers
-- Mountains as background ridges if appropriate
-- Forests as darker green textured regions
-- Roads MUST visibly connect the landmark zones
-
-${ATLAS_USABILITY_RULES}
-
-${SYMBOL_LANGUAGE_RULES}
-
-CONTENT CONTEXT:
-- Region: "${opts.locationName}"
-${opts.locationType ? `- Type: ${opts.locationType}` : ''}
-${opts.description ? `- Description: ${opts.description}` : ''}
-${opts.terrain ? `- Primary terrain: ${opts.terrain}` : ''}
-${childCount > 0 ? `- Contains these settlements/landmarks (create distinct zones for each): ${opts.childLocations!.map((c) => `${c.name} (${c.type})`).join(', ')}` : ''}
+${opts.description ? `CONTEXT: ${opts.description}` : ''}
+${opts.terrain ? `PRIMARY TERRAIN: ${opts.terrain}` : ''}
+${childCount > 0 ? `MUST INCLUDE ZONES FOR: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-OUTPUT: Regional fantasy map, strictly top-down, roads connecting landmarks, dark palette.
+FINAL REMINDER: Pure visual map. NO text, NO labels, NO legend, NO compass. Strictly 2D top-down.
 `.trim()
   },
 
   settlement: (opts) => {
     const style = opts.campaignStyle || DEFAULT_MAP_STYLE
-    const detailLevel = getDetailLevel('settlement')
     const childCount = opts.childLocations?.length || 0
 
     return `
-Fantasy Settlement Map (City/Town) for "${opts.locationName}".
+${CRITICAL_FIRST_RULES}
 
-${CRITICAL_VIEWPOINT_RULES}
+Create a fantasy city/town map for "${opts.locationName}".
 
-${NO_TEXT_RULES}
+STYLE: ${style.artDirection} - muted dark tones, ${style.lineWeight} lines, ${style.texture} texture.
 
-${buildStyleFingerprint(style)}
+STRUCTURE:
+- City walls or natural boundary (thick dark lines)
+- Central plaza/market square (large open area)
+- 3-5 distinct districts separated by main roads
+- Main road spine connecting gates through center
+- Buildings as simple dark roof shapes (not blobs)
+- Vary building sizes: larger near center, smaller at edges
+- Water feature if appropriate (dark blue-gray)
+- At least 6 clear open zones for markers
 
-${getDetailLevelRules(detailLevel)}
+BUILDINGS: Simple geometric roof shapes viewed from directly above. NOT painterly blobs.
 
-STRUCTURAL RECIPE - SETTLEMENT MAP:
-- OUTER BOUNDARY: City walls (thick dark lines) OR natural boundary (river, cliffs)
-- CENTRAL PLAZA: 1 large open market square or plaza (primary marker zone)
-- DISTRICTS: 3-5 visually distinct districts separated by main roads or canals
-- MAIN ROAD SPINE: Primary road running through settlement connecting gates
-- SIDE STREETS: Secondary roads creating navigable blocks
-- BUILDINGS: Simple dark roof-block shapes, NOT painterly blobs
-  - Vary building size by district (larger near center, smaller residential)
-- WATER FEATURE: River, harbor, or canals if appropriate (dark blue-gray)
-- MARKER ZONES: Reserve at least 6 clear open areas:
-  - Main plaza, gate entrances, temple grounds, market, docks, noble quarter
-
-${ATLAS_USABILITY_RULES}
-
-${SYMBOL_LANGUAGE_RULES}
-
-CONTENT CONTEXT:
-- Settlement: "${opts.locationName}"
-${opts.locationType ? `- Type: ${opts.locationType}` : ''}
-${opts.description ? `- Description: ${opts.description}` : ''}
-${childCount > 0 ? `- Notable locations (create distinct zones): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${opts.description ? `CONTEXT: ${opts.description}` : ''}
+${childCount > 0 ? `NOTABLE LOCATIONS TO INCLUDE: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-OUTPUT: Top-down city/town map with clear districts, central plaza, readable buildings.
+FINAL REMINDER: Pure visual map. NO text, NO labels, NO legend, NO compass. Strictly 2D top-down.
 `.trim()
   },
 
   building: (opts) => {
     const style = opts.campaignStyle || DEFAULT_MAP_STYLE
-    const detailLevel = getDetailLevel('building')
     const childCount = opts.childLocations?.length || 0
 
     return `
-Fantasy Building Floor Plan for "${opts.locationName}".
+${CRITICAL_FIRST_RULES}
 
-${CRITICAL_VIEWPOINT_RULES}
+Create an architectural floor plan for "${opts.locationName}".
 
-${NO_TEXT_RULES}
+STYLE: ${style.artDirection} - high contrast, ${style.lineWeight} lines, ${style.texture} texture.
 
-${buildStyleFingerprint(style)}
+STRUCTURE:
+- Walls: thick dark lines (high contrast)
+- Rooms: clearly delineated distinct spaces
+- Doors: gaps in walls (not rectangles)
+- Floors: muted stone/wood texture (dark browns/grays)
+- Furniture: simple dark shapes (tables=rectangles, beds=rounded rectangles, chairs=squares)
+- One main hall or central corridor
+- Clear walkable space between furniture
 
-${getDetailLevelRules(detailLevel)}
-
-STRUCTURAL RECIPE - FLOOR PLAN:
-- WALLS: Thick dark lines (high contrast against floor)
-- ROOMS: Clearly delineated spaces with distinct purposes
-- DOORS: Visible gaps in walls (not drawn as rectangles)
-- FLOORS: Muted stone or wood texture (dark browns/grays)
-- FURNITURE: Simple dark shapes suggesting function:
-  - Tables as rectangles
-  - Beds as rounded rectangles
-  - Chairs as small squares
-  - Barrels/crates as circles/squares
-- ROOM VARIETY: Different room sizes for visual interest
-- MAIN HALL: One larger central room or corridor
-- PLAYABLE SPACE: Clear walkable areas between furniture
-
-${ATLAS_USABILITY_RULES}
-
-CONTENT CONTEXT:
-- Building: "${opts.locationName}"
-${opts.locationType ? `- Type: ${opts.locationType}` : ''}
-${opts.description ? `- Description: ${opts.description}` : ''}
-${childCount > 0 ? `- Rooms/areas to include: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${opts.description ? `CONTEXT: ${opts.description}` : ''}
+${childCount > 0 ? `ROOMS TO INCLUDE: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-OUTPUT: Clean architectural floor plan, high contrast walls, readable rooms, furniture suggested.
+FINAL REMINDER: Pure visual floor plan. NO text, NO labels, NO legend. Strictly 2D top-down.
 `.trim()
   },
 
   dungeon: (opts) => {
     const style = opts.campaignStyle || DEFAULT_MAP_STYLE
-    const detailLevel = getDetailLevel('dungeon')
     const childCount = opts.childLocations?.length || 0
 
     return `
-Fantasy Dungeon Battlemap for "${opts.locationName}".
+${CRITICAL_FIRST_RULES}
 
-${CRITICAL_VIEWPOINT_RULES}
+Create a dungeon battlemap for "${opts.locationName}".
 
-${NO_TEXT_RULES}
+STYLE: ${style.artDirection} - very high contrast, ${style.lineWeight} lines, ${style.texture} texture.
 
-${buildStyleFingerprint(style)}
+STRUCTURE:
+- High contrast: light/medium floors against very dark walls
+- Solid dark rock for impassable/unexplored areas
+- Corridors of varying widths connecting chambers
+- 4-8 distinct rooms: 1 large central, 2-3 medium, 2-4 small
+- Edges: rough organic (cave) OR straight cut (constructed)
+- Floors must stay visible - no fade to black in playable areas
 
-${getDetailLevelRules(detailLevel)}
-
-STRUCTURAL RECIPE - DUNGEON MAP:
-- HIGH CONTRAST: Light/medium floors against very dark walls/rock
-- SOLID ROCK: Very dark background (unexplored/impassable areas)
-- CORRIDORS: Connecting passages of varying width (not all same size)
-- CHAMBERS: 4-8 distinct rooms of different sizes and shapes
-- ROOM VARIETY:
-  - 1 large central chamber (boss room / main hall)
-  - 2-3 medium rooms (encounters)
-  - 2-4 small rooms (storage, traps, secrets)
-- EDGES: Rough organic (natural cave) OR straight cut (constructed dungeon)
-- NO FADE TO BLACK inside playable rooms - keep floors visible
-- VISUAL FLOW: Corridors should logically connect chambers
-- DEPTH SUGGESTION: Subtle shadows at wall bases (optional)
-
-${ATLAS_USABILITY_RULES}
-
-CONTENT CONTEXT:
-- Dungeon: "${opts.locationName}"
-${opts.locationType ? `- Type: ${opts.locationType}` : ''}
-${opts.description ? `- Atmosphere: ${opts.description}` : ''}
-${childCount > 0 ? `- Key chambers/areas: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${opts.description ? `ATMOSPHERE: ${opts.description}` : ''}
+${childCount > 0 ? `KEY CHAMBERS: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-OUTPUT: Top-down dungeon map, high contrast, clear chambers and corridors, dark atmospheric.
+FINAL REMINDER: Pure visual map. NO text, NO labels, NO legend. Strictly 2D top-down.
 `.trim()
   },
 
   wilderness: (opts) => {
     const style = opts.campaignStyle || DEFAULT_MAP_STYLE
-    const detailLevel = getDetailLevel('wilderness')
     const childCount = opts.childLocations?.length || 0
 
     return `
-Fantasy Wilderness Area Map for "${opts.locationName}".
+${CRITICAL_FIRST_RULES}
 
-${CRITICAL_VIEWPOINT_RULES}
+Create a wilderness area map for "${opts.locationName}".
 
-${NO_TEXT_RULES}
+STYLE: ${style.artDirection} - muted natural tones, ${style.lineWeight} lines, ${style.texture} texture.
 
-${buildStyleFingerprint(style)}
+STRUCTURE:
+- Organic natural shapes (no straight lines)
+- Primary terrain covering 60-70% of map
+- 2-3 contrasting terrain elements
+- Thin winding paths/trails
+- 4-6 open clearings for markers
+- Water in dark blue-gray (streams, ponds)
+- Visual anchors: crossroads, river crossings, ruins, caves, camps
 
-${getDetailLevelRules(detailLevel)}
-
-STRUCTURAL RECIPE - WILDERNESS MAP:
-- NATURAL SHAPES: Organic boundaries, no straight lines
-- PRIMARY TERRAIN: Dominant terrain type covering 60-70% of map
-- SECONDARY FEATURES: 2-3 contrasting terrain elements
-- PATHS/TRAILS: Thin winding lines suggesting travel routes
-- CLEARINGS: 4-6 open areas suitable for encounter markers
-- WATER: Streams, ponds, or river sections in dark blue-gray
-- ELEVATION: Suggest height through color value (darker = lower or higher)
-- POINTS OF INTEREST: Visual anchors for:
-  - Crossroads, river crossings, ruins, caves, camps, rock formations
-
-${ATLAS_USABILITY_RULES}
-
-${SYMBOL_LANGUAGE_RULES}
-
-CONTENT CONTEXT:
-- Wilderness: "${opts.locationName}"
-${opts.locationType ? `- Type: ${opts.locationType}` : ''}
-${opts.description ? `- Description: ${opts.description}` : ''}
-${opts.terrain ? `- Primary terrain: ${opts.terrain}` : ''}
-${childCount > 0 ? `- Points of interest: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${opts.description ? `CONTEXT: ${opts.description}` : ''}
+${opts.terrain ? `PRIMARY TERRAIN: ${opts.terrain}` : ''}
+${childCount > 0 ? `POINTS OF INTEREST: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-OUTPUT: Natural wilderness map, organic shapes, clear paths, marker-friendly clearings.
+FINAL REMINDER: Pure visual map. NO text, NO labels, NO legend, NO compass. Strictly 2D top-down.
 `.trim()
   },
 }
