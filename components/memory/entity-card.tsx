@@ -90,6 +90,10 @@ interface EntityStyle {
   hoverClass: string
 }
 
+// Unified entity type colors for card borders/glows
+// Base colors: npc=blue, player=green, location=emerald, item=amber, creature=red,
+//              faction=purple, quest=teal, encounter=orange, event=cyan, deity=yellow
+// Special subtypes: npc_villain=red (like creatures), npc_hero=green (like players)
 const STYLE_MAP: Record<string, EntityStyle> = {
   // NPC subtypes
   npc_villain: {
@@ -98,20 +102,20 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
   },
   npc_hero: {
-    borderClass: 'border-amber-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(245,158,11,0.15)]',
-    hoverClass: 'hover:border-amber-500/60 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)]',
+    borderClass: 'border-green-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(34,197,94,0.15)]',
+    hoverClass: 'hover:border-green-500/60 hover:shadow-[0_0_20px_rgba(34,197,94,0.25)]',
   },
   npc_standard: {
-    borderClass: 'border-teal-500/30',
+    borderClass: 'border-blue-500/30',
     glowClass: '',
-    hoverClass: 'hover:border-teal-500/50 hover:shadow-[0_0_20px_rgba(45,212,191,0.15)]',
+    hoverClass: 'hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
   },
-  // Player characters
+  // Player characters (green)
   player_default: {
-    borderClass: 'border-yellow-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(234,179,8,0.15)]',
-    hoverClass: 'hover:border-yellow-500/60 hover:shadow-[0_0_20px_rgba(234,179,8,0.25)]',
+    borderClass: 'border-green-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(34,197,94,0.15)]',
+    hoverClass: 'hover:border-green-500/60 hover:shadow-[0_0_20px_rgba(34,197,94,0.25)]',
   },
   // Default fallbacks for other entity types
   location_default: {
@@ -120,15 +124,15 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     hoverClass: 'hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(52,211,153,0.15)]',
   },
   item_default: {
-    borderClass: 'border-blue-500/30',
+    borderClass: 'border-amber-500/30',
     glowClass: '',
-    hoverClass: 'hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
+    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]',
   },
   // Item subtypes
   item_standard: {
-    borderClass: 'border-blue-500/30',
+    borderClass: 'border-amber-500/30',
     glowClass: '',
-    hoverClass: 'hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
+    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]',
   },
   item_artifact: {
     borderClass: 'border-amber-500/40',
@@ -177,25 +181,25 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
   },
   faction_default: {
-    borderClass: 'border-orange-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-orange-500/50 hover:shadow-[0_0_20px_rgba(249,115,22,0.15)]',
-  },
-  quest_default: {
     borderClass: 'border-purple-500/30',
     glowClass: '',
     hoverClass: 'hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]',
+  },
+  quest_default: {
+    borderClass: 'border-teal-500/30',
+    glowClass: '',
+    hoverClass: 'hover:border-teal-500/50 hover:shadow-[0_0_20px_rgba(20,184,166,0.15)]',
   },
   other_default: {
     borderClass: 'border-slate-500/30',
     glowClass: '',
     hoverClass: 'hover:border-slate-500/50',
   },
-  // Encounter subtypes
+  // Encounter subtypes (base=orange)
   encounter_default: {
-    borderClass: 'border-amber-500/30',
+    borderClass: 'border-orange-500/30',
     glowClass: '',
-    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(251,191,36,0.15)]',
+    hoverClass: 'hover:border-orange-500/50 hover:shadow-[0_0_20px_rgba(249,115,22,0.15)]',
   },
   encounter_combat: {
     borderClass: 'border-red-500/40',
@@ -308,11 +312,11 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     glowClass: 'shadow-[0_0_15px_rgba(6,182,212,0.15)]',
     hoverClass: 'hover:border-cyan-500/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)]',
   },
-  // Event subtypes
+  // Event subtypes (base=cyan)
   event_default: {
-    borderClass: 'border-amber-500/30',
+    borderClass: 'border-cyan-500/30',
     glowClass: '',
-    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]',
+    hoverClass: 'hover:border-cyan-500/50 hover:shadow-[0_0_20px_rgba(6,182,212,0.15)]',
   },
   event_historical_event: {
     borderClass: 'border-amber-500/30',
@@ -349,11 +353,11 @@ const STYLE_MAP: Record<string, EntityStyle> = {
     glowClass: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
     hoverClass: 'hover:border-amber-400/70 hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]',
   },
-  // Deity subtypes
+  // Deity subtypes (base=yellow)
   deity_default: {
-    borderClass: 'border-purple-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
-    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
+    borderClass: 'border-yellow-500/40',
+    glowClass: 'shadow-[0_0_15px_rgba(234,179,8,0.15)]',
+    hoverClass: 'hover:border-yellow-500/60 hover:shadow-[0_0_20px_rgba(234,179,8,0.25)]',
   },
   deity_greater_deity: {
     borderClass: 'border-amber-400/50',
