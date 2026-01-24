@@ -341,6 +341,16 @@ export function MemoryPageClient({
                 {typeCounts.creature} Creatures
               </span>
             )}
+            {typeCounts.event && (
+              <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                {typeCounts.event} Lore
+              </span>
+            )}
+            {typeCounts.deity && (
+              <span className="px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">
+                {typeCounts.deity} Deities
+              </span>
+            )}
           </div>
         )}
 
