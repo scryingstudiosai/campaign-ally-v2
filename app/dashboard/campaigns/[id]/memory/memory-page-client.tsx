@@ -296,39 +296,31 @@ export function MemoryPageClient({
           </div>
         </FadeIn>
 
-        {/* Quick Stats - unified entity colors */}
-        {/* npc=blue, player=yellow, location=emerald, item=amber, creature=red,
-            faction=purple, quest=teal, encounter=orange, event=cyan, deity=violet */}
+        {/* Quick Stats - Semantic Palette Colors
+            THE LIVING: player=amber, npc=sky, deity=fuchsia
+            THE THREATS: creature=rose, encounter=orange
+            THE WORLD: location=emerald, faction=indigo, event=slate
+            OBJECTIVES: item=violet, quest=cyan */}
         {entities.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6 text-sm">
-            {typeCounts.npc && (
-              <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                {typeCounts.npc} NPCs
-              </span>
-            )}
             {typeCounts.player && (
-              <span className="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                 {typeCounts.player} Players
               </span>
             )}
-            {typeCounts.location && (
-              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                {typeCounts.location} Locations
+            {typeCounts.npc && (
+              <span className="px-3 py-1 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                {typeCounts.npc} NPCs
               </span>
             )}
-            {typeCounts.item && (
-              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                {typeCounts.item} Items
+            {typeCounts.deity && (
+              <span className="px-3 py-1 rounded-full bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30">
+                {typeCounts.deity} Deities
               </span>
             )}
-            {typeCounts.faction && (
-              <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                {typeCounts.faction} Factions
-              </span>
-            )}
-            {typeCounts.quest && (
-              <span className="px-3 py-1 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30">
-                {typeCounts.quest} Quests
+            {typeCounts.creature && (
+              <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                {typeCounts.creature} Creatures
               </span>
             )}
             {typeCounts.encounter && (
@@ -336,19 +328,29 @@ export function MemoryPageClient({
                 {typeCounts.encounter} Encounters
               </span>
             )}
-            {typeCounts.creature && (
-              <span className="px-3 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
-                {typeCounts.creature} Creatures
+            {typeCounts.location && (
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                {typeCounts.location} Locations
+              </span>
+            )}
+            {typeCounts.faction && (
+              <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                {typeCounts.faction} Factions
               </span>
             )}
             {typeCounts.event && (
-              <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              <span className="px-3 py-1 rounded-full bg-slate-500/20 text-slate-400 border border-slate-500/30">
                 {typeCounts.event} Lore
               </span>
             )}
-            {typeCounts.deity && (
+            {typeCounts.item && (
               <span className="px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">
-                {typeCounts.deity} Deities
+                {typeCounts.item} Items
+              </span>
+            )}
+            {typeCounts.quest && (
+              <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                {typeCounts.quest} Quests
               </span>
             )}
           </div>

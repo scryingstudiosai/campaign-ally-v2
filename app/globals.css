@@ -166,6 +166,12 @@ body {
 /* ═══════════════════════════════════════════
    Entity Mention Styles
    @ mention inline styles
+
+   Semantic Palette Colors:
+   THE LIVING (Identity): player=amber, npc=sky, deity=fuchsia
+   THE THREATS (Danger): creature=rose, encounter=orange
+   THE WORLD (Environment): location=emerald, faction=indigo, event=slate
+   OBJECTIVES (Rewards): item=violet, quest=cyan
 ═══════════════════════════════════════════ */
 .entity-mention {
   @apply inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-sm font-medium cursor-pointer transition-all;
@@ -176,53 +182,34 @@ body {
   @apply bg-slate-700 border-slate-600 ring-1 ring-white/20;
 }
 
-.entity-mention--npc {
-  @apply bg-blue-900/50 border-blue-700 text-blue-300;
-}
-.entity-mention--npc:hover {
-  @apply bg-blue-800/50 border-blue-600;
-}
-
+/* THE LIVING (Identity) */
 .entity-mention--player {
-  @apply bg-yellow-900/50 border-yellow-700 text-yellow-300;
-}
-.entity-mention--player:hover {
-  @apply bg-yellow-800/50 border-yellow-600;
-}
-
-.entity-mention--location {
-  @apply bg-emerald-900/50 border-emerald-700 text-emerald-300;
-}
-.entity-mention--location:hover {
-  @apply bg-emerald-800/50 border-emerald-600;
-}
-
-.entity-mention--item {
   @apply bg-amber-900/50 border-amber-700 text-amber-300;
 }
-.entity-mention--item:hover {
+.entity-mention--player:hover {
   @apply bg-amber-800/50 border-amber-600;
 }
 
+.entity-mention--npc {
+  @apply bg-sky-900/50 border-sky-700 text-sky-300;
+}
+.entity-mention--npc:hover {
+  @apply bg-sky-800/50 border-sky-600;
+}
+
+.entity-mention--deity {
+  @apply bg-fuchsia-900/50 border-fuchsia-700 text-fuchsia-300;
+}
+.entity-mention--deity:hover {
+  @apply bg-fuchsia-800/50 border-fuchsia-600;
+}
+
+/* THE THREATS (Danger) */
 .entity-mention--creature {
-  @apply bg-red-900/50 border-red-700 text-red-300;
+  @apply bg-rose-900/50 border-rose-700 text-rose-300;
 }
 .entity-mention--creature:hover {
-  @apply bg-red-800/50 border-red-600;
-}
-
-.entity-mention--faction {
-  @apply bg-purple-900/50 border-purple-700 text-purple-300;
-}
-.entity-mention--faction:hover {
-  @apply bg-purple-800/50 border-purple-600;
-}
-
-.entity-mention--quest {
-  @apply bg-teal-900/50 border-teal-700 text-teal-300;
-}
-.entity-mention--quest:hover {
-  @apply bg-teal-800/50 border-teal-600;
+  @apply bg-rose-800/50 border-rose-600;
 }
 
 .entity-mention--encounter {
@@ -232,18 +219,41 @@ body {
   @apply bg-orange-800/50 border-orange-600;
 }
 
-.entity-mention--event {
-  @apply bg-cyan-900/50 border-cyan-700 text-cyan-300;
+/* THE WORLD (Environment) */
+.entity-mention--location {
+  @apply bg-emerald-900/50 border-emerald-700 text-emerald-300;
 }
-.entity-mention--event:hover {
-  @apply bg-cyan-800/50 border-cyan-600;
+.entity-mention--location:hover {
+  @apply bg-emerald-800/50 border-emerald-600;
 }
 
-.entity-mention--deity {
-  @apply bg-yellow-900/50 border-yellow-700 text-yellow-300;
+.entity-mention--faction {
+  @apply bg-indigo-900/50 border-indigo-700 text-indigo-300;
 }
-.entity-mention--deity:hover {
-  @apply bg-yellow-800/50 border-yellow-600;
+.entity-mention--faction:hover {
+  @apply bg-indigo-800/50 border-indigo-600;
+}
+
+.entity-mention--event {
+  @apply bg-slate-800/50 border-slate-600 text-slate-300;
+}
+.entity-mention--event:hover {
+  @apply bg-slate-700/50 border-slate-500;
+}
+
+/* OBJECTIVES (Rewards) */
+.entity-mention--item {
+  @apply bg-violet-900/50 border-violet-700 text-violet-300;
+}
+.entity-mention--item:hover {
+  @apply bg-violet-800/50 border-violet-600;
+}
+
+.entity-mention--quest {
+  @apply bg-cyan-900/50 border-cyan-700 text-cyan-300;
+}
+.entity-mention--quest:hover {
+  @apply bg-cyan-800/50 border-cyan-600;
 }
 
 /* Tippy.js mention popup styling */
@@ -336,6 +346,12 @@ body {
 /* ═══════════════════════════════════════════
    Entity Link Styles
    Clickable entity references in generated content
+
+   Semantic Palette Colors:
+   THE LIVING (Identity): player=amber, npc=sky, deity=fuchsia
+   THE THREATS (Danger): creature=rose, encounter=orange
+   THE WORLD (Environment): location=emerald, faction=indigo, event=slate
+   OBJECTIVES (Rewards): item=violet, quest=cyan
 ═══════════════════════════════════════════ */
 .entity-link {
   cursor: pointer;
@@ -351,53 +367,34 @@ body {
   text-decoration-style: solid;
 }
 
-.entity-link--npc {
-  color: rgb(96 165 250); /* blue-400 */
-}
-.entity-link--npc:hover {
-  background-color: rgba(30, 64, 175, 0.3);
-}
-
+/* THE LIVING (Identity) */
 .entity-link--player {
-  color: rgb(250 204 21); /* yellow-400 */
-}
-.entity-link--player:hover {
-  background-color: rgba(161, 98, 7, 0.3);
-}
-
-.entity-link--location {
-  color: rgb(52 211 153); /* emerald-400 */
-}
-.entity-link--location:hover {
-  background-color: rgba(6, 95, 70, 0.3);
-}
-
-.entity-link--item {
   color: rgb(251 191 36); /* amber-400 */
 }
-.entity-link--item:hover {
+.entity-link--player:hover {
   background-color: rgba(146, 64, 14, 0.3);
 }
 
+.entity-link--npc {
+  color: rgb(56 189 248); /* sky-400 */
+}
+.entity-link--npc:hover {
+  background-color: rgba(7, 89, 133, 0.3);
+}
+
+.entity-link--deity {
+  color: rgb(232 121 249); /* fuchsia-400 */
+}
+.entity-link--deity:hover {
+  background-color: rgba(112, 26, 117, 0.3);
+}
+
+/* THE THREATS (Danger) */
 .entity-link--creature {
-  color: rgb(248 113 113); /* red-400 */
+  color: rgb(251 113 133); /* rose-400 */
 }
 .entity-link--creature:hover {
-  background-color: rgba(127, 29, 29, 0.3);
-}
-
-.entity-link--faction {
-  color: rgb(192 132 252); /* purple-400 */
-}
-.entity-link--faction:hover {
-  background-color: rgba(88, 28, 135, 0.3);
-}
-
-.entity-link--quest {
-  color: rgb(45 212 191); /* teal-400 */
-}
-.entity-link--quest:hover {
-  background-color: rgba(17, 94, 89, 0.3);
+  background-color: rgba(136, 19, 55, 0.3);
 }
 
 .entity-link--encounter {
@@ -407,16 +404,39 @@ body {
   background-color: rgba(154, 52, 18, 0.3);
 }
 
-.entity-link--event {
-  color: rgb(34 211 238); /* cyan-400 */
+/* THE WORLD (Environment) */
+.entity-link--location {
+  color: rgb(52 211 153); /* emerald-400 */
 }
-.entity-link--event:hover {
-  background-color: rgba(8, 145, 178, 0.3);
+.entity-link--location:hover {
+  background-color: rgba(6, 95, 70, 0.3);
 }
 
-.entity-link--deity {
+.entity-link--faction {
+  color: rgb(129 140 248); /* indigo-400 */
+}
+.entity-link--faction:hover {
+  background-color: rgba(55, 48, 163, 0.3);
+}
+
+.entity-link--event {
+  color: rgb(148 163 184); /* slate-400 */
+}
+.entity-link--event:hover {
+  background-color: rgba(51, 65, 85, 0.3);
+}
+
+/* OBJECTIVES (Rewards) */
+.entity-link--item {
   color: rgb(167 139 250); /* violet-400 */
 }
-.entity-link--deity:hover {
+.entity-link--item:hover {
   background-color: rgba(91, 33, 182, 0.3);
+}
+
+.entity-link--quest {
+  color: rgb(34 211 238); /* cyan-400 */
+}
+.entity-link--quest:hover {
+  background-color: rgba(8, 145, 178, 0.3);
 }
