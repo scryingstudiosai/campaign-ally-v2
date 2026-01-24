@@ -67,6 +67,20 @@ export async function POST(request: Request) {
     if (additionalContext?.purpose) {
       descriptionParts.push(`Purpose: ${additionalContext.purpose}`)
     }
+    // Include mechanics data
+    if (additionalContext?.size) {
+      descriptionParts.push(`Size: ${additionalContext.size}`)
+    }
+    if (additionalContext?.hazards && Array.isArray(additionalContext.hazards) && additionalContext.hazards.length > 0) {
+      const hazardNames = additionalContext.hazards.map((h: { name?: string } | string) =>
+        typeof h === 'object' && h.name ? h.name : String(h)
+      ).join(', ')
+      descriptionParts.push(`Notable hazards: ${hazardNames}`)
+    }
+    if (additionalContext?.resources && Array.isArray(additionalContext.resources) && additionalContext.resources.length > 0) {
+      const resourceList = additionalContext.resources.join(', ')
+      descriptionParts.push(`Resources: ${resourceList}`)
+    }
     if (additionalContext?.additionalDetails) {
       descriptionParts.push(additionalContext.additionalDetails)
     }

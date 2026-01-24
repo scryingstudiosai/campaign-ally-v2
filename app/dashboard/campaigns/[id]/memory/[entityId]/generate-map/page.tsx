@@ -261,6 +261,7 @@ interface Relationship {
 interface RichContext {
   brain: Record<string, unknown>;
   soul: Record<string, unknown>;
+  mechanics: Record<string, unknown>;
   children: ChildLocation[];
   relationships: Relationship[];
   terrain: string;
@@ -277,6 +278,7 @@ export default function GenerateMapPage() {
   const [richContext, setRichContext] = useState<RichContext>({
     brain: {},
     soul: {},
+    mechanics: {},
     children: [],
     relationships: [],
     terrain: '',
@@ -419,11 +421,17 @@ export default function GenerateMapPage() {
         };
       });
 
-    // 4. Extract brain and soul from entity
+    // 4. Extract brain, soul, and mechanics from entity
     const brain = data.brain || data.attributes?.brain || {};
     const soul = data.soul || data.attributes?.soul || {};
-    const terrain = String(data.attributes?.terrain || brain.terrain || soul.terrain || '');
-    const climate = String(data.attributes?.climate || brain.climate || soul.climate || '');
+    const mechanics = data.mechanics || data.attributes?.mechanics || {};
+
+    // Get terrain from mechanics first (most accurate), then fall back to other sources
+    const mechanicsTerrain = mechanics.terrain
+      ? (Array.isArray(mechanics.terrain) ? mechanics.terrain.join(', ') : String(mechanics.terrain))
+      : '';
+    const terrain = mechanicsTerrain || String(data.attributes?.terrain || brain.terrain || soul.terrain || '');
+    const climate = String(mechanics.climate || data.attributes?.climate || brain.climate || soul.climate || '');
 
     // Combine children from parent_id/attributes and relationships, dedupe by id
     const allChildren = [...childrenByParent, ...childFromRelationships];
@@ -437,6 +445,7 @@ export default function GenerateMapPage() {
     setRichContext({
       brain,
       soul,
+      mechanics,
       children: uniqueChildren,
       relationships: mappedRelationships.filter(r =>
         r.relationship_type !== 'contains' && r.relationship_type !== 'located_in'
@@ -586,10 +595,14 @@ FINAL REMINDERS:
             // Pass rich context for better generation
             additionalContext: {
               terrain: richContext.terrain || environment,
-              climate: richContext.climate,
+              climate: richContext.climate || richContext.mechanics.climate,
               childLocations: richContext.children.map(c => ({ name: c.name, type: c.sub_type })),
               atmosphere: richContext.brain.atmosphere || richContext.soul.atmosphere,
               purpose: richContext.brain.purpose || richContext.soul.purpose,
+              // Include mechanics data
+              size: richContext.mechanics.size,
+              hazards: richContext.mechanics.hazards,
+              resources: richContext.mechanics.resources,
               additionalDetails,
             },
           }),
@@ -869,9 +882,10 @@ FINAL REMINDERS:
   // Check if we have meaningful context
   const hasBrainContext = Object.keys(richContext.brain).length > 0;
   const hasSoulContext = Object.keys(richContext.soul).length > 0;
+  const hasMechanicsContext = Object.keys(richContext.mechanics).length > 0;
   const hasChildren = richContext.children.length > 0;
   const hasRelationships = richContext.relationships.length > 0;
-  const hasAnyContext = hasBrainContext || hasSoulContext || hasChildren || entity?.description;
+  const hasAnyContext = hasBrainContext || hasSoulContext || hasMechanicsContext || hasChildren || entity?.description;
 
   return (
     <div className="min-h-screen bg-stone-950 p-6">
@@ -1046,6 +1060,42 @@ Example: Include a central fountain, secret passage behind the bookshelf, collap
                         )}
                         {richContext.soul.terrain && (
                           <p><span className="text-stone-500">Terrain:</span> {String(richContext.soul.terrain)}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mechanics Context (Game Details) */}
+                  {hasMechanicsContext && (
+                    <div className="p-3 bg-stone-800/50 rounded-lg border border-cyan-500/30">
+                      <p className="text-xs font-medium text-cyan-400 mb-2">Mechanics (Game Details)</p>
+                      <div className="space-y-1 text-xs text-stone-400">
+                        {richContext.mechanics.size && (
+                          <p><span className="text-stone-500">Size:</span> {String(richContext.mechanics.size)}</p>
+                        )}
+                        {richContext.mechanics.terrain && (
+                          <p><span className="text-stone-500">Terrain:</span> {
+                            Array.isArray(richContext.mechanics.terrain)
+                              ? (richContext.mechanics.terrain as string[]).join(', ')
+                              : String(richContext.mechanics.terrain)
+                          }</p>
+                        )}
+                        {richContext.mechanics.hazards && (richContext.mechanics.hazards as unknown[]).length > 0 && (
+                          <p><span className="text-stone-500">Hazards:</span> {
+                            (richContext.mechanics.hazards as Array<{name?: string} | string>).map(h =>
+                              typeof h === 'object' && h.name ? h.name : String(h)
+                            ).join(', ')
+                          }</p>
+                        )}
+                        {richContext.mechanics.resources && (richContext.mechanics.resources as unknown[]).length > 0 && (
+                          <p><span className="text-stone-500">Resources:</span> {
+                            Array.isArray(richContext.mechanics.resources)
+                              ? (richContext.mechanics.resources as string[]).join(', ')
+                              : String(richContext.mechanics.resources)
+                          }</p>
+                        )}
+                        {richContext.mechanics.climate && (
+                          <p><span className="text-stone-500">Climate:</span> {String(richContext.mechanics.climate)}</p>
                         )}
                       </div>
                     </div>
