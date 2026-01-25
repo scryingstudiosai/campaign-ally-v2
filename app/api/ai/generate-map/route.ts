@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
-import { buildMapPrompt, getLocationCategory, getMapGenerationSettings, MAP_VISUAL_PRESETS } from '@/lib/ai/map-prompts'
+import { buildMapPrompt, getLocationCategory, getMapGenerationSettings, MAP_VISUAL_PRESETS, MapAspectRatio } from '@/lib/ai/map-prompts'
 import { DEFAULT_MAP_STYLE } from '@/lib/ai/map-styles'
 
 const openai = new OpenAI()
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const supabase = createClient()
 
   try {
-    const { locationId, campaignId, attemptNumber = 1, visualStyle, additionalContext } = await request.json()
+    const { locationId, campaignId, attemptNumber = 1, visualStyle, aspectRatio, additionalContext } = await request.json()
 
     if (!locationId || !campaignId) {
       return NextResponse.json({ error: 'Missing locationId or campaignId' }, { status: 400 })
@@ -91,6 +91,19 @@ export async function POST(request: Request) {
       ? (visualStyle as keyof typeof MAP_VISUAL_PRESETS)
       : undefined
 
+    // Validate aspect ratio
+    const validAspectRatio: MapAspectRatio = ['square', 'landscape', 'portrait'].includes(aspectRatio)
+      ? (aspectRatio as MapAspectRatio)
+      : 'square'
+
+    // Map aspect ratio to GPT Image size
+    const imageSizeMap: Record<MapAspectRatio, '1024x1024' | '1792x1024' | '1024x1792'> = {
+      square: '1024x1024',
+      landscape: '1536x1024',
+      portrait: '1024x1536',
+    }
+    const imageSize = imageSizeMap[validAspectRatio]
+
     // Build the optimized prompt
     const prompt = buildMapPrompt({
       locationName: location.name,
@@ -103,9 +116,11 @@ export async function POST(request: Request) {
       attemptNumber,
       visualStyle: validVisualStyle,
       additionalContext: additionalContext?.additionalDetails,
+      aspectRatio: validAspectRatio,
     })
 
     console.log('Visual style:', validVisualStyle || 'default')
+    console.log('Aspect ratio:', validAspectRatio, '-> size:', imageSize)
     console.log('Additional context received:', additionalContext ? Object.keys(additionalContext) : 'none')
 
     const category = getLocationCategory(location.sub_type || 'region')
@@ -116,15 +131,16 @@ export async function POST(request: Request) {
     console.log('Category:', category)
     console.log('Attempt:', attemptNumber)
     console.log('Visual style:', validVisualStyle || 'default')
-    console.log('Campaign style:', campaignStyle.artDirection)
+    console.log('Aspect ratio:', validAspectRatio)
+    console.log('Image size:', imageSize)
     console.log('Prompt length:', prompt.length)
 
-    // Generate with GPT Image 1.5 (much better at following "no text" instructions)
+    // Generate with GPT Image 1 (much better at following "no text" instructions)
     const response = await openai.images.generate({
       model: 'gpt-image-1',
       prompt: prompt,
       n: 1,
-      size: '1024x1024',
+      size: imageSize,
     })
 
     // GPT Image returns base64, not URL
@@ -153,6 +169,7 @@ export async function POST(request: Request) {
         category,
         style: campaignStyle.artDirection,
         visualStyle: validVisualStyle || 'classic-dnd',
+        aspectRatio: validAspectRatio,
         attemptNumber,
         warning: 'Storage upload failed. Using temporary data URL.',
       })
@@ -173,6 +190,8 @@ export async function POST(request: Request) {
           map_generated_at: new Date().toISOString(),
           map_category: category,
           map_style: campaignStyle.artDirection,
+          map_visual_style: validVisualStyle || 'classic-dnd',
+          map_aspect_ratio: validAspectRatio,
           map_generation_attempts: attemptNumber,
         },
       })
@@ -187,6 +206,7 @@ export async function POST(request: Request) {
       category,
       style: campaignStyle.artDirection,
       visualStyle: validVisualStyle || 'classic-dnd',
+      aspectRatio: validAspectRatio,
       attemptNumber,
     })
   } catch (error: unknown) {

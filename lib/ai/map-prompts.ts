@@ -8,6 +8,9 @@ export type MapDetailLevel = 'overview' | 'standard' | 'detailed'
 // Re-export for convenience
 export { MAP_VISUAL_PRESETS }
 
+// Aspect ratio options for map generation
+export type MapAspectRatio = 'square' | 'landscape' | 'portrait'
+
 interface MapPromptOptions {
   locationName: string
   locationType: string
@@ -20,6 +23,8 @@ interface MapPromptOptions {
   // New: Direct style preset selection
   visualStyle?: keyof typeof MAP_VISUAL_PRESETS
   additionalContext?: string
+  // New: Aspect ratio selection
+  aspectRatio?: MapAspectRatio
 }
 
 // ============================================
@@ -221,6 +226,63 @@ NO black borders, NO padding, NO margins, NO empty space around edges.
 The map terrain should extend to all four edges of the image.
 `.trim()
 
+// ============================================
+// GEOGRAPHIC REALISM RULES
+// ============================================
+const GEOGRAPHIC_REALISM_RULES = `
+GEOGRAPHIC LOGIC - The map MUST make real-world geographic sense:
+
+RIVERS (critical):
+- Rivers ALWAYS flow from HIGH elevation (mountains/hills) DOWN to sea or lake
+- Rivers CONVERGE (join together) as they flow downhill - they do NOT split except at deltas near coast
+- Rivers follow valleys BETWEEN hills/mountains, NEVER flow over peaks
+- A city cannot be "upstream" of a mountain that blocks the river source
+
+SETTLEMENTS:
+- Major cities located at: river mouths, natural harbors, crossroads, or near resources
+- Villages cluster near water sources and farmable land
+- Fortresses/castles on HIGH GROUND for defense
+- NO settlements randomly placed in dense forest or on mountain peaks
+
+TERRAIN DISTRIBUTION:
+- Mountains form in CHAINS or RANGES, not randomly scattered individual peaks
+- Deserts form on the leeward (rain shadow) side of mountain ranges
+- Forests need adequate rainfall - place near water or in wet climate zones
+- Swamps/marshes in LOW-LYING areas near coasts or slow river sections
+- Farmland NEAR settlements and water sources
+
+ROADS:
+- Roads connect settlements following the EASIEST terrain path
+- Roads go THROUGH mountain passes, not directly over peaks
+- Trade routes follow rivers or coastlines where possible
+`.trim()
+
+// Aspect ratio instructions
+const getAspectRatioInstructions = (ratio: MapAspectRatio): string => {
+  switch (ratio) {
+    case 'landscape':
+      return `
+ASPECT RATIO: LANDSCAPE (wide format, approximately 16:9 or 3:2)
+- The map should be WIDER than it is tall
+- Compose the terrain to take advantage of the horizontal space
+- Good for showing coastlines, mountain ranges running east-west, or wide regions
+`.trim()
+    case 'portrait':
+      return `
+ASPECT RATIO: PORTRAIT (tall format, approximately 9:16 or 2:3)
+- The map should be TALLER than it is wide
+- Compose the terrain to take advantage of the vertical space
+- Good for showing river valleys, north-south mountain ranges, or long regions
+`.trim()
+    default:
+      return `
+ASPECT RATIO: SQUARE (1:1)
+- The map should fill a square canvas evenly
+- Balance composition in all directions
+`.trim()
+  }
+}
+
 // Legacy constants kept for compatibility
 const CRITICAL_VIEWPOINT_RULES = `
 VIEWPOINT: Strictly 2D top-down orthographic (90° straight down, zero tilt).
@@ -328,37 +390,36 @@ const CATEGORY_PROMPTS: Record<LocationCategory, (opts: MapPromptOptions) => str
     return `
 ${CRITICAL_FIRST_RULES}
 
-${VISUAL_QUALITY_RULES}
-
-Create a stunning fantasy world/continent map for "${opts.locationName}".
-
 ${stylePrompt}
 
-WORLD MAP STRUCTURE:
-- Grand landmass(es) surrounded by rich deep blue ocean with subtle wave textures
-- 2-3 dramatic mountain ranges with snow-capped peaks, individually defined with shadows
-- Multiple distinct biomes: lush green forests, golden plains, warm sandy deserts, icy tundra
-- Major river systems flowing naturally from mountains to coast, with visible tributaries
-- Organic coastlines with bays, peninsulas, and small islands
-- ${Math.max(6, childCount)} distinct regions with clear visual separation for marker placement
+${GEOGRAPHIC_REALISM_RULES}
 
-QUALITY REQUIREMENTS:
-- This must look like official D&D cartography, not a simple sketch
-- Rich, varied colors - NOT flat single-tone greens
-- Each terrain type visually distinct and beautiful
-- Mountains with depth and drama, forests with individual tree detail
-- Professional illustration quality
+${getAspectRatioInstructions(opts.aspectRatio || 'square')}
+
+Create a fantasy world/continent map for "${opts.locationName}".
+
+WORLD MAP STRUCTURE:
+- Landmass(es) surrounded by ocean
+- 2-3 mountain RANGES (not scattered peaks) with proper rain shadow effects
+- Rivers flowing FROM mountains DOWN to sea, converging as they go
+- Multiple distinct biomes placed logically based on geography
+- Major cities at river mouths, harbors, or crossroads
+- ${Math.max(6, childCount)} distinct regions for marker placement
 
 ${NO_BORDERS_RULE}
 
 ${opts.description ? `WORLD THEME: ${opts.description}` : ''}
 ${opts.climate ? `DOMINANT CLIMATE: ${opts.climate}` : ''}
 ${opts.additionalContext ? `ATMOSPHERE: ${opts.additionalContext}` : ''}
-${childCount > 0 ? `KEY REGIONS TO SHOW (as distinct visual zones, NOT labeled): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${childCount > 0 ? `KEY REGIONS (place logically based on geography, NOT labeled): ${opts.childLocations!.map((c) => `${c.name} (${c.type})`).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. Strictly 2D top-down. Edge-to-edge illustration.
+CRITICAL REMINDERS:
+- ZERO text, labels, legend, or compass anywhere
+- Strictly 2D TOP-DOWN orthographic view (bird's eye, not angled)
+- Edge-to-edge illustration filling the canvas
+- Follow the SPECIFIC rendering technique described above - each style should look DRAMATICALLY different
 `.trim()
   },
 
@@ -371,30 +432,23 @@ FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. S
     return `
 ${CRITICAL_FIRST_RULES}
 
-${VISUAL_QUALITY_RULES}
-
-Create a stunning fantasy regional map for "${opts.locationName}".
-
 ${stylePrompt}
 
-REGIONAL MAP STRUCTURE:
-- Rich water features: rivers with natural curves, lakes with depth gradients, coastlines with detail
-- Well-defined road network with brown paths connecting settlements and landmarks
-- Multiple terrain types with CLEAR visual distinction:
-  * Forests: Dense clusters of individual stylized trees, varying greens
-  * Mountains: Dramatic peaks with snow caps where appropriate, shadows for depth
-  * Plains: Golden or light green grasslands with subtle texture
-  * Hills: Rolling terrain with shading
-  * Farmland: Patchwork patterns in warm yellows and greens
-  * Marsh/Swamp: Darker greens with water pockets
-- ${Math.max(6, childCount)} distinct landmark zones with clear open areas for marker placement
+${GEOGRAPHIC_REALISM_RULES}
 
-QUALITY REQUIREMENTS:
-- Professional D&D cartography quality - this should look like the Sword Coast map
-- Rich, vibrant colors that vary across the map - NOT flat monotone
-- Each area visually interesting and distinct
-- Terrain has texture and depth, not flat colored blobs
-- Epic sense of adventure and exploration
+${getAspectRatioInstructions(opts.aspectRatio || 'square')}
+
+Create a fantasy regional map for "${opts.locationName}".
+
+REGIONAL MAP STRUCTURE:
+- Rivers flowing DOWNHILL from high ground to low, converging (not splitting)
+- Roads connecting settlements via LOGICAL paths (through passes, along rivers)
+- Terrain placed with geographic logic:
+  * Mountains in RANGES, not scattered
+  * Forests in areas with adequate rainfall
+  * Settlements near water and crossroads
+  * Farmland surrounding villages
+- ${Math.max(6, childCount)} distinct landmark zones for marker placement
 
 ${NO_BORDERS_RULE}
 
@@ -402,11 +456,15 @@ ${opts.description ? `REGION THEME: ${opts.description}` : ''}
 ${opts.terrain ? `PRIMARY TERRAIN: ${opts.terrain}` : ''}
 ${opts.climate ? `CLIMATE: ${opts.climate}` : ''}
 ${opts.additionalContext ? `ATMOSPHERE: ${opts.additionalContext}` : ''}
-${childCount > 0 ? `KEY LOCATIONS TO SHOW (as distinct visual zones, NOT labeled): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${childCount > 0 ? `KEY LOCATIONS (place based on geographic logic - cities near water/roads, fortresses on high ground, etc.): ${opts.childLocations!.map((c) => `${c.name} (${c.type})`).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. Strictly 2D top-down. Edge-to-edge illustration.
+CRITICAL REMINDERS:
+- ZERO text, labels, legend, or compass anywhere
+- Strictly 2D TOP-DOWN orthographic view (bird's eye, not angled)
+- Edge-to-edge illustration filling the canvas
+- Follow the SPECIFIC rendering technique described above - each style should look DRAMATICALLY different
 `.trim()
   },
 
@@ -419,41 +477,40 @@ FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. S
     return `
 ${CRITICAL_FIRST_RULES}
 
-${VISUAL_QUALITY_RULES}
-
-Create a beautiful fantasy city/town map for "${opts.locationName}".
-
 ${stylePrompt}
 
-SETTLEMENT MAP STRUCTURE:
-- Distinctive boundary: stone walls, natural river bend, or coastline
-- Central hub: grand plaza, market square, or castle grounds
-- 4-6 visually distinct districts with different building densities and roof colors
-- Main thoroughfares connecting gates through the city center
-- Buildings rendered as detailed roof shapes from above:
-  * Larger, grander buildings near center (temples, manors, guild halls)
-  * Medium buildings for shops and homes
-  * Smaller, denser buildings toward edges
-- Water features: rivers, canals, harbor areas with rich blue tones
-- Parks and gardens: green spaces breaking up the urban density
-- At least 6 clear landmark zones for marker placement
+${getAspectRatioInstructions(opts.aspectRatio || 'square')}
 
-QUALITY REQUIREMENTS:
-- Professional fantasy cartography quality
-- Buildings have varied roof colors: warm terracottas, grays, browns, some blue slate
-- Streets clearly visible between buildings
-- District character visible through building style/density
-- Rich detail but still readable for placing markers
+Create a fantasy city/town map for "${opts.locationName}".
+
+SETTLEMENT LOGIC:
+- City placement makes sense: near river, harbor, or crossroads
+- If there's a river, it flows THROUGH logically (enters from one side, exits another or to sea)
+- Castle/fortress on highest ground for defense
+- Market district near main gates or central crossroads
+- Docks/harbor district along waterfront if coastal/river city
+- Poor districts toward edges, wealthy toward center or high ground
+
+STRUCTURE:
+- Clear boundary: walls, river, or natural edge
+- Main roads connecting gates through center
+- 4-6 visually distinct districts
+- Buildings as roof shapes from directly above
+- At least 6 clear areas for marker placement
 
 ${NO_BORDERS_RULE}
 
 ${opts.description ? `SETTLEMENT CHARACTER: ${opts.description}` : ''}
 ${opts.additionalContext ? `ATMOSPHERE: ${opts.additionalContext}` : ''}
-${childCount > 0 ? `KEY DISTRICTS/LOCATIONS (show as distinct areas, NOT labeled): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${childCount > 0 ? `KEY DISTRICTS (place logically - docks near water, castle on high ground, etc.): ${opts.childLocations!.map((c) => `${c.name} (${c.type})`).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. Strictly 2D top-down. Edge-to-edge illustration.
+CRITICAL REMINDERS:
+- ZERO text, labels, legend, or compass anywhere
+- Strictly 2D TOP-DOWN orthographic view (bird's eye, not angled)
+- Edge-to-edge illustration filling the canvas
+- Follow the SPECIFIC rendering technique described above
 `.trim()
   },
 
@@ -462,6 +519,8 @@ FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. S
 
     return `
 ${CRITICAL_FIRST_RULES}
+
+${getAspectRatioInstructions(opts.aspectRatio || 'square')}
 
 Create a detailed architectural floor plan for "${opts.locationName}".
 
@@ -473,17 +532,9 @@ FLOOR PLAN STYLE:
 
 STRUCTURE:
 - Logical room layout with clear flow between spaces
-- Doors shown as gaps in walls (not drawn rectangles)
-- Floor textures vary by room type:
-  * Main halls: polished stone or elegant wood
-  * Private rooms: warm wood floors, rugs
-  * Service areas: simple stone
-  * Special rooms: distinctive textures (library = wood, temple = marble)
-- Furniture rendered as simple but recognizable shapes from above:
-  * Tables: rectangles with slight detail
-  * Chairs: small shapes around tables
-  * Beds: rounded rectangles
-  * Storage: rectangular chests, wardrobes
+- Doors shown as gaps in walls
+- Floor textures vary by room type
+- Furniture as simple shapes from above
 - One main hall or central organizing space
 - Clear walkable paths between furniture
 
@@ -491,11 +542,14 @@ ${NO_BORDERS_RULE}
 
 ${opts.description ? `BUILDING CHARACTER: ${opts.description}` : ''}
 ${opts.additionalContext ? `ATMOSPHERE: ${opts.additionalContext}` : ''}
-${childCount > 0 ? `ROOMS TO INCLUDE (show as distinct spaces): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${childCount > 0 ? `ROOMS TO INCLUDE: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual floor plan with ZERO text. No labels or room names. Strictly 2D top-down. Edge-to-edge illustration.
+CRITICAL REMINDERS:
+- ZERO text, labels, or room names anywhere
+- Strictly 2D TOP-DOWN orthographic view
+- Edge-to-edge illustration filling the canvas
 `.trim()
   },
 
@@ -505,6 +559,8 @@ FINAL REMINDER: Pure visual floor plan with ZERO text. No labels or room names. 
     return `
 ${CRITICAL_FIRST_RULES}
 
+${getAspectRatioInstructions(opts.aspectRatio || 'square')}
+
 Create a professional dungeon battlemap for "${opts.locationName}".
 
 DUNGEON MAP STYLE:
@@ -513,35 +569,25 @@ DUNGEON MAP STYLE:
 - Atmospheric but functional for gameplay
 
 STRUCTURE:
-- Solid dark rock or stone for walls and impassable areas
-- Playable floor areas with rich texture:
-  * Stone floors: individual tiles or flagstones visible
-  * Cave floors: rough natural stone texture
-  * Special areas: different textures for shrine, treasury, lair
-- Corridors of varying widths connecting chambers
-- 4-8 distinct rooms with variety:
-  * 1 large central chamber (boss room, great hall)
-  * 2-3 medium rooms (guardrooms, shrines, storage)
-  * 2-4 small rooms (cells, alcoves, secret chambers)
-- Edge style consistent throughout:
-  * Natural caves: rough organic edges
-  * Constructed: straight cut stone walls
-- Clear floor visibility in all playable areas - no fade to black
-
-VISUAL INTEREST:
-- Occasional floor details: cracks, debris, puddles, old bloodstains
-- Rubble piles near damaged walls
-- Different floor elevations suggested by shading where appropriate
+- Solid dark rock or stone for walls
+- Rich floor textures (stone tiles, rough cave floor)
+- Corridors connecting 4-8 chambers
+- One large central chamber, several smaller rooms
+- Consistent edge style (organic caves OR constructed)
+- Clear floor visibility in all playable areas
 
 ${NO_BORDERS_RULE}
 
 ${opts.description ? `DUNGEON ATMOSPHERE: ${opts.description}` : ''}
 ${opts.additionalContext ? `THEME: ${opts.additionalContext}` : ''}
-${childCount > 0 ? `KEY CHAMBERS (show as distinct areas): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${childCount > 0 ? `KEY CHAMBERS: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual map with ZERO text. No labels or room names. Strictly 2D top-down. Edge-to-edge illustration.
+CRITICAL REMINDERS:
+- ZERO text, labels, or room names anywhere
+- Strictly 2D TOP-DOWN orthographic view
+- Edge-to-edge illustration filling the canvas
 `.trim()
   },
 
@@ -554,31 +600,23 @@ FINAL REMINDER: Pure visual map with ZERO text. No labels or room names. Strictl
     return `
 ${CRITICAL_FIRST_RULES}
 
-${VISUAL_QUALITY_RULES}
-
-Create a beautiful wilderness area map for "${opts.locationName}".
-
 ${stylePrompt}
 
-WILDERNESS MAP STRUCTURE:
-- Organic natural shapes throughout (no artificial straight lines)
-- Primary terrain covering 60-70% with rich detail:
-  * Forests: Individual stylized trees, varying shades of green, depth through shadows
-  * Mountains: Dramatic peaks with snow where appropriate
-  * Grasslands: Golden and green with subtle texture variation
-  * Swamps: Dark greens with water pools and dead trees
-- 2-3 contrasting terrain elements for visual variety
-- Winding paths and trails in brown, naturally curving
-- 4-6 open clearings for marker placement
-- Water features with rich blue tones: streams, ponds, rivers
-- Visual anchor points: clearings, crossroads, river fords, ancient ruins, cave mouths
+${GEOGRAPHIC_REALISM_RULES}
 
-QUALITY REQUIREMENTS:
-- Professional fantasy cartography quality
-- Rich, varied colors - each terrain type distinct
-- Trees rendered individually or as detailed clusters, not flat blobs
-- Sense of depth and adventure
-- Beautiful enough to display as art
+${getAspectRatioInstructions(opts.aspectRatio || 'square')}
+
+Create a wilderness area map for "${opts.locationName}".
+
+WILDERNESS STRUCTURE:
+- Organic natural shapes (no artificial straight lines)
+- Water flows DOWNHILL - streams and rivers converge, not split
+- Terrain transitions make sense (forest to grassland to desert, not random)
+- Primary terrain covering 60-70%
+- 2-3 contrasting terrain elements
+- Winding paths following natural contours
+- 4-6 open clearings for marker placement
+- Visual anchors: crossroads, river fords, ruins, cave mouths
 
 ${NO_BORDERS_RULE}
 
@@ -586,11 +624,15 @@ ${opts.description ? `WILDERNESS CHARACTER: ${opts.description}` : ''}
 ${opts.terrain ? `PRIMARY TERRAIN: ${opts.terrain}` : ''}
 ${opts.climate ? `CLIMATE: ${opts.climate}` : ''}
 ${opts.additionalContext ? `ATMOSPHERE: ${opts.additionalContext}` : ''}
-${childCount > 0 ? `POINTS OF INTEREST (show as distinct visual areas, NOT labeled): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${childCount > 0 ? `POINTS OF INTEREST (place logically in terrain): ${opts.childLocations!.map((c) => `${c.name} (${c.type})`).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. Strictly 2D top-down. Edge-to-edge illustration.
+CRITICAL REMINDERS:
+- ZERO text, labels, legend, or compass anywhere
+- Strictly 2D TOP-DOWN orthographic view (bird's eye, not angled)
+- Edge-to-edge illustration filling the canvas
+- Follow the SPECIFIC rendering technique described above
 `.trim()
   },
 }

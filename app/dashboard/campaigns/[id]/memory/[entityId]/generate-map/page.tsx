@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { MAP_VISUAL_PRESETS } from '@/lib/ai/map-prompts';
+import { MAP_VISUAL_PRESETS, MapAspectRatio } from '@/lib/ai/map-prompts';
 
 // Determine if this map type should use the Atlas-optimized generation
 // Atlas maps: region, city (for world/overland maps with terrain and settlements)
@@ -297,6 +297,7 @@ export default function GenerateMapPage() {
   const [mapType, setMapType] = useState('battlemap');
   const [style, setStyle] = useState('realistic');
   const [visualStyle, setVisualStyle] = useState<keyof typeof MAP_VISUAL_PRESETS>('classic-dnd');
+  const [aspectRatio, setAspectRatio] = useState<MapAspectRatio>('square');
   const [environment, setEnvironment] = useState('none');
   const [additionalDetails, setAdditionalDetails] = useState('');
 
@@ -596,6 +597,8 @@ FINAL REMINDERS:
             attemptNumber: 1,
             // Pass visual style preset for high-quality cartography
             visualStyle,
+            // Pass aspect ratio for map dimensions
+            aspectRatio,
             // Pass rich context for better generation
             additionalContext: {
               terrain: richContext.terrain || environment,
@@ -992,6 +995,38 @@ FINAL REMINDERS:
                             {s.label}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Aspect Ratio - for Atlas maps */}
+                {isAtlasMapType(mapType) && (
+                  <div className="space-y-2">
+                    <Label className="text-stone-300">Aspect Ratio</Label>
+                    <Select value={aspectRatio} onValueChange={(v) => setAspectRatio(v as MapAspectRatio)}>
+                      <SelectTrigger className="bg-stone-800 border-stone-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-stone-900 border-stone-700">
+                        <SelectItem value="square">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border border-stone-400" />
+                            <span>Square (1:1)</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="landscape">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-4 border border-stone-400" />
+                            <span>Landscape (3:2)</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="portrait">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-6 border border-stone-400" />
+                            <span>Portrait (2:3)</span>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
