@@ -54,6 +54,11 @@ export function AtlasExplorer({
   const [availableEntities, setAvailableEntities] = useState<LivingEntity[]>([])
   const mapImageRef = useRef<HTMLImageElement>(null)
 
+  // Debug: Log edit mode changes
+  useEffect(() => {
+    console.log('[Atlas Debug] Edit mode changed:', isEditMode)
+  }, [isEditMode])
+
   // Fetch location data when current location changes
   useEffect(() => {
     const fetchLocationData = async () => {
@@ -204,13 +209,28 @@ export function AtlasExplorer({
 
   // Handle click on map in edit mode
   const handleMapClick = useCallback(
-    (e: React.MouseEvent<HTMLImageElement>) => {
-      if (!isEditMode || !mapImageRef.current) return
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      console.log('[Atlas Debug] === MAP CLICK ===')
+      console.log('[Atlas Debug] isEditMode:', isEditMode)
+      console.log('[Atlas Debug] mapImageRef.current:', !!mapImageRef.current)
+      console.log('[Atlas Debug] Click target:', (e.target as HTMLElement).tagName)
+      console.log('[Atlas Debug] Event type:', e.type)
+
+      if (!isEditMode) {
+        console.log('[Atlas Debug] Early return - not in edit mode')
+        return
+      }
+      if (!mapImageRef.current) {
+        console.log('[Atlas Debug] Early return - no mapImageRef')
+        return
+      }
 
       // Get the click position relative to the image
       const rect = mapImageRef.current.getBoundingClientRect()
       const x = ((e.clientX - rect.left) / rect.width) * 100
       const y = ((e.clientY - rect.top) / rect.height) * 100
+
+      console.log('[Atlas Debug] Calculated position:', { x, y })
 
       // Set pending position and show entity selector
       setPendingMarkerPosition({ x, y })
@@ -398,7 +418,10 @@ export function AtlasExplorer({
         </button>
 
         <button
-          onClick={() => setIsEditMode(!isEditMode)}
+          onClick={() => {
+            console.log('[Atlas Debug] Edit button clicked, toggling from', isEditMode, 'to', !isEditMode)
+            setIsEditMode(!isEditMode)
+          }}
           className={cn(
             'p-2.5 rounded-lg transition-colors shadow-lg',
             isEditMode
@@ -486,7 +509,20 @@ export function AtlasExplorer({
               wrapperClass="!w-full !h-full"
               contentClass="!w-full !h-full flex items-center justify-center"
             >
-              <div className="relative inline-block">
+              <div
+                className="relative inline-block"
+                onClick={(e) => {
+                  console.log('[Atlas Debug] Wrapper div onClick fired')
+                  handleMapClick(e)
+                }}
+                onPointerUp={(e) => {
+                  console.log('[Atlas Debug] Wrapper div onPointerUp fired, button:', e.button)
+                  if (isEditMode && e.button === 0) {
+                    handleMapClick(e as unknown as React.MouseEvent<HTMLDivElement>)
+                  }
+                }}
+                style={{ cursor: isEditMode ? 'crosshair' : 'grab' }}
+              >
                 {/* Map Image */}
                 {mapImageUrl && (
                   <img
@@ -498,7 +534,6 @@ export function AtlasExplorer({
                       isEditMode && 'cursor-crosshair'
                     )}
                     draggable={false}
-                    onClick={handleMapClick}
                     style={{
                       maxHeight: 'calc(100vh - 2rem)',
                       width: 'auto',
