@@ -149,7 +149,7 @@ export const MAP_STYLE_PRESETS: Record<string, MapStylePreset> = {
     lineWeight: 'thin',
     texture: 'subtle',
     palette: 'sepia-dark',
-    prompt: MAP_VISUAL_PRESETS['parchment-classic'].prompt,
+    prompt: MAP_VISUAL_PRESETS['parchment-antique'].prompt,
   },
   'blueprint': {
     label: 'Blueprint',
@@ -166,7 +166,7 @@ export const MAP_STYLE_PRESETS: Record<string, MapStylePreset> = {
     lineWeight: 'bold',
     texture: 'medium',
     palette: 'dark-muted',
-    prompt: MAP_VISUAL_PRESETS['vibrant-inkarnate'].prompt,
+    prompt: MAP_VISUAL_PRESETS['vibrant-digital'].prompt,
   },
   'darkest-dungeon': {
     label: 'Darkest Dungeon',
