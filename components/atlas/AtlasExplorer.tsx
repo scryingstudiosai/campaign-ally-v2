@@ -9,7 +9,7 @@ import { AtlasMarker } from './AtlasMarker'
 import { AtlasSidePanel } from './AtlasSidePanel'
 import { EntityQuickView } from './EntityQuickView'
 import { cn } from '@/lib/utils'
-import { Search, Edit, ZoomIn, ZoomOut, Maximize2, Layers, Eye, Swords, Users, MapPin } from 'lucide-react'
+import { Search, Edit, ZoomIn, ZoomOut, Maximize2, Layers, Eye, Swords, Users, MapPin, ArrowLeft } from 'lucide-react'
 import type { LivingEntity } from '@/types/living-entity'
 import type { MapMarker } from './AtlasMap'
 
@@ -203,8 +203,15 @@ export function AtlasExplorer({
 
   return (
     <div className="fixed inset-0 bg-slate-950 flex flex-col">
-      {/* Top Bar - Breadcrumb */}
-      <div className="absolute top-4 left-4 z-30">
+      {/* Top Bar - Back Button + Breadcrumb */}
+      <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
+        <button
+          onClick={() => router.back()}
+          className="p-2.5 rounded-lg bg-slate-800/90 text-slate-300 hover:bg-slate-700 backdrop-blur-sm shadow-lg transition-colors"
+          title="Go back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
         <AtlasBreadcrumb
           path={breadcrumbPath}
           campaignId={campaignId}

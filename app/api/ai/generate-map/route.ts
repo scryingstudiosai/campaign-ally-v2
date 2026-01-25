@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const supabase = createClient()
 
   try {
-    const { locationId, campaignId, attemptNumber = 1, visualStyle, aspectRatio, additionalContext } = await request.json()
+    const { locationId, campaignId, attemptNumber = 1, visualStyle, aspectRatio, includeLabels = false, additionalContext } = await request.json()
 
     if (!locationId || !campaignId) {
       return NextResponse.json({ error: 'Missing locationId or campaignId' }, { status: 400 })
@@ -117,10 +117,12 @@ export async function POST(request: Request) {
       visualStyle: validVisualStyle,
       additionalContext: additionalContext?.additionalDetails,
       aspectRatio: validAspectRatio,
+      includeLabels: Boolean(includeLabels),
     })
 
     console.log('Visual style:', validVisualStyle || 'default')
     console.log('Aspect ratio:', validAspectRatio, '-> size:', imageSize)
+    console.log('Include labels:', includeLabels)
     console.log('Additional context received:', additionalContext ? Object.keys(additionalContext) : 'none')
 
     const category = getLocationCategory(location.sub_type || 'region')

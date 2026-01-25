@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Globe, Upload, Sparkles, MapPin, ChevronRight, Check, Crown } from 'lucide-react'
+import { Globe, Upload, Sparkles, MapPin, ChevronRight, Check, Crown, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import type { LivingEntity } from '@/types/living-entity'
@@ -92,6 +92,17 @@ export function AtlasEmptyWorld({
 
   return (
     <div className="min-h-[calc(100vh-4rem)]">
+      {/* Back Button */}
+      <div className="absolute top-4 left-4 z-10">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/90 text-slate-300 hover:bg-slate-700 backdrop-blur-sm transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm">Back</span>
+        </button>
+      </div>
+
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         {/* Background Pattern */}

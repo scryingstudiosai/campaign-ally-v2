@@ -25,6 +25,8 @@ interface MapPromptOptions {
   additionalContext?: string
   // New: Aspect ratio selection
   aspectRatio?: MapAspectRatio
+  // New: Include text labels on map
+  includeLabels?: boolean
 }
 
 // ============================================
@@ -174,7 +176,32 @@ CAMPAIGN STYLE FINGERPRINT (maintain consistency):
 // ============================================
 
 // These rules MUST appear at the START of every prompt for maximum impact
-const CRITICAL_FIRST_RULES = `
+// Now a function to handle includeLabels option
+const getCriticalFirstRules = (includeLabels: boolean = false): string => {
+  if (includeLabels) {
+    return `
+⚠️ CRITICAL - READ FIRST ⚠️
+THIS MAP MAY INCLUDE LOCATION LABELS.
+
+LABELS ALLOWED:
+✓ Elegant, readable location labels for major landmarks
+✓ Font style matching the map aesthetic
+✓ Labels positioned near features without obscuring terrain
+
+STILL FORBIDDEN:
+❌ NO LEGEND - no map key, no explanatory box
+❌ NO COMPASS - no compass rose, no "N" arrow
+❌ NO UI ELEMENTS - no borders, frames, decorative corners
+❌ NO GRID - no hex grid, no square grid
+
+REQUIRED VIEW:
+✓ STRICTLY 2D flat top-down view (like looking at paper on a table)
+✓ Camera exactly 90° straight down - NO tilt, NO perspective, NO 3D
+✓ NO horizon line, NO vanishing points, NO isometric angle
+`.trim()
+  }
+
+  return `
 ⚠️ CRITICAL - READ FIRST ⚠️
 THIS IS A PURE VISUAL MAP WITH ZERO TEXT.
 
@@ -190,6 +217,10 @@ REQUIRED VIEW:
 ✓ Camera exactly 90° straight down - NO tilt, NO perspective, NO 3D
 ✓ NO horizon line, NO vanishing points, NO isometric angle
 `.trim()
+}
+
+// Legacy constant for backwards compatibility
+const CRITICAL_FIRST_RULES = getCriticalFirstRules(false)
 
 // ============================================
 // VISUAL QUALITY RULES - For Professional D&D Cartography
@@ -225,6 +256,28 @@ COMPOSITION: Edge-to-edge illustration filling the entire canvas.
 NO black borders, NO padding, NO margins, NO empty space around edges.
 The map terrain should extend to all four edges of the image.
 `.trim()
+
+// Get text/label rules based on includeLabels option
+const getTextRules = (includeLabels: boolean): string => {
+  if (includeLabels) {
+    return `
+LABELS - Include elegant, stylized location labels:
+- Add clear, readable text labels for major landmarks and regions
+- Use a font style that matches the map aesthetic (fantasy calligraphy for classic, clean sans-serif for digital, etc.)
+- Labels should be decorative but legible
+- Position labels near their features without obscuring terrain
+- Still NO legend box, NO compass rose, NO title banner
+`.trim()
+  }
+  return `
+NO TEXT - Absolutely no text anywhere on the map:
+- NO labels, names, titles, or words of any kind
+- NO legend or key boxes
+- NO compass rose with letters
+- NO scale bars with numbers
+- Users will add their own interactive markers
+`.trim()
+}
 
 // ============================================
 // GEOGRAPHIC REALISM RULES
@@ -388,7 +441,7 @@ const CATEGORY_PROMPTS: Record<LocationCategory, (opts: MapPromptOptions) => str
       : opts.campaignStyle?.prompt || MAP_VISUAL_PRESETS['classic-dnd'].prompt
 
     return `
-${CRITICAL_FIRST_RULES}
+${getCriticalFirstRules(opts.includeLabels)}
 
 ${stylePrompt}
 
@@ -430,7 +483,7 @@ CRITICAL REMINDERS:
       : opts.campaignStyle?.prompt || MAP_VISUAL_PRESETS['classic-dnd'].prompt
 
     return `
-${CRITICAL_FIRST_RULES}
+${getCriticalFirstRules(opts.includeLabels)}
 
 ${stylePrompt}
 
@@ -475,7 +528,7 @@ CRITICAL REMINDERS:
       : opts.campaignStyle?.prompt || MAP_VISUAL_PRESETS['classic-dnd'].prompt
 
     return `
-${CRITICAL_FIRST_RULES}
+${getCriticalFirstRules(opts.includeLabels)}
 
 ${stylePrompt}
 
@@ -518,7 +571,7 @@ CRITICAL REMINDERS:
     const childCount = opts.childLocations?.length || 0
 
     return `
-${CRITICAL_FIRST_RULES}
+${getCriticalFirstRules(opts.includeLabels)}
 
 ${getAspectRatioInstructions(opts.aspectRatio || 'square')}
 
@@ -557,7 +610,7 @@ CRITICAL REMINDERS:
     const childCount = opts.childLocations?.length || 0
 
     return `
-${CRITICAL_FIRST_RULES}
+${getCriticalFirstRules(opts.includeLabels)}
 
 ${getAspectRatioInstructions(opts.aspectRatio || 'square')}
 
@@ -598,7 +651,7 @@ CRITICAL REMINDERS:
       : opts.campaignStyle?.prompt || MAP_VISUAL_PRESETS['classic-dnd'].prompt
 
     return `
-${CRITICAL_FIRST_RULES}
+${getCriticalFirstRules(opts.includeLabels)}
 
 ${stylePrompt}
 

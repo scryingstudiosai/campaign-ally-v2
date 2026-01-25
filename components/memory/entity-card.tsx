@@ -324,12 +324,12 @@ export function EntityCard({
 
               {/* Main content with optional thumbnail */}
               <div className="flex gap-3">
-                {/* Thumbnail */}
-                {entity.image_url && (
+                {/* Thumbnail - use image_url or fall back to map_image_url for locations */}
+                {(entity.image_url || entity.attributes?.map_image_url) && (
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 rounded-md overflow-hidden bg-slate-800 border border-slate-700">
                       <Image
-                        src={entity.image_url}
+                        src={(entity.image_url || entity.attributes?.map_image_url) as string}
                         alt={entity.name}
                         width={48}
                         height={48}
@@ -340,7 +340,7 @@ export function EntityCard({
                 )}
 
                 {/* Content */}
-                <div className={cn('flex-1 min-w-0', entity.image_url ? 'pr-16' : 'pr-24')}>
+                <div className={cn('flex-1 min-w-0', (entity.image_url || entity.attributes?.map_image_url) ? 'pr-16' : 'pr-24')}>
                   <div className="pb-2">
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">

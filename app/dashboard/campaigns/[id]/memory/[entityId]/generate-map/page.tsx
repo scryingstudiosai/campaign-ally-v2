@@ -298,6 +298,7 @@ export default function GenerateMapPage() {
   const [style, setStyle] = useState('realistic');
   const [visualStyle, setVisualStyle] = useState<keyof typeof MAP_VISUAL_PRESETS>('classic-dnd');
   const [aspectRatio, setAspectRatio] = useState<MapAspectRatio>('square');
+  const [includeLabels, setIncludeLabels] = useState(false);
   const [environment, setEnvironment] = useState('none');
   const [additionalDetails, setAdditionalDetails] = useState('');
 
@@ -599,6 +600,8 @@ FINAL REMINDERS:
             visualStyle,
             // Pass aspect ratio for map dimensions
             aspectRatio,
+            // Pass label toggle option
+            includeLabels,
             // Pass rich context for better generation
             additionalContext: {
               terrain: richContext.terrain || environment,
@@ -1029,6 +1032,25 @@ FINAL REMINDERS:
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
+
+                {/* Include Labels Toggle - for Atlas maps */}
+                {isAtlasMapType(mapType) && (
+                  <div className="flex items-center justify-between py-3 border-t border-stone-700">
+                    <div>
+                      <Label htmlFor="labels-toggle" className="text-sm font-medium text-stone-300">
+                        Include Location Labels
+                      </Label>
+                      <p className="text-xs text-stone-500">
+                        Add text labels for major landmarks on the map
+                      </p>
+                    </div>
+                    <Switch
+                      id="labels-toggle"
+                      checked={includeLabels}
+                      onCheckedChange={setIncludeLabels}
+                    />
                   </div>
                 )}
 
