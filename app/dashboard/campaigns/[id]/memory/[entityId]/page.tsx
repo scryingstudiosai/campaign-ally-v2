@@ -419,11 +419,11 @@ export default async function EntityDetailPage({ params }: PageProps) {
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-            {/* Portrait */}
+            {/* Portrait - uses image_url or falls back to map_image_url for locations */}
             <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden border border-slate-700 shrink-0 bg-slate-800 mx-auto sm:mx-0">
-              {entity.image_url ? (
+              {(entity.image_url || attributes?.map_image_url) ? (
                 <Image
-                  src={entity.image_url}
+                  src={(entity.image_url || attributes?.map_image_url) as string}
                   alt={entity.name}
                   fill
                   className="object-cover"

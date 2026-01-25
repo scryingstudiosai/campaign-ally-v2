@@ -446,6 +446,7 @@ export function AtlasExplorer({
         centerOnInit
         wheel={{ step: 0.1 }}
         doubleClick={{ disabled: true }}
+        panning={{ disabled: isEditMode }}
         onTransformed={(_, state) => setCurrentScale(state.scale)}
       >
         {({ zoomIn, zoomOut, resetTransform }) => (
