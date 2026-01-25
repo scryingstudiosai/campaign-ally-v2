@@ -38,13 +38,16 @@ export default function AtlasPage() {
       .single()
 
     // 2. Get ALL locations for this campaign
-    const { data: locations } = await supabase
+    const { data: locations, error: locError } = await supabase
       .from('entities')
       .select('*')
       .eq('campaign_id', campaignId)
       .eq('entity_type', 'location')
-      .is('deleted_at', null)
       .order('created_at', { ascending: true })
+
+    if (locError) {
+      console.error('[Atlas Page] Error fetching locations:', locError)
+    }
 
     const allLocs = (locations || []) as unknown as LivingEntity[]
     setAllLocations(allLocs)

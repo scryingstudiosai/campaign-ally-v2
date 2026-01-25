@@ -29,10 +29,10 @@ export default function AtlasLocationPage() {
           .eq('id', locationId)
           .eq('campaign_id', campaignId)
           .eq('entity_type', 'location')
-          .is('deleted_at', null)
           .single()
 
         if (fetchError || !data) {
+          console.error('[Atlas Location] Fetch error:', fetchError)
           setError('Location not found')
           return
         }

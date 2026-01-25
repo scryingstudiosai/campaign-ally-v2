@@ -35,13 +35,15 @@ export function AtlasView({ campaignId, location, isWorldLevel = false }: AtlasV
   useEffect(() => {
     const fetchData = async () => {
       // Get ALL locations for tree
-      const { data: locations } = await supabase
+      const { data: locations, error } = await supabase
         .from('entities')
         .select('*')
         .eq('campaign_id', campaignId)
         .eq('entity_type', 'location')
-        .neq('status', 'archived')
-        .is('deleted_at', null)
+
+      if (error) {
+        console.error('[AtlasView] Error fetching locations:', error)
+      }
 
       const typedLocations = (locations || []) as unknown as LivingEntity[]
       setAllLocations(typedLocations)
@@ -54,24 +56,12 @@ export function AtlasView({ campaignId, location, isWorldLevel = false }: AtlasV
       })
       setChildLocations(children)
 
-      // Get markers for this location
-      const { data: markerData } = await supabase
-        .from('map_markers')
-        .select(`*, linked_entity:entities!linked_entity_id(*)`)
-        .eq('location_id', location.id)
-
-      const typedMarkers = (markerData || []).map((m) => ({
-        id: m.id,
-        location_id: m.location_id,
-        linked_entity_id: m.linked_entity_id,
-        linked_entity: m.linked_entity as unknown as LivingEntity | undefined,
-        x_percent: m.x_percent,
-        y_percent: m.y_percent,
-        is_revealed: m.is_revealed,
-        has_active_quest: m.has_active_quest,
-        label: m.label,
-      }))
-      setMarkers(typedMarkers)
+      // NOTE: map_markers table doesn't exist yet - skip this query
+      // const { data: markerData } = await supabase
+      //   .from('map_markers')
+      //   .select(`*, linked_entity:entities!linked_entity_id(*)`)
+      //   .eq('location_id', location.id)
+      setMarkers([])
 
       // Build breadcrumb
       await buildBreadcrumb(location, typedLocations)

@@ -72,12 +72,15 @@ export function AtlasExplorer({
       }
 
       // Get child locations
-      const { data: allLocations } = await supabase
+      const { data: allLocations, error: locError } = await supabase
         .from('entities')
         .select('*')
         .eq('campaign_id', campaignId)
         .eq('entity_type', 'location')
-        .is('deleted_at', null)
+
+      if (locError) {
+        console.error('[Atlas] Error fetching locations:', locError)
+      }
 
       // Filter children based on parent_id (DB column) or attributes.parent_entity_id (legacy)
       const children = (allLocations || []).filter((loc) => {
@@ -106,13 +109,15 @@ export function AtlasExplorer({
   // Fetch available entities for linking markers
   useEffect(() => {
     const fetchEntities = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('entities')
         .select('*')
         .eq('campaign_id', campaignId)
-        .is('deleted_at', null)
-        .neq('status', 'archived')
         .order('name')
+
+      if (error) {
+        console.error('[Atlas] Error fetching entities:', error)
+      }
 
       if (data) {
         setAvailableEntities(data as unknown as LivingEntity[])
