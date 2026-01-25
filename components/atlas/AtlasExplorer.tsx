@@ -54,11 +54,6 @@ export function AtlasExplorer({
   const [availableEntities, setAvailableEntities] = useState<LivingEntity[]>([])
   const mapImageRef = useRef<HTMLImageElement>(null)
 
-  // Debug: Log edit mode changes
-  useEffect(() => {
-    console.log('[Atlas Debug] Edit mode changed:', isEditMode)
-  }, [isEditMode])
-
   // Fetch location data when current location changes
   useEffect(() => {
     const fetchLocationData = async () => {
@@ -91,45 +86,18 @@ export function AtlasExplorer({
         return dbParentId === currentLocation.id || attrParentId === currentLocation.id
       }) as unknown as LivingEntity[]
 
-      console.log('[Atlas Debug] Child locations for', currentLocation.id, ':', children.map(c => ({
-        name: c.name,
-        map_x: c.attributes?.map_x,
-        map_y: c.attributes?.map_y,
-        has_map: !!c.attributes?.map_image_url
-      })))
-
       setChildLocations(children)
 
-      // Get markers for this location (if map_markers table exists)
-      try {
-        console.log('[Atlas Debug] Fetching markers for location:', currentLocation.id)
-        const { data: markerData, error: markerError } = await supabase
-          .from('map_markers')
-          .select(`*, linked_entity:entities!linked_entity_id(*)`)
-          .eq('location_id', currentLocation.id)
-
-        console.log('[Atlas Debug] Markers fetch result:', { data: markerData, error: markerError })
-
-        if (markerData) {
-          const typedMarkers = markerData.map((m) => ({
-            id: m.id,
-            location_id: m.location_id,
-            linked_entity_id: m.linked_entity_id,
-            linked_entity: m.linked_entity as unknown as LivingEntity | undefined,
-            x_percent: m.x_percent,
-            y_percent: m.y_percent,
-            is_revealed: m.is_revealed,
-            has_active_quest: m.has_active_quest,
-            label: m.label,
-          }))
-          setMarkers(typedMarkers)
-          console.log('[Atlas Debug] Set markers:', typedMarkers)
-        }
-      } catch (err) {
-        // map_markers table might not exist yet
-        console.log('[Atlas Debug] Markers fetch error (table may not exist):', err)
-        setMarkers([])
-      }
+      // NOTE: map_markers table doesn't exist yet - using child locations as markers for now
+      // When map_markers table is created, uncomment this:
+      // try {
+      //   const { data: markerData } = await supabase
+      //     .from('map_markers')
+      //     .select(`*, linked_entity:entities!linked_entity_id(*)`)
+      //     .eq('location_id', currentLocation.id)
+      //   if (markerData) setMarkers(typedMarkers)
+      // } catch { setMarkers([]) }
+      setMarkers([])
     }
 
     fetchLocationData()
@@ -222,27 +190,14 @@ export function AtlasExplorer({
   // Handle click on map in edit mode
   const handleMapClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      console.log('[Atlas Debug] === MAP CLICK ===')
-      console.log('[Atlas Debug] isEditMode:', isEditMode)
-      console.log('[Atlas Debug] mapImageRef.current:', !!mapImageRef.current)
-      console.log('[Atlas Debug] Click target:', (e.target as HTMLElement).tagName)
-      console.log('[Atlas Debug] Event type:', e.type)
-
-      if (!isEditMode) {
-        console.log('[Atlas Debug] Early return - not in edit mode')
-        return
-      }
-      if (!mapImageRef.current) {
-        console.log('[Atlas Debug] Early return - no mapImageRef')
-        return
-      }
+      if (!isEditMode || !mapImageRef.current) return
 
       // Get the click position relative to the image
       const rect = mapImageRef.current.getBoundingClientRect()
       const x = ((e.clientX - rect.left) / rect.width) * 100
       const y = ((e.clientY - rect.top) / rect.height) * 100
 
-      console.log('[Atlas Debug] Calculated position:', { x, y })
+      console.log('[Atlas] Placing marker at:', { x: x.toFixed(1), y: y.toFixed(1) })
 
       // Set pending position and show entity selector
       setPendingMarkerPosition({ x, y })
@@ -255,22 +210,14 @@ export function AtlasExplorer({
   // Save a new marker to the database
   const handleSaveMarker = useCallback(
     async (linkedEntity: LivingEntity | null, customLabel?: string) => {
-      console.log('[Atlas Debug] === SAVING MARKER ===')
-      console.log('[Atlas Debug] pendingMarkerPosition:', pendingMarkerPosition)
-      console.log('[Atlas Debug] linkedEntity:', linkedEntity)
-      console.log('[Atlas Debug] customLabel:', customLabel)
-      console.log('[Atlas Debug] currentLocation.id:', currentLocation.id)
-
-      if (!pendingMarkerPosition) {
-        console.error('[Atlas Debug] No pending marker position!')
-        return
-      }
+      if (!pendingMarkerPosition) return
 
       try {
         if (linkedEntity?.entity_type === 'location') {
-          console.log('[Atlas Debug] Saving as LOCATION (updating entity attributes)')
-          // For location entities, save the position on the entity itself
-          const { data, error } = await supabase
+          // For location entities, save position on the entity's attributes
+          console.log('[Atlas] Saving location marker:', linkedEntity.name, 'at', pendingMarkerPosition)
+
+          const { error } = await supabase
             .from('entities')
             .update({
               attributes: {
@@ -281,15 +228,15 @@ export function AtlasExplorer({
               },
             })
             .eq('id', linkedEntity.id)
-            .select()
 
-          console.log('[Atlas Debug] Location update result:', { data, error })
-
-          if (error) throw error
+          if (error) {
+            console.error('[Atlas] Failed to save location marker:', error)
+            throw error
+          }
 
           toast.success(`Placed "${linkedEntity.name}" on the map`)
 
-          // Update local state
+          // Update local state to show marker immediately
           setChildLocations((prev) => {
             const existing = prev.find((c) => c.id === linkedEntity.id)
             if (existing) {
@@ -320,55 +267,11 @@ export function AtlasExplorer({
             }
           })
         } else {
-          console.log('[Atlas Debug] Saving to MAP_MARKERS table')
-          // For non-location entities, create a marker in map_markers table
-          const markerData = {
-            location_id: currentLocation.id,
-            linked_entity_id: linkedEntity?.id || null,
-            x_percent: pendingMarkerPosition.x,
-            y_percent: pendingMarkerPosition.y,
-            is_revealed: true,
-            label: customLabel || null,
-          }
-          console.log('[Atlas Debug] Inserting marker data:', markerData)
-
-          const { data, error } = await supabase.from('map_markers').insert(markerData).select()
-
-          console.log('[Atlas Debug] Marker insert result:', { data, error })
-
-          if (error) throw error
-
-          toast.success(
-            linkedEntity
-              ? `Placed "${linkedEntity.name}" on the map`
-              : `Added marker "${customLabel}" to the map`
-          )
-
-          // Refresh markers
-          const { data: markerData2 } = await supabase
-            .from('map_markers')
-            .select(`*, linked_entity:entities!linked_entity_id(*)`)
-            .eq('location_id', currentLocation.id)
-
-          console.log('[Atlas Debug] Refreshed markers:', markerData2)
-
-          if (markerData2) {
-            const typedMarkers = markerData2.map((m) => ({
-              id: m.id,
-              location_id: m.location_id,
-              linked_entity_id: m.linked_entity_id,
-              linked_entity: m.linked_entity as unknown as LivingEntity | undefined,
-              x_percent: m.x_percent,
-              y_percent: m.y_percent,
-              is_revealed: m.is_revealed,
-              has_active_quest: m.has_active_quest,
-              label: m.label,
-            }))
-            setMarkers(typedMarkers)
-          }
+          // Non-location entities not yet supported (map_markers table doesn't exist)
+          toast.error('Only location markers are supported currently')
         }
       } catch (error) {
-        console.error('[Atlas Debug] Failed to save marker:', error)
+        console.error('[Atlas] Failed to save marker:', error)
         toast.error('Failed to place marker')
       }
 
@@ -451,10 +354,7 @@ export function AtlasExplorer({
         </button>
 
         <button
-          onClick={() => {
-            console.log('[Atlas Debug] Edit button clicked, toggling from', isEditMode, 'to', !isEditMode)
-            setIsEditMode(!isEditMode)
-          }}
+          onClick={() => setIsEditMode(!isEditMode)}
           className={cn(
             'p-2.5 rounded-lg transition-colors shadow-lg',
             isEditMode
@@ -544,16 +444,7 @@ export function AtlasExplorer({
             >
               <div
                 className="relative inline-block"
-                onClick={(e) => {
-                  console.log('[Atlas Debug] Wrapper div onClick fired')
-                  handleMapClick(e)
-                }}
-                onPointerUp={(e) => {
-                  console.log('[Atlas Debug] Wrapper div onPointerUp fired, button:', e.button)
-                  if (isEditMode && e.button === 0) {
-                    handleMapClick(e as unknown as React.MouseEvent<HTMLDivElement>)
-                  }
-                }}
+                onClick={isEditMode ? handleMapClick : undefined}
                 style={{ cursor: isEditMode ? 'crosshair' : 'grab' }}
               >
                 {/* Map Image */}
