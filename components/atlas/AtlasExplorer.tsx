@@ -9,7 +9,10 @@ import { AtlasMarker } from './AtlasMarker'
 import { AtlasSidePanel } from './AtlasSidePanel'
 import { EntityQuickView } from './EntityQuickView'
 import { cn } from '@/lib/utils'
-import { Search, Edit, ZoomIn, ZoomOut, Maximize2, Layers, Eye, Swords, Users, MapPin, ArrowLeft } from 'lucide-react'
+import { Search, Edit, ZoomIn, ZoomOut, Maximize2, Layers, Eye, Swords, Users, MapPin, ArrowLeft, X, Plus } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import type { LivingEntity } from '@/types/living-entity'
 import type { MapMarker } from './AtlasMap'
 
@@ -43,6 +46,13 @@ export function AtlasExplorer({
   const [selectedEntity, setSelectedEntity] = useState<LivingEntity | null>(null)
   const [showQuickView, setShowQuickView] = useState(false)
   const [currentScale, setCurrentScale] = useState(1)
+
+  // Edit mode state for adding markers
+  const [pendingMarkerPosition, setPendingMarkerPosition] = useState<{ x: number; y: number } | null>(null)
+  const [showEntitySelector, setShowEntitySelector] = useState(false)
+  const [entitySearchQuery, setEntitySearchQuery] = useState('')
+  const [availableEntities, setAvailableEntities] = useState<LivingEntity[]>([])
+  const mapImageRef = useRef<HTMLImageElement>(null)
 
   // Fetch location data when current location changes
   useEffect(() => {
@@ -108,6 +118,25 @@ export function AtlasExplorer({
     fetchLocationData()
   }, [currentLocation.id, campaignId, supabase])
 
+  // Fetch available entities for linking markers
+  useEffect(() => {
+    const fetchEntities = async () => {
+      const { data } = await supabase
+        .from('entities')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .is('deleted_at', null)
+        .neq('status', 'archived')
+        .order('name')
+
+      if (data) {
+        setAvailableEntities(data as unknown as LivingEntity[])
+      }
+    }
+
+    fetchEntities()
+  }, [campaignId, supabase])
+
   // Build breadcrumb path
   useEffect(() => {
     const buildPath = async () => {
@@ -171,6 +200,137 @@ export function AtlasExplorer({
       }
     },
     [handleDrillDown]
+  )
+
+  // Handle click on map in edit mode
+  const handleMapClick = useCallback(
+    (e: React.MouseEvent<HTMLImageElement>) => {
+      if (!isEditMode || !mapImageRef.current) return
+
+      // Get the click position relative to the image
+      const rect = mapImageRef.current.getBoundingClientRect()
+      const x = ((e.clientX - rect.left) / rect.width) * 100
+      const y = ((e.clientY - rect.top) / rect.height) * 100
+
+      // Set pending position and show entity selector
+      setPendingMarkerPosition({ x, y })
+      setShowEntitySelector(true)
+      setEntitySearchQuery('')
+    },
+    [isEditMode]
+  )
+
+  // Save a new marker to the database
+  const handleSaveMarker = useCallback(
+    async (linkedEntity: LivingEntity | null, customLabel?: string) => {
+      if (!pendingMarkerPosition) return
+
+      try {
+        if (linkedEntity?.entity_type === 'location') {
+          // For location entities, save the position on the entity itself
+          const { error } = await supabase
+            .from('entities')
+            .update({
+              attributes: {
+                ...linkedEntity.attributes,
+                map_x: pendingMarkerPosition.x,
+                map_y: pendingMarkerPosition.y,
+                parent_entity_id: currentLocation.id,
+              },
+            })
+            .eq('id', linkedEntity.id)
+
+          if (error) throw error
+
+          toast.success(`Placed "${linkedEntity.name}" on the map`)
+
+          // Update local state
+          setChildLocations((prev) => {
+            const existing = prev.find((c) => c.id === linkedEntity.id)
+            if (existing) {
+              return prev.map((c) =>
+                c.id === linkedEntity.id
+                  ? {
+                      ...c,
+                      attributes: {
+                        ...c.attributes,
+                        map_x: pendingMarkerPosition.x,
+                        map_y: pendingMarkerPosition.y,
+                      },
+                    }
+                  : c
+              )
+            } else {
+              return [
+                ...prev,
+                {
+                  ...linkedEntity,
+                  attributes: {
+                    ...linkedEntity.attributes,
+                    map_x: pendingMarkerPosition.x,
+                    map_y: pendingMarkerPosition.y,
+                  },
+                },
+              ]
+            }
+          })
+        } else {
+          // For non-location entities, create a marker in map_markers table
+          const { error } = await supabase.from('map_markers').insert({
+            location_id: currentLocation.id,
+            linked_entity_id: linkedEntity?.id || null,
+            x_percent: pendingMarkerPosition.x,
+            y_percent: pendingMarkerPosition.y,
+            is_revealed: true,
+            label: customLabel || null,
+          })
+
+          if (error) throw error
+
+          toast.success(
+            linkedEntity
+              ? `Placed "${linkedEntity.name}" on the map`
+              : `Added marker "${customLabel}" to the map`
+          )
+
+          // Refresh markers
+          const { data: markerData } = await supabase
+            .from('map_markers')
+            .select(`*, linked_entity:entities!linked_entity_id(*)`)
+            .eq('location_id', currentLocation.id)
+
+          if (markerData) {
+            const typedMarkers = markerData.map((m) => ({
+              id: m.id,
+              location_id: m.location_id,
+              linked_entity_id: m.linked_entity_id,
+              linked_entity: m.linked_entity as unknown as LivingEntity | undefined,
+              x_percent: m.x_percent,
+              y_percent: m.y_percent,
+              is_revealed: m.is_revealed,
+              has_active_quest: m.has_active_quest,
+              label: m.label,
+            }))
+            setMarkers(typedMarkers)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to save marker:', error)
+        toast.error('Failed to place marker')
+      }
+
+      // Close the selector
+      setPendingMarkerPosition(null)
+      setShowEntitySelector(false)
+    },
+    [pendingMarkerPosition, currentLocation, supabase]
+  )
+
+  // Filter entities for the selector
+  const filteredEntities = availableEntities.filter(
+    (e) =>
+      e.name.toLowerCase().includes(entitySearchQuery.toLowerCase()) &&
+      e.id !== currentLocation.id // Don't allow linking to self
   )
 
   // Filter markers by lens
@@ -329,13 +489,30 @@ export function AtlasExplorer({
                 {/* Map Image */}
                 {mapImageUrl && (
                   <img
+                    ref={mapImageRef}
                     src={mapImageUrl}
                     alt={`Map of ${currentLocation.name}`}
-                    className="max-w-none select-none"
+                    className={cn(
+                      'max-w-none select-none',
+                      isEditMode && 'cursor-crosshair'
+                    )}
                     draggable={false}
+                    onClick={handleMapClick}
                     style={{
                       maxHeight: 'calc(100vh - 2rem)',
                       width: 'auto',
+                    }}
+                  />
+                )}
+
+                {/* Pending marker indicator */}
+                {pendingMarkerPosition && mapImageRef.current && (
+                  <div
+                    className="absolute w-6 h-6 rounded-full border-2 border-dashed border-teal-400 bg-teal-500/30 animate-pulse pointer-events-none"
+                    style={{
+                      left: `${pendingMarkerPosition.x}%`,
+                      top: `${pendingMarkerPosition.y}%`,
+                      transform: 'translate(-50%, -50%)',
                     }}
                   />
                 )}
@@ -439,6 +616,141 @@ export function AtlasExplorer({
               : undefined
           }
         />
+      )}
+
+      {/* Entity Selector Modal for Adding Markers */}
+      {showEntitySelector && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-slate-900 rounded-xl border border-slate-700 w-full max-w-md mx-4 shadow-2xl">
+            {/* Header */}
+            <div className="p-4 border-b border-slate-800">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-white">Place Marker</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowEntitySelector(false)
+                    setPendingMarkerPosition(null)
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Search entities to link..."
+                  value={entitySearchQuery}
+                  onChange={(e) => setEntitySearchQuery(e.target.value)}
+                  className="pl-9 bg-slate-800 border-slate-700"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Entity List */}
+            <div className="max-h-80 overflow-auto p-2">
+              {/* Custom label option */}
+              <button
+                onClick={() => {
+                  const label = prompt('Enter marker label:')
+                  if (label) {
+                    handleSaveMarker(null, label)
+                  }
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-slate-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-200 font-medium">Custom Label</p>
+                  <p className="text-xs text-slate-500">Add marker without linking to entity</p>
+                </div>
+              </button>
+
+              {/* Location entities (for drill-down points) */}
+              {filteredEntities.filter((e) => e.entity_type === 'location').length > 0 && (
+                <>
+                  <div className="px-3 py-2 text-xs text-slate-500 uppercase tracking-wider mt-2">
+                    Locations (Drill-Down Points)
+                  </div>
+                  {filteredEntities
+                    .filter((e) => e.entity_type === 'location')
+                    .slice(0, 15)
+                    .map((entity) => (
+                      <button
+                        key={entity.id}
+                        onClick={() => handleSaveMarker(entity)}
+                        className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition-colors text-left"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                          <MapPin className="w-5 h-5 text-emerald-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white font-medium truncate">{entity.name}</p>
+                          <p className="text-xs text-slate-500 capitalize">
+                            {entity.sub_type || 'location'}
+                            {entity.attributes?.map_image_url && ' • Has map'}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                </>
+              )}
+
+              {/* Other entities */}
+              {filteredEntities.filter((e) => e.entity_type !== 'location').length > 0 && (
+                <>
+                  <div className="px-3 py-2 text-xs text-slate-500 uppercase tracking-wider mt-2">
+                    Other Entities
+                  </div>
+                  {filteredEntities
+                    .filter((e) => e.entity_type !== 'location')
+                    .slice(0, 15)
+                    .map((entity) => {
+                      const iconColors: Record<string, string> = {
+                        npc: 'bg-blue-500/20 text-blue-400',
+                        creature: 'bg-orange-500/20 text-orange-400',
+                        item: 'bg-amber-500/20 text-amber-400',
+                        faction: 'bg-red-500/20 text-red-400',
+                        quest: 'bg-purple-500/20 text-purple-400',
+                      }
+                      const colorClass = iconColors[entity.entity_type] || 'bg-slate-700 text-slate-400'
+
+                      return (
+                        <button
+                          key={entity.id}
+                          onClick={() => handleSaveMarker(entity)}
+                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition-colors text-left"
+                        >
+                          <div className={cn('w-10 h-10 rounded-full flex items-center justify-center', colorClass.split(' ')[0])}>
+                            {entity.entity_type === 'npc' && <Users className={cn('w-5 h-5', colorClass.split(' ')[1])} />}
+                            {entity.entity_type === 'creature' && <Swords className={cn('w-5 h-5', colorClass.split(' ')[1])} />}
+                            {entity.entity_type === 'item' && <Eye className={cn('w-5 h-5', colorClass.split(' ')[1])} />}
+                            {entity.entity_type === 'faction' && <Layers className={cn('w-5 h-5', colorClass.split(' ')[1])} />}
+                            {entity.entity_type === 'quest' && <MapPin className={cn('w-5 h-5', colorClass.split(' ')[1])} />}
+                            {!['npc', 'creature', 'item', 'faction', 'quest'].includes(entity.entity_type) && (
+                              <MapPin className="w-5 h-5 text-slate-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate">{entity.name}</p>
+                            <p className="text-xs text-slate-500 capitalize">{entity.entity_type}</p>
+                          </div>
+                        </button>
+                      )
+                    })}
+                </>
+              )}
+
+              {filteredEntities.length === 0 && entitySearchQuery && (
+                <p className="text-center text-slate-500 py-6 text-sm">No entities found</p>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
