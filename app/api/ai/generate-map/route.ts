@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
-import { buildMapPrompt, getLocationCategory, getMapGenerationSettings } from '@/lib/ai/map-prompts'
+import { buildMapPrompt, getLocationCategory, getMapGenerationSettings, MAP_VISUAL_PRESETS } from '@/lib/ai/map-prompts'
 import { DEFAULT_MAP_STYLE } from '@/lib/ai/map-styles'
 
 const openai = new OpenAI()
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const supabase = createClient()
 
   try {
-    const { locationId, campaignId, attemptNumber = 1, additionalContext } = await request.json()
+    const { locationId, campaignId, attemptNumber = 1, visualStyle, additionalContext } = await request.json()
 
     if (!locationId || !campaignId) {
       return NextResponse.json({ error: 'Missing locationId or campaignId' }, { status: 400 })
@@ -86,6 +86,11 @@ export async function POST(request: Request) {
     }
     const fullDescription = descriptionParts.filter(Boolean).join('. ')
 
+    // Validate visual style if provided
+    const validVisualStyle = visualStyle && MAP_VISUAL_PRESETS[visualStyle as keyof typeof MAP_VISUAL_PRESETS]
+      ? (visualStyle as keyof typeof MAP_VISUAL_PRESETS)
+      : undefined
+
     // Build the optimized prompt
     const prompt = buildMapPrompt({
       locationName: location.name,
@@ -96,8 +101,11 @@ export async function POST(request: Request) {
       climate: additionalContext?.climate || location.attributes?.climate,
       campaignStyle,
       attemptNumber,
+      visualStyle: validVisualStyle,
+      additionalContext: additionalContext?.additionalDetails,
     })
 
+    console.log('Visual style:', validVisualStyle || 'default')
     console.log('Additional context received:', additionalContext ? Object.keys(additionalContext) : 'none')
 
     const category = getLocationCategory(location.sub_type || 'region')
@@ -107,7 +115,8 @@ export async function POST(request: Request) {
     console.log('Location:', location.name)
     console.log('Category:', category)
     console.log('Attempt:', attemptNumber)
-    console.log('Style:', campaignStyle.artDirection)
+    console.log('Visual style:', validVisualStyle || 'default')
+    console.log('Campaign style:', campaignStyle.artDirection)
     console.log('Prompt length:', prompt.length)
 
     // Generate with GPT Image 1.5 (much better at following "no text" instructions)
@@ -143,6 +152,7 @@ export async function POST(request: Request) {
         imageUrl: `data:image/png;base64,${imageBase64}`,
         category,
         style: campaignStyle.artDirection,
+        visualStyle: validVisualStyle || 'classic-dnd',
         attemptNumber,
         warning: 'Storage upload failed. Using temporary data URL.',
       })
@@ -176,6 +186,7 @@ export async function POST(request: Request) {
       imageUrl: publicUrl,
       category,
       style: campaignStyle.artDirection,
+      visualStyle: validVisualStyle || 'classic-dnd',
       attemptNumber,
     })
   } catch (error: unknown) {

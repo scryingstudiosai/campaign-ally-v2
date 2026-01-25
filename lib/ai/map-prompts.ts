@@ -1,9 +1,12 @@
 // Comprehensive map prompt builder for Atlas map generation
 
-import { CampaignMapStyle, DEFAULT_MAP_STYLE } from './map-styles'
+import { CampaignMapStyle, DEFAULT_MAP_STYLE, MAP_VISUAL_PRESETS } from './map-styles'
 
 export type LocationCategory = 'world' | 'region' | 'settlement' | 'building' | 'dungeon' | 'wilderness'
 export type MapDetailLevel = 'overview' | 'standard' | 'detailed'
+
+// Re-export for convenience
+export { MAP_VISUAL_PRESETS }
 
 interface MapPromptOptions {
   locationName: string
@@ -14,6 +17,9 @@ interface MapPromptOptions {
   climate?: string
   campaignStyle?: CampaignMapStyle
   attemptNumber?: number
+  // New: Direct style preset selection
+  visualStyle?: keyof typeof MAP_VISUAL_PRESETS
+  additionalContext?: string
 }
 
 // ============================================
@@ -180,6 +186,41 @@ REQUIRED VIEW:
 ✓ NO horizon line, NO vanishing points, NO isometric angle
 `.trim()
 
+// ============================================
+// VISUAL QUALITY RULES - For Professional D&D Cartography
+// ============================================
+const VISUAL_QUALITY_RULES = `
+VISUAL STYLE - CRITICAL FOR QUALITY:
+- Richly detailed fantasy world map in the style of official Dungeons & Dragons cartography
+- Painterly watercolor aesthetic with vibrant but harmonious colors
+- NOT flat or plain - this should look like professional illustration art
+- Color palette: Deep ocean blues, lush forest greens, golden plains, brown/gray mountains with snow caps, warm sandy deserts
+- Every terrain type should be visually DISTINCT and beautiful
+
+TERRAIN RENDERING:
+- Mountains: Dramatic ranges with individually defined peaks, snow-capped where appropriate, with shadows and depth
+- Forests: Dense clusters of individual stylized trees, varying shades of green, not flat blobs
+- Water: Rich blue with subtle wave texture or gradient, visible coastline detail
+- Plains/Grasslands: Golden or light green with subtle texture variation
+- Deserts: Warm sandy tones with dune textures
+- Roads: Clear brown paths connecting locations
+- Rivers: Natural flowing curves with darker blue, tributaries visible
+
+COMPOSITION:
+- Edge-to-edge illustration filling the entire canvas
+- NO black borders, NO padding, NO margins, NO empty space around edges
+- The map terrain should extend to all four edges of the image
+- Epic sense of scale and adventure
+- Professional quality suitable for a published game book
+`.trim()
+
+// No borders rule - added explicitly to combat black borders
+const NO_BORDERS_RULE = `
+COMPOSITION: Edge-to-edge illustration filling the entire canvas.
+NO black borders, NO padding, NO margins, NO empty space around edges.
+The map terrain should extend to all four edges of the image.
+`.trim()
+
 // Legacy constants kept for compatibility
 const CRITICAL_VIEWPOINT_RULES = `
 VIEWPOINT: Strictly 2D top-down orthographic (90° straight down, zero tilt).
@@ -279,187 +320,277 @@ function getRetryRules(attemptNumber: number): string {
 
 const CATEGORY_PROMPTS: Record<LocationCategory, (opts: MapPromptOptions) => string> = {
   world: (opts) => {
-    const style = opts.campaignStyle || DEFAULT_MAP_STYLE
     const childCount = opts.childLocations?.length || 0
+    const stylePrompt = opts.visualStyle
+      ? MAP_VISUAL_PRESETS[opts.visualStyle]?.prompt
+      : opts.campaignStyle?.prompt || MAP_VISUAL_PRESETS['classic-dnd'].prompt
 
     return `
 ${CRITICAL_FIRST_RULES}
 
-Create a fantasy world/continent map for "${opts.locationName}".
+${VISUAL_QUALITY_RULES}
 
-STYLE: ${style.artDirection} - muted dark earth tones, ${style.lineWeight} lines, ${style.texture} texture.
+Create a stunning fantasy world/continent map for "${opts.locationName}".
 
-STRUCTURE:
-- Landmass(es) surrounded by dark navy ocean
-- 1-2 mountain ranges as symbolic ridges (viewed from above)
-- 2-4 terrain biomes: forests, deserts, plains, tundra
-- 1-2 river systems flowing to coast
-- Organic coastlines with bays and peninsulas
-- ${Math.max(6, childCount)} distinct open areas for placing markers
+${stylePrompt}
 
-COLORS: Dark palette only. Ocean = dark navy/slate (never bright blue). Land = muted earth tones.
+WORLD MAP STRUCTURE:
+- Grand landmass(es) surrounded by rich deep blue ocean with subtle wave textures
+- 2-3 dramatic mountain ranges with snow-capped peaks, individually defined with shadows
+- Multiple distinct biomes: lush green forests, golden plains, warm sandy deserts, icy tundra
+- Major river systems flowing naturally from mountains to coast, with visible tributaries
+- Organic coastlines with bays, peninsulas, and small islands
+- ${Math.max(6, childCount)} distinct regions with clear visual separation for marker placement
 
-${opts.description ? `CONTEXT: ${opts.description}` : ''}
-${opts.climate ? `CLIMATE: ${opts.climate}` : ''}
-${childCount > 0 ? `MUST INCLUDE ZONES FOR: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+QUALITY REQUIREMENTS:
+- This must look like official D&D cartography, not a simple sketch
+- Rich, varied colors - NOT flat single-tone greens
+- Each terrain type visually distinct and beautiful
+- Mountains with depth and drama, forests with individual tree detail
+- Professional illustration quality
+
+${NO_BORDERS_RULE}
+
+${opts.description ? `WORLD THEME: ${opts.description}` : ''}
+${opts.climate ? `DOMINANT CLIMATE: ${opts.climate}` : ''}
+${opts.additionalContext ? `ATMOSPHERE: ${opts.additionalContext}` : ''}
+${childCount > 0 ? `KEY REGIONS TO SHOW (as distinct visual zones, NOT labeled): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual map. NO text, NO labels, NO legend, NO compass. Strictly 2D top-down.
+FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. Strictly 2D top-down. Edge-to-edge illustration.
 `.trim()
   },
 
   region: (opts) => {
-    const style = opts.campaignStyle || DEFAULT_MAP_STYLE
     const childCount = opts.childLocations?.length || 0
+    const stylePrompt = opts.visualStyle
+      ? MAP_VISUAL_PRESETS[opts.visualStyle]?.prompt
+      : opts.campaignStyle?.prompt || MAP_VISUAL_PRESETS['classic-dnd'].prompt
 
     return `
 ${CRITICAL_FIRST_RULES}
 
-Create a fantasy regional map for "${opts.locationName}".
+${VISUAL_QUALITY_RULES}
 
-STYLE: ${style.artDirection} - muted dark earth tones, ${style.lineWeight} lines, ${style.texture} texture.
+Create a stunning fantasy regional map for "${opts.locationName}".
 
-STRUCTURE:
-- River or coastline as water feature (dark blue-gray, not bright)
-- Road network connecting 3-6 landmark areas (thin brown lines)
-- 2-4 terrain types: forests (dark green), hills, farmland, marsh
-- Mountains as symbolic ridges viewed from above
-- Central open area for the main settlement/capital
-- ${Math.max(6, childCount)} distinct zones for placing markers
+${stylePrompt}
 
-TERRAIN SYMBOLS (all viewed from above):
-- Mountains: small peaked symbols, not 3D ridges
-- Forests: clustered tree canopy texture
-- Roads: thin connecting lines
-- Water: dark slate blue, never bright
+REGIONAL MAP STRUCTURE:
+- Rich water features: rivers with natural curves, lakes with depth gradients, coastlines with detail
+- Well-defined road network with brown paths connecting settlements and landmarks
+- Multiple terrain types with CLEAR visual distinction:
+  * Forests: Dense clusters of individual stylized trees, varying greens
+  * Mountains: Dramatic peaks with snow caps where appropriate, shadows for depth
+  * Plains: Golden or light green grasslands with subtle texture
+  * Hills: Rolling terrain with shading
+  * Farmland: Patchwork patterns in warm yellows and greens
+  * Marsh/Swamp: Darker greens with water pockets
+- ${Math.max(6, childCount)} distinct landmark zones with clear open areas for marker placement
 
-${opts.description ? `CONTEXT: ${opts.description}` : ''}
+QUALITY REQUIREMENTS:
+- Professional D&D cartography quality - this should look like the Sword Coast map
+- Rich, vibrant colors that vary across the map - NOT flat monotone
+- Each area visually interesting and distinct
+- Terrain has texture and depth, not flat colored blobs
+- Epic sense of adventure and exploration
+
+${NO_BORDERS_RULE}
+
+${opts.description ? `REGION THEME: ${opts.description}` : ''}
 ${opts.terrain ? `PRIMARY TERRAIN: ${opts.terrain}` : ''}
-${childCount > 0 ? `MUST INCLUDE ZONES FOR: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${opts.climate ? `CLIMATE: ${opts.climate}` : ''}
+${opts.additionalContext ? `ATMOSPHERE: ${opts.additionalContext}` : ''}
+${childCount > 0 ? `KEY LOCATIONS TO SHOW (as distinct visual zones, NOT labeled): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual map. NO text, NO labels, NO legend, NO compass. Strictly 2D top-down.
+FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. Strictly 2D top-down. Edge-to-edge illustration.
 `.trim()
   },
 
   settlement: (opts) => {
-    const style = opts.campaignStyle || DEFAULT_MAP_STYLE
     const childCount = opts.childLocations?.length || 0
+    const stylePrompt = opts.visualStyle
+      ? MAP_VISUAL_PRESETS[opts.visualStyle]?.prompt
+      : opts.campaignStyle?.prompt || MAP_VISUAL_PRESETS['classic-dnd'].prompt
 
     return `
 ${CRITICAL_FIRST_RULES}
 
-Create a fantasy city/town map for "${opts.locationName}".
+${VISUAL_QUALITY_RULES}
 
-STYLE: ${style.artDirection} - muted dark tones, ${style.lineWeight} lines, ${style.texture} texture.
+Create a beautiful fantasy city/town map for "${opts.locationName}".
 
-STRUCTURE:
-- City walls or natural boundary (thick dark lines)
-- Central plaza/market square (large open area)
-- 3-5 distinct districts separated by main roads
-- Main road spine connecting gates through center
-- Buildings as simple dark roof shapes (not blobs)
-- Vary building sizes: larger near center, smaller at edges
-- Water feature if appropriate (dark blue-gray)
-- At least 6 clear open zones for markers
+${stylePrompt}
 
-BUILDINGS: Simple geometric roof shapes viewed from directly above. NOT painterly blobs.
+SETTLEMENT MAP STRUCTURE:
+- Distinctive boundary: stone walls, natural river bend, or coastline
+- Central hub: grand plaza, market square, or castle grounds
+- 4-6 visually distinct districts with different building densities and roof colors
+- Main thoroughfares connecting gates through the city center
+- Buildings rendered as detailed roof shapes from above:
+  * Larger, grander buildings near center (temples, manors, guild halls)
+  * Medium buildings for shops and homes
+  * Smaller, denser buildings toward edges
+- Water features: rivers, canals, harbor areas with rich blue tones
+- Parks and gardens: green spaces breaking up the urban density
+- At least 6 clear landmark zones for marker placement
 
-${opts.description ? `CONTEXT: ${opts.description}` : ''}
-${childCount > 0 ? `NOTABLE LOCATIONS TO INCLUDE: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+QUALITY REQUIREMENTS:
+- Professional fantasy cartography quality
+- Buildings have varied roof colors: warm terracottas, grays, browns, some blue slate
+- Streets clearly visible between buildings
+- District character visible through building style/density
+- Rich detail but still readable for placing markers
+
+${NO_BORDERS_RULE}
+
+${opts.description ? `SETTLEMENT CHARACTER: ${opts.description}` : ''}
+${opts.additionalContext ? `ATMOSPHERE: ${opts.additionalContext}` : ''}
+${childCount > 0 ? `KEY DISTRICTS/LOCATIONS (show as distinct areas, NOT labeled): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual map. NO text, NO labels, NO legend, NO compass. Strictly 2D top-down.
+FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. Strictly 2D top-down. Edge-to-edge illustration.
 `.trim()
   },
 
   building: (opts) => {
-    const style = opts.campaignStyle || DEFAULT_MAP_STYLE
     const childCount = opts.childLocations?.length || 0
 
     return `
 ${CRITICAL_FIRST_RULES}
 
-Create an architectural floor plan for "${opts.locationName}".
+Create a detailed architectural floor plan for "${opts.locationName}".
 
-STYLE: ${style.artDirection} - high contrast, ${style.lineWeight} lines, ${style.texture} texture.
+FLOOR PLAN STYLE:
+- Professional tabletop RPG battlemap quality
+- Rich textures on floors: wood grain, stone tiles, carpet patterns
+- Walls as thick dark lines with clear separation
+- High contrast between floor and walls
 
 STRUCTURE:
-- Walls: thick dark lines (high contrast)
-- Rooms: clearly delineated distinct spaces
-- Doors: gaps in walls (not rectangles)
-- Floors: muted stone/wood texture (dark browns/grays)
-- Furniture: simple dark shapes (tables=rectangles, beds=rounded rectangles, chairs=squares)
-- One main hall or central corridor
-- Clear walkable space between furniture
+- Logical room layout with clear flow between spaces
+- Doors shown as gaps in walls (not drawn rectangles)
+- Floor textures vary by room type:
+  * Main halls: polished stone or elegant wood
+  * Private rooms: warm wood floors, rugs
+  * Service areas: simple stone
+  * Special rooms: distinctive textures (library = wood, temple = marble)
+- Furniture rendered as simple but recognizable shapes from above:
+  * Tables: rectangles with slight detail
+  * Chairs: small shapes around tables
+  * Beds: rounded rectangles
+  * Storage: rectangular chests, wardrobes
+- One main hall or central organizing space
+- Clear walkable paths between furniture
 
-${opts.description ? `CONTEXT: ${opts.description}` : ''}
-${childCount > 0 ? `ROOMS TO INCLUDE: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${NO_BORDERS_RULE}
+
+${opts.description ? `BUILDING CHARACTER: ${opts.description}` : ''}
+${opts.additionalContext ? `ATMOSPHERE: ${opts.additionalContext}` : ''}
+${childCount > 0 ? `ROOMS TO INCLUDE (show as distinct spaces): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual floor plan. NO text, NO labels, NO legend. Strictly 2D top-down.
+FINAL REMINDER: Pure visual floor plan with ZERO text. No labels or room names. Strictly 2D top-down. Edge-to-edge illustration.
 `.trim()
   },
 
   dungeon: (opts) => {
-    const style = opts.campaignStyle || DEFAULT_MAP_STYLE
     const childCount = opts.childLocations?.length || 0
 
     return `
 ${CRITICAL_FIRST_RULES}
 
-Create a dungeon battlemap for "${opts.locationName}".
+Create a professional dungeon battlemap for "${opts.locationName}".
 
-STYLE: ${style.artDirection} - very high contrast, ${style.lineWeight} lines, ${style.texture} texture.
+DUNGEON MAP STYLE:
+- High quality tabletop RPG battlemap
+- Very high contrast: detailed floor textures against dark solid walls/rock
+- Atmospheric but functional for gameplay
 
 STRUCTURE:
-- High contrast: light/medium floors against very dark walls
-- Solid dark rock for impassable/unexplored areas
+- Solid dark rock or stone for walls and impassable areas
+- Playable floor areas with rich texture:
+  * Stone floors: individual tiles or flagstones visible
+  * Cave floors: rough natural stone texture
+  * Special areas: different textures for shrine, treasury, lair
 - Corridors of varying widths connecting chambers
-- 4-8 distinct rooms: 1 large central, 2-3 medium, 2-4 small
-- Edges: rough organic (cave) OR straight cut (constructed)
-- Floors must stay visible - no fade to black in playable areas
+- 4-8 distinct rooms with variety:
+  * 1 large central chamber (boss room, great hall)
+  * 2-3 medium rooms (guardrooms, shrines, storage)
+  * 2-4 small rooms (cells, alcoves, secret chambers)
+- Edge style consistent throughout:
+  * Natural caves: rough organic edges
+  * Constructed: straight cut stone walls
+- Clear floor visibility in all playable areas - no fade to black
 
-${opts.description ? `ATMOSPHERE: ${opts.description}` : ''}
-${childCount > 0 ? `KEY CHAMBERS: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+VISUAL INTEREST:
+- Occasional floor details: cracks, debris, puddles, old bloodstains
+- Rubble piles near damaged walls
+- Different floor elevations suggested by shading where appropriate
+
+${NO_BORDERS_RULE}
+
+${opts.description ? `DUNGEON ATMOSPHERE: ${opts.description}` : ''}
+${opts.additionalContext ? `THEME: ${opts.additionalContext}` : ''}
+${childCount > 0 ? `KEY CHAMBERS (show as distinct areas): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual map. NO text, NO labels, NO legend. Strictly 2D top-down.
+FINAL REMINDER: Pure visual map with ZERO text. No labels or room names. Strictly 2D top-down. Edge-to-edge illustration.
 `.trim()
   },
 
   wilderness: (opts) => {
-    const style = opts.campaignStyle || DEFAULT_MAP_STYLE
     const childCount = opts.childLocations?.length || 0
+    const stylePrompt = opts.visualStyle
+      ? MAP_VISUAL_PRESETS[opts.visualStyle]?.prompt
+      : opts.campaignStyle?.prompt || MAP_VISUAL_PRESETS['classic-dnd'].prompt
 
     return `
 ${CRITICAL_FIRST_RULES}
 
-Create a wilderness area map for "${opts.locationName}".
+${VISUAL_QUALITY_RULES}
 
-STYLE: ${style.artDirection} - muted natural tones, ${style.lineWeight} lines, ${style.texture} texture.
+Create a beautiful wilderness area map for "${opts.locationName}".
 
-STRUCTURE:
-- Organic natural shapes (no straight lines)
-- Primary terrain covering 60-70% of map
-- 2-3 contrasting terrain elements
-- Thin winding paths/trails
-- 4-6 open clearings for markers
-- Water in dark blue-gray (streams, ponds)
-- Visual anchors: crossroads, river crossings, ruins, caves, camps
+${stylePrompt}
 
-${opts.description ? `CONTEXT: ${opts.description}` : ''}
+WILDERNESS MAP STRUCTURE:
+- Organic natural shapes throughout (no artificial straight lines)
+- Primary terrain covering 60-70% with rich detail:
+  * Forests: Individual stylized trees, varying shades of green, depth through shadows
+  * Mountains: Dramatic peaks with snow where appropriate
+  * Grasslands: Golden and green with subtle texture variation
+  * Swamps: Dark greens with water pools and dead trees
+- 2-3 contrasting terrain elements for visual variety
+- Winding paths and trails in brown, naturally curving
+- 4-6 open clearings for marker placement
+- Water features with rich blue tones: streams, ponds, rivers
+- Visual anchor points: clearings, crossroads, river fords, ancient ruins, cave mouths
+
+QUALITY REQUIREMENTS:
+- Professional fantasy cartography quality
+- Rich, varied colors - each terrain type distinct
+- Trees rendered individually or as detailed clusters, not flat blobs
+- Sense of depth and adventure
+- Beautiful enough to display as art
+
+${NO_BORDERS_RULE}
+
+${opts.description ? `WILDERNESS CHARACTER: ${opts.description}` : ''}
 ${opts.terrain ? `PRIMARY TERRAIN: ${opts.terrain}` : ''}
-${childCount > 0 ? `POINTS OF INTEREST: ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
+${opts.climate ? `CLIMATE: ${opts.climate}` : ''}
+${opts.additionalContext ? `ATMOSPHERE: ${opts.additionalContext}` : ''}
+${childCount > 0 ? `POINTS OF INTEREST (show as distinct visual areas, NOT labeled): ${opts.childLocations!.map((c) => c.name).join(', ')}` : ''}
 
 ${getRetryRules(opts.attemptNumber || 1)}
 
-FINAL REMINDER: Pure visual map. NO text, NO labels, NO legend, NO compass. Strictly 2D top-down.
+FINAL REMINDER: Pure visual map with ZERO text. No labels, legend, or compass. Strictly 2D top-down. Edge-to-edge illustration.
 `.trim()
   },
 }

@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { MAP_VISUAL_PRESETS } from '@/lib/ai/map-prompts';
 
 // Determine if this map type should use the Atlas-optimized generation
 // Atlas maps: region, city (for world/overland maps with terrain and settlements)
@@ -295,6 +296,7 @@ export default function GenerateMapPage() {
   // AI Generation form state
   const [mapType, setMapType] = useState('battlemap');
   const [style, setStyle] = useState('realistic');
+  const [visualStyle, setVisualStyle] = useState<keyof typeof MAP_VISUAL_PRESETS>('classic-dnd');
   const [environment, setEnvironment] = useState('none');
   const [additionalDetails, setAdditionalDetails] = useState('');
 
@@ -592,6 +594,8 @@ FINAL REMINDERS:
             locationId: entityId,
             campaignId,
             attemptNumber: 1,
+            // Pass visual style preset for high-quality cartography
+            visualStyle,
             // Pass rich context for better generation
             additionalContext: {
               terrain: richContext.terrain || environment,
@@ -952,22 +956,46 @@ FINAL REMINDERS:
                   </Select>
                 </div>
 
-                {/* Art Style */}
-                <div className="space-y-2">
-                  <Label className="text-stone-300">Art Style</Label>
-                  <Select value={style} onValueChange={setStyle}>
-                    <SelectTrigger className="bg-stone-800 border-stone-700">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-stone-900 border-stone-700">
-                      {availableStyles.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>
-                          {s.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Art Style - Different options for Atlas vs Floor Plan maps */}
+                {isAtlasMapType(mapType) ? (
+                  <div className="space-y-2">
+                    <Label className="text-stone-300">Art Style</Label>
+                    <Select value={visualStyle} onValueChange={(v) => setVisualStyle(v as keyof typeof MAP_VISUAL_PRESETS)}>
+                      <SelectTrigger className="bg-stone-800 border-stone-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-stone-900 border-stone-700">
+                        {Object.entries(MAP_VISUAL_PRESETS).map(([key, preset]) => (
+                          <SelectItem key={key} value={key}>
+                            <div className="flex flex-col py-1">
+                              <span className="font-medium">{preset.name}</span>
+                              <span className="text-xs text-stone-400">{preset.description}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-stone-500">
+                      Professional D&D cartography styles for region/world maps
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className="text-stone-300">Art Style</Label>
+                    <Select value={style} onValueChange={setStyle}>
+                      <SelectTrigger className="bg-stone-800 border-stone-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-stone-900 border-stone-700">
+                        {availableStyles.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Environment */}
                 <div className="space-y-2">
