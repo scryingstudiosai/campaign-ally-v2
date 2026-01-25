@@ -63,16 +63,35 @@ export function CommandMenu(): JSX.Element {
   const cacheRef = useRef<Map<string, EntityResult[]>>(new Map())
   const latestRequestRef = useRef(0)
 
-  // Cmd/Ctrl+K to toggle
+  // Cmd/Ctrl+K to toggle, Escape to close
+  // Use capture phase to intercept before browser's native shortcut handling
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
+      // Handle Escape to close
+      if (e.key === 'Escape') {
+        setOpen(false)
+        return
+      }
+
+      // Handle Ctrl+K or Cmd+K
       if (e.key?.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setOpen((prev) => !prev)
+        // Check if user is typing in an input
+        const target = e.target as HTMLElement
+        const isInput =
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable
+
+        // Allow if modifier key is held (even in inputs)
+        if (!isInput || e.metaKey || e.ctrlKey) {
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen((prev) => !prev)
+        }
       }
     }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    document.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => document.removeEventListener('keydown', onKeyDown, { capture: true })
   }, [])
 
   // Clear query when closing

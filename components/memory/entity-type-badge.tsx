@@ -37,13 +37,13 @@ interface TypeConfig {
   icon: typeof User
 }
 
-// Subtype-specific config for NPCs
+// Subtype-specific config for NPCs (villain=threat-like, hero=player-like)
 const NPC_SUBTYPE_CONFIG: Record<string, TypeConfig> = {
   villain: {
     label: 'Villain',
-    color: 'text-red-400',
-    bgColor: 'bg-red-500/10',
-    borderColor: 'border-red-500/30',
+    color: 'text-rose-400',
+    bgColor: 'bg-rose-500/10',
+    borderColor: 'border-rose-500/30',
     icon: Skull,
   },
   hero: {
@@ -55,14 +55,13 @@ const NPC_SUBTYPE_CONFIG: Record<string, TypeConfig> = {
   },
 }
 
+// Semantic Palette Colors - organized by conceptual groupings
+// THE LIVING (Identity): player=amber, npc=sky, deity=fuchsia
+// THE THREATS (Danger): creature=rose, encounter=orange
+// THE WORLD (Environment): location=emerald, faction=indigo, event=slate
+// OBJECTIVES (Rewards): item=violet, quest=cyan
 const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
-  npc: {
-    label: 'NPC',
-    color: 'text-teal-400',
-    bgColor: 'bg-teal-500/20',
-    borderColor: 'border-teal-500/30',
-    icon: User,
-  },
+  // THE LIVING (Identity)
   player: {
     label: 'Player',
     color: 'text-amber-400',
@@ -70,41 +69,21 @@ const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
     borderColor: 'border-amber-500/30',
     icon: Crown,
   },
-  location: {
-    label: 'Location',
-    color: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/20',
-    borderColor: 'border-emerald-500/30',
-    icon: MapPin,
+  npc: {
+    label: 'NPC',
+    color: 'text-sky-400',
+    bgColor: 'bg-sky-500/20',
+    borderColor: 'border-sky-500/30',
+    icon: User,
   },
-  item: {
-    label: 'Item',
-    color: 'text-blue-400',
-    bgColor: 'bg-blue-500/20',
-    borderColor: 'border-blue-500/30',
-    icon: Sword,
+  deity: {
+    label: 'Deity',
+    color: 'text-fuchsia-400',
+    bgColor: 'bg-fuchsia-500/20',
+    borderColor: 'border-fuchsia-500/30',
+    icon: Sun,
   },
-  faction: {
-    label: 'Faction',
-    color: 'text-orange-400',
-    bgColor: 'bg-orange-500/20',
-    borderColor: 'border-orange-500/30',
-    icon: Users,
-  },
-  quest: {
-    label: 'Quest',
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/20',
-    borderColor: 'border-purple-500/30',
-    icon: Scroll,
-  },
-  encounter: {
-    label: 'Encounter',
-    color: 'text-amber-400',
-    bgColor: 'bg-amber-500/20',
-    borderColor: 'border-amber-500/30',
-    icon: Swords,
-  },
+  // THE THREATS (Danger)
   creature: {
     label: 'Creature',
     color: 'text-rose-400',
@@ -112,19 +91,49 @@ const TYPE_CONFIG: Record<EntityType, TypeConfig> = {
     borderColor: 'border-rose-500/30',
     icon: Bug,
   },
+  encounter: {
+    label: 'Encounter',
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-500/20',
+    borderColor: 'border-orange-500/30',
+    icon: Swords,
+  },
+  // THE WORLD (Environment)
+  location: {
+    label: 'Location',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/20',
+    borderColor: 'border-emerald-500/30',
+    icon: MapPin,
+  },
+  faction: {
+    label: 'Faction',
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-500/20',
+    borderColor: 'border-indigo-500/30',
+    icon: Users,
+  },
   event: {
-    label: 'Event',
-    color: 'text-amber-400',
-    bgColor: 'bg-amber-500/20',
-    borderColor: 'border-amber-500/30',
+    label: 'Lore',
+    color: 'text-slate-400',
+    bgColor: 'bg-slate-500/20',
+    borderColor: 'border-slate-500/30',
     icon: BookOpen,
   },
-  deity: {
-    label: 'Deity',
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/20',
-    borderColor: 'border-purple-500/30',
-    icon: Sun,
+  // OBJECTIVES (Rewards)
+  item: {
+    label: 'Item',
+    color: 'text-violet-400',
+    bgColor: 'bg-violet-500/20',
+    borderColor: 'border-violet-500/30',
+    icon: Sword,
+  },
+  quest: {
+    label: 'Quest',
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/20',
+    borderColor: 'border-cyan-500/30',
+    icon: Scroll,
   },
   other: {
     label: 'Other',

@@ -44,6 +44,9 @@ import { TavernMenuCard } from '@/components/entity/TavernMenuCard'
 import { EmptyStageState } from '@/components/entity/EmptyStageState'
 import { EntityInventorySection } from '@/components/inventory'
 import { LocationDetailWrapper } from '@/components/entity/LocationDetailWrapper'
+import { EventDetailView } from '@/components/entity/EventDetailView'
+import { DeityDetailView } from '@/components/entity/DeityDetailView'
+import { PushLoreDropButton } from '@/components/rumors'
 import { NpcBrain, Voice, ItemBrain, ItemVoice, ItemMechanics, LocationBrain, LocationSoul, LocationMechanics, FactionBrain, FactionSoul, FactionMechanics, EncounterBrain, EncounterSoul, EncounterMechanics, EncounterRewards, CreatureBrain, CreatureSoul, CreatureMechanics, CreatureTreasure, NpcMechanics, QuestBrain, QuestSoul, QuestObjective, QuestRewards, QuestChain, isNpcBrain } from '@/types/living-entity'
 import {
   ArrowLeft,
@@ -107,6 +110,65 @@ function formatDate(dateString: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+// Get appropriate lore content for pushing to players based on entity type
+function getLoreContentForEntity(entity: {
+  entity_type: string;
+  soul?: Record<string, unknown>;
+  description?: string | null;
+}): string {
+  const soul = entity.soul || {};
+  const description = entity.description || '';
+
+  switch (entity.entity_type) {
+    case 'event':
+      return (
+        (soul.common_knowledge as string) ||
+        (soul.folklore_version as string) ||
+        (soul.folklore as string) ||
+        description
+      );
+    case 'npc':
+      return (
+        (soul.public_knowledge as string) ||
+        (soul.rumors as string) ||
+        description
+      );
+    case 'location':
+      return (
+        (soul.known_for as string) ||
+        (soul.rumors as string) ||
+        (soul.atmosphere as string) ||
+        description
+      );
+    case 'item':
+      return (
+        (soul.legend as string) ||
+        (soul.history as string) ||
+        description
+      );
+    case 'faction':
+      return (
+        (soul.public_perception as string) ||
+        (soul.reputation as string) ||
+        description
+      );
+    case 'deity':
+      return (
+        (soul.common_beliefs as string) ||
+        (soul.public_doctrine as string) ||
+        description
+      );
+    case 'quest':
+      return (
+        (soul.hook as string) ||
+        (soul.summary as string) ||
+        description
+      );
+    default:
+      return description;
+  }
 }
 
 export default async function EntityDetailPage({ params }: PageProps) {
@@ -300,6 +362,22 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (playerSoul && Object.keys(playerSoul).length > 0) ||
     entity.description
 
+  // Event-specific helpers
+  const isEvent = entity.entity_type === 'event'
+  const hasEventStageContent = isEvent && (
+    (entity.soul && Object.keys(entity.soul).length > 0) ||
+    (entity.brain && Object.keys(entity.brain).length > 0) ||
+    (entity.mechanics && Object.keys(entity.mechanics).length > 0)
+  )
+
+  // Deity-specific helpers
+  const isDeity = entity.entity_type === 'deity'
+  const hasDeityStageContent = isDeity && (
+    (entity.soul && Object.keys(entity.soul).length > 0) ||
+    (entity.brain && Object.keys(entity.brain).length > 0) ||
+    (entity.mechanics && Object.keys(entity.mechanics).length > 0)
+  )
+
   const hasStageContent =
     (entity.entity_type === 'npc' && hasNpcStageContent) ||
     (isItem && hasItemStageContent) ||
@@ -309,6 +387,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
     (isCreature && hasCreatureStageContent) ||
     (isQuest && hasQuestStageContent) ||
     (isPlayer && hasPlayerStageContent) ||
+    hasEventStageContent ||
+    hasDeityStageContent ||
     entity.public_notes ||
     entity.dm_notes
 
@@ -426,7 +506,15 @@ export default async function EntityDetailPage({ params }: PageProps) {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center justify-center sm:justify-start gap-2 shrink-0">
+                <div className="flex items-center justify-center sm:justify-start gap-2 shrink-0 flex-wrap">
+                  <PushLoreDropButton
+                    campaignId={params.id}
+                    entityId={entity.id}
+                    entityType={entity.entity_type}
+                    entityName={entity.name}
+                    loreContent={getLoreContentForEntity(entity)}
+                    variant="outline"
+                  />
                   <Button variant="outline" asChild>
                     <Link href={`/dashboard/campaigns/${params.id}/memory/${params.entityId}/edit`}>
                       <Pencil className="w-4 h-4 mr-2" />
@@ -745,6 +833,110 @@ export default async function EntityDetailPage({ params }: PageProps) {
                   </div>
                 )}
               </>
+            )}
+
+            {/* --- EVENT STAGE CONTENT --- */}
+            {isEvent && hasEventStageContent && (
+              <EventDetailView
+                event={{
+                  id: entity.id,
+                  name: entity.name,
+                  sub_type: entity.sub_type as import('@/types/event').EventSubType,
+                  event_sort: entity.event_sort,
+                  event_era: entity.event_era,
+                  event_ongoing: entity.event_ongoing,
+                  soul: entity.soul as {
+                    common_knowledge?: string;
+                    scholarly_account?: string;
+                    folklore?: string;
+                    propaganda?: string;
+                  },
+                  brain: entity.brain as {
+                    true_history?: string;
+                    hidden_causes?: string;
+                    consequences?: string;
+                    secrets?: string;
+                    reveal_triggers?: string[];
+                    hooks?: string[];
+                  },
+                  mechanics: entity.mechanics as {
+                    date_display?: string;
+                    duration?: string;
+                    affected_regions?: string[];
+                    current_evidence?: string;
+                    lore_drops?: import('@/types/event').LoreDrop[];
+                  },
+                }}
+                campaignId={params.id}
+              />
+            )}
+
+            {/* --- DEITY STAGE CONTENT --- */}
+            {isDeity && hasDeityStageContent && (
+              <DeityDetailView
+                deity={{
+                  id: entity.id,
+                  name: entity.name,
+                  sub_type: entity.sub_type,
+                  soul: entity.soul as {
+                    titles?: string[];
+                    portfolio?: {
+                      domains?: string[];
+                      alignment?: string;
+                      symbol?: string;
+                      favored_weapon?: string;
+                      holy_day?: string;
+                      sacred_colors?: string[];
+                      sacred_animal?: string;
+                    };
+                    manifestation?: string;
+                    personality?: string;
+                    voice?: string;
+                    tenets?: string[];
+                    prayers?: {
+                      invocation?: string;
+                      blessing?: string;
+                      oath?: string;
+                    };
+                    worship?: {
+                      followers?: string;
+                      clergy_title?: string;
+                      temple_style?: string;
+                      rituals?: string[];
+                      offerings?: string[];
+                      taboos?: string[];
+                    };
+                  },
+                  brain: entity.brain as {
+                    true_nature?: string;
+                    divine_agenda?: string;
+                    secrets?: string;
+                    conflicts?: string;
+                    weaknesses?: string;
+                    hooks?: string[];
+                    divine_signals?: {
+                      distance?: string;
+                      omens?: {
+                        watching?: string[];
+                        pleased?: string[];
+                        angry?: string[];
+                      };
+                      boons?: { trigger: string; effect: string }[];
+                      curses?: { trigger: string; effect: string }[];
+                    };
+                  },
+                  mechanics: entity.mechanics as {
+                    cleric_domains?: string[];
+                    channel_divinity?: string;
+                    sacred_spells?: string[];
+                    suggested_classes?: string[];
+                  },
+                  attributes: {
+                    rank: entity.attributes?.rank as string | undefined,
+                  },
+                }}
+                campaignId={params.id}
+              />
             )}
 
             {/* --- SHARED STAGE CONTENT --- */}

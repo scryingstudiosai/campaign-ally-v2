@@ -10,7 +10,6 @@ import {
 import { Session } from '@/types/session';
 import { SessionHeader } from './SessionHeader';
 import { SessionPlanner } from './planner/SessionPlanner';
-import { PlaybookContainer } from './playbook/PlaybookContainer';
 import { ToolkitPanel } from './toolkit/ToolkitPanel';
 import { StagePanel } from './stage/StagePanel';
 import { DMChatWidget } from './DMChatWidget';
@@ -28,7 +27,6 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
   const [currentSession, setCurrentSession] = useState(session);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isCombatActive, setIsCombatActive] = useState(!!session.combat_state);
-  const [usePlaybook, setUsePlaybook] = useState(true); // New block-based playbook
   const [userId, setUserId] = useState<string | null>(null);
   const [isShiftHeld, setIsShiftHeld] = useState(false);
 
@@ -296,25 +294,15 @@ export function SessionShell({ session, campaignId }: SessionShellProps) {
                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                     Session Playbook
                   </h2>
-                  <button
-                    onClick={() => setUsePlaybook(!usePlaybook)}
-                    className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
-                  >
-                    {usePlaybook ? 'Switch to Notes' : 'Switch to Blocks'}
-                  </button>
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  {usePlaybook ? (
-                    <PlaybookContainer sessionId={currentSession.id} campaignId={campaignId} />
-                  ) : (
-                    <SessionPlanner
-                      sessionId={currentSession.id}
-                      initialContent={currentSession.prep_content}
-                      onContentChange={(content) => {
-                        setCurrentSession(prev => ({ ...prev, prep_content: content as Session['prep_content'] }));
-                      }}
-                    />
-                  )}
+                  <SessionPlanner
+                    sessionId={currentSession.id}
+                    initialContent={currentSession.prep_content}
+                    onContentChange={(content) => {
+                      setCurrentSession(prev => ({ ...prev, prep_content: content as Session['prep_content'] }));
+                    }}
+                  />
                 </div>
               </div>
             </ResizablePanel>

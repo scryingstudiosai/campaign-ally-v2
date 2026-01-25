@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useRef, useCallback, useMemo } from 'react';
-import { Users, MapPin, Package, Scroll, Shield, Skull } from 'lucide-react';
+import { Users, MapPin, Package, Scroll, Shield, Skull, Swords, Sparkles, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Entity types supported
-export type EntityType = 'npc' | 'location' | 'item' | 'quest' | 'faction' | 'creature';
+// Entity types supported - all 9 entity types
+export type EntityType = 'npc' | 'location' | 'item' | 'quest' | 'faction' | 'creature' | 'encounter' | 'event' | 'deity';
 
 // Highlight data structure
 export interface TextHighlight {
@@ -35,13 +35,19 @@ interface InteractiveTextProps {
   readOnly?: boolean;
 }
 
+// Unified entity type colors - keep consistent across the app
+// Colors: npc=blue, player=yellow, location=emerald, item=amber, creature=red,
+//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=violet
 const entityOptions: { type: EntityType; label: string; icon: React.ElementType; color: string }[] = [
   { type: 'npc', label: 'NPC', icon: Users, color: 'text-blue-400 hover:bg-blue-500/20' },
-  { type: 'location', label: 'Location', icon: MapPin, color: 'text-green-400 hover:bg-green-500/20' },
+  { type: 'location', label: 'Location', icon: MapPin, color: 'text-emerald-400 hover:bg-emerald-500/20' },
   { type: 'item', label: 'Item', icon: Package, color: 'text-amber-400 hover:bg-amber-500/20' },
-  { type: 'quest', label: 'Quest', icon: Scroll, color: 'text-purple-400 hover:bg-purple-500/20' },
-  { type: 'faction', label: 'Faction', icon: Shield, color: 'text-red-400 hover:bg-red-500/20' },
-  { type: 'creature', label: 'Creature', icon: Skull, color: 'text-orange-400 hover:bg-orange-500/20' },
+  { type: 'creature', label: 'Creature', icon: Skull, color: 'text-red-400 hover:bg-red-500/20' },
+  { type: 'faction', label: 'Faction', icon: Shield, color: 'text-purple-400 hover:bg-purple-500/20' },
+  { type: 'quest', label: 'Quest', icon: Scroll, color: 'text-teal-400 hover:bg-teal-500/20' },
+  { type: 'encounter', label: 'Encounter', icon: Swords, color: 'text-orange-400 hover:bg-orange-500/20' },
+  { type: 'event', label: 'Lore', icon: Sparkles, color: 'text-cyan-400 hover:bg-cyan-500/20' },
+  { type: 'deity', label: 'Deity', icon: Crown, color: 'text-violet-400 hover:bg-violet-500/20' },
 ];
 
 export function InteractiveText({

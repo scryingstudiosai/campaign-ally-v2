@@ -25,6 +25,7 @@ import {
   MessageSquare,
   Calendar,
   Sun,
+  Settings2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -231,10 +232,18 @@ function SidebarContent({
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold">
             DM
           </div>
-          <div className="text-xs">
+          <div className="flex-1 text-xs">
             <p className="text-slate-300 font-medium">Dungeon Master</p>
             <p className="text-slate-500">Free Plan</p>
           </div>
+          <Link
+            href="/dashboard/settings"
+            onClick={handleClick}
+            className="p-1.5 rounded-md text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 transition-colors"
+            title="Settings"
+          >
+            <Settings2 className="w-4 h-4" />
+          </Link>
         </div>
         <div className="pt-2 border-t border-slate-800/50">
           <Link

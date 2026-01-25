@@ -53,15 +53,20 @@ const ENTITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   encounter: Swords,
 }
 
+// Unified entity type colors - keep consistent across the app
+// Colors: npc=blue, player=yellow, location=emerald, item=amber, creature=red,
+//         faction=purple, quest=teal, encounter=orange, event=cyan, deity=violet
 const ENTITY_COLORS: Record<string, string> = {
   npc: 'text-blue-400',
-  player: 'text-green-400',
+  player: 'text-yellow-400',
   location: 'text-emerald-400',
   item: 'text-amber-400',
   creature: 'text-red-400',
   faction: 'text-purple-400',
   quest: 'text-teal-400',
   encounter: 'text-orange-400',
+  event: 'text-cyan-400',
+  deity: 'text-violet-400',
 }
 
 export function EntityTypeahead({

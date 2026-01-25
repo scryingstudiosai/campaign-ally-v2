@@ -83,330 +83,37 @@ interface EntityCardProps {
   onToggleSelect?: () => void
 }
 
-// Composite key style map for entity + subtype combinations
-interface EntityStyle {
-  borderClass: string
-  glowClass: string
+import { getEntityStyle as getSemanticStyle } from '@/lib/constants/entity-styles'
+
+// Left-accent style for entity cards
+// Uses semantic palette colors with left border accent
+interface CardStyle {
+  accentClass: string
   hoverClass: string
 }
 
-const STYLE_MAP: Record<string, EntityStyle> = {
-  // NPC subtypes
-  npc_villain: {
-    borderClass: 'border-red-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
-    hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
-  },
-  npc_hero: {
-    borderClass: 'border-amber-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(245,158,11,0.15)]',
-    hoverClass: 'hover:border-amber-500/60 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)]',
-  },
-  npc_standard: {
-    borderClass: 'border-teal-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-teal-500/50 hover:shadow-[0_0_20px_rgba(45,212,191,0.15)]',
-  },
-  // Player characters
-  player_default: {
-    borderClass: 'border-yellow-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(234,179,8,0.15)]',
-    hoverClass: 'hover:border-yellow-500/60 hover:shadow-[0_0_20px_rgba(234,179,8,0.25)]',
-  },
-  // Default fallbacks for other entity types
-  location_default: {
-    borderClass: 'border-emerald-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(52,211,153,0.15)]',
-  },
-  item_default: {
-    borderClass: 'border-blue-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
-  },
-  // Item subtypes
-  item_standard: {
-    borderClass: 'border-blue-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
-  },
-  item_artifact: {
-    borderClass: 'border-amber-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(245,158,11,0.15)]',
-    hoverClass: 'hover:border-amber-500/60 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)]',
-  },
-  item_cursed: {
-    borderClass: 'border-red-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
-    hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
-  },
-  // Location subtypes
-  location_region: {
-    borderClass: 'border-indigo-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(99,102,241,0.15)]',
-    hoverClass: 'hover:border-indigo-500/60 hover:shadow-[0_0_20px_rgba(99,102,241,0.25)]',
-  },
-  location_settlement: {
-    borderClass: 'border-indigo-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(99,102,241,0.15)]',
-    hoverClass: 'hover:border-indigo-500/60 hover:shadow-[0_0_20px_rgba(99,102,241,0.25)]',
-  },
-  location_district: {
-    borderClass: 'border-indigo-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-indigo-500/50',
-  },
-  location_building: {
-    borderClass: 'border-indigo-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-indigo-500/50',
-  },
-  location_room: {
-    borderClass: 'border-indigo-500/20',
-    glowClass: '',
-    hoverClass: 'hover:border-indigo-500/40',
-  },
-  location_landmark: {
-    borderClass: 'border-cyan-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(6,182,212,0.15)]',
-    hoverClass: 'hover:border-cyan-500/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)]',
-  },
-  location_dungeon: {
-    borderClass: 'border-red-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
-    hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
-  },
-  faction_default: {
-    borderClass: 'border-orange-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-orange-500/50 hover:shadow-[0_0_20px_rgba(249,115,22,0.15)]',
-  },
-  quest_default: {
-    borderClass: 'border-purple-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]',
-  },
-  other_default: {
-    borderClass: 'border-slate-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-slate-500/50',
-  },
-  // Encounter subtypes
-  encounter_default: {
-    borderClass: 'border-amber-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(251,191,36,0.15)]',
-  },
-  encounter_combat: {
-    borderClass: 'border-red-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
-    hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
-  },
-  encounter_boss: {
-    borderClass: 'border-orange-500/50',
-    glowClass: 'shadow-[0_0_20px_rgba(249,115,22,0.2)]',
-    hoverClass: 'hover:border-orange-500/70 hover:shadow-[0_0_25px_rgba(249,115,22,0.35)]',
-  },
-  encounter_ambush: {
-    borderClass: 'border-yellow-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(234,179,8,0.15)]',
-    hoverClass: 'hover:border-yellow-500/60 hover:shadow-[0_0_20px_rgba(234,179,8,0.25)]',
-  },
-  encounter_defense: {
-    borderClass: 'border-blue-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(59,130,246,0.15)]',
-    hoverClass: 'hover:border-blue-500/60 hover:shadow-[0_0_20px_rgba(59,130,246,0.25)]',
-  },
-  encounter_chase: {
-    borderClass: 'border-cyan-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(6,182,212,0.15)]',
-    hoverClass: 'hover:border-cyan-500/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)]',
-  },
-  encounter_stealth: {
-    borderClass: 'border-slate-500/40',
-    glowClass: '',
-    hoverClass: 'hover:border-slate-500/60',
-  },
-  encounter_puzzle: {
-    borderClass: 'border-purple-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
-    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
-  },
-  encounter_social: {
-    borderClass: 'border-pink-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(236,72,153,0.15)]',
-    hoverClass: 'hover:border-pink-500/60 hover:shadow-[0_0_20px_rgba(236,72,153,0.25)]',
-  },
-  encounter_exploration: {
-    borderClass: 'border-emerald-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(16,185,129,0.15)]',
-    hoverClass: 'hover:border-emerald-500/60 hover:shadow-[0_0_20px_rgba(16,185,129,0.25)]',
-  },
-  encounter_trap: {
-    borderClass: 'border-amber-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(245,158,11,0.15)]',
-    hoverClass: 'hover:border-amber-500/60 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)]',
-  },
-  encounter_complex_trap: {
-    borderClass: 'border-red-600/50',
-    glowClass: 'shadow-[0_0_20px_rgba(220,38,38,0.2)]',
-    hoverClass: 'hover:border-red-600/70 hover:shadow-[0_0_25px_rgba(220,38,38,0.35)]',
-  },
-  encounter_skill_challenge: {
-    borderClass: 'border-teal-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(20,184,166,0.15)]',
-    hoverClass: 'hover:border-teal-500/60 hover:shadow-[0_0_20px_rgba(20,184,166,0.25)]',
-  },
-  // Creature subtypes
-  creature_default: {
-    borderClass: 'border-rose-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-rose-500/50 hover:shadow-[0_0_20px_rgba(244,63,94,0.15)]',
-  },
-  creature_beast: {
-    borderClass: 'border-emerald-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(16,185,129,0.15)]',
-    hoverClass: 'hover:border-emerald-500/60 hover:shadow-[0_0_20px_rgba(16,185,129,0.25)]',
-  },
-  creature_humanoid: {
-    borderClass: 'border-teal-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-teal-500/50',
-  },
-  creature_undead: {
-    borderClass: 'border-purple-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
-    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
-  },
-  creature_fiend: {
-    borderClass: 'border-red-600/50',
-    glowClass: 'shadow-[0_0_20px_rgba(220,38,38,0.2)]',
-    hoverClass: 'hover:border-red-600/70 hover:shadow-[0_0_25px_rgba(220,38,38,0.35)]',
-  },
-  creature_celestial: {
-    borderClass: 'border-amber-400/50',
-    glowClass: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
-    hoverClass: 'hover:border-amber-400/70 hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]',
-  },
-  creature_dragon: {
-    borderClass: 'border-orange-500/50',
-    glowClass: 'shadow-[0_0_20px_rgba(249,115,22,0.2)]',
-    hoverClass: 'hover:border-orange-500/70 hover:shadow-[0_0_25px_rgba(249,115,22,0.35)]',
-  },
-  creature_aberration: {
-    borderClass: 'border-fuchsia-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(217,70,239,0.15)]',
-    hoverClass: 'hover:border-fuchsia-500/60 hover:shadow-[0_0_20px_rgba(217,70,239,0.25)]',
-  },
-  creature_construct: {
-    borderClass: 'border-slate-400/40',
-    glowClass: 'shadow-[0_0_15px_rgba(148,163,184,0.15)]',
-    hoverClass: 'hover:border-slate-400/60 hover:shadow-[0_0_20px_rgba(148,163,184,0.25)]',
-  },
-  creature_elemental: {
-    borderClass: 'border-cyan-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(6,182,212,0.15)]',
-    hoverClass: 'hover:border-cyan-500/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)]',
-  },
-  // Event subtypes
-  event_default: {
-    borderClass: 'border-amber-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]',
-  },
-  event_historical_event: {
-    borderClass: 'border-amber-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]',
-  },
-  event_legend: {
-    borderClass: 'border-purple-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
-    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
-  },
-  event_prophecy: {
-    borderClass: 'border-violet-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(139,92,246,0.15)]',
-    hoverClass: 'hover:border-violet-500/60 hover:shadow-[0_0_20px_rgba(139,92,246,0.25)]',
-  },
-  event_rumor: {
-    borderClass: 'border-slate-500/30',
-    glowClass: '',
-    hoverClass: 'hover:border-slate-500/50',
-  },
-  event_war: {
-    borderClass: 'border-red-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
-    hoverClass: 'hover:border-red-500/60 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]',
-  },
-  event_catastrophe: {
-    borderClass: 'border-red-600/50',
-    glowClass: 'shadow-[0_0_20px_rgba(220,38,38,0.2)]',
-    hoverClass: 'hover:border-red-600/70 hover:shadow-[0_0_25px_rgba(220,38,38,0.35)]',
-  },
-  event_miracle: {
-    borderClass: 'border-amber-400/50',
-    glowClass: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
-    hoverClass: 'hover:border-amber-400/70 hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]',
-  },
-  // Deity subtypes
-  deity_default: {
-    borderClass: 'border-purple-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
-    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
-  },
-  deity_greater_deity: {
-    borderClass: 'border-amber-400/50',
-    glowClass: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
-    hoverClass: 'hover:border-amber-400/70 hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]',
-  },
-  deity_intermediate_deity: {
-    borderClass: 'border-purple-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(168,85,247,0.15)]',
-    hoverClass: 'hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]',
-  },
-  deity_lesser_deity: {
-    borderClass: 'border-purple-400/30',
-    glowClass: '',
-    hoverClass: 'hover:border-purple-400/50 hover:shadow-[0_0_15px_rgba(168,85,247,0.15)]',
-  },
-  deity_demigod: {
-    borderClass: 'border-indigo-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(99,102,241,0.15)]',
-    hoverClass: 'hover:border-indigo-500/60 hover:shadow-[0_0_20px_rgba(99,102,241,0.25)]',
-  },
-  deity_dead_god: {
-    borderClass: 'border-slate-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(100,116,139,0.15)]',
-    hoverClass: 'hover:border-slate-500/60 hover:shadow-[0_0_20px_rgba(100,116,139,0.25)]',
-  },
-  deity_primordial: {
-    borderClass: 'border-orange-500/50',
-    glowClass: 'shadow-[0_0_20px_rgba(249,115,22,0.2)]',
-    hoverClass: 'hover:border-orange-500/70 hover:shadow-[0_0_25px_rgba(249,115,22,0.35)]',
-  },
-  deity_ascended: {
-    borderClass: 'border-cyan-500/40',
-    glowClass: 'shadow-[0_0_15px_rgba(6,182,212,0.15)]',
-    hoverClass: 'hover:border-cyan-500/60 hover:shadow-[0_0_20px_rgba(6,182,212,0.25)]',
-  },
-}
+// Get card styling based on entity type and subtype
+function getCardStyle(entityType: EntityType, subtype?: string): CardStyle {
+  const style = getSemanticStyle(entityType)
 
-function getEntityStyle(entityType: EntityType, subtype?: string): EntityStyle {
-  // Try composite key first (e.g., npc_villain)
-  const compositeKey = `${entityType}_${subtype || 'standard'}`
-  if (STYLE_MAP[compositeKey]) {
-    return STYLE_MAP[compositeKey]
+  // Special subtype handling for NPC villains (threat-like) and heroes (player-like)
+  if (entityType === 'npc' && subtype === 'villain') {
+    return {
+      accentClass: 'border-l-rose-500',
+      hoverClass: 'hover:bg-slate-800/50',
+    }
+  }
+  if (entityType === 'npc' && subtype === 'hero') {
+    return {
+      accentClass: 'border-l-amber-500',
+      hoverClass: 'hover:bg-slate-800/50',
+    }
   }
 
-  // Fall back to entity type default
-  const defaultKey = `${entityType}_default`
-  if (STYLE_MAP[defaultKey]) {
-    return STYLE_MAP[defaultKey]
+  return {
+    accentClass: style.accent,
+    hoverClass: 'hover:bg-slate-800/50',
   }
-
-  // Ultimate fallback
-  return STYLE_MAP.other_default
 }
 
 const STATUS_CONFIG: Record<string, { icon: typeof Skull; color: string; label: string }> = {
@@ -439,7 +146,7 @@ export function EntityCard({
   const statusConfig = STATUS_CONFIG[entity.status]
   const importanceConfig = IMPORTANCE_CONFIG[entity.importance_tier]
   const isStub = entity.attributes?.is_stub || entity.attributes?.needs_review
-  const entityStyle = getEntityStyle(entity.entity_type, entity.sub_type)
+  const cardStyle = getCardStyle(entity.entity_type, entity.sub_type)
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -498,12 +205,11 @@ export function EntityCard({
             entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter' | 'event'}
             hoverable
             className={cn(
-              'h-full p-4 cursor-pointer relative',
-              entityStyle.borderClass,
-              entityStyle.glowClass,
-              entityStyle.hoverClass,
-              isStub && 'border-dashed border-amber-500/50 opacity-90',
-              isSelected && 'border-teal-500 bg-teal-500/10'
+              'h-full p-4 cursor-pointer relative border-l-[3px] border-slate-700/50',
+              cardStyle.accentClass,
+              cardStyle.hoverClass,
+              isStub && 'border-l-dashed opacity-90',
+              isSelected && 'border-l-teal-500 bg-teal-500/10'
             )}
             onClick={handleCardClick}
           >
@@ -595,11 +301,10 @@ export function EntityCard({
               entityType={entity.entity_type as 'npc' | 'player' | 'location' | 'quest' | 'item' | 'faction' | 'creature' | 'encounter' | 'event'}
               hoverable
               className={cn(
-                'h-full p-4 relative',
-                entityStyle.borderClass,
-                entityStyle.glowClass,
-                entityStyle.hoverClass,
-                isStub && 'border-dashed border-amber-500/50 opacity-90'
+                'h-full p-4 relative border-l-[3px] border-slate-700/50',
+                cardStyle.accentClass,
+                cardStyle.hoverClass,
+                isStub && 'border-l-dashed opacity-90'
               )}
             >
               {/* Type Badge - absolute positioned */}

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { LogoutButton } from '@/components/auth/logout-button'
-import { Shield } from 'lucide-react'
+import { Shield, Settings2 } from 'lucide-react'
 import { DashboardClient } from './dashboard-client'
 
 export default async function DashboardPage() {
@@ -14,11 +14,11 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // Get profile (may not exist if migrations haven't run)
-  const { data: profile } = await supabase
-    .from('profiles')
+  // Get user settings for display name
+  const { data: userSettings } = await supabase
+    .from('user_settings')
     .select('display_name')
-    .eq('id', user.id)
+    .eq('user_id', user.id)
     .single()
 
   // Get user's campaigns
@@ -29,7 +29,7 @@ export default async function DashboardPage() {
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
 
-  const displayName = profile?.display_name || user.email || 'Adventurer'
+  const displayName = userSettings?.display_name || user.email?.split('@')[0] || 'Adventurer'
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
@@ -45,6 +45,13 @@ export default async function DashboardPage() {
             >
               <Shield className="w-4 h-4" />
               <span className="hidden sm:inline">Player Portal</span>
+            </Link>
+            <Link
+              href="/dashboard/settings"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+            >
+              <Settings2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Settings</span>
             </Link>
             <LogoutButton />
           </div>

@@ -17,6 +17,7 @@ interface Character {
   soul: Record<string, unknown> | null;
   mechanics: Record<string, unknown> | null;
   brain: Record<string, unknown> | null;
+  resources: Record<string, unknown> | null;
   image_url: string | null;
 }
 
@@ -77,6 +78,10 @@ export function CharacterSheet({ campaignId, character, worldAnchors = [] }: Pro
 
   const mechanics = (char.mechanics || {}) as Record<string, unknown>;
   const soul = (char.soul || {}) as Record<string, unknown>;
+  const resources = (char.resources || {}) as Record<string, unknown>;
+
+  // Inspiration from DM-controlled resources
+  const hasInspiration = (resources.inspiration as boolean) || false;
 
   // Read ability scores from soul first (where Player Forge saves them), fall back to mechanics
   const abilityScores = (soul.ability_scores || mechanics.ability_scores || mechanics.stats || {}) as Record<string, number>;
@@ -168,6 +173,29 @@ export function CharacterSheet({ campaignId, character, worldAnchors = [] }: Pro
     setEditingSection('none');
   };
 
+  const spendInspiration = async () => {
+    if (!hasInspiration || isSaving) return;
+
+    setIsSaving(true);
+    const res = await fetch('/api/portal/character', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        campaignId,
+        characterId: char.id,
+        updates: {
+          resources: { inspiration: false },
+        },
+      }),
+    });
+
+    if (res.ok) {
+      const updated = await res.json();
+      setChar(updated);
+    }
+    setIsSaving(false);
+  };
+
   const getModifier = (score: number) => {
     const mod = Math.floor((score - 10) / 2);
     return mod >= 0 ? `+${mod}` : `${mod}`;
@@ -206,8 +234,15 @@ export function CharacterSheet({ campaignId, character, worldAnchors = [] }: Pro
               )}
             </div>
 
-            <div className="pb-2">
-              <h1 className="text-2xl font-display text-white">{char.name}</h1>
+            <div className="pb-2 flex-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-display text-white">{char.name}</h1>
+                {hasInspiration && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/40 rounded-full animate-pulse">
+                    <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                  </div>
+                )}
+              </div>
               <p className="text-teal-400">
                 Level {level} {char.sub_type || 'Adventurer'}
               </p>
@@ -215,6 +250,26 @@ export function CharacterSheet({ campaignId, character, worldAnchors = [] }: Pro
           </div>
         </div>
       </div>
+
+      {/* Inspiration Banner */}
+      {hasInspiration && (
+        <div className="mx-4 mt-3 p-3 bg-gradient-to-r from-yellow-500/20 via-amber-500/20 to-yellow-500/20 border border-yellow-500/30 rounded-xl flex items-center gap-3">
+          <div className="p-2 bg-yellow-500/30 rounded-lg">
+            <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-yellow-200 font-medium text-sm">You have Inspiration!</p>
+            <p className="text-yellow-400/70 text-xs">Tap to spend for advantage on an attack, save, or check</p>
+          </div>
+          <button
+            onClick={spendInspiration}
+            disabled={isSaving}
+            className="px-3 py-1.5 bg-yellow-500/30 hover:bg-yellow-500/50 border border-yellow-500/50 rounded-lg text-yellow-200 text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {isSaving ? '...' : 'Use'}
+          </button>
+        </div>
+      )}
 
       {/* Quick Stats Bar */}
       <div className="px-4 py-4 grid grid-cols-3 gap-3">

@@ -31,6 +31,7 @@ import {
 } from '@/components/forge/npc'
 import { QuickReference } from '@/components/forge/QuickReference'
 import { processLootToInventory } from '@/lib/forge/entity-minter'
+import { useSettingsContextOptional } from '@/components/settings'
 
 interface StubContext {
   stubId: string
@@ -49,6 +50,7 @@ export default function NpcForgePage(): JSX.Element {
   const searchParams = useSearchParams()
   const campaignId = params.id as string
   const supabase = createClient()
+  const settingsContext = useSettingsContextOptional()
 
   // Parse stub context from URL params
   const stubId = searchParams.get('stubId')
@@ -120,6 +122,12 @@ export default function NpcForgePage(): JSX.Element {
     campaignId,
     forgeType: 'npc',
     stubId: stubId || undefined, // Skip duplicate check when fleshing out a stub
+    onCommitSuccess: async () => {
+      // Mark onboarding tasks complete
+      if (settingsContext) {
+        await settingsContext.markOnboardingComplete(['create_npc', 'use_ai_generation'])
+      }
+    },
     generateFn: async (input) => {
       // Call existing API endpoint with existing format
       const response = await fetch('/api/generate/npc', {
@@ -570,6 +578,25 @@ export default function NpcForgePage(): JSX.Element {
           }
         }
 
+        // Create stub entities for any new discoveries marked as 'create_stub'
+        const stubsToCreate = reviewDiscoveries.filter(d => d.status === 'create_stub')
+        if (stubsToCreate.length > 0) {
+          const { createStubEntities } = await import('@/lib/forge/entity-minter')
+          const createdStubs = await createStubEntities(
+            supabase,
+            campaignId,
+            stubsToCreate,
+            'npc',
+            { sourceEntityId: stubId, sourceEntityName: forge.output?.name }
+          )
+          console.log('[NPC Forge] Created stubs during flesh-out:', createdStubs)
+        }
+
+        // Mark onboarding tasks complete for stub updates too
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete(['create_npc', 'use_ai_generation'])
+        }
+
         toast.success('NPC fleshed out and saved!')
         // Force Next.js to invalidate cache and refetch server data
         router.refresh()
@@ -627,6 +654,11 @@ export default function NpcForgePage(): JSX.Element {
           if (lootResult.errors.length > 0) {
             console.error('Loot processing errors:', lootResult.errors)
           }
+        }
+
+        // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete(['create_npc', 'use_ai_generation'])
         }
 
         toast.success('NPC saved to Memory!')

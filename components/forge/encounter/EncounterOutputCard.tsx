@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { InteractiveText } from '@/components/forge/InteractiveText'
+import { InteractiveText as UniversalInteractiveText, EntityType, TextRange } from '@/components/ui/interactive-text'
 import { SelectionPopover } from '@/components/forge/SelectionPopover'
 import { renderWithBold } from '@/lib/text-utils'
 import {
@@ -116,7 +117,14 @@ export function EncounterOutputCard({
 
   const { brain, soul, mechanics, rewards } = data
 
-  // Render text with interactive links if scan result available, otherwise just bold
+  // Handle manual text selection to create discovery
+  const handleManualSelect = (text: string, type: EntityType, _range: TextRange) => {
+    if (onManualDiscovery) {
+      onManualDiscovery(text, type)
+    }
+  }
+
+  // Render text with interactive links if scan result available, otherwise allow manual selection
   const renderTextWithDiscoveries = (text: string | undefined): React.ReactNode => {
     if (!text) return null
 
@@ -127,6 +135,16 @@ export function EncounterOutputCard({
           scanResult={scanResult}
           campaignId={campaignId}
           onDiscoveryAction={onDiscoveryAction}
+        />
+      )
+    }
+
+    // Allow manual selection when no scan result
+    if (onManualDiscovery) {
+      return (
+        <UniversalInteractiveText
+          content={text}
+          onManualSelect={handleManualSelect}
         />
       )
     }

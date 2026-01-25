@@ -31,6 +31,7 @@ export default async function CharacterPage({ params }: Props) {
         soul,
         mechanics,
         brain,
+        resources,
         image_url
       )
     `)
@@ -129,6 +130,7 @@ export default async function CharacterPage({ params }: Props) {
         soul: Record<string, unknown> | null;
         mechanics: Record<string, unknown> | null;
         brain: Record<string, unknown> | null;
+        resources: Record<string, unknown> | null;
         image_url: string | null;
       }}
       membershipId={membership.id}

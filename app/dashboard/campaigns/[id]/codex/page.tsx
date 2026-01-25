@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { CodexDisplay } from '@/components/codex/codex-display'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Pencil } from 'lucide-react'
+import { OnboardingTrigger } from '@/components/onboarding'
 
 interface PageProps {
   params: { id: string }
@@ -58,6 +59,9 @@ export default async function CodexPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
+      {/* Mark onboarding task complete when user visits Codex */}
+      <OnboardingTrigger taskId="explore_codex" />
+
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <Button variant="ghost" asChild className="mb-4">

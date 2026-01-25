@@ -35,6 +35,7 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import type { Discovery, Conflict, EntityType } from '@/types/forge'
+import { useSettingsContextOptional } from '@/components/settings'
 
 // Input data type for faction forge
 interface FactionInputData {
@@ -81,9 +82,10 @@ export default function FactionForgePage({ params }: PageProps) {
   const searchParams = useSearchParams()
   const campaignId = params.id
   const supabase = createClient()
+  const settingsContext = useSettingsContextOptional()
 
   // Check for stub editing mode
-  const editingStubId = searchParams.get('stub')
+  const editingStubId = searchParams.get('stubId')
   const [stubContext, setStubContext] = useState<{
     name: string
     sourceEntityId?: string
@@ -103,6 +105,11 @@ export default function FactionForgePage({ params }: PageProps) {
     campaignId,
     forgeType: 'faction',
     stubId: editingStubId || undefined,
+    onCommitSuccess: async () => {
+      if (settingsContext) {
+        await settingsContext.markOnboardingComplete(['create_faction', 'use_ai_generation'])
+      }
+    },
     generateFn: async (input) => {
       const response = await fetch('/api/generate/faction', {
         method: 'POST',
@@ -431,6 +438,11 @@ export default function FactionForgePage({ params }: PageProps) {
         }
       }
 
+      // Mark onboarding tasks complete for stub updates too
+      if (settingsContext) {
+        await settingsContext.markOnboardingComplete(['create_faction', 'use_ai_generation'])
+      }
+
       toast.success('Faction updated!')
       window.location.href = `/dashboard/campaigns/${campaignId}/memory/${stubId}`
     } else {
@@ -442,6 +454,12 @@ export default function FactionForgePage({ params }: PageProps) {
 
       if (result.success && result.entity) {
         const entity = result.entity as { id: string }
+
+        // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete(['create_faction', 'use_ai_generation'])
+        }
+
         toast.success('Faction created!')
         window.location.href = `/dashboard/campaigns/${campaignId}/memory/${entity.id}`
       } else {

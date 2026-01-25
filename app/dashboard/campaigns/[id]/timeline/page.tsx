@@ -30,6 +30,7 @@ import { PageTransition, StaggerContainer, StaggerItem, Expandable } from '@/com
 import { EVENT_SUB_TYPES, EventSubType, LoreDrop } from '@/types/event';
 import { EventDetailDrawer } from '@/components/lore/EventDetailDrawer';
 import Link from 'next/link';
+import { useSettingsContextOptional } from '@/components/settings';
 
 interface TimelineEvent {
   id: string;
@@ -77,6 +78,7 @@ export default function TimelinePage() {
   const params = useParams();
   const campaignId = params?.id as string;
   const supabase = createClient();
+  const settingsContext = useSettingsContextOptional();
 
   // Data state
   const [events, setEvents] = useState<TimelineEvent[]>([]);
@@ -99,6 +101,13 @@ export default function TimelinePage() {
   // Refs for connection line drawing
   const eventRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const timelineRef = useRef<HTMLDivElement>(null);
+
+  // Mark onboarding task complete when user visits Timeline
+  useEffect(() => {
+    if (settingsContext && settingsContext.settings?.onboarding?.view_timeline !== true) {
+      settingsContext.markOnboardingComplete('view_timeline');
+    }
+  }, [settingsContext]);
 
   // Fetch events
   useEffect(() => {

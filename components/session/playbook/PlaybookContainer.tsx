@@ -20,6 +20,7 @@ import { SceneBlock, EncounterBlock, QuestBlock, InfoBlock, AddBlockMenu } from 
 import { AiGenesisBlock } from './blocks/AiGenesisBlock';
 import { LiveSpine } from '../LiveSpine';
 import { Loader2 } from 'lucide-react';
+import { useSettingsContext } from '@/components/settings/SettingsContext';
 
 interface PlaybookBlock {
   id: string;
@@ -44,6 +45,7 @@ export function PlaybookContainer({ sessionId, campaignId }: PlaybookContainerPr
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { markOnboardingComplete } = useSettingsContext();
 
   // Find the active block index (first block with status 'active', or -1 if none)
   const activeBlockIndex = useMemo(() => {
@@ -102,6 +104,8 @@ export function PlaybookContainer({ sessionId, campaignId }: PlaybookContainerPr
         status: 'pending',
       };
       setBlocks(prev => [...prev, genesisBlock]);
+      // Mark onboarding task complete for AI Genesis too
+      await markOnboardingComplete('use_session_prep');
       return;
     }
 
@@ -130,6 +134,8 @@ export function PlaybookContainer({ sessionId, campaignId }: PlaybookContainerPr
         const newBlock = data.block || data;
         if (newBlock && newBlock.id) {
           setBlocks(prev => [...prev, newBlock]);
+          // Mark onboarding task complete
+          await markOnboardingComplete('use_session_prep');
         }
       }
     } catch (error) {

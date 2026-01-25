@@ -11,6 +11,7 @@ import {
   QuestObjectiveNode,
   EncounterNode,
   EntityMention,
+  EntityLinkMark,
   NoteBlockNode,
   SceneBlockNode,
   EncounterBlockNode,
@@ -19,8 +20,25 @@ import {
 } from './extensions';
 import { EditorToolbar, FontSize } from './EditorToolbar';
 import { PrepHelpDialog } from './PrepHelpDialog';
+import { SessionPrepSelectionMenu } from './SessionPrepSelectionMenu';
+import { EntityQuickView } from '@/components/session/EntityQuickView';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSettingsContext } from '@/components/settings/SettingsContext';
+import { createClient } from '@/lib/supabase/client';
+import { useTextSelection } from '@/hooks/useTextSelection';
+
+// Entity data for quick view
+interface QuickViewEntity {
+  id: string;
+  name: string;
+  entity_type: string;
+  sub_type?: string;
+  summary?: string;
+  mechanics?: Record<string, unknown>;
+  soul?: Record<string, unknown>;
+  brain?: Record<string, unknown>;
+}
 
 interface SessionPlannerProps {
   sessionId: string;
@@ -41,6 +59,51 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [fontSize, setFontSize] = useState<FontSize>('md');
   const [showHelp, setShowHelp] = useState(false);
+  const { markOnboardingComplete } = useSettingsContext();
+  const hasMarkedOnboarding = useRef(false);
+
+  // Entity quick view state
+  const [quickViewEntity, setQuickViewEntity] = useState<QuickViewEntity | null>(null);
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+
+  // Text selection for creating entity stubs
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const { selectedText, selectionPosition, clearSelection } = useTextSelection(editorContainerRef);
+
+  // Get campaign ID from URL
+  const getCampaignId = useCallback((): string | null => {
+    if (typeof window === 'undefined') return null;
+    const pathParts = window.location.pathname.split('/');
+    const campaignIndex = pathParts.indexOf('campaigns');
+    return campaignIndex !== -1 ? pathParts[campaignIndex + 1] : null;
+  }, []);
+
+  // Fetch and show entity quick view
+  const handleEntityLinkClick = useCallback(async (entityId: string) => {
+    const campaignId = getCampaignId();
+    if (!entityId || !campaignId) return;
+
+    try {
+      const supabase = createClient();
+      const { data: entity, error } = await supabase
+        .from('entities')
+        .select('id, name, entity_type, sub_type, summary, mechanics, soul, brain')
+        .eq('id', entityId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching entity:', error);
+        return;
+      }
+
+      if (entity) {
+        setQuickViewEntity(entity as QuickViewEntity);
+        setIsQuickViewOpen(true);
+      }
+    } catch (err) {
+      console.error('Error fetching entity for quick view:', err);
+    }
+  }, [getCampaignId]);
 
   // Load font size preference from localStorage
   useEffect(() => {
@@ -74,12 +137,18 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       if (response.ok) {
         setLastSaved(new Date());
         onContentChange?.(content);
+
+        // Mark onboarding complete on first successful save
+        if (!hasMarkedOnboarding.current) {
+          hasMarkedOnboarding.current = true;
+          await markOnboardingComplete('use_session_prep');
+        }
       }
     } catch (error) {
       console.error('Failed to save prep content:', error);
     }
     setIsSaving(false);
-  }, [sessionId, onContentChange]);
+  }, [sessionId, onContentChange, markOnboardingComplete]);
 
   // Debounce helper
   const debouncedSave = useCallback((content: unknown) => {
@@ -102,6 +171,7 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       QuestObjectiveNode,
       EncounterNode,
       EntityMention,
+      EntityLinkMark,
       // Collapsible blocks
       NoteBlockNode,
       SceneBlockNode,
@@ -113,6 +183,22 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
     editorProps: {
       attributes: {
         class: 'prose prose-invert prose-sm max-w-none focus:outline-none min-h-[300px] p-4',
+      },
+      handleClick: (view, pos, event) => {
+        // Check if clicked on an entity link
+        const target = event.target as HTMLElement;
+        const entityLink = target.closest('[data-entity-link]');
+
+        if (entityLink) {
+          const entityId = entityLink.getAttribute('data-entity-id');
+          if (entityId) {
+            event.preventDefault();
+            handleEntityLinkClick(entityId);
+            return true;
+          }
+        }
+
+        return false;
       },
       handlePaste: (view, event) => {
         const html = event.clipboardData?.getData('text/html');
@@ -371,9 +457,15 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       />
 
       <div
-        ref={setNodeRef}
+        ref={(node) => {
+          // Combine refs: setNodeRef for droppable, editorContainerRef for text selection
+          setNodeRef(node);
+          if (editorContainerRef) {
+            (editorContainerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          }
+        }}
         className={cn(
-          'flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg transition-colors',
+          'flex-1 overflow-y-auto bg-slate-900/50 rounded-b-lg transition-colors relative',
           FONT_SIZE_CLASSES[fontSize],
           // Only show global highlight when NOT holding shift (root level drop)
           // When shift is held, individual blocks will highlight instead
@@ -382,6 +474,17 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
       >
         <EditorContent editor={editor} className="h-full" />
       </div>
+
+      {/* Text Selection Menu for creating entity stubs */}
+      {selectedText && selectionPosition && (
+        <SessionPrepSelectionMenu
+          selectedText={selectedText}
+          position={selectionPosition}
+          campaignId={getCampaignId() || ''}
+          sessionId={sessionId}
+          onClose={clearSelection}
+        />
+      )}
 
       {/* Save Status */}
       <div className="flex items-center justify-end gap-2 p-2 text-xs text-slate-500">
@@ -399,6 +502,17 @@ export function SessionPlanner({ sessionId, initialContent, onContentChange }: S
 
       {/* Help Dialog */}
       <PrepHelpDialog open={showHelp} onOpenChange={setShowHelp} />
+
+      {/* Entity Quick View */}
+      <EntityQuickView
+        entity={quickViewEntity}
+        isOpen={isQuickViewOpen}
+        onClose={() => {
+          setIsQuickViewOpen(false);
+          setQuickViewEntity(null);
+        }}
+        campaignId={getCampaignId() || ''}
+      />
     </div>
   );
 }

@@ -6,6 +6,96 @@ import { Target, Sparkles, Loader2, ChevronDown, ChevronRight } from 'lucide-rea
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
+// Entity type for linking
+interface LinkableEntity {
+  id: string;
+  name: string;
+  entity_type: string;
+}
+
+// TipTap text node with optional marks
+interface TextNode {
+  type: 'text';
+  text: string;
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
+}
+
+/**
+ * Escapes special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Processes text and returns TipTap content array with entity links applied
+ */
+function processTextWithEntityLinks(
+  text: string,
+  entities: LinkableEntity[],
+  existingMarks: Array<{ type: string; attrs?: Record<string, unknown> }> = []
+): TextNode[] {
+  if (!text || entities.length === 0) {
+    return [{ type: 'text', text, marks: existingMarks.length > 0 ? existingMarks : undefined }];
+  }
+
+  // Sort entities by name length (longest first) to match longer names first
+  const sortedEntities = [...entities].sort((a, b) => b.name.length - a.name.length);
+
+  // Filter out very short names (less than 3 chars) to avoid false positives
+  const matchableEntities = sortedEntities.filter(e => e.name.length >= 3);
+
+  if (matchableEntities.length === 0) {
+    return [{ type: 'text', text, marks: existingMarks.length > 0 ? existingMarks : undefined }];
+  }
+
+  // Create a regex pattern that matches any entity name (case-insensitive)
+  const pattern = matchableEntities.map(e => escapeRegex(e.name)).join('|');
+  const regex = new RegExp(`(${pattern})`, 'gi');
+
+  // Split text by entity names
+  const parts = text.split(regex);
+
+  // Map each part to a text node
+  const result: TextNode[] = [];
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    // Check if this part matches an entity name (case-insensitive)
+    const matchedEntity = matchableEntities.find(
+      e => e.name.toLowerCase() === part.toLowerCase()
+    );
+
+    if (matchedEntity) {
+      // Apply entity link mark
+      result.push({
+        type: 'text',
+        text: part,
+        marks: [
+          ...existingMarks,
+          {
+            type: 'entityLink',
+            attrs: {
+              entityId: matchedEntity.id,
+              entityType: matchedEntity.entity_type,
+              entityName: matchedEntity.name,
+            },
+          },
+        ],
+      });
+    } else {
+      result.push({
+        type: 'text',
+        text: part,
+        marks: existingMarks.length > 0 ? existingMarks : undefined,
+      });
+    }
+  }
+
+  return result;
+}
+
 // The React component that renders the node
 const QuestObjectiveNodeView = ({ node, editor }: NodeViewProps) => {
   const { id, title, description, questId, questName } = node.attrs;
@@ -46,6 +136,9 @@ const QuestObjectiveNodeView = ({ node, editor }: NodeViewProps) => {
 
       const data = await response.json();
 
+      // Get linkable entities from the API response
+      const linkableEntities: LinkableEntity[] = data.linkableEntities || [];
+
       // Insert the generated content after this node
       if (data.content && editor) {
         // Get current position
@@ -56,34 +149,42 @@ const QuestObjectiveNodeView = ({ node, editor }: NodeViewProps) => {
 
         data.content.forEach((block: { type: string; text?: string; name?: string; description?: string }) => {
           if (block.type === 'readAloud') {
+            // Process readAloud text for entity links
+            const processedContent = processTextWithEntityLinks(block.text || '', linkableEntities);
             contentToInsert.push({
               type: 'readAloud',
-              content: [{ type: 'paragraph', content: [{ type: 'text', text: block.text || '' }] }],
+              content: [{ type: 'paragraph', content: processedContent }],
             });
           } else if (block.type === 'paragraph') {
+            // Process paragraph text for entity links
+            const processedContent = processTextWithEntityLinks(block.text || '', linkableEntities);
             contentToInsert.push({
               type: 'paragraph',
-              content: [{ type: 'text', text: block.text || '' }],
+              content: processedContent,
             });
           } else if (block.type === 'encounter') {
-            // Insert encounter as styled paragraph
+            // Process encounter text for entity links
+            const descriptionContent = processTextWithEntityLinks(` - ${block.description}`, linkableEntities);
             contentToInsert.push({
               type: 'paragraph',
               content: [
                 { type: 'text', text: '⚔️ ' },
                 { type: 'text', marks: [{ type: 'bold' }], text: `Encounter: ${block.name}` },
-                { type: 'text', text: ` - ${block.description}` },
+                ...descriptionContent,
               ],
             });
           }
         });
 
-        // Also insert suggested NPCs
+        // Also insert suggested NPCs with entity links
         if (data.suggestedNpcs && data.suggestedNpcs.length > 0) {
+          const npcNames = data.suggestedNpcs.map((n: { name: string }) => n.name).join(', ');
+          const npcContent = processTextWithEntityLinks(npcNames, linkableEntities, [{ type: 'italic' }]);
           contentToInsert.push({
             type: 'paragraph',
             content: [
-              { type: 'text', marks: [{ type: 'italic' }], text: `💡 NPCs involved: ${data.suggestedNpcs.map((n: { name: string }) => n.name).join(', ')}` },
+              { type: 'text', marks: [{ type: 'italic' }], text: '💡 NPCs involved: ' },
+              ...npcContent,
             ],
           });
         }

@@ -62,6 +62,20 @@ function extractTraitsFromContext(context?: string): string[] {
   return traits
 }
 
+// Map entity_type to forge route (entity types don't always match forge paths)
+const ENTITY_TYPE_TO_FORGE: Record<string, string> = {
+  npc: 'npc',
+  player: 'npc', // Players use NPC forge
+  location: 'location',
+  faction: 'faction',
+  quest: 'quest',
+  item: 'item',
+  creature: 'creature',
+  encounter: 'encounter',
+  event: 'lore', // Event entities use Lore forge
+  deity: 'pantheon', // Deity entities use Pantheon forge
+}
+
 export function StubBanner({
   entityId,
   entityName,
@@ -90,8 +104,11 @@ export function StubBanner({
       context: JSON.stringify(context),
     })
 
+    // Map entity type to correct forge route
+    const forgeType = ENTITY_TYPE_TO_FORGE[entityType] || entityType
+
     router.push(
-      `/dashboard/campaigns/${campaignId}/forge/${entityType}?${params}`
+      `/dashboard/campaigns/${campaignId}/forge/${forgeType}?${params}`
     )
   }
 

@@ -14,11 +14,13 @@ import type { Discovery, Conflict, EntityType } from '@/types/forge'
 import type { DeityGeneration, DeityDiscovery } from '@/types/deity'
 import { Button } from '@/components/ui/button'
 import { Flag, Users } from 'lucide-react'
+import { useSettingsContextOptional } from '@/components/settings'
 
 export default function PantheonForgePage() {
   const params = useParams()
   const router = useRouter()
   const campaignId = params?.id as string
+  const settingsContext = useSettingsContextOptional()
 
   // Review state (synced from forge.scanResult)
   const [reviewDiscoveries, setReviewDiscoveries] = useState<Discovery[]>([])
@@ -28,6 +30,11 @@ export default function PantheonForgePage() {
   const forge = useForge<DeityInputData, DeityGeneration>({
     campaignId,
     forgeType: 'deity',
+    onCommitSuccess: async () => {
+      if (settingsContext) {
+        await settingsContext.markOnboardingComplete(['create_deity', 'use_ai_generation'])
+      }
+    },
     generateFn: async (input) => {
       const response = await fetch('/api/generate/deity', {
         method: 'POST',
@@ -138,6 +145,19 @@ export default function PantheonForgePage() {
     )
   }
 
+  // Handle manual discovery from text selection
+  const handleManualDiscovery = (text: string, type: string) => {
+    const newDiscovery: Discovery = {
+      id: `manual-${Date.now()}`,
+      text,
+      suggestedType: type as EntityType,
+      context: `Manually selected from deity output`,
+      status: 'create_stub',
+    }
+    setReviewDiscoveries((prev: Discovery[]) => [...prev, newDiscovery])
+    toast.success(`"${text}" added as ${type} discovery`)
+  }
+
   // Handle commit (save to memory)
   const handleCommit = async () => {
     if (!forge.output) return
@@ -148,6 +168,11 @@ export default function PantheonForgePage() {
     })
 
     if (result.success) {
+      // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+      if (settingsContext) {
+        await settingsContext.markOnboardingComplete(['create_deity', 'use_ai_generation'])
+      }
+
       toast.success('Deity saved to Memory!')
 
       // Redirect after brief delay
@@ -221,6 +246,7 @@ export default function PantheonForgePage() {
             <DeityOutputCard
               data={forge.output}
               campaignId={campaignId}
+              onManualDiscovery={handleManualDiscovery}
             />
 
             {/* Unique Actions - Establish Church & Generate Priest */}

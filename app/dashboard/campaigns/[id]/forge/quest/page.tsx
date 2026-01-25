@@ -22,6 +22,7 @@ import {
   type QuestInputData,
   type GeneratedQuest,
 } from '@/components/forge/quest';
+import { useSettingsContextOptional } from '@/components/settings';
 
 interface StubContext {
   stubId: string;
@@ -39,6 +40,7 @@ export default function QuestForgePage(): JSX.Element {
   const searchParams = useSearchParams();
   const campaignId = params.id as string;
   const supabase = createClient();
+  const settingsContext = useSettingsContextOptional();
 
   // Parse URL params
   const stubId = searchParams.get('stubId');
@@ -72,6 +74,11 @@ export default function QuestForgePage(): JSX.Element {
     campaignId,
     forgeType: 'quest',
     stubId: stubId || undefined,
+    onCommitSuccess: async () => {
+      if (settingsContext) {
+        await settingsContext.markOnboardingComplete(['create_quest', 'use_ai_generation']);
+      }
+    },
     generateFn: async (input) => {
       const response = await fetch('/api/generate/quest', {
         method: 'POST',
@@ -391,6 +398,25 @@ export default function QuestForgePage(): JSX.Element {
         }
         setGenerationReferencedEntities([]);
 
+        // Create stub entities for any new discoveries marked as 'create_stub'
+        const stubsToCreate = reviewDiscoveries.filter(d => d.status === 'create_stub')
+        if (stubsToCreate.length > 0) {
+          const { createStubEntities } = await import('@/lib/forge/entity-minter')
+          const createdStubs = await createStubEntities(
+            supabase,
+            campaignId,
+            stubsToCreate,
+            'quest',
+            { sourceEntityId: stubId, sourceEntityName: forge.output?.name }
+          )
+          console.log('[Quest Forge] Created stubs during flesh-out:', createdStubs)
+        }
+
+        // Mark onboarding tasks complete for stub updates too
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete(['create_quest', 'use_ai_generation']);
+        }
+
         toast.success('Quest fleshed out and saved!');
         router.refresh();
         router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`);
@@ -477,6 +503,11 @@ export default function QuestForgePage(): JSX.Element {
         }
 
         setGenerationReferencedEntities([]);
+
+        // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete(['create_quest', 'use_ai_generation']);
+        }
 
         toast.success('Quest saved to Memory!');
         router.push(`/dashboard/campaigns/${campaignId}/memory/${entity.id}`);

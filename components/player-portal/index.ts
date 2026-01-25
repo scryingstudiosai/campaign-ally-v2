@@ -1,1 +1,1 @@
-export { RumorsBoard } from './RumorsBoard';
+export { LoreBoard } from './LoreBoard';

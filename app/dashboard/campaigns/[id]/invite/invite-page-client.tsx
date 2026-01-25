@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { MaterialCard } from '@/components/ui/material-card'
 import { toast } from 'sonner'
+import { useSettingsContext } from '@/components/settings/SettingsContext'
 import {
   ArrowLeft,
   UserPlus,
@@ -35,12 +36,15 @@ export function InvitePageClient({
   const [joinCode, setJoinCode] = useState(initialJoinCode)
   const [inviteUrl, setInviteUrl] = useState(initialInviteUrl)
   const [generating, setGenerating] = useState(false)
+  const { markOnboardingComplete } = useSettingsContext()
 
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
       toast.success('Copied to clipboard!')
+      // Mark onboarding task complete
+      await markOnboardingComplete('invite_player')
       setTimeout(() => setCopied(false), 2000)
     } catch {
       toast.error('Failed to copy')

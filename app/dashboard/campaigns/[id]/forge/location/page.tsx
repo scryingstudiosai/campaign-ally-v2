@@ -23,6 +23,7 @@ import {
   type LocationInputData,
   type GeneratedLocation,
 } from '@/components/forge/location'
+import { useSettingsContextOptional } from '@/components/settings'
 
 interface StubContext {
   stubId: string
@@ -40,6 +41,7 @@ export default function LocationForgePage(): JSX.Element {
   const searchParams = useSearchParams()
   const campaignId = params.id as string
   const supabase = createClient()
+  const settingsContext = useSettingsContextOptional()
 
   // Parse URL params
   const stubId = searchParams.get('stubId')
@@ -73,6 +75,11 @@ export default function LocationForgePage(): JSX.Element {
     campaignId,
     forgeType: 'location',
     stubId: stubId || undefined,
+    onCommitSuccess: async () => {
+      if (settingsContext) {
+        await settingsContext.markOnboardingComplete(['create_location', 'use_ai_generation'])
+      }
+    },
     generateFn: async (input) => {
       const response = await fetch('/api/generate/location', {
         method: 'POST',
@@ -672,6 +679,11 @@ export default function LocationForgePage(): JSX.Element {
         // Auto-stock the shop if it's a shop location
         await autoStockShopIfNeeded(stubId, forge.output.mechanics as Record<string, unknown>)
 
+        // Mark onboarding tasks complete for stub updates too
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete(['create_location', 'use_ai_generation'])
+        }
+
         if (createdStubCount > 0) {
           toast.success(`Location fleshed out! ${createdStubCount} stub${createdStubCount > 1 ? 's' : ''} created.`)
         } else {
@@ -735,6 +747,11 @@ export default function LocationForgePage(): JSX.Element {
 
         // Auto-stock the shop if it's a shop location
         await autoStockShopIfNeeded(entity.id, forge.output?.mechanics as Record<string, unknown>)
+
+        // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete(['create_location', 'use_ai_generation'])
+        }
 
         // Stubs and their relationships are now created by entity-minter.ts
         // Contains stubs get 'contains' relationship, others get 'related_to'

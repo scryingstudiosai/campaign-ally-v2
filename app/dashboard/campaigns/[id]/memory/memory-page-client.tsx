@@ -21,6 +21,7 @@ import {
 import { ArrowLeft, Plus, Brain, Database, CheckSquare, X, Trash2, Loader2, User, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageTransition, StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion'
+import { useSettingsContextOptional } from '@/components/settings'
 
 const STORAGE_KEY = 'memory-view-mode'
 
@@ -46,6 +47,9 @@ export function MemoryPageClient({
   initialEntities,
   initialRelationships,
 }: MemoryPageClientProps): JSX.Element {
+  // Settings context for onboarding
+  const settingsContext = useSettingsContextOptional()
+
   // Debug: Log what we received from server
   useEffect(() => {
     console.log('[MemoryPageClient] Received from server - entities:', initialEntities.length, 'relationships:', initialRelationships.length)
@@ -78,6 +82,13 @@ export function MemoryPageClient({
     setViewMode(mode)
     localStorage.setItem(STORAGE_KEY, mode)
   }
+
+  // Mark spiderweb onboarding task complete when viewing graph
+  useEffect(() => {
+    if (viewMode === 'graph' && settingsContext && settingsContext.settings?.onboarding?.view_spiderweb !== true) {
+      settingsContext.markOnboardingComplete('view_spiderweb')
+    }
+  }, [viewMode, settingsContext])
 
   // Handle entity click in graph view
   const handleEntityClick = useCallback((entityId: string) => {
@@ -285,17 +296,36 @@ export function MemoryPageClient({
           </div>
         </FadeIn>
 
-        {/* Quick Stats */}
+        {/* Quick Stats - Semantic Palette Colors
+            THE LIVING: player=amber, npc=sky, deity=fuchsia
+            THE THREATS: creature=rose, encounter=orange
+            THE WORLD: location=emerald, faction=indigo, event=slate
+            OBJECTIVES: item=violet, quest=cyan */}
         {entities.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6 text-sm">
+            {typeCounts.player && (
+              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                {typeCounts.player} Players
+              </span>
+            )}
             {typeCounts.npc && (
-              <span className="px-3 py-1 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30">
+              <span className="px-3 py-1 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30">
                 {typeCounts.npc} NPCs
               </span>
             )}
-            {typeCounts.player && (
-              <span className="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                {typeCounts.player} Players
+            {typeCounts.deity && (
+              <span className="px-3 py-1 rounded-full bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30">
+                {typeCounts.deity} Deities
+              </span>
+            )}
+            {typeCounts.creature && (
+              <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                {typeCounts.creature} Creatures
+              </span>
+            )}
+            {typeCounts.encounter && (
+              <span className="px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                {typeCounts.encounter} Encounters
               </span>
             )}
             {typeCounts.location && (
@@ -303,29 +333,24 @@ export function MemoryPageClient({
                 {typeCounts.location} Locations
               </span>
             )}
-            {typeCounts.item && (
-              <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                {typeCounts.item} Items
-              </span>
-            )}
             {typeCounts.faction && (
-              <span className="px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+              <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
                 {typeCounts.faction} Factions
               </span>
             )}
+            {typeCounts.event && (
+              <span className="px-3 py-1 rounded-full bg-slate-500/20 text-slate-400 border border-slate-500/30">
+                {typeCounts.event} Lore
+              </span>
+            )}
+            {typeCounts.item && (
+              <span className="px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">
+                {typeCounts.item} Items
+              </span>
+            )}
             {typeCounts.quest && (
-              <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+              <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
                 {typeCounts.quest} Quests
-              </span>
-            )}
-            {typeCounts.encounter && (
-              <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                {typeCounts.encounter} Encounters
-              </span>
-            )}
-            {typeCounts.creature && (
-              <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                {typeCounts.creature} Creatures
               </span>
             )}
           </div>

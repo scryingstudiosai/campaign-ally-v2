@@ -11,6 +11,8 @@ import {
   Swords,
   Scroll,
   Crown,
+  BookOpen,
+  Sparkles,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -20,7 +22,7 @@ import {
 } from '@/components/ui/tooltip';
 import { motion } from 'framer-motion';
 
-type ForgeType = 'npc' | 'creature' | 'location' | 'item' | 'faction' | 'encounter' | 'quest' | 'player';
+type ForgeType = 'npc' | 'creature' | 'location' | 'item' | 'faction' | 'encounter' | 'quest' | 'player' | 'event' | 'deity';
 
 interface ForgeButtonProps {
   href: string;
@@ -76,6 +78,18 @@ const FORGE_CONFIG: Record<ForgeType, { icon: typeof User; hover: string; iconCo
     hover: 'hover:shadow-[0_0_15px_rgba(251,191,36,0.4)] hover:border-yellow-500/40',
     iconColor: 'text-yellow-400',
     tooltip: 'Create a player character with stats and starting gear',
+  },
+  event: {
+    icon: BookOpen,
+    hover: 'hover:shadow-[0_0_15px_rgba(148,163,184,0.3)] hover:border-slate-400/30',
+    iconColor: 'text-slate-400',
+    tooltip: 'Weave historical events, rumors, and prophecies',
+  },
+  deity: {
+    icon: Sparkles,
+    hover: 'hover:shadow-[0_0_15px_rgba(232,121,249,0.3)] hover:border-fuchsia-500/30',
+    iconColor: 'text-fuchsia-400',
+    tooltip: 'Create gods and divine beings for your pantheon',
   },
 };
 

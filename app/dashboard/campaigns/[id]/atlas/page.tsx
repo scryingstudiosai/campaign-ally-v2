@@ -1,335 +1,256 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import {
-  Globe,
-  MapPin,
-  Loader2,
-  Plus,
-  Sparkles,
-  Upload,
-  Link as LinkIcon,
-  Search,
-  Layers,
-  Grid3X3,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { PageTransition, StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion'
-import { MapCard } from '@/components/atlas/MapCard'
-import { AddMapDialog } from '@/components/atlas/AddMapDialog'
-import type { AtlasMap } from '@/app/api/campaigns/[id]/atlas/route'
+import { useEffect, useState, useCallback } from 'react'
+import { useParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { AtlasExplorer } from '@/components/atlas/AtlasExplorer'
+import { AtlasEmptyWorld } from '@/components/atlas/AtlasEmptyWorld'
+import { Loader2 } from 'lucide-react'
+import type { LivingEntity } from '@/types/living-entity'
 
-type MapType = 'world' | 'region' | 'city' | 'dungeon' | 'building' | 'encounter' | 'other'
+// Location types that should NOT be selected as world maps
+const EXCLUDE_FROM_WORLD_ROOT = [
+  'building', 'tavern', 'inn', 'shop', 'house', 'castle', 'tower', 'temple',
+  'dungeon', 'cave', 'crypt', 'tomb', 'mine', 'room', 'chamber',
+  'district', 'vale', 'valley', 'grove', 'sanctuary', 'academy', 'street', 'quarter'
+]
 
-const mapTypeLabels: Record<MapType, string> = {
-  world: 'World',
-  region: 'Region',
-  city: 'City',
-  dungeon: 'Dungeon',
-  building: 'Building',
-  encounter: 'Encounter',
-  other: 'Other',
-}
-
-const mapTypeIcons: Record<MapType, typeof Globe> = {
-  world: Globe,
-  region: Layers,
-  city: Grid3X3,
-  dungeon: MapPin,
-  building: Grid3X3,
-  encounter: MapPin,
-  other: MapPin,
-}
+// Priority types for world map selection
+const WORLD_TYPES = ['world', 'continent', 'realm', 'plane']
+const REGION_TYPES = ['region', 'kingdom', 'nation', 'empire', 'province', 'territory', 'land', 'dominion']
 
 export default function AtlasPage() {
   const params = useParams()
-  const router = useRouter()
   const campaignId = params.id as string
+  const supabase = createClient()
 
-  const [maps, setMaps] = useState<AtlasMap[]>([])
+  const [worldMap, setWorldMap] = useState<LivingEntity | null>(null)
+  const [allLocationsWithMaps, setAllLocationsWithMaps] = useState<LivingEntity[]>([])
+  const [allLocations, setAllLocations] = useState<LivingEntity[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [typeFilter, setTypeFilter] = useState<MapType | 'all'>('all')
-  const [showAddDialog, setShowAddDialog] = useState(false)
-  const [addDialogMode, setAddDialogMode] = useState<'upload' | 'url'>('upload')
+
+  const fetchAtlasData = useCallback(async () => {
+    // 1. Check if campaign has an explicit world root set
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('attributes')
+      .eq('id', campaignId)
+      .single()
+
+    // 2. Get ALL locations for this campaign
+    const { data: locations } = await supabase
+      .from('entities')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .eq('entity_type', 'location')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: true })
+
+    const allLocs = (locations || []) as unknown as LivingEntity[]
+    setAllLocations(allLocs)
+
+    // Get locations with maps
+    const locationsWithMaps = allLocs.filter((l) => l.attributes?.map_image_url)
+    setAllLocationsWithMaps(locationsWithMaps)
+
+    if (allLocs.length === 0) {
+      setLoading(false)
+      return
+    }
+
+    // 3. Build a map for quick lookup
+    const locationMap = new Map<string, LivingEntity>(allLocs.map(l => [l.id, l]))
+
+    // 4. Get location relationships to find parent-child connections
+    const { data: locationRelationships } = await supabase
+      .from('relationships')
+      .select('source_id, target_id, relationship_type')
+      .eq('campaign_id', campaignId)
+      .in('relationship_type', ['located_in', 'contains', 'part_of'])
+
+    // Build a parent lookup map from relationships
+    const parentFromRelationship = new Map<string, string>()
+    locationRelationships?.forEach(rel => {
+      if (rel.relationship_type === 'located_in' || rel.relationship_type === 'part_of') {
+        // source is located_in/part_of target, so target is parent
+        parentFromRelationship.set(rel.source_id, rel.target_id)
+      } else if (rel.relationship_type === 'contains') {
+        // source contains target, so source is parent of target
+        parentFromRelationship.set(rel.target_id, rel.source_id)
+      }
+    })
+
+    // 5. Function to find the ultimate root of any location by traversing up
+    const findUltimateRoot = (locationId: string, visited = new Set<string>()): LivingEntity | null => {
+      if (visited.has(locationId)) return null // Prevent cycles
+      visited.add(locationId)
+
+      const location = locationMap.get(locationId)
+      if (!location) return null
+
+      // Priority 1: Check parent_id (database column)
+      const dbParentId = (location as Record<string, unknown>).parent_id as string | undefined
+      if (dbParentId && locationMap.has(dbParentId)) {
+        const parent = findUltimateRoot(dbParentId, visited)
+        return parent || location
+      }
+
+      // Priority 2: Check attributes.parent_entity_id (legacy JSON field)
+      const attrParentId = location.attributes?.parent_entity_id as string | undefined
+      if (attrParentId && locationMap.has(attrParentId)) {
+        const parent = findUltimateRoot(attrParentId, visited)
+        return parent || location
+      }
+
+      // Priority 3: Check relationship-based parent (located_in, part_of, contains)
+      const relParentId = parentFromRelationship.get(locationId)
+      if (relParentId && locationMap.has(relParentId)) {
+        const parent = findUltimateRoot(relParentId, visited)
+        return parent || location
+      }
+
+      // No parent found - this is a root
+      return location
+    }
+
+    // 6. Find all unique ultimate roots
+    const ultimateRootsSet = new Set<string>()
+    const ultimateRoots: LivingEntity[] = []
+    allLocs.forEach(loc => {
+      const root = findUltimateRoot(loc.id)
+      if (root && !ultimateRootsSet.has(root.id)) {
+        ultimateRootsSet.add(root.id)
+        ultimateRoots.push(root)
+      }
+    })
+
+    // Helper functions
+    const subTypeLower = (l: LivingEntity) => l.sub_type?.toLowerCase() || ''
+    const isExcluded = (l: LivingEntity) => EXCLUDE_FROM_WORLD_ROOT.some(t => subTypeLower(l).includes(t))
+    const isWorldType = (l: LivingEntity) => WORLD_TYPES.some(t => subTypeLower(l).includes(t))
+    const isRegionType = (l: LivingEntity) => REGION_TYPES.some(t => subTypeLower(l).includes(t))
+
+    // 7. If campaign has an explicit world root, use it
+    const worldRootId = campaign?.attributes?.world_root_location_id as string | undefined
+    if (worldRootId) {
+      const explicitRoot = allLocs.find((l) => l.id === worldRootId)
+      if (explicitRoot) {
+        setWorldMap(explicitRoot)
+        setLoading(false)
+        return
+      }
+    }
+
+    // 8. Priority selection among ultimate roots
+    let worldCandidate: LivingEntity | null = null
+
+    // Priority 1: Location explicitly marked as world root (via attributes)
+    worldCandidate = ultimateRoots.find((l) => l.attributes?.is_world_root === true) || null
+
+    // Priority 2: World/continent type with map
+    if (!worldCandidate) {
+      worldCandidate = ultimateRoots.find(l => isWorldType(l) && l.attributes?.map_image_url) || null
+    }
+
+    // Priority 3: World/continent type without map
+    if (!worldCandidate) {
+      worldCandidate = ultimateRoots.find(l => isWorldType(l)) || null
+    }
+
+    // Priority 4: Kingdom/region type with map
+    if (!worldCandidate) {
+      worldCandidate = ultimateRoots.find(l => isRegionType(l) && l.attributes?.map_image_url) || null
+    }
+
+    // Priority 5: Kingdom/region type without map
+    if (!worldCandidate) {
+      worldCandidate = ultimateRoots.find(l => isRegionType(l)) || null
+    }
+
+    // Priority 6: Root with the most descendants (likely the main container)
+    if (!worldCandidate) {
+      const countDescendants = (rootId: string): number => {
+        return allLocs.filter(l => {
+          const ultimateRoot = findUltimateRoot(l.id)
+          return ultimateRoot?.id === rootId && l.id !== rootId
+        }).length
+      }
+
+      const rootsWithCounts = ultimateRoots
+        .filter(r => !isExcluded(r))
+        .map(r => ({ root: r, count: countDescendants(r.id) }))
+        .sort((a, b) => b.count - a.count)
+
+      if (rootsWithCounts.length > 0 && rootsWithCounts[0].count > 0) {
+        worldCandidate = rootsWithCounts[0].root
+      }
+    }
+
+    // Priority 7: Any root with a map that's not excluded
+    if (!worldCandidate) {
+      worldCandidate = ultimateRoots.find(l => l.attributes?.map_image_url && !isExcluded(l)) || null
+    }
+
+    // Priority 8: Any root that's not excluded
+    if (!worldCandidate) {
+      worldCandidate = ultimateRoots.find(l => !isExcluded(l)) || null
+    }
+
+    // Fallback: first root
+    if (!worldCandidate && ultimateRoots.length > 0) {
+      worldCandidate = ultimateRoots[0]
+    }
+
+    setWorldMap(worldCandidate)
+    setLoading(false)
+  }, [campaignId, supabase])
 
   useEffect(() => {
-    fetchMaps()
-  }, [campaignId])
+    fetchAtlasData()
+  }, [fetchAtlasData])
 
-  async function fetchMaps() {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/campaigns/${campaignId}/atlas`)
-      if (res.ok) {
-        const data = await res.json()
-        setMaps(data)
-      }
-    } catch (error) {
-      console.error('Failed to fetch maps:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleDeleteMap(mapId: string) {
-    if (!confirm('Are you sure you want to delete this map?')) return
-
-    try {
-      const res = await fetch(`/api/campaigns/${campaignId}/atlas/${mapId}`, {
-        method: 'DELETE',
+  // Handler to set a location as world root
+  const handleSetWorldRoot = async (locationId: string) => {
+    await supabase
+      .from('campaigns')
+      .update({
+        attributes: {
+          world_root_location_id: locationId
+        }
       })
-      if (res.ok) {
-        setMaps(maps.filter((m) => m.id !== mapId))
-      }
-    } catch (error) {
-      console.error('Failed to delete map:', error)
-    }
+      .eq('id', campaignId)
+
+    // Refresh the data
+    await fetchAtlasData()
   }
-
-  async function handleTogglePublic(map: AtlasMap) {
-    try {
-      const res = await fetch(`/api/campaigns/${campaignId}/atlas/${map.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isPublic: !map.is_public }),
-      })
-      if (res.ok) {
-        const updated = await res.json()
-        setMaps(maps.map((m) => (m.id === map.id ? updated : m)))
-      }
-    } catch (error) {
-      console.error('Failed to update map:', error)
-    }
-  }
-
-  function handleMapAdded(newMap: AtlasMap) {
-    setMaps([newMap, ...maps])
-    setShowAddDialog(false)
-  }
-
-  // Filter maps
-  const filteredMaps = maps.filter((map) => {
-    const matchesSearch = map.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesType = typeFilter === 'all' || map.map_type === typeFilter
-    return matchesSearch && matchesType
-  })
-
-  // Group by type for display
-  const mapsByType = filteredMaps.reduce(
-    (acc, map) => {
-      const type = map.map_type as MapType
-      if (!acc[type]) acc[type] = []
-      acc[type].push(map)
-      return acc
-    },
-    {} as Record<MapType, AtlasMap[]>
-  )
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-8 flex items-center justify-center">
+      <div className="flex items-center justify-center h-[80vh]">
         <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
       </div>
     )
   }
 
-  return (
-    <PageTransition>
-      <div className="min-h-screen bg-background text-foreground p-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <FadeIn className="flex items-start justify-between mb-8">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-lg bg-teal-500/10 border border-teal-500/20">
-                  <Globe className="w-6 h-6 text-teal-400" />
-                </div>
-                <h1 className="text-3xl font-bold">Campaign Atlas</h1>
-              </div>
-              <p className="text-slate-400">
-                Manage and explore your campaign&apos;s maps
-              </p>
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="bg-teal-600 hover:bg-teal-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Map
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={() => router.push(`/dashboard/campaigns/${campaignId}/forge/map`)}
-                >
-                  <Sparkles className="w-4 h-4 mr-2 text-purple-400" />
-                  Generate with AI
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setAddDialogMode('upload')
-                    setShowAddDialog(true)
-                  }}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Image
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setAddDialogMode('url')
-                    setShowAddDialog(true)
-                  }}
-                >
-                  <LinkIcon className="w-4 h-4 mr-2" />
-                  Link External URL
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </FadeIn>
-
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Search maps..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-slate-800/50 border-white/10"
-              />
-            </div>
-
-            {/* Type Filter */}
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant={typeFilter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setTypeFilter('all')}
-              >
-                All
-              </Button>
-              {(Object.keys(mapTypeLabels) as MapType[]).map((type) => (
-                <Button
-                  key={type}
-                  variant={typeFilter === type ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTypeFilter(type)}
-                >
-                  {mapTypeLabels[type]}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Maps Grid */}
-          {filteredMaps.length > 0 ? (
-            typeFilter === 'all' ? (
-              // Show grouped by type when no filter
-              <div className="space-y-8">
-                {(Object.keys(mapsByType) as MapType[]).map((type) => (
-                  <div key={type}>
-                    <h2 className="text-lg font-semibold text-slate-300 mb-4 flex items-center gap-2">
-                      {(() => {
-                        const Icon = mapTypeIcons[type]
-                        return <Icon className="w-5 h-5 text-teal-400" />
-                      })()}
-                      {mapTypeLabels[type]} Maps ({mapsByType[type].length})
-                    </h2>
-                    <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {mapsByType[type].map((map) => (
-                        <StaggerItem key={map.id}>
-                          <HoverLift>
-                            <MapCard
-                              map={map}
-                              campaignId={campaignId}
-                              onDelete={() => handleDeleteMap(map.id)}
-                              onTogglePublic={() => handleTogglePublic(map)}
-                            />
-                          </HoverLift>
-                        </StaggerItem>
-                      ))}
-                    </StaggerContainer>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              // Show flat grid when filtered
-              <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredMaps.map((map) => (
-                  <StaggerItem key={map.id}>
-                    <HoverLift>
-                      <MapCard
-                        map={map}
-                        campaignId={campaignId}
-                        onDelete={() => handleDeleteMap(map.id)}
-                        onTogglePublic={() => handleTogglePublic(map)}
-                      />
-                    </HoverLift>
-                  </StaggerItem>
-                ))}
-              </StaggerContainer>
-            )
-          ) : (
-            // Empty State
-            <div className="text-center py-16">
-              <div className="w-20 h-20 mx-auto rounded-full bg-slate-800 flex items-center justify-center mb-4">
-                <Globe className="w-10 h-10 text-slate-600" />
-              </div>
-              <h2 className="text-xl font-semibold text-slate-300 mb-2">
-                {searchQuery || typeFilter !== 'all' ? 'No Maps Found' : 'No Maps Yet'}
-              </h2>
-              <p className="text-slate-500 mb-6 max-w-md mx-auto">
-                {searchQuery || typeFilter !== 'all'
-                  ? 'Try adjusting your search or filters'
-                  : 'Create your first map to start building your campaign\'s visual world.'}
-              </p>
-              {!searchQuery && typeFilter === 'all' && (
-                <div className="flex items-center justify-center gap-3">
-                  <Button
-                    onClick={() => router.push(`/dashboard/campaigns/${campaignId}/forge/map`)}
-                    className="bg-gradient-to-r from-purple-600 to-teal-600"
-                  >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate with AI
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setAddDialogMode('upload')
-                      setShowAddDialog(true)
-                    }}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Map
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Add Map Dialog */}
-      <AddMapDialog
-        open={showAddDialog}
-        onClose={() => setShowAddDialog(false)}
+  // If we have a world map WITH an image, show the immersive explorer
+  if (worldMap?.attributes?.map_image_url) {
+    return (
+      <AtlasExplorer
         campaignId={campaignId}
-        mode={addDialogMode}
-        onMapAdded={handleMapAdded}
+        rootLocation={worldMap}
+        allLocationsWithMaps={allLocationsWithMaps}
       />
-    </PageTransition>
+    )
+  }
+
+  // No world map yet (or no image) - show creation prompt + existing maps
+  return (
+    <AtlasEmptyWorld
+      campaignId={campaignId}
+      worldLocation={worldMap}
+      existingMaps={allLocationsWithMaps}
+      allLocations={allLocations}
+      onSetWorldRoot={handleSetWorldRoot}
+    />
   )
 }

@@ -14,14 +14,16 @@ import { toast } from 'sonner'
 import type { Discovery, Conflict, EntityType } from '@/types/forge'
 import type { GeneratedLore, LoreDiscovery } from '@/types/event'
 import { TIMEFRAMES } from '@/lib/forge/prompts/lore-prompts'
+import { useSettingsContextOptional } from '@/components/settings'
 
 export default function LoreForgePage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
   const campaignId = params?.id as string
-  const stubId = searchParams.get('stub')
+  const stubId = searchParams.get('stubId')
   const supabase = createClient()
+  const settingsContext = useSettingsContextOptional()
 
   // Review state (synced from forge.scanResult)
   const [reviewDiscoveries, setReviewDiscoveries] = useState<Discovery[]>([])
@@ -35,6 +37,11 @@ export default function LoreForgePage() {
     campaignId,
     forgeType: 'event',
     stubId: stubId || undefined,
+    onCommitSuccess: async () => {
+      if (settingsContext) {
+        await settingsContext.markOnboardingComplete(['create_event', 'use_ai_generation'])
+      }
+    },
     generateFn: async (input) => {
       // Get timeframe data
       const timeframeData = TIMEFRAMES.find(t => t.value === input.timeframe)
@@ -157,6 +164,100 @@ export default function LoreForgePage() {
   const handleCommit = async () => {
     if (!forge.output) return
 
+    // If fleshing out a stub, update the existing entity directly
+    if (stubId) {
+      try {
+        // Fetch existing stub entity
+        const { data: existingEntity, error: fetchError } = await supabase
+          .from('entities')
+          .select('*')
+          .eq('id', stubId)
+          .single()
+
+        if (fetchError || !existingEntity) {
+          toast.error('Could not find stub entity')
+          return
+        }
+
+        // Build the update payload
+        const updatePayload = {
+          name: forge.output.name,
+          entity_type: 'event', // Lore entities are stored as 'event' type
+          entity_subtype: forge.output.subType || existingEntity.entity_subtype,
+          soul: forge.output.soul,
+          brain: forge.output.brain,
+          mechanics: forge.output.mechanics,
+          is_stub: false, // Mark as no longer a stub
+          stub_context: null,
+          stub_source_entity_id: null,
+        }
+
+        // Update the entity
+        const { error: updateError } = await supabase
+          .from('entities')
+          .update(updatePayload)
+          .eq('id', stubId)
+
+        if (updateError) {
+          console.error('[Lore Forge] Update error:', updateError)
+          toast.error('Failed to update lore entity')
+          return
+        }
+
+        // Create relationships to involved entities
+        if (generationInvolvedEntities.length > 0) {
+          const relationships = generationInvolvedEntities.map((targetId: string) => ({
+            campaign_id: campaignId,
+            source_entity_id: stubId,
+            target_entity_id: targetId,
+            relationship_type: 'involved_in',
+            category: 'other',
+            descriptor: 'involved in',
+            description: 'Connected via Lore Forge generation',
+            visibility: 'public' as const,
+          }))
+
+          const { error: relError } = await supabase.from('relationships').insert(relationships)
+          if (relError) {
+            console.error('Failed to create relationships:', relError)
+          }
+        }
+
+        // Create stub entities for any new discoveries marked as 'create_stub'
+        const stubsToCreate = reviewDiscoveries.filter(d => d.status === 'create_stub')
+        if (stubsToCreate.length > 0) {
+          const { createStubEntities } = await import('@/lib/forge/entity-minter')
+          const createdStubs = await createStubEntities(
+            supabase,
+            campaignId,
+            stubsToCreate,
+            'event',
+            { sourceEntityId: stubId, sourceEntityName: forge.output.name }
+          )
+          console.log('[Lore Forge] Created stubs during flesh-out:', createdStubs)
+        }
+
+        // Mark onboarding complete
+        if (settingsContext) {
+          await settingsContext.markOnboardingComplete(['create_event', 'use_ai_generation'])
+        }
+
+        toast.success('Lore entity fleshed out!')
+
+        // Redirect to the entity detail page
+        setTimeout(() => {
+          router.push(`/dashboard/campaigns/${campaignId}/memory/${stubId}`)
+        }, 1500)
+
+        return
+      } catch (err) {
+        console.error('[Lore Forge] Flesh-out error:', err)
+        toast.error('An error occurred while fleshing out the entity')
+        return
+      }
+    }
+
+    // Normal commit flow for new entities
     const result = await forge.handleCommit({
       discoveries: reviewDiscoveries,
       conflicts: reviewConflicts,
@@ -182,6 +283,11 @@ export default function LoreForgePage() {
         if (relError) {
           console.error('Failed to create relationships:', relError)
         }
+      }
+
+      // Belt-and-suspenders: also trigger here in case onCommitSuccess didn't fire
+      if (settingsContext) {
+        await settingsContext.markOnboardingComplete(['create_event', 'use_ai_generation'])
       }
 
       toast.success('Event saved to Memory!')
