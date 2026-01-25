@@ -76,48 +76,50 @@ export function AtlasMarker({
             onClick={onClick}
             className={cn(
               'relative flex items-center justify-center transition-all duration-300',
-              // Size
-              'w-10 h-10',
+              // Size - smaller and more subtle
+              'w-5 h-5',
               // Shape
               shape,
               // Base styling
-              'shadow-lg',
+              'shadow-md',
               // Color based on entity type (or gray if rumored)
-              isRumored ? 'bg-slate-600 text-slate-400' : `bg-slate-900 ${style.text} border-2`,
+              isRumored
+                ? 'bg-slate-500/80 text-slate-300'
+                : `bg-slate-900/90 ${style.text} border`,
               // Border color
               !isRumored && borderColor,
               // Emphasis (lens filtering)
               emphasis === 'faded' && 'opacity-20 pointer-events-none',
               // Focus state
-              isFocused && 'ring-4 ring-white/50 scale-125',
+              isFocused && 'ring-2 ring-white/50 scale-150',
               // Hover
-              'hover:scale-110 hover:z-20',
+              'hover:scale-150 hover:z-20',
               // Drill-down markers get special styling
-              isDrillDown && 'ring-2 ring-white/30'
+              isDrillDown && 'ring-1 ring-white/40 w-6 h-6'
             )}
           >
             {/* Icon or ? */}
             {isRumored ? (
-              <HelpCircle className="w-5 h-5" />
+              <HelpCircle className="w-3 h-3" />
             ) : (
-              <Icon className={cn('w-5 h-5', shape === 'rotate-45 rounded-sm' && '-rotate-45')} />
+              <Icon className={cn('w-3 h-3', shape === 'rotate-45 rounded-sm' && '-rotate-45')} />
             )}
 
             {/* Active Quest Pulse */}
             {hasActiveQuest && !isRumored && (
               <>
                 <span className="absolute inset-0 rounded-full bg-amber-500/30 animate-ping" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-slate-900" />
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-500 rounded-full border border-slate-900" />
               </>
             )}
 
             {/* Focus Glow */}
             {isFocused && <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse" />}
 
-            {/* Drill-down indicator */}
+            {/* Drill-down indicator - subtle arrow below */}
             {isDrillDown && (
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-white bg-slate-800 px-1 rounded">
-                ↓
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[6px] text-teal-400 font-bold">
+                ▼
               </div>
             )}
           </button>
